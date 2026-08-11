@@ -40,10 +40,15 @@ import { JournalPropertiesPanel } from './JournalPropertiesPanel';
 import { JournalBlockList } from './JournalBlockList';
 
 import {
+  DEFAULT_JOURNAL_PAPER,
+  JOURNAL_PAPER_KEYS,
+  JOURNAL_PAPER_LABELS,
   TEMPLATE_LABELS,
+  journalPaper,
   type BlockSpan,
   type JournalBlock,
   type JournalPage,
+  type JournalPaperKey,
   type JournalRecord,
   type JournalTemplate,
 } from '@/lib/journal/types';
@@ -75,6 +80,10 @@ interface Props {
   ) => Promise<boolean>;
 }
 
+/** Largura da miniatura na barra lateral; a altura decorre da proporção A4. */
+const THUMB_W = 180;
+const THUMB_SCALE = THUMB_W / A4_W;
+
 /** Estado de preenchimento da página — usado nos selos das miniaturas. */
 function pageStatus(page: JournalPage): 'completa' | 'pendente' {
   const pending = page.blocks.some((block) => {
@@ -95,8 +104,9 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
   const [layoutLocked, setLayoutLocked] = useState(true);
   /** Modo de ajuste da folha: tela, largura, altura ou zoom manual (null). */
   const [fitMode, setFitMode] = useState<'screen' | 'width' | 'height' | null>('screen');
-  /** Fundo da folha: cinza institucional (#EEEEEE) ou branco. */
-  const [paperColor, setPaperColor] = useState<'#EEEEEE' | '#FFFFFF'>('#EEEEEE');
+  /** Fundo da folha — vale para canvas, miniatura, preview e PDF. */
+  const [paper, setPaper] = useState<JournalPaperKey>(DEFAULT_JOURNAL_PAPER);
+  const paperColor = journalPaper(paper);
   const [exporting, setExporting] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -371,7 +381,7 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
         const canvas = await html2canvas(nodes[index], {
           scale,
           useCORS: true,
-          backgroundColor: '#F0EEE4',
+          backgroundColor: paperColor,
           width: A4_W,
           height: A4_H,
           windowWidth: A4_W,
@@ -520,14 +530,18 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
                       : 'border-border hover:border-primary/50 hover:bg-accent/40',
                   )}
                 >
-                  <div className="h-32 overflow-hidden rounded-sm border border-border bg-news-paper">
-                    <div style={{ transform: `scale(${180 / A4_W})`, transformOrigin: 'top left' }}>
+                  <div
+                    className="overflow-hidden rounded-sm border border-border"
+                    style={{ height: Math.round(A4_H * THUMB_SCALE), backgroundColor: paperColor }}
+                  >
+                    <div style={{ transform: `scale(${THUMB_SCALE})`, transformOrigin: 'top left' }}>
                       <JournalPageView
                         page={page}
                         index={index}
                         total={pages.length}
                         edition={journal.reference_month || ''}
                         unitName={unitName}
+                        paperColor={paperColor}
                       />
                     </div>
                   </div>
@@ -657,29 +671,24 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
                       Fundo do jornal
                     </p>
                     <div className="grid grid-cols-2 gap-2">
-                      {(
-                        [
-                          { value: '#EEEEEE' as const, label: 'Cinza institucional' },
-                          { value: '#FFFFFF' as const, label: 'Branco' },
-                        ]
-                      ).map((option) => (
+                      {JOURNAL_PAPER_KEYS.map((key) => (
                         <button
-                          key={option.value}
+                          key={key}
                           type="button"
-                          onClick={() => setPaperColor(option.value)}
-                          aria-pressed={paperColor === option.value}
+                          onClick={() => setPaper(key)}
+                          aria-pressed={paper === key}
                           className={cn(
                             'rounded-md border p-2 text-left text-[11px] transition-colors',
-                            paperColor === option.value
+                            paper === key
                               ? 'border-primary bg-accent'
                               : 'border-border hover:bg-accent/40',
                           )}
                         >
                           <span
                             className="mb-1.5 block h-8 w-full rounded-sm border border-border"
-                            style={{ backgroundColor: option.value }}
+                            style={{ backgroundColor: journalPaper(key) }}
                           />
-                          {option.label}
+                          {JOURNAL_PAPER_LABELS[key]}
                         </button>
                       ))}
                     </div>
