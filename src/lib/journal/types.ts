@@ -60,6 +60,31 @@ export const JOURNAL_COLOR_KEYS = Object.keys(JOURNAL_COLOR_LABELS) as JournalCo
 export const journalColor = (key?: JournalColorKey): string =>
   JOURNAL_COLOR_HEX[key ?? 'tinta'] ?? JOURNAL_COLOR_HEX.tinta;
 
+/**
+ * Fundos autorizados da folha do jornal — aplicados ao jornal inteiro, nunca por
+ * página. Cinzas de interface (área de trabalho) não entram aqui: nenhum fundo
+ * da interface pode interferir na cor exportada.
+ */
+export type JournalPaperKey = 'off_white' | 'branco';
+
+export const JOURNAL_PAPER_LABELS: Record<JournalPaperKey, string> = {
+  off_white: 'Off-white institucional',
+  branco: 'Branco',
+};
+
+/** Hex fixo (não usa var CSS) — mesma razão da paleta de tinta acima. */
+export const JOURNAL_PAPER_HEX: Record<JournalPaperKey, string> = {
+  off_white: '#F0EEE4',
+  branco: '#FFFFFF',
+};
+
+export const JOURNAL_PAPER_KEYS = Object.keys(JOURNAL_PAPER_LABELS) as JournalPaperKey[];
+
+export const DEFAULT_JOURNAL_PAPER: JournalPaperKey = 'off_white';
+
+export const journalPaper = (key?: JournalPaperKey): string =>
+  JOURNAL_PAPER_HEX[key ?? DEFAULT_JOURNAL_PAPER] ?? JOURNAL_PAPER_HEX[DEFAULT_JOURNAL_PAPER];
+
 export interface JournalTextBlock {
   id: string;
   kind: 'text';
