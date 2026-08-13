@@ -65,6 +65,24 @@ jobs:
             -d "{\"commit_sha\":\"${{ github.sha }}\",\"environment\":\"cloudflare-production\",\"deployed_by\":\"github-actions\"}"
 ```
 
+## Edge Function `mcp` — regeneração automática
+
+`supabase/functions/mcp/index.ts` é **gerado**, não escrito à mão. O `mcpPlugin()` do
+`vite.config.ts` empacota `src/lib/mcp/index.ts` e suas importações locais num único
+módulo Deno a cada `dev` ou `build`. O banner no topo do arquivo marca essa origem.
+
+**O plugin fica desligado no Windows.** O teste de caminho local dele é POSIX-only
+(`p.startsWith(".") || p.startsWith("/")`) e não reconhece `C:\...`; o entry absoluto
+acaba tratado como pacote npm e o arquivo é reescrito como
+`import mcp from "npm:C:\\Users\\..."` — um caminho de máquina local que não resolve
+no Deno do Supabase. Bug presente em `@lovable.dev/mcp-js` 0.22.2 e ainda em 0.26.2.
+
+Consequência prática: **editar `src/lib/mcp/` no Windows não regenera a função.** Rode
+`npm run build` no Lovable, no Cloudflare Pages ou em qualquer ambiente Linux/macOS
+para produzir o bundle atualizado, e confira se `supabase/functions/mcp/index.ts`
+entrou no commit. Se o arquivo contiver algum caminho `C:\`, ele está corrompido —
+não publique.
+
 ## Secrets necessários
 
 - `DEPLOY_WEBHOOK_TOKEN` — token aleatório usado para autenticar o webhook. Configurado no Supabase como secret da Edge Function e como secret do GitHub Actions / Cloudflare.
