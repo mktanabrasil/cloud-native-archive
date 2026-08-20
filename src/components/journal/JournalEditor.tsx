@@ -66,6 +66,7 @@ import {
   textBlock,
   uid,
 } from '@/lib/journal/templates';
+import { rowSiblings } from '@/lib/journal/rows';
 import { JournalElementLibrary } from './JournalElementLibrary';
 import { JournalDecorationProperties } from './JournalDecorationProperties';
 import type { JournalCornerKey, JournalElementKey } from '@/lib/journal/elements';
@@ -279,6 +280,42 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
       );
     },
     [activePage.id, mutatePages],
+  );
+
+  /**
+   * Dá a todos os blocos da fileira a altura do bloco escolhido.
+   *
+   * A altura vem medida do canvas, e não do modelo: um bloco sem `height` tem
+   * altura intrínseca (a proporção da imagem, o texto que coube), e o modelo
+   * não sabe qual é. A medida é dividida pela escala do zoom para virar px do
+   * documento — é a mesma conta do arraste da alça.
+   */
+  const equalizeRowHeights = useCallback(
+    (blockId: string) => {
+      const canvas = document.querySelector<HTMLElement>('[data-journal-canvas="true"]');
+      const alvo = canvas?.querySelector<HTMLElement>(`[data-block-id="${blockId}"]`);
+      if (!canvas || !alvo) return;
+
+      const escala = alvo.offsetHeight > 0 ? alvo.getBoundingClientRect().height / alvo.offsetHeight : 1;
+      const altura = Math.round(alvo.getBoundingClientRect().height / (escala || 1));
+      const irmas = rowSiblings(activePage.blocks, blockId);
+      if (irmas.length === 0) return;
+
+      const naFileira = new Set([blockId, ...irmas]);
+      mutatePages((prev) =>
+        prev.map((page) =>
+          page.id !== activePage.id
+            ? page
+            : {
+                ...page,
+                blocks: page.blocks.map((block) =>
+                  naFileira.has(block.id) ? ({ ...block, height: altura } as JournalBlock) : block,
+                ),
+              },
+        ),
+      );
+    },
+    [activePage.blocks, activePage.id, mutatePages],
   );
 
   /** Reordenação por arraste — move o bloco arrastado para a posição do alvo. */
@@ -966,6 +1003,12 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
               onRemoveBlock={removeBlock}
               onClose={() => setSelectedBlockId(null)}
               locked={layoutLocked}
+              rowSiblingCount={
+                selectedBlock ? rowSiblings(activePage.blocks, selectedBlock.id).length : 0
+              }
+              onEqualizeRow={
+                selectedBlock ? () => equalizeRowHeights(selectedBlock.id) : undefined
+              }
             />
           )}
         </aside>
