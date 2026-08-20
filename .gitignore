@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Configuracao local do Claude Code (caminhos absolutos desta maquina)
+.claude/
