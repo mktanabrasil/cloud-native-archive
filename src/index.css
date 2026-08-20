@@ -161,3 +161,109 @@
     @apply text-unit-geral;
   }
 }
+
+/* ==========================================================================
+   Movimento da porta de entrada
+   --------------------------------------------------------------------------
+   Dois momentos: a chegada (a tela carrega para quem não tem sessão) e a troca
+   do login (a porta sai e o app entra, na mesma rota).
+
+   Regra que vale para tudo aqui: o estado inicial vem do preenchimento para trás
+   do próprio `animation-fill-mode`, nunca de um `opacity: 0` escrito à mão. Se a
+   animação não rodar — aba em segundo plano, motor sem suporte, CSS parcial — o
+   conteúdo aparece pronto em vez de ficar invisível esperando um quadro.
+   ========================================================================== */
+
+@keyframes ana-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes ana-card-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.99); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes ana-shape-in {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: var(--ana-shape-op); transform: none; }
+}
+@keyframes ana-gate-fade {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes ana-gate-rise {
+  from { transform: none; }
+  to   { transform: translateY(-8px); }
+}
+@keyframes ana-hub-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes ana-bar-down {
+  from { opacity: 0; transform: translateY(-100%); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* --- chegada --- */
+
+/* A opacidade das formas mora no CSS, e não numa prop inline, porque o keyframe
+   de entrada termina em var(--ana-shape-op): assim ele resolve o valor certo em
+   cada tema, sem o estilo inline vencer a variante escura. */
+.ana-shape {
+  --ana-shape-op: 0.45;
+  opacity: var(--ana-shape-op);
+}
+.dark .ana-shape { --ana-shape-op: 0.22; }
+
+
+.ana-enter-shape,
+.ana-enter-brand,
+.ana-enter-card,
+.ana-enter-item {
+  animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
+  animation-fill-mode: both;
+}
+
+.ana-enter-shape { animation-name: ana-shape-in; animation-duration: 900ms; }
+.ana-enter-brand { animation-name: ana-rise; animation-duration: 540ms; animation-delay: 120ms; }
+.ana-enter-card  { animation-name: ana-card-in; animation-duration: 640ms; animation-delay: 180ms; }
+.ana-enter-item  {
+  animation-name: ana-rise;
+  animation-duration: 460ms;
+  animation-delay: calc(300ms + var(--ana-i, 0) * 45ms);
+}
+
+/* --- saída da porta, no login --- */
+
+.ana-gate-leaving {
+  animation: ana-gate-fade 260ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+/* Opacidade no contêiner, deslocamento só no miolo: as formas ficam ancoradas
+   na borda inferior e subiriam junto, abrindo uma fresta no rodapé. */
+.ana-gate-leaving .ana-gate-core {
+  animation: ana-gate-rise 260ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* --- entrada do app --- */
+
+.ana-hub-entering {
+  animation: ana-hub-in 360ms 180ms cubic-bezier(0.33, 1, 0.68, 1) both;
+}
+.ana-bar-entering {
+  animation: ana-bar-down 300ms 180ms cubic-bezier(0.33, 1, 0.68, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ana-enter-shape,
+  .ana-enter-brand,
+  .ana-enter-card,
+  .ana-enter-item,
+  .ana-gate-leaving,
+  .ana-gate-leaving .ana-gate-core,
+  .ana-hub-entering,
+  .ana-bar-entering {
+    animation: none !important;
+  }
+  /* a porta ainda precisa sair de cena, só que sem transição */
+  .ana-gate-leaving { opacity: 0; }
+}
