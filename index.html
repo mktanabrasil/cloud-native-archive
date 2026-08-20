@@ -7,6 +7,18 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="theme-color" content="#7ee0c2" />
+
+    <!-- Ícones e instalação como app.
+         O manifest atende Android/Chrome; o iOS ignora o manifest e usa
+         apple-touch-icon, que por isso é achatado sobre a menta: o Safari
+         compõe transparência sobre preto. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="ANA Brasil" />
+    <meta name="application-name" content="ANA Brasil" />
+
     <!-- Google Fonts: Poppins -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
