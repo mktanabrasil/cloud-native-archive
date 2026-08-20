@@ -110,7 +110,8 @@ export default function AppLayout() {
             {isMobile && (
               <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="shrink-0">
+                  {/* 44px de alvo no mobile; o `size="icon"` sozinho dá 40 */}
+                  <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 md:h-10 md:w-10">
                     <Menu className="h-5 w-5" />
                   </Button>
                 </SheetTrigger>
@@ -187,7 +188,8 @@ export default function AppLayout() {
 
       {!hideHeaderParam && !isEmbedParam && !isEntryGate && (
         <div className={cn(
-          "fixed bottom-6 right-6 z-[60] duration-500 flex items-center gap-3",
+          // area segura: com viewport-fit=cover o botao cai sob a faixa de gestos do iPhone
+          "fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-[calc(1.5rem+env(safe-area-inset-right))] z-[60] duration-500 flex items-center gap-3",
           isFirstRender && "animate-in fade-in slide-in-from-bottom-4"
         )}>
           

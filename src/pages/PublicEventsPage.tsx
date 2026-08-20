@@ -350,31 +350,49 @@ export default function PublicEventsPage() {
                 <ChevronRight className="h-6 w-6" />
               </button>
               
-              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-20">
-                {bannerEvents.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentSlide(i)}
-                    className={`h-1.5 transition-all rounded-full ${i === currentSlide ? 'w-8 bg-white' : 'w-2 bg-white/30'}`}
-                  />
-                ))}
-              </div>
+              {/* Acima de oito slides os pontinhos deixam de funcionar como
+                  navegação — viram uma fileira ilegível. Aí só o contador. */}
+              {bannerEvents.length > 8 ? (
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 rounded-full bg-black/40 px-3 py-1 text-xs font-medium tabular-nums text-white backdrop-blur-sm">
+                  {currentSlide + 1} / {bannerEvents.length}
+                </div>
+              ) : (
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex z-20">
+                  {bannerEvents.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentSlide(i)}
+                      aria-label={`Ir para o slide ${i + 1} de ${bannerEvents.length}`}
+                      aria-current={i === currentSlide}
+                      /* O ponto continua com 6px; quem cresce é o alvo, que
+                         chega a 44px pelo padding e fica invisível. */
+                      className="group grid h-11 w-11 place-items-center"
+                    >
+                      <span
+                        className={`h-1.5 block transition-all rounded-full ${i === currentSlide ? 'w-8 bg-white' : 'w-2 bg-white/30 group-hover:bg-white/60'}`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </section>
       )}
 
       <main className="max-w-7xl mx-auto px-6 py-8">
+        {/* A 320px, cinco pílulas com flex-1 ficavam com 33px cada e o rótulo
+            sumia. Abaixo de sm viram faixa rolável com largura natural. */}
         {(isAuthenticated && isAdmin) && (
-          <div className="w-full flex flex-wrap items-center gap-2 mb-8">
-            <div className="flex-1 min-w-0 flex items-center gap-2 px-3 py-1.5 rounded-full bg-info text-info-foreground border border-info/20 text-[10px] sm:text-xs font-medium justify-center whitespace-nowrap">
+          <div className="w-full mb-8 -mx-6 px-6 flex items-center gap-2 overflow-x-auto pb-1 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible sm:pb-0">
+            <div className="shrink-0 sm:flex-1 sm:min-w-0 flex items-center gap-2 px-3 py-2 rounded-full bg-info text-info-foreground border border-info/20 text-[10px] sm:text-xs font-medium justify-center whitespace-nowrap">
               <CalendarDays className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">Eventos: <span className="font-bold">{stats.total}</span></span>
             </div>
             
             <button 
               onClick={() => setShowFiltered('confirmed')}
-              className="flex-1 min-w-0 flex items-center gap-2 px-3 py-1.5 rounded-full bg-success text-success-foreground border border-success/20 text-[10px] sm:text-xs font-medium hover:opacity-90 transition-opacity justify-center whitespace-nowrap"
+              className="shrink-0 sm:flex-1 sm:min-w-0 flex items-center gap-2 px-3 py-2 rounded-full bg-success text-success-foreground border border-success/20 text-[10px] sm:text-xs font-medium hover:opacity-90 transition-opacity justify-center whitespace-nowrap"
             >
               <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">Confirmados: <span className="font-bold">{stats.confirmed}</span></span>
@@ -382,7 +400,7 @@ export default function PublicEventsPage() {
 
             <button 
               onClick={() => setShowFiltered('pending')}
-              className="flex-1 min-w-0 flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning text-warning-foreground border border-warning/20 text-[10px] sm:text-xs font-medium hover:opacity-90 transition-opacity justify-center whitespace-nowrap"
+              className="shrink-0 sm:flex-1 sm:min-w-0 flex items-center gap-2 px-3 py-2 rounded-full bg-warning text-warning-foreground border border-warning/20 text-[10px] sm:text-xs font-medium hover:opacity-90 transition-opacity justify-center whitespace-nowrap"
             >
               <Clock className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">Pendentes: <span className="font-bold">{stats.pending}</span></span>
@@ -390,7 +408,7 @@ export default function PublicEventsPage() {
 
             <button 
               onClick={() => setShowConflicts(true)}
-              className="flex-1 min-w-0 flex items-center gap-2 px-3 py-1.5 rounded-full bg-destructive text-destructive-foreground border border-destructive/20 text-[10px] sm:text-xs font-medium hover:opacity-90 transition-opacity justify-center whitespace-nowrap"
+              className="shrink-0 sm:flex-1 sm:min-w-0 flex items-center gap-2 px-3 py-2 rounded-full bg-destructive text-destructive-foreground border border-destructive/20 text-[10px] sm:text-xs font-medium hover:opacity-90 transition-opacity justify-center whitespace-nowrap"
             >
               <AlertCircle className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">Conflitos: <span className="font-bold">{stats.conflict}</span></span>
@@ -398,7 +416,7 @@ export default function PublicEventsPage() {
 
             <button 
               onClick={() => setShowFiltered('marketing')}
-              className="flex-1 min-w-0 flex items-center gap-2 px-3 py-1.5 rounded-full bg-info text-info-foreground border border-info/20 text-[10px] sm:text-xs font-medium hover:opacity-90 transition-opacity justify-center whitespace-nowrap"
+              className="shrink-0 sm:flex-1 sm:min-w-0 flex items-center gap-2 px-3 py-2 rounded-full bg-info text-info-foreground border border-info/20 text-[10px] sm:text-xs font-medium hover:opacity-90 transition-opacity justify-center whitespace-nowrap"
             >
               <Camera className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">Marketing: <span className="font-bold">{stats.marketing}</span></span>
@@ -406,7 +424,7 @@ export default function PublicEventsPage() {
 
             <button 
               onClick={() => setShowFiltered('partners')}
-              className="flex-1 min-w-0 flex items-center gap-2 px-3 py-1.5 rounded-full bg-info text-info-foreground border border-info/20 text-[10px] sm:text-xs font-medium hover:opacity-90 transition-opacity justify-center whitespace-nowrap"
+              className="shrink-0 sm:flex-1 sm:min-w-0 flex items-center gap-2 px-3 py-2 rounded-full bg-info text-info-foreground border border-info/20 text-[10px] sm:text-xs font-medium hover:opacity-90 transition-opacity justify-center whitespace-nowrap"
             >
               <Handshake className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">Parceiros: <span className="font-bold">{stats.partners}</span></span>
@@ -497,14 +515,14 @@ export default function PublicEventsPage() {
                   </Badge>
                   
                   {isAdmin && isAuthenticated && (
-                    <div className="absolute top-3 right-3 flex gap-2">
+                    <div className="absolute top-3 right-3 flex gap-2.5">
                       <button 
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
                           handleToggleBanner(event);
                         }}
-                        className={`p-1.5 rounded-full shadow-lg backdrop-blur-md transition-colors ${event.show_in_banner ? 'bg-primary text-white' : 'bg-white/80 text-muted-foreground hover:bg-white'}`}
+                        className={`p-2.5 sm:p-1.5 rounded-full shadow-lg backdrop-blur-md transition-colors ${event.show_in_banner ? 'bg-primary text-white' : 'bg-white/80 text-muted-foreground hover:bg-white'}`}
                         title={event.show_in_banner ? "Remover do banner" : "Adicionar ao banner"}
                       >
                         {event.show_in_banner ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
