@@ -1,6 +1,8 @@
 import { useRef, useState, type RefObject } from 'react';
 import { cn } from '@/lib/utils';
 import { InstitutionalFooterBar } from '@/components/news/InstitutionalFooterBar';
+import { JournalDecorationLayer } from './JournalDecorationLayer';
+import { newsUnitSegment } from '@/lib/news/units';
 import anaLogo from '@/assets/ana-brasil-logo.svg';
 import {
   TEXT_STYLE_CLASSES,
@@ -383,7 +385,20 @@ interface JournalPageViewProps {
   showGrid?: boolean;
   /** Cor de fundo da folha A4 (#F0EEE4 padrão institucional). */
   paperColor?: string;
+  /** Define a faixa do rodapé pelo segmento da unidade. Ausente = padrão neutro. */
+  unitId?: string | null;
   className?: string;
+}
+
+/**
+ * Faixa do rodapé por segmento: Educação usa as três primeiras cores; Social
+ * mantém as cinco. Sem unidade definida, as cinco — é o padrão neutro.
+ *
+ * Derivado aqui, e não em cada chamada, para canvas, miniatura e PDF não terem
+ * como divergir.
+ */
+function footerStripes(unitId: string | null | undefined): number {
+  return newsUnitSegment(unitId) === 'educacao' ? 3 : 5;
 }
 
 /** Página A4 completa — o mesmo componente é usado no canvas, no preview e no PDF. */
@@ -402,6 +417,7 @@ export function JournalPageView({
   onReorderBlocks,
   showGrid = true,
   paperColor,
+  unitId,
   className,
 }: JournalPageViewProps) {
   const gridRef = useRef<HTMLDivElement>(null);
@@ -412,62 +428,72 @@ export function JournalPageView({
       style={{ width: A4_W, height: A4_H, ...(paperColor ? { backgroundColor: paperColor } : {}) }}
       onClick={onSelectPageArea}
     >
-      <div className="flex items-center justify-between px-12 pt-10">
-        <img src={anaLogo} alt="ANA Brasil" className="h-9 w-auto object-contain" draggable={false} />
-        <div className="text-right">
-          <p className="text-[12px] font-semibold uppercase tracking-[0.2em] text-[#1F211F]">
-            Jornal Institucional
-          </p>
-          <p className="text-[12px] uppercase tracking-[0.14em] text-[#5C5A50]">
-            {[unitName, edition].filter(Boolean).join(' · ')}
-          </p>
-        </div>
-      </div>
-      <div className="mx-12 mt-3 h-px bg-[#D9D4C4]" />
+      {/* Tudo acima da faixa institucional. A borda inferior deste container é
+          o topo da faixa — é o que a camada decorativa usa como apoio. */}
+      <div className="relative flex flex-1 flex-col overflow-hidden">
+        <JournalDecorationLayer decorations={page.decorations} />
 
-      <div className="relative flex-1">
-        {interactive && showGrid && (
+        <div className="relative z-10 flex items-center justify-between px-12 pt-10">
+          <img src={anaLogo} alt="ANA Brasil" className="h-9 w-auto object-contain" draggable={false} />
+          <div className="text-right">
+            <p className="text-[12px] font-semibold uppercase tracking-[0.2em] text-[#1F211F]">
+              Jornal Institucional
+            </p>
+            <p className="text-[12px] uppercase tracking-[0.14em] text-[#5C5A50]">
+              {[unitName, edition].filter(Boolean).join(' · ')}
+            </p>
+          </div>
+        </div>
+        <div className="relative z-10 mx-12 mt-3 h-px bg-[#D9D4C4]" />
+
+        <div className="relative flex-1">
+          {interactive && showGrid && (
+            <div
+              data-pdf-helper="true"
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 z-0 grid grid-cols-6 gap-x-4 px-12 py-6"
+            >
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="h-full rounded-[2px] border border-dashed border-primary/25 bg-primary/[0.03]"
+                />
+              ))}
+            </div>
+          )}
+
           <div
-            data-pdf-helper="true"
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-0 grid grid-cols-6 gap-x-4 px-12 py-6"
+            ref={gridRef}
+            className="relative z-10 grid h-full grid-cols-6 content-start gap-x-4 gap-y-3 overflow-hidden px-12 py-6"
+            // Só no canvas: evita que clicar no conteúdo desmarque o bloco. Fora
+            // dele a folha é só desenho — barrar o clique impediria a miniatura
+            // inteira de ser clicável na trilha de páginas.
+            onClick={interactive ? (event) => event.stopPropagation() : undefined}
           >
-            {Array.from({ length: 6 }).map((_, index) => (
-              <div
-                key={index}
-                className="h-full rounded-[2px] border border-dashed border-primary/25 bg-primary/[0.03]"
+            {page.blocks.map((block) => (
+              <JournalBlockView
+                key={block.id}
+                block={block}
+                interactive={interactive}
+                selected={selectedBlockId === block.id}
+                onSelect={onSelectBlock}
+                gridRef={gridRef}
+                onResizeSpan={onResizeBlockSpan}
+                onResizeHeight={onResizeBlockHeight}
+                onReorder={onReorderBlocks}
               />
             ))}
           </div>
-        )}
+        </div>
 
-        <div
-          ref={gridRef}
-          className="relative z-10 grid h-full grid-cols-6 content-start gap-x-4 gap-y-3 overflow-hidden px-12 py-6"
-          onClick={(event) => event.stopPropagation()}
-        >
-          {page.blocks.map((block) => (
-            <JournalBlockView
-              key={block.id}
-              block={block}
-              interactive={interactive}
-              selected={selectedBlockId === block.id}
-              onSelect={onSelectBlock}
-              gridRef={gridRef}
-              onResizeSpan={onResizeBlockSpan}
-              onResizeHeight={onResizeBlockHeight}
-              onReorder={onReorderBlocks}
-            />
-          ))}
+
+
+        <div className="relative z-10 px-12 pb-1 text-right text-[9px] text-[#5C5A50]">
+          {index + 1} / {total}
         </div>
       </div>
 
-
-
-      <div className="px-12 pb-1 text-right text-[9px] text-[#5C5A50]">
-        {index + 1} / {total}
-      </div>
-      <InstitutionalFooterBar className="w-full" />
+      <InstitutionalFooterBar className="w-full" stripes={footerStripes(unitId)} />
     </div>
   );
 }

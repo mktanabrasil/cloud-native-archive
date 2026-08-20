@@ -19,6 +19,7 @@ import {
   Redo2,
   Maximize2,
   Settings2,
+  Sparkles,
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -40,13 +41,17 @@ import { JournalPropertiesPanel } from './JournalPropertiesPanel';
 import { JournalBlockList } from './JournalBlockList';
 
 import {
+  DEFAULT_DECORATION_COLOR,
   DEFAULT_JOURNAL_PAPER,
   JOURNAL_PAPER_KEYS,
   JOURNAL_PAPER_LABELS,
   TEMPLATE_LABELS,
+  createDecorationPair,
   journalPaper,
   type BlockSpan,
   type JournalBlock,
+  type JournalColorKey,
+  type JournalDecoration,
   type JournalPage,
   type JournalPaperKey,
   type JournalRecord,
@@ -55,11 +60,15 @@ import {
 import {
   TEMPLATE_OPTIONS,
   createPage,
+  setDecorationsOnAllPages,
   imageBlock,
   statBlock,
   textBlock,
   uid,
 } from '@/lib/journal/templates';
+import { JournalElementLibrary } from './JournalElementLibrary';
+import { JournalDecorationProperties } from './JournalDecorationProperties';
+import type { JournalCornerKey, JournalElementKey } from '@/lib/journal/elements';
 import { newsUnitName, profileUnitForNewsUnit } from '@/lib/news/units';
 import { UnitBadge } from './UnitBadge';
 
@@ -99,6 +108,8 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
   const [pages, setPages] = useState<JournalPage[]>(journal.pages?.length ? journal.pages : [createPage('capa')]);
   const [activePageId, setActivePageId] = useState<string>(pages[0].id);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  /** Forma selecionada na lista — exclusiva em relação ao bloco selecionado. */
+  const [selectedCorner, setSelectedCorner] = useState<JournalCornerKey | null>(null);
   const [zoom, setZoom] = useState(0.7);
   /** Layout do modelo travado: só o conteúdo é editável (padrão). */
   const [layoutLocked, setLayoutLocked] = useState(true);
@@ -123,6 +134,10 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
 
   const activePage = pages.find((page) => page.id === activePageId) ?? pages[0];
   const selectedBlock = activePage?.blocks.find((block) => block.id === selectedBlockId);
+  // Memoizado: sem isso o `?? []` devolve um array novo a cada render e
+  // invalida os useCallback que dependem dele.
+  const decorations = useMemo(() => activePage?.decorations ?? [], [activePage?.decorations]);
+  const selectedDecoration = decorations.find((entry) => entry.corner === selectedCorner);
   const unitName = useMemo(() => newsUnitName(journal.unit_id), [journal.unit_id]);
 
   /** Ajuste automático da folha à área central (recalcula ao redimensionar). */
@@ -286,6 +301,65 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
     [activePage.id, mutatePages],
   );
 
+  /**
+   * As formas valem para o jornal inteiro: toda operação regrava as duas em
+   * todas as páginas. Entra no histórico e no autosave como qualquer edição.
+   */
+  const setDecorations = useCallback(
+    (next: JournalDecoration[]) => {
+      mutatePages((prev) => setDecorationsOnAllPages(prev, next));
+    },
+    [mutatePages],
+  );
+
+  /** Escolher na biblioteca aplica a mesma forma nos dois cantos, em todas as páginas. */
+  const addDecorationPair = useCallback(
+    (element: JournalElementKey) => {
+      setDecorations(createDecorationPair(element));
+      setSelectedBlockId(null);
+      setSelectedCorner('inferior_esquerdo');
+    },
+    [setDecorations],
+  );
+
+  /**
+   * Com um lado removido, repõe só o que falta — mantendo a forma do lado que
+   * sobrou, para não desfazer um ajuste já feito.
+   */
+  const restoreMissingDecoration = useCallback(() => {
+    const remaining = decorations[0];
+    if (!remaining || decorations.length > 1) return;
+    const corner: JournalCornerKey =
+      remaining.corner === 'inferior_esquerdo' ? 'inferior_direito' : 'inferior_esquerdo';
+    const restored: JournalDecoration = {
+      element: remaining.element,
+      corner,
+      color: DEFAULT_DECORATION_COLOR,
+    };
+    setDecorations(
+      corner === 'inferior_esquerdo' ? [restored, remaining] : [remaining, restored],
+    );
+  }, [decorations, setDecorations]);
+
+  const setDecorationColor = useCallback(
+    (corner: JournalCornerKey, color: JournalColorKey) => {
+      setDecorations(
+        decorations.map((decoration) =>
+          decoration.corner === corner ? { ...decoration, color } : decoration,
+        ),
+      );
+    },
+    [decorations, setDecorations],
+  );
+
+  const removeDecoration = useCallback(
+    (corner: JournalCornerKey) => {
+      setDecorations(decorations.filter((decoration) => decoration.corner !== corner));
+      setSelectedCorner((current) => (current === corner ? null : current));
+    },
+    [decorations, setDecorations],
+  );
+
   const removeBlock = () => {
     if (!selectedBlockId) return;
     mutatePages((prev) =>
@@ -329,7 +403,11 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
 
 
   const addPage = (template: JournalTemplate) => {
-    const page = createPage(template);
+    // Herda as formas do jornal — sem isso a página nova nasceria sem elas.
+    const page: JournalPage = {
+      ...createPage(template),
+      decorations: decorations.length ? decorations : undefined,
+    };
     mutatePages((prev) => [...prev, page]);
     setActivePageId(page.id);
     setSelectedBlockId(null);
@@ -541,6 +619,7 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
                         total={pages.length}
                         edition={journal.reference_month || ''}
                         unitName={unitName}
+                        unitId={journal.unit_id}
                         paperColor={paperColor}
                       />
                     </div>
@@ -783,6 +862,7 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
                   total={pages.length}
                   edition={journal.reference_month || ''}
                   unitName={unitName}
+                  unitId={journal.unit_id}
                   interactive
                   selectedBlockId={selectedBlockId}
                   onSelectBlock={setSelectedBlockId}
@@ -802,53 +882,92 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
 
         {/* Conteúdo da página */}
         <aside className="flex flex-col gap-3 overflow-y-auto rounded-lg border border-border bg-card p-3">
-          {layoutLocked ? (
+          {layoutLocked && (
             <p className="rounded-md bg-muted/60 px-2.5 py-2 text-[11px] text-muted-foreground">
               Layout do modelo travado: clique em um bloco para trocar o texto ou enviar a imagem.
               Para incluir/remover blocos ou mudar tamanhos, use “Layout livre” na barra do canvas.
             </p>
-          ) : (
-            <div>
-              <Label className="text-xs text-muted-foreground">
-                {selectedBlock ? 'Adicionar abaixo do bloco selecionado' : 'Adicionar ao jornal'}
-              </Label>
-              <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-                <Button variant="outline" size="sm" onClick={() => addBlock(textBlock('corpo', 'Novo texto.'))}>
-                  <Type className="mr-1.5 h-3.5 w-3.5" /> Texto
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => addBlock(imageBlock(6, '16/9'))}>
-                  <ImageIcon className="mr-1.5 h-3.5 w-3.5" /> Imagem
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="col-span-2"
-                  onClick={() => addBlock(statBlock())}
-                >
-                  <Hash className="mr-1.5 h-3.5 w-3.5" /> Número
-                </Button>
+          )}
+
+          <div>
+            <Label className="text-xs text-muted-foreground">
+              {!layoutLocked && selectedBlock
+                ? 'Adicionar abaixo do bloco selecionado'
+                : 'Adicionar ao jornal'}
+            </Label>
+            <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+              {/* Blocos alteram o layout — só com o layout livre. A forma ANA não:
+                  posição e tamanho são do modelo, então continua disponível travado. */}
+              {!layoutLocked && (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => addBlock(textBlock('corpo', 'Novo texto.'))}>
+                    <Type className="mr-1.5 h-3.5 w-3.5" /> Texto
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => addBlock(imageBlock(6, '16/9'))}>
+                    <ImageIcon className="mr-1.5 h-3.5 w-3.5" /> Imagem
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="col-span-2"
+                    onClick={() => addBlock(statBlock())}
+                  >
+                    <Hash className="mr-1.5 h-3.5 w-3.5" /> Número
+                  </Button>
+                </>
+              )}
+              <div className="col-span-2">
+                {decorations.length === 0 && <JournalElementLibrary onPick={addDecorationPair} />}
+                {decorations.length === 1 && (
+                  <Button variant="outline" size="sm" className="w-full" onClick={restoreMissingDecoration}>
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Repor forma no outro canto
+                  </Button>
+                )}
+                {decorations.length === 2 && (
+                  <Button variant="outline" size="sm" className="w-full" disabled>
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Formas ANA aplicadas
+                  </Button>
+                )}
               </div>
             </div>
-          )}
+          </div>
 
           <JournalBlockList
             blocks={activePage?.blocks ?? []}
             selectedBlockId={selectedBlockId}
-            onSelect={setSelectedBlockId}
+            onSelect={(id) => {
+              setSelectedCorner(null);
+              setSelectedBlockId(id);
+            }}
             onMove={moveBlock}
             locked={layoutLocked}
+            decorations={decorations}
+            selectedCorner={selectedCorner}
+            onSelectDecoration={(corner) => {
+              setSelectedBlockId(null);
+              setSelectedCorner(corner);
+            }}
+            onRemoveDecoration={removeDecoration}
           />
 
           <div className="h-px bg-border" />
 
-          <JournalPropertiesPanel
-            page={activePage}
-            block={selectedBlock}
-            onChangeBlock={updateBlock}
-            onRemoveBlock={removeBlock}
-            onClose={() => setSelectedBlockId(null)}
-            locked={layoutLocked}
-          />
+          {selectedDecoration ? (
+            <JournalDecorationProperties
+              decoration={selectedDecoration}
+              onChangeColor={(color) => setDecorationColor(selectedDecoration.corner, color)}
+              onRemove={() => removeDecoration(selectedDecoration.corner)}
+            />
+          ) : (
+            <JournalPropertiesPanel
+              page={activePage}
+              block={selectedBlock}
+              onChangeBlock={updateBlock}
+              onRemoveBlock={removeBlock}
+              onClose={() => setSelectedBlockId(null)}
+              locked={layoutLocked}
+            />
+          )}
         </aside>
       </div>
 
@@ -862,6 +981,7 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
               total={pages.length}
               edition={journal.reference_month || ''}
               unitName={unitName}
+              unitId={journal.unit_id}
               paperColor={paperColor}
             />
           </div>

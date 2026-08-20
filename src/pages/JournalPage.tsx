@@ -344,6 +344,7 @@ export default function JournalPage() {
                           total={journal.pages?.length ?? 1}
                           edition={journal.reference_month || ''}
                           unitName={newsUnitName(journal.unit_id)}
+                          unitId={journal.unit_id}
                         />
                       </div>
                     )}
