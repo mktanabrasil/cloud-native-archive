@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Globe, LayoutDashboard, Calendar } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEntryGateTransition } from '@/hooks/useIsEntryGate';
+import { cn } from '@/lib/utils';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import PublicEventsPage from '@/pages/PublicEventsPage';
+import HomePage from '@/pages/HomePage';
 import Dashboard from '@/pages/Dashboard';
 import CalendarPage from '@/pages/CalendarPage';
 
@@ -14,15 +17,27 @@ const tabs = [
 
 export default function EventsHubPage() {
   const { isAuthenticated } = useAuth();
+  const { isGate, leaving, entering } = useEntryGateTransition();
   const [activeTab, setActiveTab] = useState('programacoes');
 
-  // Usuários não logados veem apenas a página de eventos, sem pílulas.
+  // Sem sessão, a raiz é a porta de entrada — salvo em embed, onde a raiz
+  // continua servindo as Programações para não quebrar iframes já publicados.
   if (!isAuthenticated) {
-    return <PublicEventsPage />;
+    return isGate ? <HomePage /> : <PublicEventsPage />;
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">
+    <>
+      {/* Durante a saída as duas telas coexistem: a porta é uma camada fixa por
+          cima, apagando, enquanto o hub já sobe por baixo. */}
+      {leaving && <HomePage leaving />}
+
+      <div
+        className={cn(
+          'mx-auto w-full max-w-7xl px-4 py-6 lg:px-8',
+          entering && 'ana-hub-entering',
+        )}
+      >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="overflow-x-auto pb-2">
           <TabsList className="h-10 w-max">
@@ -41,6 +56,7 @@ export default function EventsHubPage() {
           </TabsContent>
         ))}
       </Tabs>
-    </div>
+      </div>
+    </>
   );
 }

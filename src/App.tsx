@@ -97,7 +97,10 @@ const App = () => (
                   <Route path="/calendario" element={
                     <ProtectedRoute><CalendarPage /></ProtectedRoute>
                   } />
-                  <Route path="/eventos" element={<Navigate to="/" replace />} />
+                  {/* Endereço próprio das Programações. Antes só redirecionava para a
+                      raiz, que era onde elas viviam; com a porta de entrada na raiz,
+                      elas passam a morar aqui — igualmente públicas, sem guarda. */}
+                  <Route path="/eventos" element={<PublicEventsPage />} />
                   <Route path="/usuarios" element={
                     <ProtectedRoute><UsersPage /></ProtectedRoute>
                   } />
