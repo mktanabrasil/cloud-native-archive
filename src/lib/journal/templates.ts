@@ -1,6 +1,7 @@
 import type {
   BlockSpan,
   JournalBlock,
+  JournalDecoration,
   JournalPage,
   JournalTemplate,
   TextStyleKey,
@@ -268,3 +269,28 @@ export const JOURNAL_MODELS: JournalModel[] = [
 export const findJournalModel = (key: JournalModelKey): JournalModel =>
   JOURNAL_MODELS.find((model) => model.key === key) ?? JOURNAL_MODELS[0];
 
+
+/* ------------------------------------------------------------------ *
+ * Formas ANA — propriedade do jornal, não da página
+ * ------------------------------------------------------------------ */
+
+/**
+ * Grava as formas em todas as páginas de uma vez.
+ *
+ * A decoração vale para o jornal inteiro, mas mora dentro do JSON de `pages`
+ * para não exigir coluna nova no banco. Como o valor é escrito por completo em
+ * cada página, uma eventual divergência (por exemplo, uma página criada antes
+ * da forma existir) se corrige na operação seguinte.
+ *
+ * Lista vazia grava `undefined`, que a serialização descarta — o campo some do
+ * JSON em vez de ficar como array vazio.
+ */
+export function setDecorationsOnAllPages(
+  pages: JournalPage[],
+  decorations: JournalDecoration[],
+): JournalPage[] {
+  return pages.map((page) => ({
+    ...page,
+    decorations: decorations.length ? decorations : undefined,
+  }));
+}

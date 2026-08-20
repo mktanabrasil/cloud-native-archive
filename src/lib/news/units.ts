@@ -62,6 +62,22 @@ export const NEWS_UNIT_GROUPS: { label: string; units: NewsUnit[] }[] = [
   },
 ];
 
+/** Segmento institucional da unidade — o mesmo corte usado em `NEWS_UNIT_GROUPS`. */
+export type NewsUnitSegment = 'social' | 'educacao';
+
+/**
+ * Segmento da unidade, ou `undefined` quando não há unidade definida.
+ *
+ * As NAVEs formam o Social; os CEIs e o Institucional (GOE), a Educação —
+ * mesma divisão que o seletor já apresenta. Sem unidade não há segmento: quem
+ * chama decide o padrão neutro.
+ */
+export function newsUnitSegment(id: string | undefined | null): NewsUnitSegment | undefined {
+  const unit = findNewsUnit(id);
+  if (!unit) return undefined;
+  return unit.type === 'NAVE' ? 'social' : 'educacao';
+}
+
 export function findNewsUnit(id: string | undefined | null): NewsUnit | undefined {
   if (!id) return undefined;
   return NEWS_UNITS.find((unit) => unit.id === id);

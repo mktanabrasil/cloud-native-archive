@@ -6,6 +6,8 @@
  * escolhe apenas a *função* do texto, nunca fonte/cor/tamanho.
  */
 
+import type { JournalCornerKey, JournalElementKey } from './elements';
+
 export type JournalTemplate =
   | 'capa'
   | 'materias'
@@ -156,10 +158,39 @@ export type JournalBlock =
   | JournalAgendaBlock
   | JournalStatBlock;
 
+/**
+ * Forma orgânica ancorada num canto inferior da folha.
+ *
+ * Escolher uma forma na biblioteca aplica o par — mesma silhueta nos dois
+ * cantos, espelhada conforme o lado. Depois disso cada lado é independente: dá
+ * para trocar a cor de um só, ou remover um e manter o outro. Escala,
+ * ancoragem e espelhamento continuam sendo do sistema.
+ */
+export interface JournalDecoration {
+  element: JournalElementKey;
+  corner: JournalCornerKey;
+  color: JournalColorKey;
+}
+
+/** Cor inicial das duas formas — a pessoa ajusta cada lado depois. */
+export const DEFAULT_DECORATION_COLOR: JournalColorKey = 'areia';
+
+/** Uma escolha na biblioteca vale para os dois cantos. */
+export const createDecorationPair = (element: JournalElementKey): JournalDecoration[] => [
+  { element, corner: 'inferior_esquerdo', color: DEFAULT_DECORATION_COLOR },
+  { element, corner: 'inferior_direito', color: DEFAULT_DECORATION_COLOR },
+];
+
 export interface JournalPage {
   id: string;
   template: JournalTemplate;
   blocks: JournalBlock[];
+  /**
+   * No máximo duas, uma por canto. Fora de `blocks` de propósito: blocos fluem
+   * na grade de 6 colunas, e estas são ancoradas nos cantos — misturá-las faria
+   * a forma perder a âncora e virar elemento móvel.
+   */
+  decorations?: JournalDecoration[];
 }
 
 export interface JournalRecord {
