@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useBetaPreference } from '@/hooks/useBetaPreference';
 import { useIsEmbedded } from '@/hooks/useIsEmbedded';
+import { useEntryGateTransition } from '@/hooks/useIsEntryGate';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -49,6 +50,9 @@ export default function AppLayout() {
   const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing } = useUserRole();
   const { eligible: betaEligible, rawEnabled: betaOn, toggleBeta } = useBetaPreference();
   const isEmbedded = useIsEmbedded();
+  // Na porta de entrada a tela inteira é do card de acesso: sem sessão o menu
+  // não tem o que oferecer, e o botão flutuante brigaria com as formas.
+  const { isGate: isEntryGate, entering: gateJustClosed } = useEntryGateTransition();
   const isMobile = useIsMobile();
   const isCleanView = isEmbedded || hideLoginParam || hideFooterParam || hideHeaderParam || hideTitleParam || isEmbedParam;
 
@@ -95,9 +99,13 @@ export default function AppLayout() {
 
   return (
     <div className={cn("flex min-h-screen flex-col bg-background", isCleanView && "min-h-0 h-auto bg-transparent overflow-visible")}>
-      {!hideHeaderParam && !isEmbedParam && <ImpersonationBanner />}
-      {!hideHeaderParam && !isEmbedParam && (
-        <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur-sm supports-[backdrop-filter]:bg-card/80 print:hidden">
+      {!hideHeaderParam && !isEmbedParam && !isEntryGate && <ImpersonationBanner />}
+      {!hideHeaderParam && !isEmbedParam && !isEntryGate && (
+        <header className={cn(
+          "sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur-sm supports-[backdrop-filter]:bg-card/80 print:hidden",
+          // desce do topo quando a porta de entrada acabou de dar lugar ao app
+          gateJustClosed && "ana-bar-entering"
+        )}>
           <div className="flex h-16 w-full items-center gap-4 px-4 lg:px-8">
             {isMobile && (
               <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
@@ -109,12 +117,9 @@ export default function AppLayout() {
                 <SheetContent side="left" className="w-[280px] p-0">
                   <SheetHeader className="p-6 text-left">
                     <SheetTitle className="flex items-center gap-2">
-                      <div className="relative h-8 w-8">
-                        <img src={logoImg} alt="anabrasil" className={cn("h-8 w-8 rounded-lg object-cover absolute inset-0 transition-opacity duration-1000", betaOn ? "opacity-0" : "opacity-100")} />
-                        <FlaskConical className={cn("h-8 w-8 text-primary absolute inset-0 transition-opacity duration-1000", betaOn ? "opacity-100" : "opacity-0")} />
-                      </div>
+                      <img src={logoImg} alt="" className="h-8 w-8 rounded-lg object-cover" />
                       <span className="font-bold tracking-tighter text-lg lowercase">
-                        {betaOn ? "beta teste" : "anabrasil"}
+                        anabrasil
                       </span>
                     </SheetTitle>
                   </SheetHeader>
@@ -140,12 +145,9 @@ export default function AppLayout() {
             )}
 
             <Link to={`/${location.search}`} className="flex items-center gap-2.5 shrink-0 group transition-all active:scale-95">
-              <div className="relative h-10 w-10">
-                <img src={logoImg} alt="anabrasil" className={cn("h-10 w-10 rounded-xl object-cover shadow-sm group-hover:shadow-md transition-all absolute inset-0 duration-1000", betaOn ? "opacity-0" : "opacity-100")} />
-                <FlaskConical className={cn("h-10 w-10 text-primary absolute inset-0 transition-opacity duration-1000", betaOn ? "opacity-100" : "opacity-0")} />
-              </div>
+              <img src={logoImg} alt="" className="h-10 w-10 rounded-xl object-cover shadow-sm group-hover:shadow-md transition-shadow" />
               <span className={cn("text-xl leading-none text-foreground tracking-tighter lowercase", isMobile ? "inline" : "hidden sm:inline")} style={{ fontFamily: 'Poppins, sans-serif', fontWeight: 700 }}>
-                {betaOn ? "beta teste" : "anabrasil"}
+                anabrasil
               </span>
             </Link>
 
@@ -183,7 +185,7 @@ export default function AppLayout() {
       </main>
 
 
-      {!hideHeaderParam && !isEmbedParam && (
+      {!hideHeaderParam && !isEmbedParam && !isEntryGate && (
         <div className={cn(
           "fixed bottom-6 right-6 z-[60] duration-500 flex items-center gap-3",
           isFirstRender && "animate-in fade-in slide-in-from-bottom-4"
