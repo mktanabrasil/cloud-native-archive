@@ -1,4 +1,4 @@
-import { Trash2, Plus, X } from 'lucide-react';
+import { Trash2, Plus, X, AlignVerticalSpaceAround } from 'lucide-react';
 import { TextBlockPanel } from '@/components/journal/TextBlockPanel';
 
 import { Button } from '@/components/ui/button';
@@ -32,9 +32,13 @@ interface Props {
   onClose?: () => void;
   /** Layout travado pelo modelo: só o conteúdo pode ser editado. */
   locked?: boolean;
+  /** Iguala a altura de todos os blocos da fileira à do bloco selecionado. */
+  onEqualizeRow?: () => void;
+  /** Quantas outras peças dividem a fileira com este bloco. */
+  rowSiblingCount?: number;
 }
 
-export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlock, onClose, locked }: Props) {
+export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlock, onClose, locked, onEqualizeRow, rowSiblingCount = 0 }: Props) {
   if (!block) {
     return (
       <div className="space-y-3 text-sm">
@@ -85,6 +89,14 @@ export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlo
           . No canvas: arraste a alça direita para largura, a alça inferior para altura (clique duplo
           volta ao automático) e a alça esquerda para reordenar os blocos.
         </p>
+      )}
+
+      {/* Só faz sentido com companhia na fileira — sozinho não há a que igualar. */}
+      {!locked && rowSiblingCount > 0 && onEqualizeRow && (
+        <Button variant="outline" size="sm" onClick={onEqualizeRow} className="w-full gap-2">
+          <AlignVerticalSpaceAround className="h-4 w-4" />
+          Igualar alturas da fileira
+        </Button>
       )}
 
 

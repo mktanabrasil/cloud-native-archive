@@ -1,8 +1,9 @@
-import { useRef, useState, type RefObject } from 'react';
+import { useMemo, useRef, useState, type RefObject } from 'react';
 import { cn } from '@/lib/utils';
 import { InstitutionalFooterBar } from '@/components/news/InstitutionalFooterBar';
 import { JournalDecorationLayer } from './JournalDecorationLayer';
 import { newsUnitSegment } from '@/lib/news/units';
+import { rowSiblings } from '@/lib/journal/rows';
 import anaLogo from '@/assets/ana-brasil-logo.svg';
 import {
   TEXT_STYLE_CLASSES,
@@ -43,7 +44,27 @@ interface BlockViewProps {
   onResizeHeight?: (id: string, height: number | undefined) => void;
   /** Reordenação por arraste: move o bloco arrastado para a posição do alvo. */
   onReorder?: (draggedId: string, targetId: string) => void;
+  /** Ids dos outros blocos da mesma fileira — alvos do encaixe de altura. */
+  siblingIds?: string[];
+  /** Publica a linha-guia enquanto a altura casa com a de uma vizinha. */
+  onAlignGuide?: (guide: AlignGuide | null) => void;
 }
+
+/** Linha-guia mostrada quando a base do bloco arrastado casa com a da vizinha. */
+export interface AlignGuide {
+  /** Distância do topo da área de blocos, em px de tela. */
+  top: number;
+  /** Altura que as duas passaram a compartilhar, em px do documento. */
+  height: number;
+}
+
+/**
+ * Tolerância do encaixe, em px de tela.
+ *
+ * Medida na tela e não no documento de propósito: é a distância que o dedo
+ * percorre, e ela não deve mudar com o zoom do canvas.
+ */
+const ALIGN_SNAP_PX = 8;
 
 export function JournalBlockView({
   block,
@@ -54,6 +75,8 @@ export function JournalBlockView({
   onResizeSpan,
   onResizeHeight,
   onReorder,
+  siblingIds,
+  onAlignGuide,
 }: BlockViewProps) {
   const [dropSide, setDropSide] = useState<'before' | 'after' | null>(null);
   const canDrag = Boolean(interactive && onReorder);
@@ -116,19 +139,46 @@ export function JournalBlockView({
     // Escala aplicada ao canvas (zoom) — converte px de tela em px do documento.
     const scale = rect.height > 0 ? rect.height / blockEl.offsetHeight : 1;
 
+    // Vizinhas medidas uma vez, no início: elas não mudam durante o arraste, e
+    // remedir a cada quadro custaria um reflow por movimento do mouse.
+    const grid = gridRef?.current;
+    const alvos = (siblingIds ?? [])
+      .map((id) => grid?.querySelector<HTMLElement>(`[data-block-id="${id}"]`))
+      .filter((el): el is HTMLElement => Boolean(el))
+      .map((el) => ({ el, altura: el.getBoundingClientRect().height / (scale || 1) }));
+
     let lastHeight = startHeight;
     const onMouseMove = (moveEvent: MouseEvent) => {
       const delta = (moveEvent.clientY - startY) / (scale || 1);
-      const next = Math.max(24, Math.round(startHeight + delta));
+      let next = Math.max(24, Math.round(startHeight + delta));
+
+      // O encaixe compara em px de tela para não ficar grudento com zoom alto.
+      const casou = alvos.find(
+        (alvo) => Math.abs(next - alvo.altura) * (scale || 1) <= ALIGN_SNAP_PX,
+      );
+      if (casou) next = Math.round(casou.altura);
+
       if (next !== lastHeight) {
         lastHeight = next;
         onResizeHeight(block.id, next);
+      }
+
+      if (onAlignGuide) {
+        if (casou) {
+          const area = grid?.parentElement;
+          const base = casou.el.getBoundingClientRect().bottom;
+          const origem = area?.getBoundingClientRect().top ?? 0;
+          onAlignGuide({ top: base - origem, height: Math.round(casou.altura) });
+        } else {
+          onAlignGuide(null);
+        }
       }
     };
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
       document.body.style.cursor = 'default';
+      onAlignGuide?.(null);
     };
     document.body.style.cursor = 'row-resize';
     document.addEventListener('mousemove', onMouseMove);
@@ -320,6 +370,8 @@ export function JournalBlockView({
     <div
       className={wrapper}
       data-block-kind={block.kind}
+      /* usado pelo encaixe de altura para achar as vizinhas de fileira */
+      data-block-id={block.id}
       onClick={handleClick}
       style={block.height ? { height: block.height } : undefined}
       onDragOver={
@@ -421,6 +473,12 @@ export function JournalPageView({
   className,
 }: JournalPageViewProps) {
   const gridRef = useRef<HTMLDivElement>(null);
+  const [alignGuide, setAlignGuide] = useState<AlignGuide | null>(null);
+  // Uma passada só por render: o mapa de fileiras serve a todos os blocos.
+  const siblings = useMemo(
+    () => new Map(page.blocks.map((b) => [b.id, rowSiblings(page.blocks, b.id)])),
+    [page.blocks],
+  );
 
   return (
     <div
@@ -464,6 +522,9 @@ export function JournalPageView({
 
           <div
             ref={gridRef}
+            /* marca só o canvas editável: as miniaturas também renderizam
+               blocos, e medir a folha errada daria alturas de outra escala */
+            data-journal-canvas={interactive ? 'true' : undefined}
             className="relative z-10 grid h-full grid-cols-6 content-start gap-x-4 gap-y-3 overflow-hidden px-12 py-6"
             // Só no canvas: evita que clicar no conteúdo desmarque o bloco. Fora
             // dele a folha é só desenho — barrar o clique impediria a miniatura
@@ -481,9 +542,27 @@ export function JournalPageView({
                 onResizeSpan={onResizeBlockSpan}
                 onResizeHeight={onResizeBlockHeight}
                 onReorder={onReorderBlocks}
+                siblingIds={siblings.get(block.id)}
+                onAlignGuide={interactive ? setAlignGuide : undefined}
               />
             ))}
           </div>
+
+          {/* Vive fora da grade para atravessar as margens da folha, e some
+              junto com o arraste. Nunca entra no PDF: `data-pdf-helper`. */}
+          {interactive && alignGuide && (
+            <div
+              data-pdf-helper="true"
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 z-40 flex justify-center"
+              style={{ top: alignGuide.top }}
+            >
+              <div className="absolute inset-x-0 top-0 border-t-[1.5px] border-dashed border-primary" />
+              <span className="-mt-2 rounded-full bg-primary px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-primary-foreground shadow-sm">
+                alinhado · {alignGuide.height}px
+              </span>
+            </div>
+          )}
         </div>
 
 
