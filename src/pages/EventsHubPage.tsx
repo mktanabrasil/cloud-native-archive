@@ -40,9 +40,10 @@ export default function EventsHubPage() {
       >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="overflow-x-auto pb-2">
-          <TabsList className="h-10 w-max">
+          {/* alvo de toque: 44px no mobile, os 32px de antes no desktop */}
+          <TabsList className="h-[3.25rem] w-max md:h-10">
             {tabs.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value} className="h-8 gap-1.5">
+              <TabsTrigger key={tab.value} value={tab.value} className="h-11 gap-1.5 md:h-8">
                 <tab.icon className="h-4 w-4" />
                 {tab.label}
               </TabsTrigger>

@@ -31,7 +31,10 @@ function AnaShape({ corner, animate }: { corner: JournalCornerKey; animate: bool
       viewBox={SHAPE.viewBox}
       aria-hidden="true"
       className={cn(
-        'ana-shape pointer-events-none absolute bottom-0 h-auto w-[clamp(140px,20vw,260px)]',
+        // O piso de 88px é calibrado pela menor tela em uso, e não pela média:
+        // a 320px, duas formas de 140px somavam 88% da largura e a moldura de
+        // canto virava faixa. Com 88px dá 55%, e nada muda de 440px para cima.
+        'ana-shape pointer-events-none absolute bottom-0 h-auto w-[clamp(88px,20vw,260px)]',
         animate && 'ana-enter-shape',
       )}
       style={corner === 'inferior_esquerdo' ? { left: 0 } : { right: 0 }}
@@ -64,8 +67,14 @@ interface HomePageProps {
  * `/mercado-solidario`) e as restritas continuam atrás dos mesmos guardas.
  * O que muda é só o que a raiz mostra.
  *
- * O `padding-bottom` não é decorativo: centra o miolo numa caixa que exclui a
- * faixa das formas, senão o card assenta abaixo do centro — medido, 34 px.
+ * A altura é `100svh` — a *small viewport height*, a menor que a tela assume,
+ * com as barras do navegador visíveis. Com `100vh` (o `min-h-screen`) o rodapé
+ * caía embaixo da barra e levava as formas junto: medido a 320×568, elas
+ * ficavam 74px fora da tela mesmo antes de qualquer barra aparecer.
+ *
+ * Por isso as formas são ancoradas neste contêiner de altura fixa, e o miolo
+ * vive num filho que rola. Se o card não couber — e numa tela de 568px ele não
+ * cabe — ele rola, em vez de empurrar as formas para fora.
  */
 export default function HomePage({ leaving = false }: HomePageProps) {
   /**
@@ -77,35 +86,49 @@ export default function HomePage({ leaving = false }: HomePageProps) {
   return (
     <div
       className={cn(
-        'flex min-h-screen items-center justify-center overflow-hidden bg-background p-4 pb-[104px]',
+        'h-[100svh] overflow-hidden bg-background',
         leaving ? 'ana-gate-leaving fixed inset-0 z-50' : 'relative',
       )}
     >
       <AnaShape corner="inferior_esquerdo" animate={animarEntrada} />
       <AnaShape corner="inferior_direito" animate={animarEntrada} />
 
-      <div className="ana-gate-core relative z-10 flex w-full flex-col items-center gap-6">
-        <div className={cn('flex items-center gap-2.5', animarEntrada && 'ana-enter-brand')}>
-          <img src={logoImg} alt="" className="h-10 w-10 rounded-xl object-cover shadow-sm" />
-          <span
-            className="text-xl leading-none tracking-tighter lowercase text-foreground"
-            style={{ fontFamily: 'Poppins, sans-serif', fontWeight: 700 }}
-          >
-            anabrasil
-          </span>
-        </div>
+      <div className="relative z-10 h-full overflow-y-auto overscroll-contain">
+        {/* `min-h-full` com `justify-center`: centra quando sobra espaço e cresce
+            quando falta, sem o topo virar área inalcançável do scroll.
+            A compensação óptica é proporcional — os 104px fixos foram calibrados
+            em telas de 660px e sozinhos já estouravam uma de 568px. */}
+        <div
+          className={cn(
+            'ana-gate-core flex min-h-full w-full flex-col items-center justify-center gap-6',
+            'p-4 pb-[clamp(1rem,13vh,6.5rem)]',
+          )}
+        >
+          <div className={cn('flex items-center gap-2.5', animarEntrada && 'ana-enter-brand')}>
+            <img src={logoImg} alt="" className="h-10 w-10 rounded-xl object-cover shadow-sm" />
+            <span
+              className="text-xl leading-none tracking-tighter lowercase text-foreground"
+              style={{ fontFamily: 'Poppins, sans-serif', fontWeight: 700 }}
+            >
+              anabrasil
+            </span>
+          </div>
 
-        <div className={cn('w-full max-w-md', animarEntrada && 'ana-enter-card')}>
-          <AccessForm
-            title="Entre para continuar"
-            loginDescription="Área restrita à equipe ANA Brasil."
-            className="w-full"
-            stagger={animarEntrada}
-          />
+          <div className={cn('w-full max-w-md', animarEntrada && 'ana-enter-card')}>
+            <AccessForm
+              title="Entre para continuar"
+              loginDescription="Área restrita à equipe ANA Brasil."
+              className="w-full"
+              stagger={animarEntrada}
+            />
+          </div>
         </div>
       </div>
 
-      <div className="fixed bottom-6 right-6 z-[60] flex items-center gap-3">
+      {/* `viewport-fit=cover` está ligado no index.html: sem somar a área segura,
+          estes botões caem sob a faixa de gestos do iPhone, onde o toque é do
+          sistema. Pesa mais agora que o app é instalável e roda sem barra. */}
+      <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-[calc(1.5rem+env(safe-area-inset-right))] z-[60] flex items-center gap-3">
         <TestModeTrigger floating />
         <ThemeToggle />
       </div>
