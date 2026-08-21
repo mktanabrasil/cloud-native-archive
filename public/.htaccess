@@ -1,0 +1,25 @@
+# Fallback de SPA.
+#
+# O app tem um arquivo só — o index.html — e quem decide a rota é o React, no
+# navegador. Sem a regra abaixo o servidor procura uma pasta com o nome do
+# caminho pedido, não acha e devolve 404.
+#
+# O sintoma é característico: clicar num link de dentro do app funciona (quem
+# responde é o React), mas digitar a URL, atualizar com F5 ou abrir em nova aba
+# quebra (aí quem responde é o servidor).
+#
+# Vale para Apache e LiteSpeed, que lê o mesmo formato.
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Arquivo ou pasta que existe de verdade é servido como está — é o que
+  # preserva /assets/*.js, as imagens, o manifest e o robots.txt.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Todo o resto entrega o index.html, e o React resolve a rota.
+  RewriteRule . /index.html [L]
+</IfModule>
