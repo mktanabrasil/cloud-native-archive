@@ -31,15 +31,25 @@ async function compress(file: File): Promise<Blob> {
   );
 }
 
-async function removeIfOwned(url: string) {
-  if (!url || !url.startsWith(STORAGE_PUBLIC_PREFIX)) return;
-  const path = url.slice(STORAGE_PUBLIC_PREFIX.length);
-  try {
-    await supabase.storage.from('event-attachments').remove([path]);
-  } catch {
-    /* silent */
-  }
-}
+/**
+ * Trocar ou remover a imagem NÃO apaga o arquivo do Storage.
+ *
+ * O mesmo arquivo pode estar sendo usado por mais de um lugar, e apagá-lo
+ * deixava a outra ponta com uma imagem quebrada — o bloco guarda o URL, o
+ * <img> tenta carregar, o arquivo nao existe mais e sobra o alt. Tres caminhos
+ * chegavam nisso:
+ *
+ *  - Desfazer: remover a imagem apagava o arquivo na hora; o desfazer devolvia
+ *    o URL ao modelo, mas o arquivo ja tinha ido.
+ *  - Duplicar pagina: as copias nascem com o mesmo `url`.
+ *  - Duplicar jornal: idem, agora entre jornais diferentes.
+ *
+ * A troca e consciente: sobram arquivos orfaos no bucket quando alguem troca
+ * uma imagem. Storage e barato; imagem sumida de jornal publicado, nao. Contar
+ * referencias exigiria varrer todos os jornais a cada troca — caro e sujeito a
+ * corrida. Se um dia a limpeza importar, ela e um trabalho de manutencao a
+ * parte, que compara o bucket com os URLs em uso.
+ */
 
 export function ImageBlockField({ value, onChange, placeholder }: Props) {
   const initialMode: 'upload' | 'url' =
@@ -68,9 +78,7 @@ export function ImageBlockField({ value, onChange, placeholder }: Props) {
         .upload(path, blob, { contentType: blob.type, upsert: false });
       if (error) throw error;
       const { data } = supabase.storage.from('event-attachments').getPublicUrl(path);
-      const oldUrl = value;
       onChange(data.publicUrl);
-      await removeIfOwned(oldUrl);
       toast.success('Imagem enviada.');
     } catch (e: any) {
       toast.error(`Erro no upload: ${e.message || e}`);
@@ -80,10 +88,9 @@ export function ImageBlockField({ value, onChange, placeholder }: Props) {
     }
   };
 
-  const handleRemove = async () => {
-    const oldUrl = value;
+  /** Solta a imagem do bloco. O arquivo fica no Storage — ver a nota acima. */
+  const handleRemove = () => {
     onChange('');
-    await removeIfOwned(oldUrl);
   };
 
   return (
