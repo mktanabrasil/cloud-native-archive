@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import type { JournalPage, JournalRecord } from '@/lib/journal/types';
+import type { JournalPage, JournalPaperKey, JournalRecord } from '@/lib/journal/types';
 
 export interface JournalDraft {
   name: string;
@@ -10,6 +10,12 @@ export interface JournalDraft {
   referenceMonth: string | null;
   status: JournalRecord['status'];
   pages: JournalPage[];
+  /**
+   * Opcional na criação de propósito: sem valor a coluna fica nula, e a
+   * leitura resolve para o padrão. Só passa a ser gravada quando a pessoa
+   * escolhe um fundo.
+   */
+  paper?: JournalPaperKey;
 }
 
 /**
@@ -72,6 +78,7 @@ export function useJournals() {
       if (draft.referenceMonth !== undefined) row.reference_month = draft.referenceMonth;
       if (draft.status !== undefined) row.status = draft.status;
       if (draft.pages !== undefined) row.pages = draft.pages;
+      if (draft.paper !== undefined) row.paper = draft.paper;
 
       const { error } = await supabase.from('journals').update(row as any).eq('id', id);
       setSaving(false);
@@ -107,6 +114,8 @@ export function useJournals() {
         reference_month: journal.reference_month,
         status: 'rascunho',
         pages: journal.pages as any,
+        // a cópia tem de nascer com a mesma aparência do original
+        paper: journal.paper,
         created_by: user.id,
       });
       refresh();

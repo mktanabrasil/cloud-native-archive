@@ -42,12 +42,12 @@ import { JournalBlockList } from './JournalBlockList';
 
 import {
   DEFAULT_DECORATION_COLOR,
-  DEFAULT_JOURNAL_PAPER,
   JOURNAL_PAPER_KEYS,
   JOURNAL_PAPER_LABELS,
   TEMPLATE_LABELS,
   createDecorationSet,
   journalPaper,
+  toJournalPaper,
   type BlockSpan,
   type JournalBlock,
   type JournalColorKey,
@@ -90,6 +90,7 @@ interface Props {
       status?: JournalRecord['status'];
       unitId?: string | null;
       profileUnit?: string | null;
+      paper?: JournalPaperKey;
     },
   ) => Promise<boolean>;
 }
@@ -121,7 +122,7 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
   /** Modo de ajuste da folha: tela, largura, altura ou zoom manual (null). */
   const [fitMode, setFitMode] = useState<'screen' | 'width' | 'height' | null>('screen');
   /** Fundo da folha — vale para canvas, miniatura, preview e PDF. */
-  const [paper, setPaper] = useState<JournalPaperKey>(DEFAULT_JOURNAL_PAPER);
+  const [paper, setPaper] = useState<JournalPaperKey>(() => toJournalPaper(journal.paper));
   const paperColor = journalPaper(paper);
   const [exporting, setExporting] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
@@ -169,11 +170,11 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
   useEffect(() => {
     if (!dirtyRef.current) return;
     const timer = setTimeout(() => {
-      onSave(journal.id, { name, pages });
+      onSave(journal.id, { name, pages, paper });
       dirtyRef.current = false;
     }, 2000);
     return () => clearTimeout(timer);
-  }, [name, pages, journal.id, onSave]);
+  }, [name, pages, paper, journal.id, onSave]);
 
   const setManualZoom = useCallback((updater: (current: number) => number) => {
     setFitMode(null);
@@ -797,7 +798,10 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
                         <button
                           key={key}
                           type="button"
-                          onClick={() => setPaper(key)}
+                          onClick={() => {
+                            dirtyRef.current = true;
+                            setPaper(key);
+                          }}
                           aria-pressed={paper === key}
                           className={cn(
                             'rounded-md border p-2 text-left text-[11px] transition-colors',

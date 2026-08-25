@@ -87,6 +87,17 @@ export const DEFAULT_JOURNAL_PAPER: JournalPaperKey = 'off_white';
 export const journalPaper = (key?: JournalPaperKey): string =>
   JOURNAL_PAPER_HEX[key ?? DEFAULT_JOURNAL_PAPER] ?? JOURNAL_PAPER_HEX[DEFAULT_JOURNAL_PAPER];
 
+/**
+ * Narrowing do fundo vindo do banco, onde a coluna é `text` e aceita qualquer
+ * coisa. Nulo — o caso de todo jornal criado antes deste campo passar a ser
+ * gravado — e valor desconhecido caem no padrão, em vez de vazar para o
+ * `style` e deixar a folha sem cor.
+ */
+export const toJournalPaper = (value?: string | null): JournalPaperKey =>
+  JOURNAL_PAPER_KEYS.includes(value as JournalPaperKey)
+    ? (value as JournalPaperKey)
+    : DEFAULT_JOURNAL_PAPER;
+
 export interface JournalTextBlock {
   id: string;
   kind: 'text';
@@ -203,6 +214,8 @@ export interface JournalRecord {
   reference_month: string | null;
   status: 'rascunho' | 'finalizado' | 'arquivado';
   pages: JournalPage[];
+  /** Fundo da folha. Nulo nos jornais anteriores a este campo ser gravado. */
+  paper: string | null;
   cover_url: string | null;
   created_by: string | null;
   created_at: string;
