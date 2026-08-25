@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Copy, Trash2, Pencil, Lock, Loader2, Newspaper, Search, HelpCircle } from 'lucide-react';
+import { Plus, Copy, Trash2, Pencil, Lock, Loader2, Newspaper, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,8 +23,6 @@ import { cn } from '@/lib/utils';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useJournals } from '@/hooks/useJournals';
 import { JournalEditor } from '@/components/journal/JournalEditor';
-import { JournalTutorial } from '@/components/journal/JournalTutorial';
-import { useTutorial } from '@/hooks/useTutorial';
 import { JournalPageView, A4_W, A4_H } from '@/components/journal/JournalPageView';
 import { UnitBadge } from '@/components/journal/UnitBadge';
 import {
@@ -97,15 +95,6 @@ export default function JournalPage() {
   const [creating, setCreating] = useState(false);
   /** Edição aguardando confirmação de exclusão — nada é removido antes do "sim". */
   const [pendingDelete, setPendingDelete] = useState<JournalRecord | null>(null);
-
-  const { jaViu, pronto, marcarVisto } = useTutorial('jornal');
-  const [tutorialAberto, setTutorialAberto] = useState(false);
-
-  // Abre sozinho só na primeira visita, e só depois da consulta voltar — abrir
-  // antes faria o tutorial piscar na tela de quem já viu.
-  useEffect(() => {
-    if (pronto && !jaViu) setTutorialAberto(true);
-  }, [pronto, jaViu]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<JournalStatus | 'todos'>('todos');
   const [monthFilter, setMonthFilter] = useState<string>('todos');
@@ -218,14 +207,9 @@ export default function JournalPage() {
             Aqui ficam os jornais da sua unidade.
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Button variant="outline" onClick={() => setTutorialAberto(true)}>
-            <HelpCircle className="mr-1.5 h-4 w-4" /> Ajuda
-          </Button>
-          <Button onClick={openCreate}>
-            <Plus className="mr-1.5 h-4 w-4" /> Criar jornal da unidade
-          </Button>
-        </div>
+        <Button onClick={openCreate} className="shrink-0">
+          <Plus className="mr-1.5 h-4 w-4" /> Criar jornal da unidade
+        </Button>
       </header>
 
       <UnitBadge
@@ -415,14 +399,6 @@ export default function JournalPage() {
           })}
         </div>
       )}
-
-      <JournalTutorial
-        open={tutorialAberto}
-        onClose={() => {
-          setTutorialAberto(false);
-          marcarVisto();
-        }}
-      />
 
       <AlertDialog
         open={!!pendingDelete}
