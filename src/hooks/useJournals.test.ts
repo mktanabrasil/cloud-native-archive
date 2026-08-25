@@ -92,6 +92,26 @@ describe('useJournals', () => {
     expect(ultimoUpdate()).not.toHaveProperty('paper');
   });
 
+  /**
+   * O caminho existia desde sempre no hook, mas nada o acionava: não havia
+   * controle de status em lugar nenhum, e todo jornal morria como rascunho.
+   */
+  it('grava o status quando a edição é finalizada', async () => {
+    const result = await montar();
+    await act(async () => {
+      await result.current.save('jornal-1', { status: 'finalizado' });
+    });
+    expect(ultimoUpdate()).toEqual({ status: 'finalizado' });
+  });
+
+  it('grava a volta para rascunho', async () => {
+    const result = await montar();
+    await act(async () => {
+      await result.current.save('jornal-1', { status: 'rascunho' });
+    });
+    expect(ultimoUpdate()).toEqual({ status: 'rascunho' });
+  });
+
   it('a cópia nasce com o mesmo fundo do original', async () => {
     const result = await montar();
     await act(async () => {

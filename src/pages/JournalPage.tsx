@@ -36,15 +36,23 @@ import {
   findJournalModel,
   type JournalModelKey,
 } from '@/lib/journal/templates';
-import { STATUS_LABELS, type JournalRecord } from '@/lib/journal/types';
+import {
+  STATUS_BADGE_CLASSES,
+  STATUS_LABELS,
+  type JournalRecord,
+} from '@/lib/journal/types';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 type JournalStatus = JournalRecord['status'];
-
-const STATUS_VARIANT: Record<string, string> = {
-  rascunho: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
-  finalizado: 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-200',
-  arquivado: 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
-};
 
 const COUNTER_ORDER: JournalStatus[] = ['rascunho', 'finalizado', 'arquivado'];
 const COUNTER_LABELS: Record<JournalStatus, string> = {
@@ -85,6 +93,8 @@ export default function JournalPage() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  /** Edição aguardando confirmação de exclusão — nada é removido antes do "sim". */
+  const [pendingDelete, setPendingDelete] = useState<JournalRecord | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<JournalStatus | 'todos'>('todos');
   const [monthFilter, setMonthFilter] = useState<string>('todos');
@@ -356,7 +366,7 @@ export default function JournalPage() {
                     <h3 className="min-w-0 truncate text-base font-semibold text-foreground">
                       {journal.name}
                     </h3>
-                    <Badge className={STATUS_VARIANT[journal.status]} variant="secondary">
+                    <Badge className={STATUS_BADGE_CLASSES[journal.status]} variant="secondary">
                       {STATUS_LABELS[journal.status]}
                     </Badge>
                   </div>
@@ -378,7 +388,7 @@ export default function JournalPage() {
                       size="sm"
                       variant="ghost"
                       className="text-destructive"
-                      onClick={() => remove(journal.id)}
+                      onClick={() => setPendingDelete(journal)}
                     >
                       <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Excluir
                     </Button>
@@ -389,6 +399,43 @@ export default function JournalPage() {
           })}
         </div>
       )}
+
+      <AlertDialog
+        open={!!pendingDelete}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir esta edição?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
+                  <p className="font-medium text-foreground">{pendingDelete?.name}</p>
+                  <p className="mt-1 text-muted-foreground">
+                    {pendingDelete?.pages?.length ?? 0} páginas
+                    {pendingDelete?.reference_month ? ` · ${pendingDelete.reference_month}` : ''}
+                    {' · '}
+                    {STATUS_LABELS[pendingDelete?.status ?? 'rascunho']}
+                  </p>
+                </div>
+                <p>A edição sai da lista do Jornal, e não há como restaurá-la por aqui.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (pendingDelete) remove(pendingDelete.id);
+                setPendingDelete(null);
+              }}
+            >
+              Sim, excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={creating} onOpenChange={setCreating}>
         <DialogContent>

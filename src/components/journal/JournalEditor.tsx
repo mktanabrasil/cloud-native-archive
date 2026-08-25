@@ -13,6 +13,8 @@ import {
   Type,
   Hash,
   Check,
+  CheckCircle2,
+  RotateCcw,
   Lock,
   Unlock,
   Undo2,
@@ -25,6 +27,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -44,6 +47,8 @@ import {
   DEFAULT_DECORATION_COLOR,
   JOURNAL_PAPER_KEYS,
   JOURNAL_PAPER_LABELS,
+  STATUS_BADGE_CLASSES,
+  STATUS_LABELS,
   TEMPLATE_LABELS,
   createDecorationSet,
   journalPaper,
@@ -124,6 +129,8 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
   /** Fundo da folha — vale para canvas, miniatura, preview e PDF. */
   const [paper, setPaper] = useState<JournalPaperKey>(() => toJournalPaper(journal.paper));
   const paperColor = journalPaper(paper);
+  /** Rótulo de conclusão da edição. Não trava nada — só informa. */
+  const [status, setStatus] = useState<JournalRecord['status']>(journal.status);
   const [exporting, setExporting] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -175,6 +182,20 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
     }, 2000);
     return () => clearTimeout(timer);
   }, [name, pages, paper, journal.id, onSave]);
+
+  /**
+   * Alterna entre rascunho e finalizado, e grava na hora em vez de esperar o
+   * autosave: é uma decisão explícita, não uma digitação — a etiqueta tem de
+   * mudar junto com o clique.
+   *
+   * A volta existe de propósito. Sem ela, um erro de digitação achado depois
+   * deixaria a edição presa como finalizada.
+   */
+  const toggleStatus = useCallback(() => {
+    const next = status === 'finalizado' ? 'rascunho' : 'finalizado';
+    setStatus(next);
+    onSave(journal.id, { status: next });
+  }, [status, journal.id, onSave]);
 
   const setManualZoom = useCallback((updater: (current: number) => number) => {
     setFitMode(null);
@@ -574,6 +595,24 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
               </>
             )}
           </span>
+          <Badge className={STATUS_BADGE_CLASSES[status]} variant="secondary">
+            {STATUS_LABELS[status]}
+          </Badge>
+          <Button
+            variant={status === 'finalizado' ? 'outline' : 'default'}
+            size="sm"
+            onClick={toggleStatus}
+          >
+            {status === 'finalizado' ? (
+              <>
+                <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reabrir como rascunho
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Finalizar edição
+              </>
+            )}
+          </Button>
           <div className="ml-auto flex items-center gap-1.5">
             <Button size="sm" onClick={() => exportPdf('impressao')} disabled={exporting}>
               {exporting ? (
