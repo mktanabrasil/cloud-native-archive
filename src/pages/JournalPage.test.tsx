@@ -42,7 +42,6 @@ const jornal = (): JournalRecord => ({
   status: 'rascunho',
   pages: [createPage('capa')],
   paper: null,
-  cover_url: null,
   created_by: null,
   created_at: new Date(0).toISOString(),
   updated_at: new Date(0).toISOString(),
