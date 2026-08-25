@@ -78,6 +78,18 @@ export function newsUnitSegment(id: string | undefined | null): NewsUnitSegment 
   return unit.type === 'NAVE' ? 'social' : 'educacao';
 }
 
+/**
+ * Quantas cores da marca o segmento usa: Educação leva as três primeiras, o
+ * Social as cinco. Sem unidade definida vale o padrão neutro das cinco.
+ *
+ * É a fonte única dessa regra. A faixa do rodapé e a paleta das Formas ANA
+ * chamam esta função justamente para não poderem divergir — uma folha com
+ * rodapé de três cores e forma azul se contradiz sozinha.
+ */
+export function brandColorCount(id: string | undefined | null): number {
+  return newsUnitSegment(id) === 'educacao' ? 3 : 5;
+}
+
 export function findNewsUnit(id: string | undefined | null): NewsUnit | undefined {
   if (!id) return undefined;
   return NEWS_UNITS.find((unit) => unit.id === id);

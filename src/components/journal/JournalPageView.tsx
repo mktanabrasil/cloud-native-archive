@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, type RefObject } from 'react';
 import { cn } from '@/lib/utils';
 import { InstitutionalFooterBar } from '@/components/news/InstitutionalFooterBar';
 import { JournalDecorationLayer } from './JournalDecorationLayer';
-import { newsUnitSegment } from '@/lib/news/units';
+import { brandColorCount } from '@/lib/news/units';
 import { rowSiblings } from '@/lib/journal/rows';
 import anaLogo from '@/assets/ana-brasil-logo.svg';
 import {
@@ -446,12 +446,10 @@ interface JournalPageViewProps {
  * Faixa do rodapé por segmento: Educação usa as três primeiras cores; Social
  * mantém as cinco. Sem unidade definida, as cinco — é o padrão neutro.
  *
- * Derivado aqui, e não em cada chamada, para canvas, miniatura e PDF não terem
- * como divergir.
+ * A contagem vem de `brandColorCount`, a mesma que decide a paleta das Formas
+ * ANA: rodapé e formas têm de falar a língua do mesmo segmento.
  */
-function footerStripes(unitId: string | null | undefined): number {
-  return newsUnitSegment(unitId) === 'educacao' ? 3 : 5;
-}
+const footerStripes = brandColorCount;
 
 /** Página A4 completa — o mesmo componente é usado no canvas, no preview e no PDF. */
 export function JournalPageView({

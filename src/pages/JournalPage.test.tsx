@@ -7,6 +7,16 @@ const espiao = vi.hoisted(() => ({
   remove: vi.fn(),
   duplicate: vi.fn(),
   journals: [] as unknown[],
+  marcarVisto: vi.fn(),
+  tutorial: { jaViu: true, pronto: true },
+}));
+
+vi.mock('@/hooks/useTutorial', () => ({
+  useTutorial: () => ({
+    jaViu: espiao.tutorial.jaViu,
+    pronto: espiao.tutorial.pronto,
+    marcarVisto: espiao.marcarVisto,
+  }),
 }));
 
 vi.mock('@/hooks/useUserRole', () => ({
@@ -56,7 +66,11 @@ const dialogo = () => screen.findByRole('alertdialog');
 
 beforeEach(() => {
   espiao.remove.mockClear();
+  espiao.marcarVisto.mockClear();
   espiao.journals = [jornal()];
+  // o padrão dos testes de exclusão é "já viu": sem isso o tutorial abriria
+  // por cima e roubaria o foco dos diálogos
+  espiao.tutorial = { jaViu: true, pronto: true };
 });
 
 /**
@@ -97,5 +111,71 @@ describe('exclusão de jornal', () => {
 
     await waitFor(() => expect(espiao.remove).toHaveBeenCalledTimes(1));
     expect(espiao.remove).toHaveBeenCalledWith('jornal-1');
+  });
+});
+
+const tutorialNaTela = () => screen.queryByText('Bem-vinda ao Jornal');
+
+/**
+ * O tutorial aparece uma vez só, por usuário. A marca de "já visto" vem do
+ * banco; aqui ela é simulada para exercitar as três situações que importam.
+ */
+describe('tutorial de primeiro acesso', () => {
+  it('abre sozinho quando a diretora ainda não viu', async () => {
+    espiao.tutorial = { jaViu: false, pronto: true };
+    render(<JournalPage />);
+
+    await waitFor(() => expect(tutorialNaTela()).toBeInTheDocument());
+  });
+
+  it('não abre para quem já viu', async () => {
+    espiao.tutorial = { jaViu: true, pronto: true };
+    render(<JournalPage />);
+
+    await waitFor(() => expect(screen.getByText(/Aqui ficam os jornais/i)).toBeInTheDocument());
+    expect(tutorialNaTela()).not.toBeInTheDocument();
+  });
+
+  /** Abrir antes da consulta voltar faria o tutorial piscar para quem já viu. */
+  it('não abre enquanto a consulta ao banco não voltou', async () => {
+    espiao.tutorial = { jaViu: false, pronto: false };
+    render(<JournalPage />);
+
+    await waitFor(() => expect(screen.getByText(/Aqui ficam os jornais/i)).toBeInTheDocument());
+    expect(tutorialNaTela()).not.toBeInTheDocument();
+  });
+
+  it('o botão Ajuda reabre para quem já viu', async () => {
+    espiao.tutorial = { jaViu: true, pronto: true };
+    render(<JournalPage />);
+    expect(tutorialNaTela()).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /ajuda/i }));
+
+    await waitFor(() => expect(tutorialNaTela()).toBeInTheDocument());
+  });
+
+  it('fechar marca como visto, para não voltar sozinho', async () => {
+    espiao.tutorial = { jaViu: false, pronto: true };
+    render(<JournalPage />);
+    await waitFor(() => expect(tutorialNaTela()).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /pular tutorial/i }));
+
+    await waitFor(() => expect(espiao.marcarVisto).toHaveBeenCalledTimes(1));
+  });
+
+  it('percorre os oito passos até o fim', async () => {
+    espiao.tutorial = { jaViu: false, pronto: true };
+    render(<JournalPage />);
+    await waitFor(() => expect(tutorialNaTela()).toBeInTheDocument());
+
+    for (let n = 1; n < 8; n++) {
+      fireEvent.click(screen.getByRole('button', { name: /^próximo$/i }));
+    }
+    expect(screen.getByText('Pronto, é isso!')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /começar a usar/i }));
+    await waitFor(() => expect(espiao.marcarVisto).toHaveBeenCalledTimes(1));
   });
 });

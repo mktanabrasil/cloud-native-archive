@@ -59,6 +59,29 @@ export const JOURNAL_COLOR_HEX: Record<JournalColorKey, string> = {
 
 export const JOURNAL_COLOR_KEYS = Object.keys(JOURNAL_COLOR_LABELS) as JournalColorKey[];
 
+/**
+ * As cinco cores da marca, na mesma ordem das faixas do rodapé.
+ *
+ * Derivada do catálogo em vez de escrita à mão: uma segunda lista poderia sair
+ * de ordem, e a ordem é justamente o que faz o corte por segmento funcionar.
+ * A tinta fica de fora porque não é cor de marca — é a cor do texto, presente
+ * em toda página dos dois segmentos.
+ */
+export const JOURNAL_BRAND_COLOR_KEYS = JOURNAL_COLOR_KEYS.filter((key) => key !== 'tinta');
+
+/**
+ * Cores oferecidas para as formas, dado quantas cores de marca o segmento usa
+ * (ver `brandColorCount`). A tinta acompanha os dois segmentos.
+ *
+ * Restringe a *oferta*, não o que já está gravado: um jornal pintado antes
+ * desta regra mantém a cor dele. Trocar sozinho o desenho de uma edição já
+ * publicada seria pior do que a inconsistência.
+ */
+export const journalColorsForBrandCount = (count: number): JournalColorKey[] => [
+  'tinta',
+  ...JOURNAL_BRAND_COLOR_KEYS.slice(0, count),
+];
+
 export const journalColor = (key?: JournalColorKey): string =>
   JOURNAL_COLOR_HEX[key ?? 'tinta'] ?? JOURNAL_COLOR_HEX.tinta;
 
