@@ -270,6 +270,17 @@ export const STATUS_LABELS: Record<string, string> = {
   arquivado: 'Arquivado',
 };
 
+/**
+ * Cores da etiqueta de status. Mora aqui, e não na listagem, porque a mesma
+ * etiqueta aparece na lista e dentro do editor — a diretora precisa reconhecer
+ * o mesmo estado nos dois lugares pela mesma cor.
+ */
+export const STATUS_BADGE_CLASSES: Record<string, string> = {
+  rascunho: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200',
+  finalizado: 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-200',
+  arquivado: 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
+};
+
 export const TEMPLATE_LABELS: Record<JournalTemplate, string> = {
   capa: 'Capa',
   materias: 'Matérias',
