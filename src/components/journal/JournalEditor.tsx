@@ -1046,6 +1046,7 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
           {selectedDecoration ? (
             <JournalDecorationProperties
               decoration={selectedDecoration}
+              unitId={journal.unit_id}
               onChangeColor={(color) => setDecorationColor(selectedDecoration.corner, color)}
               onRemove={() => removeDecoration(selectedDecoration.corner)}
             />

@@ -590,6 +590,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_tutorials: {
+        Row: {
+          seen_at: string
+          tutorial: string
+          user_id: string
+        }
+        Insert: {
+          seen_at?: string
+          tutorial: string
+          user_id: string
+        }
+        Update: {
+          seen_at?: string
+          tutorial?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       view_configs: {
         Row: {
           created_at: string | null

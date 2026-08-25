@@ -12,6 +12,11 @@ export interface ColorSwatchPickerProps {
   onChange: (value: JournalColorKey) => void;
   label?: string;
   className?: string;
+  /**
+   * Paleta oferecida. Ausente mostra a institucional inteira — só as formas
+   * recortam por segmento, e o texto continua com todas as cores.
+   */
+  colors?: JournalColorKey[];
 }
 
 /**
@@ -23,6 +28,7 @@ export function ColorSwatchPicker({
   onChange,
   label = 'Cor do texto',
   className,
+  colors = JOURNAL_COLOR_KEYS,
 }: ColorSwatchPickerProps) {
   const current: JournalColorKey = value ?? 'tinta';
 
@@ -32,7 +38,7 @@ export function ColorSwatchPicker({
         {label} <span className="text-[10px]">(paleta institucional)</span>
       </p>
       <div className="flex flex-wrap gap-2">
-        {JOURNAL_COLOR_KEYS.map((key) => (
+        {colors.map((key) => (
           <button
             key={key}
             type="button"
