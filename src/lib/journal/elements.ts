@@ -41,8 +41,15 @@ export interface JournalElementDef {
   viewBox: string;
   /** Largura ÷ altura da tinta. */
   ratio: number;
-  /** Sobrescreve `ELEMENT_INK_WIDTH` quando a silhueta pede outra presença. */
-  inkWidth?: number;
+  /**
+   * Fator sobre a medida global, para a silhueta que pede outra presença.
+   * Ausente significa 1 — a medida padrão.
+   *
+   * É proporção, e não largura em px, justamente para sobreviver a mudanças de
+   * escala: um número absoluto aqui deixa de fazer sentido no instante em que
+   * `ELEMENT_INK_WIDTH` muda, e pode inverter a intenção sem ninguém notar.
+   */
+  presence?: number;
   /** Sobrescreve `ELEMENT_BLEED`. Zero mantém a forma inteira dentro da folha. */
   bleed?: number;
   paths: string[];
@@ -92,7 +99,9 @@ export const JOURNAL_ELEMENTS: JournalElementDef[] = [
     ratio: 1.1881,
     // Onda de pico estreito: com a sangria padrão o topo saía decepado.
     // Sem sangria a parede encosta na borda e a silhueta aparece inteira.
-    inkWidth: 210,
+    // Os 84% preservam a proporção de quando esta forma valia 210px contra os
+    // 250px das demais.
+    presence: 0.84,
     paths: [
       'M244.77 8.80078V209.191H5.23047C6.28906 184.965 16.6016 160.996 34.4844 144.508C61.332 119.777 103.566 113.434 136.5 129.16C148.293 134.828 160.133 143.238 173.109 141.465C192.008 138.887 201.141 116.438 201.352 97.3711C201.562 78.3008 196.871 58.4336 203.805 40.6758C210.441 23.6797 226.676 12.9023 244.77 8.80078Z',
     ],
@@ -123,21 +132,29 @@ export const JOURNAL_CORNER_LABELS: Record<JournalCornerKey, string> = {
 
 export const JOURNAL_CORNER_KEYS = Object.keys(JOURNAL_CORNER_LABELS) as JournalCornerKey[];
 
-/** Ocupação leve — a escala padrão, validada em mockup. */
-export const ELEMENT_INK_WIDTH = 250;
+/**
+ * Medida das formas de baixo — 20% da largura da folha A4.
+ *
+ * Acento de canto, não fundo. Numa página cheia a forma inferior sobe por trás
+ * da última coluna de texto, e é a altura dela que decide se a mancha continua
+ * respirando: a 250px eram 242px de invasão, mais de um quinto da folha.
+ */
+export const ELEMENT_INK_WIDTH = 160;
 
 /**
- * Medida das formas de cima — 60% da de baixo.
+ * Medida das formas de cima — 62,5% da de baixo.
  *
  * Os dois pares não disputam o mesmo espaço: embaixo não há nada até a faixa
- * institucional, então a forma pode ter a presença cheia. Em cima ela divide a
- * faixa com o logo e o texto do cabeçalho, e na medida da base cobria os dois.
+ * institucional. Em cima a forma divide a faixa com o logo e o texto do
+ * cabeçalho, e por isso entra menor.
  *
  * Reduzir não elimina a sobreposição — o logo começa a 48px da borda e a forma
- * nasce no zero, então qualquer largura visível passa por trás dele. O que a
- * redução resolve é o quanto ela avança folha adentro.
+ * nasce no zero, então qualquer largura visível passa por trás dele. Mas muda
+ * o quanto ela avança sobre ele: a 150px a caixa cobria os 90px do logo
+ * inteiros, o que na prática proibia a tinta institucional naquele canto; a
+ * 100px cobre 52px, e a leitura do logo deixa de depender da cor escolhida.
  */
-export const ELEMENT_INK_WIDTH_TOP = 150;
+export const ELEMENT_INK_WIDTH_TOP = 100;
 
 /**
  * Sangria para fora da borda lateral — hoje zero, e por um motivo técnico, não
@@ -159,21 +176,19 @@ export const isTopCorner = (corner: JournalCornerKey): boolean =>
  *
  * Silhuetas diferentes não toleram a mesma ancoragem: cortar a parede de uma
  * massa sólida é inofensivo, mas cortar o pico de uma onda amputa o desenho.
- * Por isso cada forma pode declarar os seus valores.
+ * Por isso cada forma pode declarar a sua presença.
  *
- * A redução do topo é proporcional, não um segundo número fixo: o Elemento 04
- * já vale 210 em vez de 250 porque a onda dele é fina, e essa diferença tem de
- * sobreviver à redução.
+ * A composição é sempre `medida do canto × presença da forma`, nesta ordem:
+ * assim a diferença entre as silhuetas sobrevive a qualquer mudança de escala,
+ * em vez de precisar ser recalculada junto.
  */
 export const elementInkWidth = (
   element: JournalElementDef,
   corner: JournalCornerKey,
-): number => {
-  const base = element.inkWidth ?? ELEMENT_INK_WIDTH;
-  return isTopCorner(corner)
-    ? Math.round(base * (ELEMENT_INK_WIDTH_TOP / ELEMENT_INK_WIDTH))
-    : base;
-};
+): number =>
+  Math.round(
+    (isTopCorner(corner) ? ELEMENT_INK_WIDTH_TOP : ELEMENT_INK_WIDTH) * (element.presence ?? 1),
+  );
 
 export const elementBleed = (element: JournalElementDef): number =>
   element.bleed ?? ELEMENT_BLEED;

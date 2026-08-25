@@ -146,16 +146,34 @@ describe('JournalDecorationLayer', () => {
 
   /**
    * O Elemento 04 é uma onda de pico estreito: com a sangria padrão o topo saía
-   * decepado numa vertical reta. Ele declara os próprios valores, e as demais
+   * decepado numa vertical reta. Ele declara a própria presença, e as demais
    * seguem os globais.
    */
   describe('ancoragem por forma', () => {
     it('o Elemento 04 usa largura menor que as demais', () => {
       const def = findJournalElement('elemento_04');
-      expect(elementInkWidth(def, 'inferior_esquerdo')).toBe(210);
+      const largura = elementInkWidth(def, 'inferior_esquerdo');
+      expect(largura).toBeLessThan(ELEMENT_INK_WIDTH);
+      expect(largura).toBe(Math.round(ELEMENT_INK_WIDTH * 0.84));
 
       const svg = uma({ element: 'elemento_04', corner: 'inferior_esquerdo', color: 'areia' });
-      expect(svg.getAttribute('width')).toBe('210');
+      expect(svg.getAttribute('width')).toBe(String(largura));
+    });
+
+    /**
+     * Regressão: a presença já foi largura absoluta em px. Ao encolher a medida
+     * global, o número fixo do Elemento 04 passou a ser *maior* que o das
+     * demais — a intenção invertida sem nenhum teste acusar. Como proporção,
+     * ele acompanha qualquer escala.
+     */
+    it('a presença própria acompanha a escala, em vez de furá-la', () => {
+      const def = findJournalElement('elemento_04');
+      JOURNAL_CORNER_KEYS.forEach((corner) => {
+        const dele = elementInkWidth(def, corner);
+        JOURNAL_ELEMENTS.filter((outro) => outro.key !== def.key).forEach((outro) => {
+          expect(dele).toBeLessThan(elementInkWidth(outro, corner));
+        });
+      });
     });
 
     it('as demais formas seguem os valores globais', () => {
@@ -216,15 +234,12 @@ describe('JournalDecorationLayer', () => {
       expect(ELEMENT_INK_WIDTH_TOP).toBeLessThan(ELEMENT_INK_WIDTH);
     });
 
-    it('reduz na mesma proporção em todas as formas, inclusive na de medida própria', () => {
+    it('reduz na mesma proporção em todas as formas, inclusive na de presença própria', () => {
       const fator = ELEMENT_INK_WIDTH_TOP / ELEMENT_INK_WIDTH;
       JOURNAL_ELEMENTS.forEach((def) => {
         const base = elementInkWidth(def, 'inferior_esquerdo');
         expect(elementInkWidth(def, 'superior_esquerdo')).toBe(Math.round(base * fator));
       });
-      // o Elemento 04 vale 210 na base justamente por ser mais estreito, e essa
-      // diferença tem de sobreviver à redução
-      expect(elementInkWidth(findJournalElement('elemento_04'), 'superior_esquerdo')).toBe(126);
     });
 
     it('o mesmo canto de cima é menor que o de baixo no desenho renderizado', () => {
