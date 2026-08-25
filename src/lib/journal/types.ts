@@ -6,7 +6,7 @@
  * escolhe apenas a *função* do texto, nunca fonte/cor/tamanho.
  */
 
-import type { JournalCornerKey, JournalElementKey } from './elements';
+import { JOURNAL_CORNER_KEYS, type JournalCornerKey, type JournalElementKey } from './elements';
 
 export type JournalTemplate =
   | 'capa'
@@ -159,12 +159,12 @@ export type JournalBlock =
   | JournalStatBlock;
 
 /**
- * Forma orgânica ancorada num canto inferior da folha.
+ * Forma orgânica ancorada num canto da folha.
  *
- * Escolher uma forma na biblioteca aplica o par — mesma silhueta nos dois
- * cantos, espelhada conforme o lado. Depois disso cada lado é independente: dá
- * para trocar a cor de um só, ou remover um e manter o outro. Escala,
- * ancoragem e espelhamento continuam sendo do sistema.
+ * Escolher uma forma na biblioteca veste os quatro cantos — mesma silhueta,
+ * espelhada conforme o lado e invertida em cima. Depois disso cada canto é
+ * independente: dá para trocar a cor de um só, ou remover um e manter os
+ * outros. Escala, ancoragem e espelhamento continuam sendo do sistema.
  */
 export interface JournalDecoration {
   element: JournalElementKey;
@@ -172,23 +172,25 @@ export interface JournalDecoration {
   color: JournalColorKey;
 }
 
-/** Cor inicial das duas formas — a pessoa ajusta cada lado depois. */
+/** Cor inicial das quatro formas — a pessoa ajusta cada canto depois. */
 export const DEFAULT_DECORATION_COLOR: JournalColorKey = 'areia';
 
-/** Uma escolha na biblioteca vale para os dois cantos. */
-export const createDecorationPair = (element: JournalElementKey): JournalDecoration[] => [
-  { element, corner: 'inferior_esquerdo', color: DEFAULT_DECORATION_COLOR },
-  { element, corner: 'inferior_direito', color: DEFAULT_DECORATION_COLOR },
-];
+/** Uma escolha na biblioteca vale para os quatro cantos. */
+export const createDecorationSet = (element: JournalElementKey): JournalDecoration[] =>
+  JOURNAL_CORNER_KEYS.map((corner) => ({
+    element,
+    corner,
+    color: DEFAULT_DECORATION_COLOR,
+  }));
 
 export interface JournalPage {
   id: string;
   template: JournalTemplate;
   blocks: JournalBlock[];
   /**
-   * No máximo duas, uma por canto. Fora de `blocks` de propósito: blocos fluem
-   * na grade de 6 colunas, e estas são ancoradas nos cantos — misturá-las faria
-   * a forma perder a âncora e virar elemento móvel.
+   * No máximo quatro, uma por canto. Fora de `blocks` de propósito: blocos
+   * fluem na grade de 6 colunas, e estas são ancoradas nos cantos — misturá-las
+   * faria a forma perder a âncora e virar elemento móvel.
    */
   decorations?: JournalDecoration[];
 }

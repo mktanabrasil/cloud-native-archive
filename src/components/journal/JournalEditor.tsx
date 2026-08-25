@@ -46,7 +46,7 @@ import {
   JOURNAL_PAPER_KEYS,
   JOURNAL_PAPER_LABELS,
   TEMPLATE_LABELS,
-  createDecorationPair,
+  createDecorationSet,
   journalPaper,
   type BlockSpan,
   type JournalBlock,
@@ -69,7 +69,11 @@ import {
 import { rowSiblings } from '@/lib/journal/rows';
 import { JournalElementLibrary } from './JournalElementLibrary';
 import { JournalDecorationProperties } from './JournalDecorationProperties';
-import type { JournalCornerKey, JournalElementKey } from '@/lib/journal/elements';
+import {
+  JOURNAL_CORNER_KEYS,
+  type JournalCornerKey,
+  type JournalElementKey,
+} from '@/lib/journal/elements';
 import { newsUnitName, profileUnitForNewsUnit } from '@/lib/news/units';
 import { UnitBadge } from './UnitBadge';
 
@@ -339,7 +343,7 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
   );
 
   /**
-   * As formas valem para o jornal inteiro: toda operação regrava as duas em
+   * As formas valem para o jornal inteiro: toda operação regrava as quatro em
    * todas as páginas. Entra no histórico e no autosave como qualquer edição.
    */
   const setDecorations = useCallback(
@@ -349,32 +353,34 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
     [mutatePages],
   );
 
-  /** Escolher na biblioteca aplica a mesma forma nos dois cantos, em todas as páginas. */
-  const addDecorationPair = useCallback(
+  /** Escolher na biblioteca aplica a mesma forma nos quatro cantos, em todas as páginas. */
+  const addDecorationSet = useCallback(
     (element: JournalElementKey) => {
-      setDecorations(createDecorationPair(element));
+      setDecorations(createDecorationSet(element));
       setSelectedBlockId(null);
-      setSelectedCorner('inferior_esquerdo');
+      setSelectedCorner(JOURNAL_CORNER_KEYS[0]);
     },
     [setDecorations],
   );
 
   /**
-   * Com um lado removido, repõe só o que falta — mantendo a forma do lado que
-   * sobrou, para não desfazer um ajuste já feito.
+   * Com cantos removidos, repõe só o que falta — mantendo as formas que
+   * sobraram, para não desfazer um ajuste de cor já feito. De quebra devolve a
+   * lista à ordem canônica dos cantos.
    */
-  const restoreMissingDecoration = useCallback(() => {
+  const restoreMissingDecorations = useCallback(() => {
     const remaining = decorations[0];
-    if (!remaining || decorations.length > 1) return;
-    const corner: JournalCornerKey =
-      remaining.corner === 'inferior_esquerdo' ? 'inferior_direito' : 'inferior_esquerdo';
-    const restored: JournalDecoration = {
-      element: remaining.element,
-      corner,
-      color: DEFAULT_DECORATION_COLOR,
-    };
+    if (!remaining || decorations.length >= JOURNAL_CORNER_KEYS.length) return;
+    const byCorner = new Map(decorations.map((decoration) => [decoration.corner, decoration]));
     setDecorations(
-      corner === 'inferior_esquerdo' ? [restored, remaining] : [remaining, restored],
+      JOURNAL_CORNER_KEYS.map(
+        (corner) =>
+          byCorner.get(corner) ?? {
+            element: remaining.element,
+            corner,
+            color: DEFAULT_DECORATION_COLOR,
+          },
+      ),
     );
   }, [decorations, setDecorations]);
 
@@ -954,13 +960,18 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
                 </>
               )}
               <div className="col-span-2">
-                {decorations.length === 0 && <JournalElementLibrary onPick={addDecorationPair} />}
-                {decorations.length === 1 && (
-                  <Button variant="outline" size="sm" className="w-full" onClick={restoreMissingDecoration}>
-                    <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Repor forma no outro canto
+                {decorations.length === 0 && <JournalElementLibrary onPick={addDecorationSet} />}
+                {decorations.length > 0 && decorations.length < JOURNAL_CORNER_KEYS.length && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={restoreMissingDecorations}
+                  >
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Repor formas que faltam
                   </Button>
                 )}
-                {decorations.length === 2 && (
+                {decorations.length === JOURNAL_CORNER_KEYS.length && (
                   <Button variant="outline" size="sm" className="w-full" disabled>
                     <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Formas ANA aplicadas
                   </Button>

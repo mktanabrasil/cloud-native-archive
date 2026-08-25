@@ -6,16 +6,16 @@ import { cn } from '@/lib/utils';
 import { JOURNAL_ELEMENTS, type JournalElementKey } from '@/lib/journal/elements';
 
 interface Props {
-  /** Aplica a forma escolhida nos dois cantos. */
+  /** Aplica a forma escolhida nos quatro cantos. */
   onPick: (element: JournalElementKey) => void;
 }
 
 /**
  * Biblioteca das formas — a escolha é visual, não por nome.
  *
- * Uma escolha aplica o par: mesma silhueta nos dois cantos inferiores,
- * espelhada conforme o lado. Depois disso cada lado vira um item independente
- * na lista de conteúdo.
+ * Uma escolha veste os quatro cantos: mesma silhueta, espelhada conforme o lado
+ * e invertida em cima. Depois disso cada canto vira um item independente na
+ * lista de conteúdo.
  */
 export function JournalElementLibrary({ onPick }: Props) {
   const [open, setOpen] = useState(false);
@@ -33,7 +33,7 @@ export function JournalElementLibrary({ onPick }: Props) {
             Escolher forma
           </p>
           <p className="mt-0.5 text-[10px] text-muted-foreground">
-            Entra nos dois cantos, em todas as páginas.
+            Entra nos quatro cantos, em todas as páginas.
           </p>
         </div>
 
@@ -68,8 +68,9 @@ export function JournalElementLibrary({ onPick }: Props) {
         </div>
 
         <p className="text-[10px] leading-relaxed text-muted-foreground">
-          Canto esquerdo e canto direito, espelhadas automaticamente. Valem para o jornal inteiro; a
-          cor de cada lado é ajustada depois.
+          Cantos de cima e de baixo, espelhadas automaticamente — em cima, de cabeça para baixo e
+          menores, para não disputar com o cabeçalho. Valem para o jornal inteiro; a cor de cada
+          canto é ajustada depois.
         </p>
       </PopoverContent>
     </Popover>

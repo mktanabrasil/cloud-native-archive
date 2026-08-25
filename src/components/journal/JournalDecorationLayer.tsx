@@ -2,13 +2,14 @@ import {
   elementBleed,
   elementInkWidth,
   findJournalElement,
+  isTopCorner,
   shouldMirror,
   type JournalElementDef,
 } from '@/lib/journal/elements';
 import { journalColor, type JournalDecoration } from '@/lib/journal/types';
 
 interface Props {
-  /** Até duas — uma por canto inferior. */
+  /** Até quatro — uma por canto. */
   decorations?: JournalDecoration[];
 }
 
@@ -22,16 +23,21 @@ interface Props {
 function toDataUrl(
   element: JournalElementDef,
   mirrored: boolean,
+  flipped: boolean,
   fill: string,
   width: number,
   height: number,
 ): string {
-  const [x, , viewWidth] = element.viewBox.split(' ').map(Number);
+  const [x, y, viewWidth, viewHeight] = element.viewBox.split(' ').map(Number);
   const paths = element.paths.map((d) => `<path d="${d}" fill="${fill}"/>`).join('');
-  // espelho em torno do centro horizontal do viewBox
-  const inner = mirrored
-    ? `<g transform="translate(${2 * x + viewWidth},0) scale(-1,1)">${paths}</g>`
-    : paths;
+  // espelho em torno do centro do viewBox: horizontal troca o lado, vertical
+  // vira a forma de cabeça para baixo para ela nascer da borda de cima
+  const inner =
+    mirrored || flipped
+      ? `<g transform="translate(${mirrored ? 2 * x + viewWidth : 0},` +
+        `${flipped ? 2 * y + viewHeight : 0}) scale(${mirrored ? -1 : 1},${flipped ? -1 : 1})">` +
+        `${paths}</g>`
+      : paths;
   // `width`/`height` no próprio documento: sem eles o SVG não tem tamanho
   // intrínseco, e o navegador rasteriza numa dimensão arbitrária — o desenho
   // sai deformado na exportação, ainda que o `<img>` tenha as medidas certas.
@@ -45,9 +51,14 @@ function toDataUrl(
  * Camada decorativa da folha — sempre atrás do conteúdo editorial.
  *
  * Precisa ficar dentro de um container cuja borda inferior coincida com o topo
- * da faixa institucional: a forma é ancorada em `bottom: -1px` e o
- * `overflow-hidden` do pai absorve esse pixel. É o que garante encosto sem
- * folga branca em qualquer zoom, e sem cobrir a faixa.
+ * da faixa institucional: a forma é ancorada em `bottom: -1px` — ou `top: -1px`
+ * nos cantos de cima — e o `overflow-hidden` do pai absorve esse pixel. É o que
+ * garante encosto sem folga branca em qualquer zoom, e sem cobrir a faixa.
+ *
+ * As formas de cima passam por trás do cabeçalho: a camada é `z-0` e o
+ * cabeçalho `z-10`. A sobreposição é inevitável — o logo começa a 48px da borda
+ * e a forma nasce no zero —, e é por isso que elas entram reduzidas
+ * (`ELEMENT_INK_WIDTH_TOP`).
  *
  * A forma sai como `<img>`, e não como `<svg>` inline, por causa da exportação:
  * o html2canvas descarta SVG inline e `background-image` que fiquem abaixo da
@@ -63,11 +74,13 @@ export function JournalDecorationLayer({ decorations }: Props) {
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
       {decorations.map((decoration) => {
         const element = findJournalElement(decoration.element);
-        const width = elementInkWidth(element);
+        const width = elementInkWidth(element, decoration.corner);
         const height = Math.round(width / element.ratio);
         const bleed = elementBleed(element);
-        const anchor =
-          decoration.corner === 'inferior_esquerdo' ? { left: -bleed } : { right: -bleed };
+        const top = isTopCorner(decoration.corner);
+        const side = decoration.corner.endsWith('esquerdo')
+          ? { left: -bleed }
+          : { right: -bleed };
 
         return (
           <img
@@ -75,6 +88,7 @@ export function JournalDecorationLayer({ decorations }: Props) {
             src={toDataUrl(
               element,
               shouldMirror(element, decoration.corner),
+              top,
               journalColor(decoration.color),
               width,
               height,
@@ -83,7 +97,7 @@ export function JournalDecorationLayer({ decorations }: Props) {
             width={width}
             height={height}
             className="absolute"
-            style={{ bottom: -1, ...anchor }}
+            style={{ ...(top ? { top: -1 } : { bottom: -1 }), ...side }}
           />
         );
       })}
