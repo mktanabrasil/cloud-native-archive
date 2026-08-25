@@ -1,7 +1,7 @@
 /**
  * Formas orgânicas ANA — biblioteca fechada do Jornal Institucional.
  *
- * Cinco silhuetas, aplicadas aos pares nos cantos inferiores. A pessoa escolhe
+ * Cinco silhuetas, aplicadas aos quatro cantos da folha. A pessoa escolhe
  * forma, canto e cor; escala, ancoragem e espelhamento são do sistema. Isso
  * mantém a variedade dentro da identidade sem abrir espaço para diagramação
  * livre.
@@ -26,7 +26,11 @@ export type JournalElementKey =
   | 'elemento_05';
 
 /** Cantos onde uma forma pode ser ancorada. */
-export type JournalCornerKey = 'inferior_esquerdo' | 'inferior_direito';
+export type JournalCornerKey =
+  | 'superior_esquerdo'
+  | 'superior_direito'
+  | 'inferior_esquerdo'
+  | 'inferior_direito';
 
 export interface JournalElementDef {
   key: JournalElementKey;
@@ -111,6 +115,8 @@ export const findJournalElement = (key: JournalElementKey): JournalElementDef =>
   JOURNAL_ELEMENTS.find((e) => e.key === key) ?? JOURNAL_ELEMENTS[0];
 
 export const JOURNAL_CORNER_LABELS: Record<JournalCornerKey, string> = {
+  superior_esquerdo: 'Superior esquerdo',
+  superior_direito: 'Superior direito',
   inferior_esquerdo: 'Inferior esquerdo',
   inferior_direito: 'Inferior direito',
 };
@@ -119,6 +125,19 @@ export const JOURNAL_CORNER_KEYS = Object.keys(JOURNAL_CORNER_LABELS) as Journal
 
 /** Ocupação leve — a escala padrão, validada em mockup. */
 export const ELEMENT_INK_WIDTH = 250;
+
+/**
+ * Medida das formas de cima — 60% da de baixo.
+ *
+ * Os dois pares não disputam o mesmo espaço: embaixo não há nada até a faixa
+ * institucional, então a forma pode ter a presença cheia. Em cima ela divide a
+ * faixa com o logo e o texto do cabeçalho, e na medida da base cobria os dois.
+ *
+ * Reduzir não elimina a sobreposição — o logo começa a 48px da borda e a forma
+ * nasce no zero, então qualquer largura visível passa por trás dele. O que a
+ * redução resolve é o quanto ela avança folha adentro.
+ */
+export const ELEMENT_INK_WIDTH_TOP = 150;
 
 /**
  * Sangria para fora da borda lateral — hoje zero, e por um motivo técnico, não
@@ -132,21 +151,35 @@ export const ELEMENT_INK_WIDTH = 250;
  */
 export const ELEMENT_BLEED = 0;
 
+export const isTopCorner = (corner: JournalCornerKey): boolean =>
+  corner.startsWith('superior');
+
 /**
  * Largura e sangria efetivas da forma.
  *
  * Silhuetas diferentes não toleram a mesma ancoragem: cortar a parede de uma
  * massa sólida é inofensivo, mas cortar o pico de uma onda amputa o desenho.
  * Por isso cada forma pode declarar os seus valores.
+ *
+ * A redução do topo é proporcional, não um segundo número fixo: o Elemento 04
+ * já vale 210 em vez de 250 porque a onda dele é fina, e essa diferença tem de
+ * sobreviver à redução.
  */
-export const elementInkWidth = (element: JournalElementDef): number =>
-  element.inkWidth ?? ELEMENT_INK_WIDTH;
+export const elementInkWidth = (
+  element: JournalElementDef,
+  corner: JournalCornerKey,
+): number => {
+  const base = element.inkWidth ?? ELEMENT_INK_WIDTH;
+  return isTopCorner(corner)
+    ? Math.round(base * (ELEMENT_INK_WIDTH_TOP / ELEMENT_INK_WIDTH))
+    : base;
+};
 
 export const elementBleed = (element: JournalElementDef): number =>
   element.bleed ?? ELEMENT_BLEED;
 
 const cornerSide = (corner: JournalCornerKey) =>
-  corner === 'inferior_esquerdo' ? 'esquerda' : 'direita';
+  corner.endsWith('esquerdo') ? 'esquerda' : 'direita';
 
 /**
  * Espelha só quando o canto pedido difere do lado nativo da forma. As silhuetas
