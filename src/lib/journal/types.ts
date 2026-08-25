@@ -239,7 +239,6 @@ export interface JournalRecord {
   pages: JournalPage[];
   /** Fundo da folha. Nulo nos jornais anteriores a este campo ser gravado. */
   paper: string | null;
-  cover_url: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

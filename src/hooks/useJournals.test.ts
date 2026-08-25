@@ -124,7 +124,6 @@ describe('useJournals', () => {
         status: 'finalizado',
         pages: [],
         paper: 'branco',
-        cover_url: null,
         created_by: null,
         created_at: '',
         updated_at: '',
