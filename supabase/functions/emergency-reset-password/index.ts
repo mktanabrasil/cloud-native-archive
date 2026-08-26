@@ -1,65 +1,34 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+/**
+ * Porta desativada.
+ *
+ * Esta função trocava a senha de qualquer conta a partir do e-mail, sem provar
+ * que quem pediu era o dono: a única checagem era se o e-mail existia em
+ * `profiles`. Quem soubesse um e-mail entrava na conta — inclusive nas de
+ * administrador. O formulário de login chamava isso quando a pessoa digitava o
+ * próprio e-mail no campo de senha.
+ *
+ * A redefinição legítima continua existindo por outro caminho: o link enviado
+ * por e-mail (`resetPassword` no AuthContext), que só chega a quem tem a caixa
+ * de entrada.
+ *
+ * O corpo foi removido em vez de o arquivo ser apagado de propósito: a função
+ * publicada não some do Supabase quando o arquivo sai do repositório. Enquanto
+ * a versão antiga estiver no ar, a porta segue aberta — é preciso republicar
+ * esta ou excluí-la pelo painel.
+ */
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-Deno.serve(async (req) => {
+Deno.serve((req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const body = await req.json();
-    const { email, newPassword } = body;
-
-    if (!email || !newPassword || newPassword.length < 6) {
-      return new Response(JSON.stringify({ error: 'Dados inválidos.' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    // Verify if user exists in profiles
-    const { data: profile, error: profileErr } = await adminClient
-      .from('profiles')
-      .select('user_id')
-      .eq('email', email)
-      .single();
-
-    if (profileErr || !profile) {
-      return new Response(JSON.stringify({ error: 'Usuário não encontrado.' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Update password
-    const { error: updateErr } = await adminClient.auth.admin.updateUserById(profile.user_id, {
-      password: newPassword,
-      email_confirm: true,
-    });
-
-    if (updateErr) {
-      return new Response(JSON.stringify({ error: 'Erro ao atualizar senha.' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: 'Erro interno.' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
+  return new Response(
+    JSON.stringify({ error: 'Esta redefinição foi desativada. Use "Esqueceu a senha?" para receber o link por e-mail.' }),
+    { status: 410, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+  );
 });

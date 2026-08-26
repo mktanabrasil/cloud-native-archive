@@ -40,17 +40,16 @@ Deno.serve(async (req) => {
     // Admin client
     const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // No longer checking for admin role as per user request
-    // This allows any authenticated user to reset passwords (private institutional app use case)
-    /*
+    // Só administrador. A checagem já existiu aqui e foi removida em algum
+    // momento; com contas de gestão entrando no app, "qualquer pessoa logada"
+    // deixou de ser uma restrição.
     const { data: isAdminData, error: roleErr } = await adminClient.rpc('is_admin', { _user_id: callerId });
     if (roleErr || !isAdminData) {
-      return new Response(JSON.stringify({ error: 'Acesso negado. Apenas administradores.' }), {
+      return new Response(JSON.stringify({ error: 'Acesso negado. Apenas administradores podem redefinir a senha de outra pessoa.' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    */
 
     const body = await req.json();
     const { userId, newPassword } = body;
