@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Edit2, Code2, Copy, Check, UserCheck, UserPlus, UserX, Clock, ShieldCheck, Shield, Eye, RefreshCw, KeyRound, UserCog, AlertTriangle, Trash2, ChevronDown, History, Rocket, ArrowLeft, FlaskConical } from 'lucide-react';
+import { Search, Edit2, Code2, Copy, Check, UserCheck, UserPlus, UserX, Clock, ShieldCheck, Shield, Eye, RefreshCw, KeyRound, UserCog, AlertTriangle, Trash2, ChevronDown, History, Rocket, ArrowLeft, FlaskConical, Building2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import BulkActionBar from '@/components/BulkActionBar';
 import PageHeader from '@/components/PageHeader';
@@ -1051,10 +1051,25 @@ export default function UsersPage() {
                             </Badge>
                           </div>
                           <div className="flex flex-col gap-3">
-                            <Badge variant="outline" className="gap-1 w-fit">
-                              {ROLE_ICONS[req.requested_role]}
-                              {ROLE_LABELS[req.requested_role] || req.requested_role}
-                            </Badge>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="outline" className="gap-1 w-fit">
+                                {ROLE_ICONS[req.requested_role]}
+                                {ROLE_LABELS[req.requested_role] || req.requested_role}
+                              </Badge>
+                              {/* A unidade pedida fica à vista: é ela que decide qual
+                                  jornal a pessoa vai enxergar, e quem aprova precisa
+                                  conferir antes — não depois. */}
+                              {req.requested_unit ? (
+                                <Badge variant="secondary" className="gap-1 w-fit">
+                                  <Building2 className="h-3 w-3" />
+                                  {req.requested_unit}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="w-fit border-amber-400 text-amber-700 dark:text-amber-300">
+                                  Sem unidade
+                                </Badge>
+                              )}
+                            </div>
                             {isManager && (
                               <div className="flex gap-2">
                                 <Button

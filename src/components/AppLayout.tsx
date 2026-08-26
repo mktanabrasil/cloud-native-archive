@@ -47,7 +47,7 @@ export default function AppLayout() {
   }, [hideLoginParam]);
   
   const { isAuthenticated, signOut, user } = useAuth();
-  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing } = useUserRole();
+  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal } = useUserRole();
   const { eligible: betaEligible, rawEnabled: betaOn, toggleBeta } = useBetaPreference();
   const isEmbedded = useIsEmbedded();
   // Na porta de entrada a tela inteira é do card de acesso: sem sessão o menu
@@ -66,6 +66,9 @@ export default function AppLayout() {
         // Regra para páginas escondidas (não aparecem no menu, acessadas por outra página)
         if (item.hidden) return false;
         
+        // Antes do `marketingOnly`: o Jornal tem regra própria, e a gestão de
+        // unidade entra nele sem entrar nas outras páginas da comunicação.
+        if (item.journalOnly) return canAccessJournal;
         if (item.marketingOnly) return isMarketing;
         if (item.adminOnly) return isAdmin || isAdminEmail;
         if (item.managerOnly) return isAdmin || isManager || isAdminEmail;
