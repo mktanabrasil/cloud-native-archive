@@ -217,6 +217,14 @@
   animation-fill-mode: both;
 }
 
+/* A linha de cima existe por contraste, não por enfeite: no tema claro a
+   areia (1,23:1), o amarelo (1,40:1) e o verde-água (1,41:1) ficam abaixo de
+   1,5:1 contra o fundo e somem. Sem um limite superior definido, a faixa lê
+   como dois retalhos soltos — coral e azul — em vez de uma barra inteira. No
+   escuro todas passam de 6:1, e a linha só arremata. */
+.ana-fio { border-top: 1px solid rgba(31, 34, 31, 0.22); }
+.dark .ana-fio { border-top-color: rgba(255, 255, 255, 0.16); }
+
 /* Por último de propósito: o fio assina a tela depois que marca e cartão
    assentam. Entrando junto, viraria fundo; entrando no fim, vira gesto. */
 .ana-enter-fio  { animation-name: ana-fio-in; animation-duration: 720ms; animation-delay: 420ms; }
