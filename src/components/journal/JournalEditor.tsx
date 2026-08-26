@@ -557,7 +557,9 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
       Promise.race([promessa, new Promise((resolve) => setTimeout(resolve, 3000))]);
     await Promise.all(
       Array.from(raiz.querySelectorAll('img')).map((img) =>
-        limite(img.decode().catch(() => undefined)),
+        // `decode` não existe em todo ambiente, e chamá-lo direto lança um
+        // `TypeError` síncrono que o `.catch()` não pega.
+        limite(typeof img.decode === 'function' ? img.decode().catch(() => undefined) : Promise.resolve()),
       ),
     );
   };
@@ -567,6 +569,7 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
     escala: number,
     embutidas: Map<string, string>,
     recorte?: (doc: Document) => void,
+    semMedida?: Set<string>,
   ) =>
     html2canvas(node, {
       scale: escala,
@@ -576,11 +579,13 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
       height: A4_H,
       windowWidth: A4_W,
       windowHeight: A4_H,
+      // O html2canvas espera o `onclone` quando ele devolve promessa, e é
+      // disso que depende a espera pelo `decode()` lá dentro.
       onclone: (doc) => {
         // O recorte vem antes: ele fala a linguagem da folha original, e o
         // `prepararClone` troca imagem por `div` no meio do caminho.
         recorte?.(doc);
-        prepararClone(doc, embutidas);
+        return prepararClone(doc, embutidas, semMedida);
       },
     });
 
@@ -592,12 +597,17 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
    * liberada assim que vira JPEG — sem isso a exportação de um jornal longo
    * morre no meio, e é isso que o `data:,` de folha vazia denuncia.
    */
-  const montarPdf = async (escala: number, qualidadeJpeg: number, embutidas: Map<string, string>) => {
+  const montarPdf = async (
+    escala: number,
+    qualidadeJpeg: number,
+    embutidas: Map<string, string>,
+    semMedida: Set<string>,
+  ) => {
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const nodes = Array.from(exportRef.current!.querySelectorAll<HTMLElement>('[data-journal-page]'));
 
     for (let index = 0; index < nodes.length; index += 1) {
-      const canvas = await rasterizar(nodes[index], escala, embutidas);
+      const canvas = await rasterizar(nodes[index], escala, embutidas, undefined, semMedida);
 
       let imagem: string;
       try {
@@ -641,6 +651,10 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
     try {
       await aguardarImagens(exportRef.current);
       const embutidas = await embutirImagens(exportRef.current);
+      // Imagem que o html2canvas não consegue medir não é desenhada, e não
+      // avisa. Se acontecer, o usuário fica sabendo em vez de descobrir
+      // olhando o PDF.
+      const semMedida = new Set<string>();
       const escalas = ESCALAS[quality];
       const qualidadeJpeg = quality === 'impressao' ? 0.98 : 0.9;
 
@@ -652,7 +666,7 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
           // anterior no ciclo seguinte, e sem isso a segunda tentativa nasce no
           // mesmo aperto que derrubou a primeira.
           if (ultimoErro) await new Promise((resolve) => setTimeout(resolve, 400));
-          pdf = await montarPdf(escala, qualidadeJpeg, embutidas);
+          pdf = await montarPdf(escala, qualidadeJpeg, embutidas, semMedida);
           if (escala !== escalas[0]) {
             toast.warning('PDF gerado em resolução menor: a folha cheia não coube na memória do aparelho.');
           }
@@ -666,7 +680,13 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
       if (!pdf) throw ultimoErro ?? new Error('nenhuma escala funcionou');
 
       pdf.save(`${name || 'jornal'}.pdf`);
-      toast.success('PDF gerado.');
+      if (semMedida.size) {
+        toast.warning(`Saiu sem: ${Array.from(semMedida).join(', ')}.`, {
+          description: 'O navegador não conseguiu medir essas imagens, e o que não tem medida não é desenhado.',
+        });
+      } else {
+        toast.success('PDF gerado.');
+      }
     } catch (error) {
       // O erro precisa aparecer: esta exportação já falhou em silêncio vezes
       // demais, e sem a mensagem não há como saber qual camada quebrou.

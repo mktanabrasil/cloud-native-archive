@@ -1,41 +1,20 @@
 /**
- * Reescreve as fontes das imagens da folha como data URI **base64**, para o
- * canvas da exportação nunca ficar contaminado.
+ * Baixa as fotos da folha e devolve cada uma como data URI **base64**.
  *
- * O `toDataURL` que fecha a exportação morre com `SecurityError: The operation
- * is insecure` se qualquer coisa desenhada no canvas não for de origem
- * confiável — e ele derruba o PDF inteiro, não só o desenho culpado. Duas
- * fontes de contaminação chegam nessa folha:
+ * A foto vira `background-image` na exportação, e aí quem a carrega é o
+ * próprio html2canvas. Ele só marca a imagem como anônima quando a fonte casa
+ * com `data:image/*;base64,` (`isInlineBase64Image`) ou quando é remota com
+ * `useCORS` — e o comentário no fonte dele explica o preço de não marcar:
+ * *"ios safari 10.3 taints canvas with data urls unless crossOrigin is set to
+ * anonymous"*. Canvas contaminado derruba o PDF inteiro no `toDataURL`.
  *
- * 1. **Foto do Supabase é origem cruzada.** O Safari do iPhone tem um defeito
- *    antigo de cache: a resposta guardada sem CORS é reaproveitada no pedido
- *    com CORS, e a imagem carrega mas contamina o canvas.
- * 2. **Data URI que não seja base64 não recebe `crossOrigin`.** A checagem do
- *    html2canvas é `data:image/*;base64,`; percent-encoded não casa. O
- *    comentário no fonte dele, ao lado da linha, diz o porquê: *"ios safari
- *    10.3 taints canvas with data urls unless crossOrigin is set to anonymous"*.
- *
- * Base64 embutido resolve as duas: não é origem nenhuma, e é a forma que o
- * html2canvas marca como anônima.
+ * Só fotos remotas passam por aqui. O logo e as Formas ANA continuam `<img>`
+ * com o `src` original: **trocar o `src` de uma `<img>` no clone zera o
+ * `naturalWidth`, e o html2canvas não desenha o que não consegue medir** —
+ * foi assim que as formas sumiram do PDF de 26/08.
  */
 
-/** Já está na forma que o html2canvas reconhece — nada a fazer. */
-const JA_BASE64 = /^data:image\/[^;,]+;base64,/i;
-
-/** Data URI de SVG em texto (percent-encoded), a forma que contamina. */
-const SVG_EM_TEXTO = /^data:image\/svg\+xml[^;,]*,/i;
-
-const paraBase64 = (texto: string) => {
-  const bytes = new TextEncoder().encode(texto);
-  let binario = '';
-  bytes.forEach((byte) => {
-    binario += String.fromCharCode(byte);
-  });
-  return btoa(binario);
-};
-
-/** SVG como data URI base64 — a forma que o html2canvas marca como anônima. */
-export const svgDataUri = (svg: string) => `data:image/svg+xml;base64,${paraBase64(svg)}`;
+const REMOTA = /^https?:/i;
 
 const blobParaDataUri = (blob: Blob) =>
   new Promise<string>((resolve, reject) => {
@@ -51,11 +30,10 @@ interface Opcoes {
 }
 
 /**
- * Devolve, para cada fonte de imagem da folha, a versão embutida em base64.
+ * Devolve, para cada foto remota da folha, a versão embutida em base64.
  *
- * Chave e valor são strings de `src`: o `onclone` da exportação troca uma pela
- * outra. Fonte que não puder ser baixada fica de fora do mapa — a folha ainda
- * sai pela URL original, que é exatamente o comportamento de antes.
+ * Foto que não puder ser baixada fica de fora do mapa — a folha ainda sai pela
+ * URL original, que é exatamente o comportamento de antes.
  */
 export async function embutirImagens(raiz: HTMLElement, opcoes: Opcoes = {}) {
   const buscar = opcoes.buscar ?? fetch;
@@ -64,24 +42,19 @@ export async function embutirImagens(raiz: HTMLElement, opcoes: Opcoes = {}) {
   const fontes = new Set<string>();
   raiz.querySelectorAll('img').forEach((img) => {
     const src = img.currentSrc || img.src;
-    if (src && !JA_BASE64.test(src)) fontes.add(src);
+    if (REMOTA.test(src)) fontes.add(src);
   });
 
   await Promise.all(
     Array.from(fontes).map(async (fonte) => {
       try {
-        if (SVG_EM_TEXTO.test(fonte)) {
-          const texto = decodeURIComponent(fonte.slice(fonte.indexOf(',') + 1));
-          mapa.set(fonte, svgDataUri(texto));
-          return;
-        }
         // `cache: 'reload'` é o ponto: sem ele o Safari devolve a resposta que
         // guardou sem CORS, que é justamente a que contamina.
         const resposta = await buscar(fonte, { mode: 'cors', cache: 'reload' });
         if (!resposta.ok) throw new Error(`HTTP ${resposta.status}`);
         mapa.set(fonte, await blobParaDataUri(await resposta.blob()));
       } catch (erro) {
-        console.warn('[jornal] não consegui embutir a imagem', fonte, erro);
+        console.warn('[jornal] não consegui embutir a foto', fonte, erro);
       }
     }),
   );
