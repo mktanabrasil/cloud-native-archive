@@ -104,13 +104,21 @@ export function useJournals() {
     [refresh],
   );
 
+  /**
+   * Duplica um jornal, opcionalmente para outra unidade.
+   *
+   * O destino existe por causa da leitura entre unidades: ver um jornal bom de
+   * outra unidade e não poder partir dele seria uma limitação sem motivo. A
+   * cópia nasce na unidade de quem duplicou, e por isso é dela para editar —
+   * a RLS aceita a inserção justamente porque `profile_unit` é o da pessoa.
+   */
   const duplicate = useCallback(
-    async (journal: JournalRecord) => {
+    async (journal: JournalRecord, destino?: { unitId: string | null; profileUnit: string | null }) => {
       if (!user) return;
       await supabase.from('journals').insert({
         name: `${journal.name} (cópia)`,
-        unit_id: journal.unit_id,
-        profile_unit: journal.profile_unit,
+        unit_id: destino ? destino.unitId : journal.unit_id,
+        profile_unit: destino ? destino.profileUnit : journal.profile_unit,
         reference_month: journal.reference_month,
         status: 'rascunho',
         pages: journal.pages as any,

@@ -35,6 +35,15 @@ export interface UnitBadgeProps extends Omit<ComponentPropsWithoutRef<'div'>, 'o
   hint?: string;
   /** Quando ausente, o selo é apenas informativo — sem seletor de troca. */
   onChangeUnit?: (unitId: string) => void;
+  /**
+   * O que a troca significa aqui.
+   *
+   * `mover` (padrão) é o do editor: o jornal passa a pertencer a outra
+   * unidade. `ver` é o da listagem: muda só o que está na tela, e fora da
+   * própria unidade tudo abre em leitura. Eram a mesma frase, e uma delas
+   * estava mentindo.
+   */
+  modo?: 'mover' | 'ver';
 }
 
 /**
@@ -47,6 +56,7 @@ export function UnitBadge({
   label = 'Minha unidade',
   hint,
   onChangeUnit,
+  modo = 'mover',
   className,
   ...rest
 }: UnitBadgeProps) {
@@ -91,7 +101,9 @@ export function UnitBadge({
     <AlertDialog open={!!pending} onOpenChange={(open) => !open && setPending(null)}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Trocar a unidade?</AlertDialogTitle>
+          <AlertDialogTitle>
+            {modo === 'ver' ? 'Ver os jornais de outra unidade?' : 'Trocar a unidade?'}
+          </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-3">
               <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
@@ -104,10 +116,18 @@ export function UnitBadge({
                   <span className="font-semibold text-primary">{newsUnitName(pending)}</span>
                 </p>
               </div>
-              <p>
-                O conteúdo desta tela passará a pertencer à unidade escolhida e a listagem mostrará
-                os jornais dessa unidade.
-              </p>
+              {modo === 'ver' ? (
+                <p>
+                  Fora da sua unidade, tudo abre em <strong>somente leitura</strong>: dá para abrir,
+                  ler e exportar, e duplicar para a sua unidade se quiser aproveitar algum — mas não
+                  editar. Sua unidade continua a mesma.
+                </p>
+              ) : (
+                <p>
+                  O conteúdo desta tela passará a pertencer à unidade escolhida e a listagem mostrará
+                  os jornais dessa unidade.
+                </p>
+              )}
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>

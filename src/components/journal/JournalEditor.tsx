@@ -106,6 +106,25 @@ interface Props {
       paper?: JournalPaperKey;
     },
   ) => Promise<boolean>;
+  /**
+   * Jornal de outra unidade: dá para ler e exportar, não para editar.
+   *
+   * A garantia real é a RLS — o banco recusa a escrita de qualquer jeito. Este
+   * modo existe para a tela não mentir: sem ele, a pessoa arrastaria blocos,
+   * veria a folha mudar e perderia tudo ao sair, porque o autosave falha em
+   * silêncio.
+   */
+  somenteLeitura?: boolean;
+  /** Só aparece no modo leitura: a cópia nasce na unidade de quem duplicou. */
+  onDuplicarParaMinhaUnidade?: () => void;
+  /**
+   * Mover o jornal para outra unidade é da comunicação, não da gestão.
+   *
+   * Para a gestora o seletor sequer aparece: a RLS recusaria a troca (o
+   * `WITH CHECK` da política de UPDATE), e um controle que só falha é pior
+   * do que controle nenhum.
+   */
+  podeTrocarUnidade?: boolean;
 }
 
 /** Largura da miniatura na barra lateral; a altura decorre da proporção A4. */
@@ -134,7 +153,16 @@ function pageStatus(page: JournalPage): 'completa' | 'pendente' {
   return pending ? 'pendente' : 'completa';
 }
 
-export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Props) {
+export function JournalEditor({
+  journal,
+  saving,
+  savedAt,
+  onBack,
+  onSave,
+  somenteLeitura = false,
+  onDuplicarParaMinhaUnidade,
+  podeTrocarUnidade = false,
+}: Props) {
   const [name, setName] = useState(journal.name);
   const [pages, setPages] = useState<JournalPage[]>(journal.pages?.length ? journal.pages : [createPage('capa')]);
   const [activePageId, setActivePageId] = useState<string>(pages[0].id);
@@ -203,13 +231,13 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
 
   // Autosave com 2s de inatividade.
   useEffect(() => {
-    if (!dirtyRef.current) return;
+    if (somenteLeitura || !dirtyRef.current) return;
     const timer = setTimeout(() => {
       onSave(journal.id, { name, pages, paper });
       dirtyRef.current = false;
     }, 2000);
     return () => clearTimeout(timer);
-  }, [name, pages, paper, journal.id, onSave]);
+  }, [somenteLeitura, name, pages, paper, journal.id, onSave]);
 
   /**
    * Alterna entre rascunho e finalizado, e grava na hora em vez de esperar o
@@ -220,10 +248,11 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
    * deixaria a edição presa como finalizada.
    */
   const toggleStatus = useCallback(() => {
+    if (somenteLeitura) return;
     const next = status === 'finalizado' ? 'rascunho' : 'finalizado';
     setStatus(next);
     onSave(journal.id, { status: next });
-  }, [status, journal.id, onSave]);
+  }, [somenteLeitura, status, journal.id, onSave]);
 
   const setManualZoom = useCallback((updater: (current: number) => number) => {
     setFitMode(null);
@@ -232,12 +261,15 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
 
 
   const mutatePages = useCallback((updater: (prev: JournalPage[]) => JournalPage[]) => {
+    // Um portão para todas as edições: mover, redimensionar, trocar texto,
+    // incluir e excluir bloco ou página passam por aqui.
+    if (somenteLeitura) return;
     dirtyRef.current = true;
     undoStack.current = [...undoStack.current.slice(-49), pagesRef.current];
     redoStack.current = [];
     setHistoryTick((t) => t + 1);
     setPages(updater);
-  }, []);
+  }, [somenteLeitura]);
 
   const undo = useCallback(() => {
     const previous = undoStack.current.pop();
@@ -702,6 +734,24 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
     // svh e nao vh: no celular o vh mede a tela sem as barras do navegador,
     // e a area util do editor vazava para fora.
     <div className="flex h-[calc(100svh-7rem)] flex-col gap-3">
+      {somenteLeitura && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/40">
+          <Lock className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+              Somente leitura · jornal {unitName ? `da ${unitName}` : 'de outra unidade'}
+            </p>
+            <p className="text-xs text-amber-800 dark:text-amber-300/80">
+              Você pode ler e exportar. Para trabalhar em cima dele, duplique para a sua unidade.
+            </p>
+          </div>
+          {onDuplicarParaMinhaUnidade && (
+            <Button size="sm" onClick={onDuplicarParaMinhaUnidade}>
+              <Copy className="mr-1.5 h-3.5 w-3.5" /> Duplicar para minha unidade
+            </Button>
+          )}
+        </div>
+      )}
       <div className="flex flex-col gap-2 border-b border-border pb-3">
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="ghost" size="sm" onClick={onBack}>
@@ -709,12 +759,15 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
           </Button>
           <Input
             value={name}
+            readOnly={somenteLeitura}
             onChange={(event) => {
+              if (somenteLeitura) return;
               dirtyRef.current = true;
               setName(event.target.value);
             }}
-            className="h-9 w-56 text-base font-semibold"
+            className={cn('h-9 w-56 text-base font-semibold', somenteLeitura && 'border-transparent bg-transparent px-0')}
           />
+          {!somenteLeitura && (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 text-[11px] font-medium text-accent-foreground">
             {saving ? (
               <>
@@ -726,11 +779,13 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
               </>
             )}
           </span>
+          )}
           <Badge className={STATUS_BADGE_CLASSES[status]} variant="secondary">
             {STATUS_LABELS[status]}
           </Badge>
           {/* Some da barra no celular e reaparece no menu: em 375px a barra
               quebrava em duas linhas e comia altura do canvas. */}
+          {!somenteLeitura && (
           <Button
             variant={status === 'finalizado' ? 'outline' : 'default'}
             size="sm"
@@ -747,6 +802,7 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
               </>
             )}
           </Button>
+          )}
           <div className="ml-auto flex items-center gap-1.5">
             <Button
               size="sm"
@@ -818,8 +874,10 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
           variant="line"
           unitId={journal.unit_id}
           label="Jornal da unidade"
-          onChangeUnit={(unitId) =>
-            onSave(journal.id, { unitId, profileUnit: profileUnitForNewsUnit(unitId) })
+          onChangeUnit={
+            podeTrocarUnidade && !somenteLeitura
+              ? (unitId) => onSave(journal.id, { unitId, profileUnit: profileUnitForNewsUnit(unitId) })
+              : undefined
           }
         />
       </div>
@@ -1153,7 +1211,7 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
                   edition={journal.reference_month || ''}
                   unitName={unitName}
                   unitId={journal.unit_id}
-                  interactive
+                  interactive={!somenteLeitura}
                   selectedBlockId={selectedBlockId}
                   onSelectBlock={setSelectedBlockId}
                   showGrid={!layoutLocked}
@@ -1172,7 +1230,7 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
 
 
         {/* Conteúdo da página */}
-        {(!compacto || abaMovel === 'conteudo') && (
+        {!somenteLeitura && (!compacto || abaMovel === 'conteudo') && (
         <aside className="flex flex-col gap-3 overflow-y-auto rounded-lg border border-border bg-card p-3">
           {layoutLocked && (
             <p className="rounded-md bg-muted/60 px-2.5 py-2 text-[11px] text-muted-foreground">

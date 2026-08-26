@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useCallback, useMemo, useState } from 'react';
 import { Plus, Copy, Trash2, Pencil, Lock, Loader2, Newspaper, Search } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -81,7 +82,7 @@ function suggestName(unitId: string | null, month: string): string {
 }
 
 export default function JournalPage() {
-  const { canAccessJournal, loading: roleLoading, unit: profileUnit, userName } = useUserRole();
+  const { canAccessJournal, isMarketing, loading: roleLoading, unit: profileUnit, userName } = useUserRole();
   const { journals, loading, saving, savedAt, create, save, remove, duplicate } = useJournals();
 
   const defaultUnitId = useMemo(
@@ -90,6 +91,21 @@ export default function JournalPage() {
   );
   const [activeUnitId, setActiveUnitId] = useState<string | null>(defaultUnitId);
   useEffect(() => setActiveUnitId(defaultUnitId), [defaultUnitId]);
+
+  /**
+   * De quem é o jornal. A comunicação edita todos; a gestão, só os da unidade
+   * dela. A garantia é a RLS — isto aqui é para a tela dizer a verdade antes
+   * de o banco recusar.
+   */
+  const podeEditar = useCallback(
+    (journal: JournalRecord) =>
+      isMarketing || (!!profileUnit && journal.profile_unit === profileUnit),
+    [isMarketing, profileUnit],
+  );
+
+  /** A unidade em que ela pode criar: a dela. */
+  const minhaUnidade = { unitId: defaultUnitId, profileUnit: profileUnit ?? null };
+  const naMinhaUnidade = isMarketing || activeUnitId === defaultUnitId;
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -191,6 +207,18 @@ export default function JournalPage() {
           savedAt={savedAt}
           onBack={() => setEditingId(null)}
           onSave={save}
+          somenteLeitura={!podeEditar(editing as JournalRecord)}
+          podeTrocarUnidade={isMarketing}
+          onDuplicarParaMinhaUnidade={
+            defaultUnitId
+              ? async () => {
+                  await duplicate(editing as JournalRecord, minhaUnidade);
+                  setEditingId(null);
+                  setActiveUnitId(defaultUnitId);
+                  toast.success('Cópia criada na sua unidade, como rascunho.');
+                }
+              : undefined
+          }
         />
       </div>
     );
@@ -207,17 +235,25 @@ export default function JournalPage() {
             Aqui ficam os jornais da sua unidade.
           </p>
         </div>
-        <Button onClick={openCreate} className="shrink-0">
-          <Plus className="mr-1.5 h-4 w-4" /> Criar jornal da unidade
-        </Button>
+        {/* Criar fora da própria unidade seria recusado pela RLS. */}
+        {naMinhaUnidade && (
+          <Button onClick={openCreate} className="shrink-0">
+            <Plus className="mr-1.5 h-4 w-4" /> Criar jornal da unidade
+          </Button>
+        )}
       </header>
 
       <UnitBadge
         variant="banner"
         unitId={activeUnitId}
-        label="Minha unidade"
-        hint="Todos os jornais desta página pertencem a esta unidade."
+        label={naMinhaUnidade ? 'Minha unidade' : 'Vendo outra unidade'}
+        hint={
+          naMinhaUnidade
+            ? 'Todos os jornais desta página pertencem a esta unidade.'
+            : 'Somente leitura: dá para abrir, exportar e duplicar para a sua unidade.'
+        }
         onChangeUnit={setActiveUnitId}
+        modo={isMarketing ? 'mover' : 'ver'}
       />
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -381,17 +417,35 @@ export default function JournalPage() {
                     <Button size="sm" onClick={() => setEditingId(journal.id)}>
                       <Pencil className="mr-1.5 h-3.5 w-3.5" /> Abrir
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => duplicate(journal)}>
-                      <Copy className="mr-1.5 h-3.5 w-3.5" /> Duplicar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive"
-                      onClick={() => setPendingDelete(journal)}
-                    >
-                      <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Excluir
-                    </Button>
+                    {podeEditar(journal) ? (
+                      <>
+                        <Button size="sm" variant="outline" onClick={() => duplicate(journal)}>
+                          <Copy className="mr-1.5 h-3.5 w-3.5" /> Duplicar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive"
+                          onClick={() => setPendingDelete(journal)}
+                        >
+                          <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Excluir
+                        </Button>
+                      </>
+                    ) : (
+                      defaultUnitId && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={async () => {
+                            await duplicate(journal, minhaUnidade);
+                            setActiveUnitId(defaultUnitId);
+                            toast.success('Cópia criada na sua unidade, como rascunho.');
+                          }}
+                        >
+                          <Copy className="mr-1.5 h-3.5 w-3.5" /> Duplicar para minha unidade
+                        </Button>
+                      )
+                    )}
                   </div>
                 </div>
               </article>
