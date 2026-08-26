@@ -7,15 +7,12 @@ const espiao = vi.hoisted(() => ({
   remove: vi.fn(),
   duplicate: vi.fn(),
   journals: [] as unknown[],
+  /** Quem está olhando a página. Cada teste ajusta o que precisa. */
+  papel: { canAccessJournal: true, loading: false, unit: null as string | null, userName: 'Diretora de teste' },
 }));
 
 vi.mock('@/hooks/useUserRole', () => ({
-  useUserRole: () => ({
-    isMarketing: true,
-    loading: false,
-    unit: null,
-    userName: 'Diretora de teste',
-  }),
+  useUserRole: () => espiao.papel,
 }));
 
 vi.mock('@/hooks/useJournals', () => ({
@@ -56,6 +53,7 @@ const dialogo = () => screen.findByRole('alertdialog');
 beforeEach(() => {
   espiao.remove.mockClear();
   espiao.journals = [jornal()];
+  espiao.papel = { canAccessJournal: true, loading: false, unit: null, userName: 'Diretora de teste' };
 });
 
 /**
@@ -96,5 +94,29 @@ describe('exclusão de jornal', () => {
 
     await waitFor(() => expect(espiao.remove).toHaveBeenCalledTimes(1));
     expect(espiao.remove).toHaveBeenCalledWith('jornal-1');
+  });
+});
+
+/**
+ * A página é da comunicação e da gestão de unidade — e de mais ninguém.
+ *
+ * O portão vive em `canAccessJournal` (`useUserRole`) e é o mesmo que a rota
+ * consulta. Ele ficou separado do `MarketingRoute` de propósito: aquele
+ * protege Auditoria, Manual de Design, Portal da Transparência e Widgets, e
+ * afrouxá-lo para receber a gestão abriria as quatro juntas.
+ */
+describe('quem entra na página', () => {
+  it('mostra o jornal para quem tem acesso', async () => {
+    render(<JournalPage />);
+    expect(await screen.findByText(/jornal da unidade/i)).toBeInTheDocument();
+  });
+
+  it('barra quem não tem, sem mostrar edição alguma', async () => {
+    espiao.papel = { ...espiao.papel, canAccessJournal: false };
+
+    render(<JournalPage />);
+
+    expect(await screen.findByText(/área da comunicação/i)).toBeInTheDocument();
+    expect(screen.queryByText(/jornal da unidade/i)).not.toBeInTheDocument();
   });
 });

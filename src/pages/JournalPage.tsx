@@ -81,7 +81,7 @@ function suggestName(unitId: string | null, month: string): string {
 }
 
 export default function JournalPage() {
-  const { isMarketing, loading: roleLoading, unit: profileUnit, userName } = useUserRole();
+  const { canAccessJournal, loading: roleLoading, unit: profileUnit, userName } = useUserRole();
   const { journals, loading, saving, savedAt, create, save, remove, duplicate } = useJournals();
 
   const defaultUnitId = useMemo(
@@ -145,14 +145,14 @@ export default function JournalPage() {
 
   if (roleLoading) return null;
 
-  if (!isMarketing) {
+  if (!canAccessJournal) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-4 px-4 py-24 text-center">
         <Lock className="h-12 w-12 text-muted-foreground" />
         <h1 className="text-xl font-semibold text-foreground">Área da comunicação</h1>
         <p className="text-sm text-muted-foreground">
-          Esta área é da equipe de comunicação da sua unidade. Fale com a coordenação para liberar
-          seu acesso.
+          O Jornal é da equipe de comunicação e da gestão de cada unidade. Fale com a coordenação
+          para liberar seu acesso.
         </p>
       </div>
     );
