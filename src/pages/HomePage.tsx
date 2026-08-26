@@ -2,51 +2,8 @@ import { AccessForm } from '@/components/auth/AccessForm';
 import { TestModeTrigger } from '@/components/TestModeBanner';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
-import {
-  findJournalElement,
-  shouldMirror,
-  type JournalCornerKey,
-} from '@/lib/journal/elements';
-import { journalColor } from '@/lib/journal/types';
+import { InstitutionalFooterBar } from '@/components/news/InstitutionalFooterBar';
 import logoImg from '@/assets/logo.png';
-
-/** Forma escolhida: é a única cujo par espelhado fecha os dois cantos com a mesma silhueta. */
-const SHAPE = findJournalElement('elemento_04');
-
-/**
- * Forma ANA ancorada num canto inferior.
- *
- * Um padrão só, sem número escolhido a olho por breakpoint: a largura sai de
- * `clamp(140px, 20vw, 260px)`, mesma cor e mesma opacidade dos dois lados, e o
- * espelhamento vem de `shouldMirror()` — a mesma regra do Jornal. Aqui é
- * `<svg>` inline: a restrição de `<img>` existe por causa do html2canvas na
- * exportação do PDF, e esta tela não é exportada.
- */
-function AnaShape({ corner, animate }: { corner: JournalCornerKey; animate: boolean }) {
-  const [x, , viewWidth] = SHAPE.viewBox.split(' ').map(Number);
-  const paths = SHAPE.paths.map((d, i) => <path key={i} d={d} fill={journalColor('verde_agua')} />);
-
-  return (
-    <svg
-      viewBox={SHAPE.viewBox}
-      aria-hidden="true"
-      className={cn(
-        // O piso de 88px é calibrado pela menor tela em uso, e não pela média:
-        // a 320px, duas formas de 140px somavam 88% da largura e a moldura de
-        // canto virava faixa. Com 88px dá 55%, e nada muda de 440px para cima.
-        'ana-shape pointer-events-none absolute bottom-0 h-auto w-[clamp(88px,20vw,260px)]',
-        animate && 'ana-enter-shape',
-      )}
-      style={corner === 'inferior_esquerdo' ? { left: 0 } : { right: 0 }}
-    >
-      {shouldMirror(SHAPE, corner) ? (
-        <g transform={`translate(${2 * x + viewWidth},0) scale(-1,1)`}>{paths}</g>
-      ) : (
-        paths
-      )}
-    </svg>
-  );
-}
 
 interface HomePageProps {
   /**
@@ -69,12 +26,12 @@ interface HomePageProps {
  *
  * A altura é `100svh` — a *small viewport height*, a menor que a tela assume,
  * com as barras do navegador visíveis. Com `100vh` (o `min-h-screen`) o rodapé
- * caía embaixo da barra e levava as formas junto: medido a 320×568, elas
- * ficavam 74px fora da tela mesmo antes de qualquer barra aparecer.
+ * caía embaixo da barra e levava consigo o que estivesse ancorado nele: medido
+ * a 320×568, ficava 74px fora da tela antes de qualquer barra aparecer.
  *
- * Por isso as formas são ancoradas neste contêiner de altura fixa, e o miolo
- * vive num filho que rola. Se o card não couber — e numa tela de 568px ele não
- * cabe — ele rola, em vez de empurrar as formas para fora.
+ * Por isso o fio é ancorado neste contêiner de altura fixa, e o miolo vive num
+ * filho que rola. Se o card não couber — e numa tela de 568px ele não cabe —
+ * ele rola, em vez de empurrar o fio para fora.
  */
 export default function HomePage({ leaving = false }: HomePageProps) {
   /**
@@ -90,18 +47,30 @@ export default function HomePage({ leaving = false }: HomePageProps) {
         leaving ? 'ana-gate-leaving fixed inset-0 z-50' : 'relative',
       )}
     >
-      <AnaShape corner="inferior_esquerdo" animate={animarEntrada} />
-      <AnaShape corner="inferior_direito" animate={animarEntrada} />
+      {/* Assinatura institucional: a mesma faixa de cinco cores que fecha o
+          rodapé de todo jornal e informativo, reduzida a um fio. Ao contrário
+          das formas orgânicas — vocabulário do Jornal —, ela vale para a
+          instituição inteira, e por isso pode assinar a porta do app. */}
+      <InstitutionalFooterBar
+        className={cn(
+          // A altura repetida no `md:` não é descuido: o componente traz
+          // `h-3 md:h-4`, e o twMerge só derruba a classe sem variante — sem
+          // repetir, o fio engrossaria para 16px no desktop.
+          'absolute inset-x-0 bottom-0 z-0 h-[6px] md:h-[6px]',
+          animarEntrada && 'ana-enter-fio',
+        )}
+      />
 
       <div className="relative z-10 h-full overflow-y-auto overscroll-contain">
         {/* `min-h-full` com `justify-center`: centra quando sobra espaço e cresce
             quando falta, sem o topo virar área inalcançável do scroll.
-            A compensação óptica é proporcional — os 104px fixos foram calibrados
-            em telas de 660px e sozinhos já estouravam uma de 568px. */}
+            O recuo de baixo encolheu junto com as formas: ele existia para o
+            cartão não encostar num desenho de até 260px de altura, e agora só
+            precisa dar respiro e livrar os botões flutuantes do canto. */}
         <div
           className={cn(
             'ana-gate-core flex min-h-full w-full flex-col items-center justify-center gap-6',
-            'p-4 pb-[clamp(1rem,13vh,6.5rem)]',
+            'p-4 pb-[clamp(1rem,7vh,3.5rem)]',
           )}
         >
           <div className={cn('flex items-center gap-2.5', animarEntrada && 'ana-enter-brand')}>
