@@ -49,6 +49,7 @@ import {
   diagnosticarContaminacao,
   embutirImagens,
 } from '@/lib/journal/embutirImagens';
+import { prepararClone } from '@/lib/journal/prepararClone';
 
 import {
   DEFAULT_DECORATION_COLOR,
@@ -559,63 +560,6 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
         limite(img.decode().catch(() => undefined)),
       ),
     );
-  };
-
-  /**
-   * Deixa o clone pronto para virar imagem. Vale para a exportação e para o
-   * diagnóstico — os dois precisam da folha exatamente igual.
-   */
-  const prepararClone = (doc: Document, embutidas: Map<string, string>) => {
-    // Primeiro de tudo: toda imagem passa a apontar para a cópia embutida
-    // em base64. É o que impede o canvas de ser contaminado — ver o
-    // porquê em `embutirImagens`. As trocas abaixo já leem o src novo.
-    doc.querySelectorAll('img').forEach((img) => {
-      const embutida = embutidas.get(img.currentSrc || img.src);
-      if (embutida) img.src = embutida;
-    });
-
-    // html2canvas colapsa parte do espaçamento vertical do grid; reforçamos
-    // o respiro acima das imagens para o PDF ficar igual ao preview.
-    doc.querySelectorAll<HTMLElement>('[data-block-kind="image"]').forEach((el) => {
-      el.style.paddingTop = '8px';
-    });
-    // Garantia final para o logo: as fotos saem no PDF do celular porque
-    // viram `background-image`, carregada pelo proprio html2canvas. O logo
-    // entra no mesmo caminho, em vez de depender de <img> ser desenhada.
-    doc.querySelectorAll<HTMLImageElement>('img[data-ana-logo]').forEach((img) => {
-      const largura = Number(img.getAttribute('width')) || img.width;
-      const altura = Number(img.getAttribute('height')) || img.height;
-      if (!largura || !altura) return;
-      const substituto = doc.createElement('div');
-      substituto.className = img.className;
-      substituto.style.cssText = img.style.cssText;
-      substituto.style.width = `${largura}px`;
-      substituto.style.height = `${altura}px`;
-      substituto.style.backgroundImage = `url("${img.src}")`;
-      substituto.style.backgroundSize = '100% 100%';
-      substituto.style.backgroundRepeat = 'no-repeat';
-      img.replaceWith(substituto);
-    });
-
-    // html2canvas não suporta `object-fit`: ele estica a foto até o box,
-    // deformando-a. Trocamos cada <img> por um bloco com background-size
-    // cover/center, que reproduz exatamente o enquadramento do preview.
-    doc.querySelectorAll<HTMLImageElement>('[data-block-kind="image"] img').forEach((img) => {
-      const src = img.currentSrc || img.src;
-      if (!src) return;
-      const rect = img.getBoundingClientRect();
-      const replacement = doc.createElement('div');
-      replacement.className = img.className;
-      replacement.style.cssText = img.style.cssText;
-      replacement.style.width = '100%';
-      replacement.style.height = rect.height > 0 ? `${rect.height}px` : '100%';
-      replacement.style.backgroundImage = `url("${src}")`;
-      replacement.style.backgroundSize = 'cover';
-      replacement.style.backgroundPosition = 'center';
-      replacement.style.backgroundRepeat = 'no-repeat';
-      replacement.style.borderRadius = '15px';
-      img.replaceWith(replacement);
-    });
   };
 
   const rasterizar = (
