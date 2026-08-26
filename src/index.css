@@ -116,9 +116,13 @@
 
   html, body, #root {
     height: 100%;
-    /* Prevent rogue horizontal scrolling on mobile/tablet */
+    /* Trava a rolagem horizontal indesejada no celular e no tablet. */
     overflow-x: hidden;
-    max-width: 100vw;
+    /* 100% e nao 100vw: a unidade vw inclui a barra de rolagem, a area visivel
+       nao. Aqui o teto nunca chega a agir -- um bloco nao quer ser mais largo
+       que o pai --, mas a unidade errada vira bug no dia em que isto virar um
+       `width`, e ai o que estiver ancorado na direita passa da tela. */
+    max-width: 100%;
   }
 
   /* Public embed mode: page grows naturally, only window scrolls */
