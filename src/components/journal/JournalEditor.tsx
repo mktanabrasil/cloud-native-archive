@@ -42,6 +42,8 @@ import { cn } from '@/lib/utils';
 import { A4_H, A4_W, JournalPageView } from './JournalPageView';
 import { JournalPropertiesPanel } from './JournalPropertiesPanel';
 import { JournalBlockList } from './JournalBlockList';
+import { JournalPageStrip } from './JournalPageStrip';
+import { useIsCompact } from '@/hooks/useIsCompact';
 
 import {
   DEFAULT_DECORATION_COLOR,
@@ -132,6 +134,12 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
   /** Rótulo de conclusão da edição. Não trava nada — só informa. */
   const [status, setStatus] = useState<JournalRecord['status']>(journal.status);
   const [exporting, setExporting] = useState(false);
+  /**
+   * Abaixo de 1024px canvas e painel nao cabem lado a lado, e empilhar os dois
+   * deixa ambos pequenos demais para servir. Uma coisa de cada vez rende mais.
+   */
+  const compacto = useIsCompact();
+  const [abaMovel, setAbaMovel] = useState<'folha' | 'conteudo'>('folha');
   const exportRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const dirtyRef = useRef(false);
@@ -165,7 +173,9 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
       const byHeight = (height - 48) / A4_H;
       const next =
         fitMode === 'width' ? byWidth : fitMode === 'height' ? byHeight : Math.min(byWidth, byHeight);
-      setZoom(Math.max(0.3, Math.min(1.5, Number(next.toFixed(3)))));
+      // Piso baixo de proposito: numa tela estreita o ajuste pede menos que
+      // 0,3, e travar ai fazia a folha transbordar a propria area.
+      setZoom(Math.max(0.15, Math.min(1.5, Number(next.toFixed(3)))));
     };
     recompute();
     const observer = new ResizeObserver(recompute);
@@ -199,7 +209,7 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
 
   const setManualZoom = useCallback((updater: (current: number) => number) => {
     setFitMode(null);
-    setZoom((current) => Math.max(0.3, Math.min(1.5, updater(current))));
+    setZoom((current) => Math.max(0.15, Math.min(1.5, updater(current))));
   }, []);
 
 
@@ -593,7 +603,9 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
   };
 
   return (
-    <div className="flex h-[calc(100vh-7rem)] flex-col gap-3">
+    // svh e nao vh: no celular o vh mede a tela sem as barras do navegador,
+    // e a area util do editor vazava para fora.
+    <div className="flex h-[calc(100svh-7rem)] flex-col gap-3">
       <div className="flex flex-col gap-2 border-b border-border pb-3">
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="ghost" size="sm" onClick={onBack}>
@@ -621,9 +633,12 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
           <Badge className={STATUS_BADGE_CLASSES[status]} variant="secondary">
             {STATUS_LABELS[status]}
           </Badge>
+          {/* Some da barra no celular e reaparece no menu: em 375px a barra
+              quebrava em duas linhas e comia altura do canvas. */}
           <Button
             variant={status === 'finalizado' ? 'outline' : 'default'}
             size="sm"
+            className="hidden sm:inline-flex"
             onClick={toggleStatus}
           >
             {status === 'finalizado' ? (
@@ -637,7 +652,12 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
             )}
           </Button>
           <div className="ml-auto flex items-center gap-1.5">
-            <Button size="sm" onClick={() => exportPdf('impressao')} disabled={exporting}>
+            <Button
+              size="sm"
+              className="hidden sm:inline-flex"
+              onClick={() => exportPdf('impressao')}
+              disabled={exporting}
+            >
               {exporting ? (
                 <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
               ) : (
@@ -647,11 +667,30 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
             </Button>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" aria-label="Mais opções de exportação">
+                <Button variant="outline" size="sm" aria-label="Mais opções">
                   ⋯
                 </Button>
               </PopoverTrigger>
               <PopoverContent align="end" className="w-56 space-y-1.5">
+                <div className="sm:hidden">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start"
+                    onClick={toggleStatus}
+                  >
+                    {status === 'finalizado' ? (
+                      <>
+                        <RotateCcw className="mr-1.5 h-4 w-4" /> Reabrir como rascunho
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="mr-1.5 h-4 w-4" /> Finalizar edição
+                      </>
+                    )}
+                  </Button>
+                  <div className="my-1.5 h-px bg-border" />
+                </div>
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Exportar
                 </p>
@@ -690,6 +729,51 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
       </div>
 
 
+
+      {compacto && (
+        <JournalPageStrip
+          pages={pages}
+          activePageId={activePageId}
+          onSelect={(id) => {
+            setActivePageId(id);
+            setSelectedBlockId(null);
+          }}
+          statusOf={pageStatus}
+          paperColor={paperColor}
+          edition={journal.reference_month || ''}
+          unitName={unitName}
+          unitId={journal.unit_id}
+        />
+      )}
+
+      {/* Ver a folha e editar o conteudo sao momentos diferentes. Numa tela
+          estreita eles se revezam: espremer os dois deixa ambos inuteis. */}
+      {compacto && (
+        <div
+          role="tablist"
+          aria-label="Areas do editor"
+          className="grid shrink-0 grid-cols-2 gap-1 rounded-lg border border-border bg-card p-1"
+        >
+          {([['folha', 'Folha'], ['conteudo', 'Conteudo']] as const).map(([chave, rotulo]) => (
+            <button
+              key={chave}
+              type="button"
+              role="tab"
+              aria-selected={abaMovel === chave}
+              onClick={() => setAbaMovel(chave)}
+              className={cn(
+                'rounded-md px-3 py-1.5 text-xs font-semibold transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                abaMovel === chave
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent/50',
+              )}
+            >
+              {rotulo}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden lg:grid-cols-[210px_1fr_300px]">
         {/* Miniaturas */}
@@ -776,6 +860,7 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
         </aside>
 
         {/* Canvas */}
+        {(!compacto || abaMovel === 'folha') && (
         <section className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
           <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-xs">
             <span className="font-medium text-muted-foreground">
@@ -987,9 +1072,11 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
             </div>
           </div>
         </section>
+        )}
 
 
         {/* Conteúdo da página */}
+        {(!compacto || abaMovel === 'conteudo') && (
         <aside className="flex flex-col gap-3 overflow-y-auto rounded-lg border border-border bg-card p-3">
           {layoutLocked && (
             <p className="rounded-md bg-muted/60 px-2.5 py-2 text-[11px] text-muted-foreground">
@@ -1090,6 +1177,7 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
             />
           )}
         </aside>
+        )}
       </div>
 
       {/* Container offscreen usado somente na exportação (paridade preview = PDF) */}
