@@ -4,7 +4,7 @@ import { InstitutionalFooterBar } from '@/components/news/InstitutionalFooterBar
 import { JournalDecorationLayer } from './JournalDecorationLayer';
 import { brandColorCount } from '@/lib/news/units';
 import { rowSiblings } from '@/lib/journal/rows';
-import { ANA_LOGO_DATA_URI, ANA_LOGO_SIZE } from '@/lib/anaLogo';
+import { ANA_LOGO_DATA_URI, anaLogoSize } from '@/lib/anaLogo';
 import {
   TEXT_STYLE_CLASSES,
   journalColor,
@@ -490,11 +490,11 @@ export function JournalPageView({
         <JournalDecorationLayer decorations={page.decorations} />
 
         <div className="relative z-10 flex items-center justify-between px-12 pt-10">
+          {/* Tamanho por atributo e sem object-fit: ver `anaLogoSize`. */}
           <img
             src={ANA_LOGO_DATA_URI}
             alt="ANA Brasil"
-            {...ANA_LOGO_SIZE}
-            className="h-9 w-auto object-contain"
+            {...anaLogoSize(36)}
             draggable={false}
           />
           <div className="text-right">
