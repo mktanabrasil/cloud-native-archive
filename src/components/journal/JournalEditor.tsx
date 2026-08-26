@@ -44,6 +44,7 @@ import { JournalPropertiesPanel } from './JournalPropertiesPanel';
 import { JournalBlockList } from './JournalBlockList';
 import { JournalPageStrip } from './JournalPageStrip';
 import { useIsCompact } from '@/hooks/useIsCompact';
+import { acharContaminante, embutirImagens } from '@/lib/journal/embutirImagens';
 
 import {
   DEFAULT_DECORATION_COLOR,
@@ -564,7 +565,7 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
    * liberada assim que vira JPEG — sem isso a exportação de um jornal longo
    * morre no meio, e é isso que o `data:,` de folha vazia denuncia.
    */
-  const montarPdf = async (escala: number, qualidadeJpeg: number) => {
+  const montarPdf = async (escala: number, qualidadeJpeg: number, embutidas: Map<string, string>) => {
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const nodes = Array.from(exportRef.current!.querySelectorAll<HTMLElement>('[data-journal-page]'));
 
@@ -578,6 +579,14 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
         windowWidth: A4_W,
         windowHeight: A4_H,
         onclone: (doc) => {
+          // Primeiro de tudo: toda imagem passa a apontar para a cópia embutida
+          // em base64. É o que impede o canvas de ser contaminado — ver o
+          // porquê em `embutirImagens`. As trocas abaixo já leem o src novo.
+          doc.querySelectorAll('img').forEach((img) => {
+            const embutida = embutidas.get(img.currentSrc || img.src);
+            if (embutida) img.src = embutida;
+          });
+
           // html2canvas colapsa parte do espaçamento vertical do grid; reforçamos
           // o respiro acima das imagens para o PDF ficar igual ao preview.
           doc.querySelectorAll<HTMLElement>('[data-block-kind="image"]').forEach((el) => {
@@ -649,6 +658,7 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
     setExporting(true);
     try {
       await aguardarImagens(exportRef.current);
+      const embutidas = await embutirImagens(exportRef.current);
       const escalas = ESCALAS[quality];
       const qualidadeJpeg = quality === 'impressao' ? 0.98 : 0.9;
 
@@ -660,13 +670,23 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
           // anterior no ciclo seguinte, e sem isso a segunda tentativa nasce no
           // mesmo aperto que derrubou a primeira.
           if (ultimoErro) await new Promise((resolve) => setTimeout(resolve, 400));
-          pdf = await montarPdf(escala, qualidadeJpeg);
+          pdf = await montarPdf(escala, qualidadeJpeg, embutidas);
           if (escala !== escalas[0]) {
             toast.warning('PDF gerado em resolução menor: a folha cheia não coube na memória do aparelho.');
           }
           break;
         } catch (erro) {
           ultimoErro = erro;
+          // Canvas contaminado não é falta de memória: repetir menor não
+          // adianta, e o que falta saber é de qual imagem veio.
+          if (erro instanceof DOMException && erro.name === 'SecurityError') {
+            const culpada = await acharContaminante(exportRef.current, embutidas);
+            throw new Error(
+              culpada
+                ? `imagem contaminou a folha: ${culpada}`
+                : `${erro.message} (canvas contaminado, mas nenhuma imagem isolada reproduziu)`,
+            );
+          }
         }
       }
       if (!pdf) throw ultimoErro ?? new Error('nenhuma escala funcionou');
