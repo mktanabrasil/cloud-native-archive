@@ -1,28 +1,43 @@
 import raw from '@/assets/ana-brasil-logo.svg?raw';
 
-/**
- * Tamanho intrínseco do logo, do `viewBox` do arquivo.
- *
- * Precisa ir nos atributos `width`/`height` de todo `<img>` que o use, mesmo
- * quando o CSS define outra altura. O motivo é a exportação em PDF.
- *
- * Com `h-9 w-auto` e sem esses atributos, a largura só existe depois que a
- * imagem carrega — medido, a caixa fica em **0 × 36** até lá. O html2canvas
- * monta um documento clonado e mede na hora: encontra largura zero e não
- * desenha nada, em silêncio. No celular isso acontece sempre; no desktop a
- * imagem já está decodificada do preview e a medida chega a tempo.
- *
- * Com os atributos o navegador conhece a proporção antes de qualquer
- * carregamento, e `w-auto` resolve para 90px na hora. É a mesma razão pela qual
- * as Formas ANA nunca sumiram do PDF: elas sempre declararam `width`/`height`.
- */
+/** Tamanho intrínseco, do `viewBox` do arquivo. */
 export const ANA_LOGO_SIZE = { width: 2206, height: 883 } as const;
 
+/** Cor única do desenho, hoje declarada via classe `.cls-2` no arquivo. */
+const TINTA = '#484848';
+
 /**
- * Logo como data URI, e não como arquivo servido pela rede.
+ * Normaliza o SVG do logo para a forma que o html2canvas sabe desenhar.
  *
- * Não é o que corrige o sumiço no PDF — isso são os atributos acima. É só uma
- * dependência a menos no caminho da exportação: uma requisição que não precisa
- * ser feita nem esperada. Custa cerca de 7 KB no bundle.
+ * O arquivo vem do Figma com três coisas que o exportador não digere bem, e
+ * nenhuma delas existe no SVG das Formas ANA — que nunca sumiram do PDF:
+ *
+ * 1. **Prólogo XML e DOCTYPE** apontando para um DTD externo na w3.org. Ao
+ *    desenhar num canvas, o navegador pode tentar resolver esse DTD e abortar.
+ * 2. **`<style>` interno com classes.** Folha de estilo dentro de SVG carregado
+ *    por `<img>` nem sempre é aplicada nesse caminho: o desenho existe, mas sai
+ *    sem preenchimento — invisível.
+ * 3. **Retângulos `.cls-1`** com `fill: none`, que só existem como respiro no
+ *    arquivo original e não pintam nada.
+ *
+ * A saída é estruturalmente igual à das formas: `<svg>` direto, sem defs, com
+ * `fill` em cada path.
  */
-export const ANA_LOGO_DATA_URI = `data:image/svg+xml,${encodeURIComponent(raw)}`;
+function normalizar(svg: string): string {
+  return svg
+    // 1. fora prólogo e DOCTYPE — mantém só a partir de `<svg`
+    .slice(svg.indexOf('<svg'))
+    // 2. fora o bloco de estilos
+    .replace(/<defs>[\s\S]*?<\/defs>/g, '')
+    // 3. fora os retângulos invisíveis
+    .replace(/<rect[^>]*class="cls-1"[^>]*\/>/g, '')
+    // 4. a classe vira atributo, como nas formas
+    .replace(/class="cls-2"/g, `fill="${TINTA}"`);
+}
+
+/**
+ * Logo como data URI já normalizado.
+ *
+ * Data URI, e não arquivo: uma requisição a menos no caminho da exportação.
+ */
+export const ANA_LOGO_DATA_URI = `data:image/svg+xml,${encodeURIComponent(normalizar(raw))}`;

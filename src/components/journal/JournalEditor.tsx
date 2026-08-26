@@ -512,10 +512,33 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
     });
   };
 
+  /**
+   * Espera as imagens da folha estarem decodificadas antes de rasterizar.
+   *
+   * O html2canvas desenha o que encontra no instante em que roda: imagem ainda
+   * não decodificada vira nada, sem erro. O contêiner de exportação vive fora
+   * da tela, e no celular o navegador adia a decodificação do que está longe —
+   * daí o logo sair no desktop e sumir no celular.
+   *
+   * O Informativo já fazia esta espera; o Jornal não fazia nenhuma. O limite
+   * por imagem existe para uma imagem quebrada não travar a exportação inteira.
+   */
+  const aguardarImagens = async (raiz: HTMLElement) => {
+    await document.fonts?.ready;
+    const limite = (promessa: Promise<unknown>) =>
+      Promise.race([promessa, new Promise((resolve) => setTimeout(resolve, 3000))]);
+    await Promise.all(
+      Array.from(raiz.querySelectorAll('img')).map((img) =>
+        limite(img.decode().catch(() => undefined)),
+      ),
+    );
+  };
+
   const exportPdf = async (quality: 'digital' | 'impressao') => {
     if (!exportRef.current) return;
     setExporting(true);
     try {
+      await aguardarImagens(exportRef.current);
       const scale = quality === 'impressao' ? 3 : 1.6;
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       const nodes = Array.from(exportRef.current.querySelectorAll<HTMLElement>('[data-journal-page]'));
