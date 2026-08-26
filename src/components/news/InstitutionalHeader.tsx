@@ -1,4 +1,4 @@
-import { ANA_LOGO_DATA_URI } from '@/lib/anaLogo';
+import { ANA_LOGO_DATA_URI, ANA_LOGO_SIZE } from '@/lib/anaLogo';
 import { cn } from '@/lib/utils';
 
 interface InstitutionalHeaderProps {
@@ -23,6 +23,7 @@ export function InstitutionalHeader({
         <img
           src={ANA_LOGO_DATA_URI}
           alt="ANA Brasil"
+          {...ANA_LOGO_SIZE}
           className="h-10 md:h-12 w-auto object-contain select-none"
           draggable={false}
         />

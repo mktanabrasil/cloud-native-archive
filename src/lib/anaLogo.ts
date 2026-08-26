@@ -1,21 +1,28 @@
 import raw from '@/assets/ana-brasil-logo.svg?raw';
 
 /**
- * Logo institucional como data URI, e não como arquivo servido pela rede.
+ * Tamanho intrínseco do logo, do `viewBox` do arquivo.
  *
- * O motivo é a exportação em PDF. O html2canvas desenha a partir do que já está
- * decodificado, e o contêiner de exportação vive em `left: -20000px` — bem fora
- * da tela. No celular, sob pressão de memória, o navegador adia ou descarta a
- * decodificação de imagens tão distantes: o `naturalWidth` fica em zero e o
- * logo some do PDF **em silêncio**, sem erro nenhum.
+ * Precisa ir nos atributos `width`/`height` de todo `<img>` que o use, mesmo
+ * quando o CSS define outra altura. O motivo é a exportação em PDF.
  *
- * Como data URI não há rede nem espera de decodificação. É o mesmo motivo pelo
- * qual as Formas ANA são montadas assim em `JournalDecorationLayer` — elas
- * sempre saíram no PDF, e o logo era o que faltava entrar nesse padrão.
+ * Com `h-9 w-auto` e sem esses atributos, a largura só existe depois que a
+ * imagem carrega — medido, a caixa fica em **0 × 36** até lá. O html2canvas
+ * monta um documento clonado e mede na hora: encontra largura zero e não
+ * desenha nada, em silêncio. No celular isso acontece sempre; no desktop a
+ * imagem já está decodificada do preview e a medida chega a tempo.
  *
- * O `?inline` do Vite não resolve: testado, o bundle continua apontando para o
- * arquivo. Daí o `?raw` com a montagem à mão.
+ * Com os atributos o navegador conhece a proporção antes de qualquer
+ * carregamento, e `w-auto` resolve para 90px na hora. É a mesma razão pela qual
+ * as Formas ANA nunca sumiram do PDF: elas sempre declararam `width`/`height`.
+ */
+export const ANA_LOGO_SIZE = { width: 2206, height: 883 } as const;
+
+/**
+ * Logo como data URI, e não como arquivo servido pela rede.
  *
- * Custo: cerca de 7 KB no bundle, contra uma requisição a menos.
+ * Não é o que corrige o sumiço no PDF — isso são os atributos acima. É só uma
+ * dependência a menos no caminho da exportação: uma requisição que não precisa
+ * ser feita nem esperada. Custa cerca de 7 KB no bundle.
  */
 export const ANA_LOGO_DATA_URI = `data:image/svg+xml,${encodeURIComponent(raw)}`;
