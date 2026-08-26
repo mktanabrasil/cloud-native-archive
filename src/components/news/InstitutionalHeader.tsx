@@ -1,4 +1,4 @@
-import { ANA_LOGO_DATA_URI, anaLogoSize } from '@/lib/anaLogo';
+import { anaLogo } from '@/lib/anaLogo';
 import { cn } from '@/lib/utils';
 
 interface InstitutionalHeaderProps {
@@ -21,11 +21,11 @@ export function InstitutionalHeader({
     >
       <div className="flex items-center justify-between gap-4 pb-4">
         {/* Largura explícita nos dois tamanhos, sem `auto` e sem
-            `object-fit`: ver o porquê em `anaLogoSize`. */}
+            `object-fit`: ver o porquê em `anaLogo`. */}
         <img
-          src={ANA_LOGO_DATA_URI}
+          {...anaLogo(48)}
           alt="ANA Brasil"
-          {...anaLogoSize(48)}
+          data-ana-logo="true"
           className="h-10 w-[100px] md:h-12 md:w-[120px] select-none"
           draggable={false}
         />

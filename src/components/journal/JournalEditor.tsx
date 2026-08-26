@@ -568,6 +568,24 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
             doc.querySelectorAll<HTMLElement>('[data-block-kind="image"]').forEach((el) => {
               el.style.paddingTop = '8px';
             });
+            // Garantia final para o logo: as fotos saem no PDF do celular porque
+            // viram `background-image`, carregada pelo proprio html2canvas. O logo
+            // entra no mesmo caminho, em vez de depender de <img> ser desenhada.
+            doc.querySelectorAll<HTMLImageElement>('img[data-ana-logo]').forEach((img) => {
+              const largura = Number(img.getAttribute('width')) || img.width;
+              const altura = Number(img.getAttribute('height')) || img.height;
+              if (!largura || !altura) return;
+              const substituto = doc.createElement('div');
+              substituto.className = img.className;
+              substituto.style.cssText = img.style.cssText;
+              substituto.style.width = `${largura}px`;
+              substituto.style.height = `${altura}px`;
+              substituto.style.backgroundImage = `url("${img.src}")`;
+              substituto.style.backgroundSize = '100% 100%';
+              substituto.style.backgroundRepeat = 'no-repeat';
+              img.replaceWith(substituto);
+            });
+
             // html2canvas não suporta `object-fit`: ele estica a foto até o box,
             // deformando-a. Trocamos cada <img> por um bloco com background-size
             // cover/center, que reproduz exatamente o enquadramento do preview.
