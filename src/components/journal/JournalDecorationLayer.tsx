@@ -94,6 +94,7 @@ export function JournalDecorationLayer({ decorations }: Props) {
               height,
             )}
             alt=""
+            data-ana-forma="true"
             width={width}
             height={height}
             className="absolute"
