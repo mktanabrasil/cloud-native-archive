@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { embutirImagens, svgDataUri } from './embutirImagens';
+import { diagnosticarContaminacao, embutirImagens, svgDataUri } from './embutirImagens';
 
 /**
  * O que importa aqui é uma coisa só: nenhuma imagem da folha pode chegar ao
@@ -62,5 +62,42 @@ describe('embutirImagens', () => {
 
     expect(mapa.size).toBe(0);
     expect(buscar).not.toHaveBeenCalled();
+  });
+});
+
+describe('diagnosticarContaminacao', () => {
+  const MARCACAO = `
+    <div data-journal-page>
+      <img data-ana-forma="true" src="data:image/svg+xml,%3Csvg%3E" />
+      <img data-ana-logo="true" src="data:image/svg+xml,%3Csvg%3E" />
+      <div data-block-kind="image"><img src="https://exemplo.co/a.jpg" /></div>
+      <p>texto</p>
+    </div>`;
+
+  /** Simula o aparelho: a folha só sai limpa quando o elemento sujo saiu. */
+  const rasterizadorSujoEm = (seletorSujo: string) => async (recorte: (doc: Document) => void) => {
+    const doc = document.implementation.createHTMLDocument();
+    doc.body.innerHTML = MARCACAO;
+    recorte(doc);
+    const aindaSujo = doc.querySelector(seletorSujo) !== null;
+    return {
+      width: 1,
+      height: 1,
+      toDataURL: () => {
+        if (aindaSujo) throw new DOMException('The operation is insecure.', 'SecurityError');
+        return 'data:image/png;base64,iVBORw0KGgo=';
+      },
+    } as unknown as HTMLCanvasElement;
+  };
+
+  it('nomeia a camada que contamina', async () => {
+    expect(await diagnosticarContaminacao(rasterizadorSujoEm('[data-ana-forma]'))).toBe('limpa sem formas');
+    expect(await diagnosticarContaminacao(rasterizadorSujoEm('[data-block-kind="image"] img'))).toBe(
+      'limpa sem fotos',
+    );
+  });
+
+  it('diz quando nem tirar toda imagem resolve — aí não é imagem', async () => {
+    expect(await diagnosticarContaminacao(rasterizadorSujoEm('p'))).toBe('suja mesmo sem imagem alguma');
   });
 });

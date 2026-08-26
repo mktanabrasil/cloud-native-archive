@@ -89,45 +89,62 @@ export async function embutirImagens(raiz: HTMLElement, opcoes: Opcoes = {}) {
   return mapa;
 }
 
-/**
- * Descobre qual imagem contaminou o canvas.
- *
- * Só roda depois que a folha já falhou: desenha cada fonte sozinha num canvas
- * de 1px e vê qual delas derruba o `toDataURL`. Sem isso, "The operation is
- * insecure" não diz de quem é a culpa — e foi essa falta de nome que fez o
- * caso do logo custar cinco rodadas.
- */
-export async function acharContaminante(raiz: HTMLElement, mapa: Map<string, string>) {
-  const fontes = new Set<string>();
-  raiz.querySelectorAll('img').forEach((img) => {
-    const src = img.currentSrc || img.src;
-    if (src) fontes.add(mapa.get(src) ?? src);
-  });
-
-  for (const fonte of fontes) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1;
-    canvas.height = 1;
-    const contexto = canvas.getContext('2d');
-    if (!contexto) return null;
-
-    try {
-      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-        const elemento = new Image();
-        // Mesma regra do html2canvas, para o teste valer alguma coisa.
-        if (JA_BASE64.test(fonte) || /^https?:/i.test(fonte)) elemento.crossOrigin = 'anonymous';
-        elemento.onload = () => resolve(elemento);
-        elemento.onerror = () => reject(new Error('não carregou'));
-        elemento.src = fonte;
-      });
-      contexto.drawImage(img, 0, 0, 1, 1);
-      canvas.toDataURL();
-    } catch (erro) {
-      if (erro instanceof DOMException && erro.name === 'SecurityError') {
-        return fonte.slice(0, 120);
-      }
-    }
+/** Erro de canvas contaminado — não adianta repetir em escala menor. */
+export class ErroDeContaminacao extends Error {
+  constructor(mensagem: string) {
+    super(mensagem);
+    this.name = 'ErroDeContaminacao';
   }
+}
 
-  return null;
+/**
+ * Camadas removidas uma a uma para achar a que contamina o canvas.
+ *
+ * A ordem vai da suspeita mais provável para a mais ampla: se a folha sair
+ * limpa sem as fotos, não faz diferença saber o que aconteceria sem o logo.
+ */
+const CAMADAS = [
+  { nome: 'fotos', seletor: '[data-block-kind="image"] img' },
+  { nome: 'logo', seletor: 'img[data-ana-logo]' },
+  { nome: 'formas', seletor: '[data-ana-forma]' },
+  { nome: 'imagem alguma', seletor: 'img' },
+] as const;
+
+/** Rasteriza a folha aplicando um recorte extra ao clone. */
+export type Rasterizar = (recorte: (doc: Document) => void) => Promise<HTMLCanvasElement>;
+
+const saiLimpa = async (rasterizar: Rasterizar, seletor: string) => {
+  try {
+    const canvas = await rasterizar((doc) => {
+      doc.querySelectorAll(seletor).forEach((elemento) => elemento.remove());
+    });
+    try {
+      canvas.toDataURL();
+      return true;
+    } finally {
+      canvas.width = 0;
+      canvas.height = 0;
+    }
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Descobre **qual camada** contamina o canvas, perguntando ao aparelho.
+ *
+ * Desenhar cada imagem sozinha num canvas de teste não reproduziu a
+ * contaminação: o que o Safari recusa aparece só no caminho real do
+ * html2canvas. Então a pergunta muda de "esta imagem contamina?" para "a folha
+ * sai limpa sem esta camada?" — mesma rasterização da exportação, só que
+ * miúda e com uma camada a menos por vez.
+ *
+ * Roda apenas depois da falha, e é a diferença entre um erro com dono e mais
+ * uma rodada de palpite.
+ */
+export async function diagnosticarContaminacao(rasterizar: Rasterizar) {
+  for (const camada of CAMADAS) {
+    if (await saiLimpa(rasterizar, camada.seletor)) return `limpa sem ${camada.nome}`;
+  }
+  return 'suja mesmo sem imagem alguma';
 }
