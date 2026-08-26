@@ -8,7 +8,13 @@ const espiao = vi.hoisted(() => ({
   duplicate: vi.fn(),
   journals: [] as unknown[],
   /** Quem está olhando a página. Cada teste ajusta o que precisa. */
-  papel: { canAccessJournal: true, loading: false, unit: null as string | null, userName: 'Diretora de teste' },
+  papel: {
+    canAccessJournal: true,
+    isMarketing: true,
+    loading: false,
+    unit: null as string | null,
+    userName: 'Quem está olhando',
+  },
 }));
 
 vi.mock('@/hooks/useUserRole', () => ({
@@ -53,7 +59,13 @@ const dialogo = () => screen.findByRole('alertdialog');
 beforeEach(() => {
   espiao.remove.mockClear();
   espiao.journals = [jornal()];
-  espiao.papel = { canAccessJournal: true, loading: false, unit: null, userName: 'Diretora de teste' };
+  espiao.papel = {
+    canAccessJournal: true,
+    isMarketing: true,
+    loading: false,
+    unit: null,
+    userName: 'Quem está olhando',
+  };
 });
 
 /**
@@ -118,5 +130,66 @@ describe('quem entra na página', () => {
 
     expect(await screen.findByText(/área da comunicação/i)).toBeInTheDocument();
     expect(screen.queryByText(/jornal da unidade/i)).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Quem é dono do jornal decide o que a tela oferece.
+ *
+ * A comparação é por `profile_unit` — o mesmo campo que a RLS compara com
+ * `profiles.unit`. Não é o `unit_id`: aquele é o id do catálogo, usado para
+ * desenhar a folha; a posse mora no rótulo.
+ */
+describe('jornal de outra unidade', () => {
+  const deOutraUnidade = (): JournalRecord => ({
+    ...jornal(),
+    unit_id: 'ana-nilopolis',
+    profile_unit: 'Outra Unidade',
+  });
+
+  const gestoraDeNilopolis = {
+    canAccessJournal: true,
+    isMarketing: false,
+    loading: false,
+    unit: 'Nilópolis',
+    userName: 'Gestora',
+  };
+
+  it('oferece duplicar para a minha unidade, e não excluir', async () => {
+    espiao.papel = gestoraDeNilopolis;
+    espiao.journals = [deOutraUnidade()];
+
+    render(<JournalPage />);
+
+    expect(
+      await screen.findByRole('button', { name: /duplicar para minha unidade/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^excluir$/i })).not.toBeInTheDocument();
+  });
+
+  it('duplica para a unidade de quem clicou, não para a de origem', async () => {
+    espiao.papel = gestoraDeNilopolis;
+    espiao.journals = [deOutraUnidade()];
+
+    render(<JournalPage />);
+    fireEvent.click(await screen.findByRole('button', { name: /duplicar para minha unidade/i }));
+
+    await waitFor(() => expect(espiao.duplicate).toHaveBeenCalled());
+    expect(espiao.duplicate.mock.calls[0][1]).toEqual({
+      unitId: 'ana-nilopolis',
+      profileUnit: 'Nilópolis',
+    });
+  });
+
+  it('no próprio jornal, mantém excluir', async () => {
+    espiao.papel = gestoraDeNilopolis;
+    espiao.journals = [{ ...jornal(), unit_id: 'ana-nilopolis', profile_unit: 'Nilópolis' }];
+
+    render(<JournalPage />);
+
+    expect(await screen.findByRole('button', { name: /^excluir$/i })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /duplicar para minha unidade/i }),
+    ).not.toBeInTheDocument();
   });
 });
