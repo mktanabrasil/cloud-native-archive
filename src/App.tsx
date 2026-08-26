@@ -58,6 +58,23 @@ function MarketingRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Guarda do Jornal. Separada da `MarketingRoute` de propósito: aquela é usada
+ * por Auditoria, Manual de Design, Portal da Transparência e Widgets, e
+ * afrouxá-la para receber a gestão abriria as quatro de uma vez.
+ */
+function JournalRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { canAccessJournal, loading: roleLoading } = useUserRole();
+  const [searchParams] = useSearchParams();
+  const isEmbed = searchParams.get('embed') === 'true';
+
+  if (authLoading || roleLoading) return null;
+  if (!isAuthenticated && !isEmbed) return <Navigate to="/login" replace />;
+  if (!canAccessJournal) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 function AuthRedirect({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
   const [searchParams] = useSearchParams();
@@ -114,7 +131,7 @@ const App = () => (
                     <ProtectedRoute><NewsGeneratorPage /></ProtectedRoute>
                   } />
                   <Route path="/jornal-institucional" element={
-                    <MarketingRoute><JournalPage /></MarketingRoute>
+                    <JournalRoute><JournalPage /></JournalRoute>
                   } />
 
                   <Route path="/marketing" element={

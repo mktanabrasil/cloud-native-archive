@@ -138,6 +138,19 @@ export function useUserRole() {
   const canView = true; // System is public
   const isMarketing = isAdmin || bondType === 'marketing' || isAdminEmail;
 
+  /**
+   * Quem entra no Jornal: a comunicação e a gestão de uma unidade.
+   *
+   * Mora aqui, e não numa rota, porque a tela e a guarda precisam responder a
+   * mesma coisa — e porque `MarketingRoute` protege outras quatro páginas
+   * (Auditoria, Manual, Transparência, Widgets) que não devem abrir junto.
+   *
+   * A unidade entra na conta de propósito: gestora sem unidade não tem jornal
+   * nenhum para ver, e cairia numa lista vazia sem entender o porquê.
+   */
+  const isUnitManager = permissionLevel === 'gestor_unidade' && isActive && !!unit;
+  const canAccessJournal = isMarketing || isUnitManager;
+
   return { 
     role, 
     loading, 
@@ -157,7 +170,9 @@ export function useUserRole() {
     delegatedUnits,
     canViewAuditoria,
     bondType,
-    isMarketing
+    isMarketing,
+    isUnitManager,
+    canAccessJournal,
   };
 }
 

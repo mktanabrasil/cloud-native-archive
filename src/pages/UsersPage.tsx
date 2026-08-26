@@ -553,12 +553,23 @@ export default function UsersPage() {
     if (req.requested_role === 'admin') {
       level = 'admin_geral';
       unit = 'Administração';
-    } else if (req.requested_role === 'criador') {
-      level = 'gestor_unidade';
-      unit = req.requested_unit || 'DIC';
-    } else if (req.requested_role === 'editor') {
-      level = 'editor';
-      unit = req.requested_unit || 'DIC';
+    } else if (req.requested_role === 'criador' || req.requested_role === 'editor') {
+      level = req.requested_role === 'criador' ? 'gestor_unidade' : 'editor';
+      unit = req.requested_unit;
+
+      // Sem unidade não dá para aprovar: a pessoa entraria sem jornal nenhum.
+      // Aqui já houve um 'DIC' fixo de fallback — um chute que ninguém revisava
+      // e que acertava por acaso.
+      if (!unit) {
+        toast({
+          title: 'Falta a unidade',
+          description: `A solicitação de ${req.name} chegou sem unidade. Defina a unidade no perfil dela antes de aprovar.`,
+          variant: 'destructive',
+        });
+        setProcessingId(null);
+        setShowApprovalConfirm(null);
+        return;
+      }
     }
     
     try {

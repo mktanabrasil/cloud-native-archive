@@ -4,13 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { LogIn, UserPlus, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
   AlertDialogDescription, AlertDialogFooter, AlertDialogAction,
 } from '@/components/ui/alert-dialog';
-import { UNITS, Unit } from '@/types';
+import { NEWS_UNIT_GROUPS } from '@/lib/news/units';
 import { cn } from '@/lib/utils';
 
 type Mode = 'login' | 'signup' | 'request_sent' | 'forgot';
@@ -53,18 +55,31 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [requestedRole, setRequestedRole] = useState<string>('viewer');
-  const [requestedUnit, setRequestedUnit] = useState<Unit>('Administração');
+  const [requestedUnit, setRequestedUnit] = useState('');
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState<{ title: string; message: string; type: 'error' | 'success' } | null>(null);
 
-  // Ajusta unidade padrão se mudar o nível solicitado
+  /** Níveis que pertencem a uma unidade — os únicos que pedem a escolha. */
+  const PEDE_UNIDADE = ['criador', 'editor'];
+  const precisaDeUnidade = PEDE_UNIDADE.includes(requestedRole);
+
+  // Quem deixa de pertencer a uma unidade não carrega a escolha anterior.
   useEffect(() => {
-    if ((requestedRole === 'editor' || requestedRole === 'criador') && requestedUnit === 'Administração') {
-      setRequestedUnit('DIC');
-    } else if (requestedRole === 'viewer' && requestedUnit !== 'Administração') {
-      setRequestedUnit('Administração');
-    }
-  }, [requestedRole]);
+    if (!precisaDeUnidade && requestedUnit) setRequestedUnit('');
+  }, [precisaDeUnidade, requestedUnit]);
+
+  /**
+   * Nível de permissão correspondente ao que foi pedido.
+   *
+   * Não é invenção nova: é o mesmo de-para que a tela de aprovação já aplica
+   * (`UsersPage.handleApprove`). Mandá-lo junto faz a solicitação chegar
+   * completa ao banco, em vez de a aprovação ter de adivinhar.
+   */
+  const NIVEL_DO_PEDIDO: Record<string, string> = {
+    criador: 'gestor_unidade',
+    editor: 'editor',
+    viewer: 'visualizador',
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,12 +116,22 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password || !name) return;
+
+    // Sem unidade, a aprovação teria de adivinhar — e adivinhava: o código
+    // antigo caía num 'DIC' fixo. Melhor barrar aqui, onde a pessoa sabe a
+    // resposta.
+    if (precisaDeUnidade && !requestedUnit) {
+      setPopup({ title: 'Falta a unidade', message: 'Escolha a unidade a que você pertence para solicitar este nível de acesso.', type: 'error' });
+      return;
+    }
+
     setLoading(true);
 
     const { error } = await signUp(email, password, {
       name,
       requested_role: requestedRole,
-      requested_unit: requestedUnit
+      requested_permission_level: NIVEL_DO_PEDIDO[requestedRole] ?? 'visualizador',
+      requested_unit: requestedUnit,
     });
 
     if (error) {
@@ -194,19 +219,29 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
                 <Select value={requestedRole} onValueChange={setRequestedRole}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="viewer">Visualizador</SelectItem>
+                    <SelectItem value="criador">Gestão</SelectItem>
                     <SelectItem value="editor">Editor (Apenas Edição)</SelectItem>
-                    <SelectItem value="criador">Criador (Cria e Edita)</SelectItem>
+                    <SelectItem value="viewer">Visualizador</SelectItem>
                   </SelectContent>
                 </Select>
-                {(requestedRole === 'editor' || requestedRole === 'criador') && (
+                {precisaDeUnidade && (
                   <div className="mt-4">
                     <Label>Selecione sua unidade</Label>
-                    <Select value={requestedUnit} onValueChange={(v) => setRequestedUnit(v as Unit)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                    {/* O catálogo do Jornal, e não a lista de quatro herdada do
+                        calendário: é `profiles.unit` que precisa casar com ele
+                        para a pessoa cair na unidade certa. */}
+                    <Select value={requestedUnit} onValueChange={setRequestedUnit}>
+                      <SelectTrigger><SelectValue placeholder="Escolha sua unidade" /></SelectTrigger>
                       <SelectContent>
-                        {UNITS.filter(u => u !== 'Administração').map(u => (
-                          <SelectItem key={u} value={u}>{u}</SelectItem>
+                        {NEWS_UNIT_GROUPS.map((grupo) => (
+                          <SelectGroup key={grupo.label}>
+                            <SelectLabel>{grupo.label}</SelectLabel>
+                            {grupo.units.map((unidade) => (
+                              <SelectItem key={unidade.id} value={unidade.profileUnit}>
+                                {unidade.name}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
                         ))}
                       </SelectContent>
                     </Select>
