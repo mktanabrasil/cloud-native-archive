@@ -53,10 +53,9 @@ export default function HomePage({ leaving = false }: HomePageProps) {
           instituição inteira, e por isso pode assinar a porta do app. */}
       <InstitutionalFooterBar
         className={cn(
-          // A altura repetida no `md:` não é descuido: o componente traz
-          // `h-3 md:h-4`, e o twMerge só derruba a classe sem variante — sem
-          // repetir, o fio engrossaria para 16px no desktop.
-          'absolute inset-x-0 bottom-0 z-0 h-[6px] md:h-[6px]',
+          // Sem sobrescrever altura: o componente traz `h-3 md:h-4`, a mesma
+          // escala que a faixa usa no rodapé do jornal. A 6px ela sumia.
+          'ana-fio absolute inset-x-0 bottom-0 z-0',
           animarEntrada && 'ana-enter-fio',
         )}
       />
