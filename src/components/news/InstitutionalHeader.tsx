@@ -1,4 +1,4 @@
-import anaLogo from '@/assets/ana-brasil-logo.svg';
+import { ANA_LOGO_DATA_URI } from '@/lib/anaLogo';
 import { cn } from '@/lib/utils';
 
 interface InstitutionalHeaderProps {
@@ -21,7 +21,7 @@ export function InstitutionalHeader({
     >
       <div className="flex items-center justify-between gap-4 pb-4">
         <img
-          src={anaLogo}
+          src={ANA_LOGO_DATA_URI}
           alt="ANA Brasil"
           className="h-10 md:h-12 w-auto object-contain select-none"
           draggable={false}
