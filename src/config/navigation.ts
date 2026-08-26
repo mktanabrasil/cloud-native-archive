@@ -10,6 +10,12 @@ export interface NavItem {
   requireAuth?: boolean;
   mktOrAdminOnly?: boolean;
   marketingOnly?: boolean;
+  /**
+   * Só o Jornal usa. Ele não é `marketingOnly`: a gestão de unidade também
+   * entra, e `marketingOnly` é compartilhado com Auditoria, Manual de Design,
+   * Portal da Transparência e Widgets, que continuam só da comunicação.
+   */
+  journalOnly?: boolean;
   hidden?: boolean;
 }
 
@@ -18,7 +24,7 @@ export const navItems: NavItem[] = [
   { to: '/visao-geral', label: 'Visão Geral', icon: LayoutDashboard, requireAuth: true, hidden: true },
   { to: '/calendario', label: 'Calendário', icon: Calendar, requireAuth: true, hidden: true },
   { to: '/noticias', label: 'Notícias (Informativo)', icon: Newspaper, requireAuth: true },
-  { to: '/jornal-institucional', label: 'Jornal Institucional', icon: BookOpen, requireAuth: true, marketingOnly: true },
+  { to: '/jornal-institucional', label: 'Jornal Institucional', icon: BookOpen, requireAuth: true, journalOnly: true },
   { to: '/mercado-solidario', label: 'Mercado Solidário', icon: ShoppingBasket },
   { to: '/marketing', label: 'Marketing', icon: Megaphone, requireAuth: true, marketingOnly: true },
   { to: '/usuarios', label: 'Painel', icon: Users, requireAuth: true, managerOnly: true },

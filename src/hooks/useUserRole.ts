@@ -9,6 +9,9 @@ export interface AccessRequest {
   id: string;
   user_id: string;
   requested_role: string;
+  /** Unidade escolhida no formulário — o que a aprovação grava no perfil. */
+  requested_unit: string | null;
+  requested_permission_level: string | null;
   status: string;
   name: string;
   email: string;
