@@ -1,7 +1,25 @@
 import raw from '@/assets/ana-brasil-logo.svg?raw';
 
-/** Tamanho intrínseco, do `viewBox` do arquivo. */
-export const ANA_LOGO_SIZE = { width: 2206, height: 883 } as const;
+/** Proporção do desenho, do `viewBox` do arquivo: 2206 / 883. */
+const RAZAO = 2206 / 883;
+
+/**
+ * Medidas desenhadas do logo, para irem nos atributos `width`/`height`.
+ *
+ * Atributo, e nunca CSS. É a diferença entre o logo e as Formas ANA, e foi o
+ * que fez um sair do PDF do celular e o outro não: as formas sempre
+ * declararam o tamanho por atributo; o logo vinha de `h-9 w-auto`, e largura
+ * `auto` só existe depois que a imagem carrega. O html2canvas mede o
+ * documento clonado na hora, encontra zero e não desenha nada, em silêncio.
+ *
+ * Sem `object-fit` também: a caixa já tem a proporção exata do desenho, e o
+ * html2canvas não suporta essa propriedade — é por isso que as fotos do
+ * jornal precisam ser convertidas em `background-image` na exportação.
+ */
+export const anaLogoSize = (altura: number) => ({
+  width: Math.round(altura * RAZAO),
+  height: altura,
+});
 
 /** Cor única do desenho, hoje declarada via classe `.cls-2` no arquivo. */
 const TINTA = '#484848';
