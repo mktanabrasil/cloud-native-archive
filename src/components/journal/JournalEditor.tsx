@@ -106,6 +106,18 @@ interface Props {
 const THUMB_W = 180;
 const THUMB_SCALE = THUMB_W / A4_W;
 
+/**
+ * Escalas tentadas em ordem, da melhor para a que sempre cabe.
+ *
+ * 3x são 288 dpi numa A4; 2x são 192 dpi, ainda imprimíveis. Um jornal de
+ * muitas folhas num celular pode não caber na escala cheia, e sair em
+ * resolução menor é melhor do que não sair.
+ */
+const ESCALAS: Record<'digital' | 'impressao', number[]> = {
+  impressao: [3, 2, 1.5],
+  digital: [1.6, 1.2],
+};
+
 /** Estado de preenchimento da página — usado nos selos das miniaturas. */
 function pageStatus(page: JournalPage): 'completa' | 'pendente' {
   const pending = page.blocks.some((block) => {
@@ -544,77 +556,129 @@ export function JournalEditor({ journal, saving, savedAt, onBack, onSave }: Prop
     );
   };
 
+  /**
+   * Rasteriza as folhas e monta o PDF numa escala dada.
+   *
+   * O canvas de uma A4 a 3x ocupa cerca de 32 MB em memória de vídeo, e o
+   * navegador do celular não segura seis vivos ao mesmo tempo. Cada folha é
+   * liberada assim que vira JPEG — sem isso a exportação de um jornal longo
+   * morre no meio, e é isso que o `data:,` de folha vazia denuncia.
+   */
+  const montarPdf = async (escala: number, qualidadeJpeg: number) => {
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const nodes = Array.from(exportRef.current!.querySelectorAll<HTMLElement>('[data-journal-page]'));
+
+    for (let index = 0; index < nodes.length; index += 1) {
+      const canvas = await html2canvas(nodes[index], {
+        scale: escala,
+        useCORS: true,
+        backgroundColor: paperColor,
+        width: A4_W,
+        height: A4_H,
+        windowWidth: A4_W,
+        windowHeight: A4_H,
+        onclone: (doc) => {
+          // html2canvas colapsa parte do espaçamento vertical do grid; reforçamos
+          // o respiro acima das imagens para o PDF ficar igual ao preview.
+          doc.querySelectorAll<HTMLElement>('[data-block-kind="image"]').forEach((el) => {
+            el.style.paddingTop = '8px';
+          });
+          // Garantia final para o logo: as fotos saem no PDF do celular porque
+          // viram `background-image`, carregada pelo proprio html2canvas. O logo
+          // entra no mesmo caminho, em vez de depender de <img> ser desenhada.
+          doc.querySelectorAll<HTMLImageElement>('img[data-ana-logo]').forEach((img) => {
+            const largura = Number(img.getAttribute('width')) || img.width;
+            const altura = Number(img.getAttribute('height')) || img.height;
+            if (!largura || !altura) return;
+            const substituto = doc.createElement('div');
+            substituto.className = img.className;
+            substituto.style.cssText = img.style.cssText;
+            substituto.style.width = `${largura}px`;
+            substituto.style.height = `${altura}px`;
+            substituto.style.backgroundImage = `url("${img.src}")`;
+            substituto.style.backgroundSize = '100% 100%';
+            substituto.style.backgroundRepeat = 'no-repeat';
+            img.replaceWith(substituto);
+          });
+
+          // html2canvas não suporta `object-fit`: ele estica a foto até o box,
+          // deformando-a. Trocamos cada <img> por um bloco com background-size
+          // cover/center, que reproduz exatamente o enquadramento do preview.
+          doc.querySelectorAll<HTMLImageElement>('[data-block-kind="image"] img').forEach((img) => {
+            const src = img.currentSrc || img.src;
+            if (!src) return;
+            const rect = img.getBoundingClientRect();
+            const replacement = doc.createElement('div');
+            replacement.className = img.className;
+            replacement.style.cssText = img.style.cssText;
+            replacement.style.width = '100%';
+            replacement.style.height = rect.height > 0 ? `${rect.height}px` : '100%';
+            replacement.style.backgroundImage = `url("${src}")`;
+            replacement.style.backgroundSize = 'cover';
+            replacement.style.backgroundPosition = 'center';
+            replacement.style.backgroundRepeat = 'no-repeat';
+            replacement.style.borderRadius = '15px';
+            img.replaceWith(replacement);
+          });
+        },
+      });
+
+      let imagem: string;
+      try {
+        imagem = canvas.toDataURL('image/jpeg', qualidadeJpeg);
+      } finally {
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+
+      // Sem memória para o canvas o navegador devolve `data:,` em silêncio, e
+      // o PDF sairia com folhas em branco sem ninguém reclamar.
+      if (imagem.length < 1000) {
+        throw new Error(`a folha ${index + 1} de ${nodes.length} voltou vazia na escala ${escala}`);
+      }
+
+      if (index > 0) pdf.addPage();
+      pdf.addImage(imagem, 'JPEG', 0, 0, 210, 297);
+    }
+
+    return pdf;
+  };
+
   const exportPdf = async (quality: 'digital' | 'impressao') => {
     if (!exportRef.current) return;
     setExporting(true);
     try {
       await aguardarImagens(exportRef.current);
-      const scale = quality === 'impressao' ? 3 : 1.6;
-      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      const nodes = Array.from(exportRef.current.querySelectorAll<HTMLElement>('[data-journal-page]'));
+      const escalas = ESCALAS[quality];
+      const qualidadeJpeg = quality === 'impressao' ? 0.98 : 0.9;
 
-      for (let index = 0; index < nodes.length; index += 1) {
-        const canvas = await html2canvas(nodes[index], {
-          scale,
-          useCORS: true,
-          backgroundColor: paperColor,
-          width: A4_W,
-          height: A4_H,
-          windowWidth: A4_W,
-          windowHeight: A4_H,
-          onclone: (doc) => {
-            // html2canvas colapsa parte do espaçamento vertical do grid; reforçamos
-            // o respiro acima das imagens para o PDF ficar igual ao preview.
-            doc.querySelectorAll<HTMLElement>('[data-block-kind="image"]').forEach((el) => {
-              el.style.paddingTop = '8px';
-            });
-            // Garantia final para o logo: as fotos saem no PDF do celular porque
-            // viram `background-image`, carregada pelo proprio html2canvas. O logo
-            // entra no mesmo caminho, em vez de depender de <img> ser desenhada.
-            doc.querySelectorAll<HTMLImageElement>('img[data-ana-logo]').forEach((img) => {
-              const largura = Number(img.getAttribute('width')) || img.width;
-              const altura = Number(img.getAttribute('height')) || img.height;
-              if (!largura || !altura) return;
-              const substituto = doc.createElement('div');
-              substituto.className = img.className;
-              substituto.style.cssText = img.style.cssText;
-              substituto.style.width = `${largura}px`;
-              substituto.style.height = `${altura}px`;
-              substituto.style.backgroundImage = `url("${img.src}")`;
-              substituto.style.backgroundSize = '100% 100%';
-              substituto.style.backgroundRepeat = 'no-repeat';
-              img.replaceWith(substituto);
-            });
-
-            // html2canvas não suporta `object-fit`: ele estica a foto até o box,
-            // deformando-a. Trocamos cada <img> por um bloco com background-size
-            // cover/center, que reproduz exatamente o enquadramento do preview.
-            doc.querySelectorAll<HTMLImageElement>('[data-block-kind="image"] img').forEach((img) => {
-              const src = img.currentSrc || img.src;
-              if (!src) return;
-              const rect = img.getBoundingClientRect();
-              const replacement = doc.createElement('div');
-              replacement.className = img.className;
-              replacement.style.cssText = img.style.cssText;
-              replacement.style.width = '100%';
-              replacement.style.height = rect.height > 0 ? `${rect.height}px` : '100%';
-              replacement.style.backgroundImage = `url("${src}")`;
-              replacement.style.backgroundSize = 'cover';
-              replacement.style.backgroundPosition = 'center';
-              replacement.style.backgroundRepeat = 'no-repeat';
-              replacement.style.borderRadius = '15px';
-              img.replaceWith(replacement);
-            });
-          },
-        });
-        if (index > 0) pdf.addPage();
-        pdf.addImage(canvas.toDataURL('image/jpeg', quality === 'impressao' ? 0.98 : 0.9), 'JPEG', 0, 0, 210, 297);
+      let pdf: jsPDF | null = null;
+      let ultimoErro: unknown = null;
+      for (const escala of escalas) {
+        try {
+          // Respiro antes de repetir: o navegador só devolve a memória do canvas
+          // anterior no ciclo seguinte, e sem isso a segunda tentativa nasce no
+          // mesmo aperto que derrubou a primeira.
+          if (ultimoErro) await new Promise((resolve) => setTimeout(resolve, 400));
+          pdf = await montarPdf(escala, qualidadeJpeg);
+          if (escala !== escalas[0]) {
+            toast.warning('PDF gerado em resolução menor: a folha cheia não coube na memória do aparelho.');
+          }
+          break;
+        } catch (erro) {
+          ultimoErro = erro;
+        }
       }
+      if (!pdf) throw ultimoErro ?? new Error('nenhuma escala funcionou');
 
       pdf.save(`${name || 'jornal'}.pdf`);
       toast.success('PDF gerado.');
     } catch (error) {
-      toast.error('Não foi possível gerar o PDF.');
+      // O erro precisa aparecer: esta exportação já falhou em silêncio vezes
+      // demais, e sem a mensagem não há como saber qual camada quebrou.
+      console.error('[jornal] falha ao gerar o PDF', error);
+      const detalhe = error instanceof Error ? error.message : String(error);
+      toast.error('Não foi possível gerar o PDF.', { description: detalhe.slice(0, 200) });
     } finally {
       setExporting(false);
     }
