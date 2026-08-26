@@ -50,6 +50,39 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Quem pode aprovar. Antes daqui só se exigia estar logado: o `callerId`
+    // era calculado e nunca usado, então qualquer conta aprovava qualquer
+    // pedido — inclusive um pedido de admin, o que transformava qualquer
+    // usuário em administrador geral.
+    const { data: isAdminData } = await adminClient.rpc('is_admin', { _user_id: callerId });
+    const isAdmin = isAdminData === true;
+
+    if (!isAdmin) {
+      const { data: perfil } = await adminClient
+        .from('profiles')
+        .select('permission_level, is_active')
+        .eq('user_id', callerId)
+        .maybeSingle();
+
+      const ehGestor = perfil?.is_active !== false && perfil?.permission_level === 'gestor_unidade';
+      if (!ehGestor) {
+        return new Response(JSON.stringify({ error: 'Acesso negado. Apenas administradores e gestores podem aprovar acessos.' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Escalar para administrador é privilégio de administrador. Sem esta
+      // linha, aprovar um pedido de admin seria o caminho mais curto para
+      // virar um.
+      if (role === 'admin' || permissionLevel === 'admin_geral') {
+        return new Response(JSON.stringify({ error: 'Acesso negado. Apenas administradores podem conceder acesso de administrador.' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     // 1. Update access request status
     const { error: requestErr } = await adminClient
       .from('access_requests')

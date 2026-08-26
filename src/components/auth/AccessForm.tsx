@@ -1,12 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LogIn, UserPlus, Clock, AlertCircle, CheckCircle2, KeyRound } from 'lucide-react';
+import { LogIn, UserPlus, Clock, AlertCircle, CheckCircle2 } from 'lucide-react';
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
   AlertDialogDescription, AlertDialogFooter, AlertDialogAction,
@@ -57,8 +56,6 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
   const [requestedUnit, setRequestedUnit] = useState<Unit>('Administração');
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState<{ title: string; message: string; type: 'error' | 'success' } | null>(null);
-  const [emergencyReset, setEmergencyReset] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
 
   // Ajusta unidade padrão se mudar o nível solicitado
   useEffect(() => {
@@ -73,12 +70,6 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
     e.preventDefault();
     if (!email || !password) return;
 
-    // Fluxo emergencial: Email = Senha
-    if (email === password && email.includes('@')) {
-      setEmergencyReset(true);
-      return;
-    }
-
     setLoading(true);
     const { error } = await signIn(email, password);
     if (error) {
@@ -89,29 +80,6 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
         message = 'E-mail ou senha incorretos. Tente novamente.';
       }
       setPopup({ title: 'Erro', message: message, type: 'error' });
-    }
-    setLoading(false);
-  };
-
-  const handleEmergencyReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPassword || newPassword.length < 6) {
-      setPopup({ title: 'Erro', message: 'A senha deve ter no mínimo 6 caracteres.', type: 'error' });
-      return;
-    }
-
-    setLoading(true);
-    const { data, error } = await supabase.functions.invoke('emergency-reset-password', {
-      body: { email, newPassword }
-    });
-
-    if (error || data?.error) {
-      setPopup({ title: 'Erro', message: data?.error || 'Não foi possível redefinir sua senha.', type: 'error' });
-    } else {
-      setPopup({ title: 'Sucesso!', message: 'Sua senha foi redefinida. Agora você já pode fazer login com a nova senha.', type: 'success' });
-      setEmergencyReset(false);
-      setPassword('');
-      setNewPassword('');
     }
     setLoading(false);
   };
@@ -189,42 +157,6 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
         </AlertDialogContent>
       </AlertDialog>
 
-      {emergencyReset && (
-        <AlertDialog open={emergencyReset} onOpenChange={setEmergencyReset}>
-          <AlertDialogContent className="max-w-md">
-            <AlertDialogHeader>
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <KeyRound className="h-7 w-7" />
-              </div>
-              <AlertDialogTitle className="text-center">Redefinição Emergencial</AlertDialogTitle>
-              <AlertDialogDescription className="text-center">
-                Você ativou o modo de redefinição emergencial para o e-mail <strong>{email}</strong>.
-                Defina sua nova senha abaixo.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <form onSubmit={handleEmergencyReset} className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="new-password">Nova Senha</Label>
-                <Input
-                  id="new-password"
-                  type="password"
-                  placeholder="Mínimo 6 caracteres"
-                  value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)}
-                  required
-                  autoFocus
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Redefinindo...' : 'Definir Nova Senha'}
-              </Button>
-              <Button type="button" variant="ghost" className="w-full" onClick={() => setEmergencyReset(false)}>
-                Cancelar
-              </Button>
-            </form>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
 
       <Card className={className ?? 'w-full max-w-md'}>
         <CardHeader className={cn("text-center", stagger && "ana-enter-item")} style={item(0).style}>

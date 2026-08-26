@@ -25,3 +25,6 @@ dist-ssr
 
 # Configuracao local do Claude Code (caminhos absolutos desta maquina)
 .claude/
+
+# Resíduo do CLI do Supabase
+supabase/.temp/
