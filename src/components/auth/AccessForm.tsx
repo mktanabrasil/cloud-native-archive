@@ -44,7 +44,7 @@ interface AccessFormProps {
  * autenticação está aqui; as páginas só decidem o entorno.
  */
 export function AccessForm({ title, icon, loginDescription, className, stagger }: AccessFormProps) {
-  const { signIn, signUp, resetPassword } = useAuth();
+  const { signIn, signUp, resetPassword, signOut } = useAuth();
   /** Posição do bloco na cascata de entrada. Sem `stagger`, não devolve nada. */
   const item = (i: number) =>
     stagger
@@ -140,6 +140,12 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
       return;
     }
 
+    // Pedir acesso não é entrar. O `signUp` devolve sessão, e sem isto a
+    // pessoa caía direto no app — logada, sem unidade e sem permissão nenhuma,
+    // navegando por telas que não são dela. Encerramos a sessão e ficamos na
+    // tela de espera até um administrador aprovar.
+    await signOut();
+
     setMode('request_sent');
     setLoading(false);
   };
@@ -151,9 +157,11 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
             <Clock className="h-7 w-7 text-primary" />
           </div>
-          <CardTitle className="text-xl">Solicitação Enviada!</CardTitle>
+          <CardTitle className="text-xl">Aguardando aprovação</CardTitle>
           <CardDescription>
-            Sua solicitação de acesso foi enviada com sucesso. Um administrador irá analisar e aprovar seu acesso em breve.
+            Sua solicitação foi enviada. Um administrador vai analisar, e{' '}
+            <strong className="text-foreground">você receberá um e-mail assim que o acesso for liberado</strong>.
+            Pode fechar esta página.
           </CardDescription>
         </CardHeader>
         <CardContent>
