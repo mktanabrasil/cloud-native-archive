@@ -76,8 +76,16 @@ export function UnitBadge({
         if (value !== unitId) setPending(value);
       }}
     >
+      {/* Largura limitada, e nunca `w-auto` solto: o nome de uma unidade
+          chega a 43 caracteres ("CEI Bem Querer Sen. João de Medeiros Calmon")
+          e o gatilho crescia até empurrar o diálogo de criação, que ganhava
+          barra de rolagem horizontal. O `line-clamp-1` do gatilho já corta o
+          texto com reticências assim que existe um teto. */}
       <SelectTrigger
-        className={cn('h-8 w-auto gap-1.5 text-xs', variant === 'chip' && 'h-7')}
+        className={cn(
+          'h-8 w-full max-w-full gap-1.5 text-xs sm:w-auto sm:max-w-[220px]',
+          variant === 'chip' && 'h-7',
+        )}
         aria-label="Trocar unidade"
       >
         <SelectValue placeholder="Trocar unidade" />
@@ -172,7 +180,10 @@ export function UnitBadge({
       )}
       {...rest}
     >
-      <div className="flex items-start gap-3">
+      {/* `min-w-0` aqui também, e não só no filho: em flex, um item se
+          recusa a encolher abaixo do próprio conteúdo sem isso, e o `truncate`
+          de dentro nunca chega a valer. */}
+      <div className="flex min-w-0 items-start gap-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
           <Building2 className="h-4.5 w-4.5" />
         </div>
@@ -184,7 +195,7 @@ export function UnitBadge({
           {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
         </div>
       </div>
-      {selector && <div className="shrink-0">{selector}</div>}
+      {selector && <div className="w-full min-w-0 sm:w-auto sm:shrink-0">{selector}</div>}
       {dialog}
     </div>
   );

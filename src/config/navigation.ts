@@ -27,7 +27,7 @@ export const navItems: NavItem[] = [
   { to: '/jornal-institucional', label: 'Jornal Institucional', icon: BookOpen, requireAuth: true, journalOnly: true },
   { to: '/mercado-solidario', label: 'Mercado Solidário', icon: ShoppingBasket },
   { to: '/marketing', label: 'Marketing', icon: Megaphone, requireAuth: true, marketingOnly: true },
-  { to: '/usuarios', label: 'Painel', icon: Users, requireAuth: true, managerOnly: true },
+  { to: '/usuarios', label: 'Painel', icon: Users, requireAuth: true },
   { to: '/auditoria', label: 'Auditoria', icon: History, requireAuth: true, marketingOnly: true, hidden: true },
   { to: '/design-manual', label: 'Manual Design', icon: BookOpen, requireAuth: true, marketingOnly: true, hidden: true },
   { to: '/portal-transparencia', label: 'Portal Transparência', icon: FileSearch, requireAuth: true, marketingOnly: true, hidden: true },

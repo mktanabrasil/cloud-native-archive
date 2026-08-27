@@ -1,0 +1,60 @@
+-- Aplicado na producao em 27/08/2026, pelo SQL Editor do painel.
+-- Fica aqui para o repositorio contar a verdade sobre o que foi rodado.
+-- ---------------------------------------------------------------------------
+-- Fecha a escalada de privilégio por `profiles`
+-- ---------------------------------------------------------------------------
+--
+-- O problema: `profiles` guarda `permission_level`, `unit` e `bond_type`, e
+-- essas três colunas decidem tudo. O front lê `isAdmin` como
+-- `role = 'admin' OU permission_level = 'admin_geral'`, e a função
+-- `is_marketing_user()` (usada pelas policies do Jornal) é
+-- `admin OU bond_type = 'marketing'`.
+--
+-- Duas policies deixavam alguém não-admin escrever nessas colunas:
+--
+--   1. `profiles_update_own`        -> qualquer pessoa, na própria linha.
+--   2. `Managers can update profiles` -> gestão de unidade, em qualquer linha
+--      da unidade dela — inclusive a própria.
+--
+-- Com qualquer uma delas, uma chamada à API REST com o próprio token bastava
+-- para virar administradora geral, ou para ganhar acesso a todos os jornais
+-- gravando `bond_type = 'marketing'`. A tela travada não impede: o caminho é
+-- a API.
+--
+-- A correção é remover as duas. Verificado no código antes de escrever isto:
+-- **nenhuma tela do app escreve no próprio perfil**. Todas as escritas em
+-- `profiles` saem do painel de Usuários, que é da administração e continua
+-- funcionando pela policy `profiles_admin_all`. O gatilho de cadastro e as
+-- edge functions passam por fora da RLS (SECURITY DEFINER / service role), e
+-- também seguem valendo.
+--
+-- Leitura não muda: quem via, continua vendo.
+
+DROP POLICY IF EXISTS "profiles_update_own" ON public.profiles;
+DROP POLICY IF EXISTS "Managers can update profiles" ON public.profiles;
+
+-- ---------------------------------------------------------------------------
+-- Se um dia existir uma tela de "meu perfil"
+-- ---------------------------------------------------------------------------
+--
+-- Não crie de volta o `profiles_update_own` como estava. Use a versão abaixo:
+-- ela permite a pessoa mudar o que é dela (o nome) e recusa qualquer alteração
+-- em todo o resto, comparando a linha nova com a gravada.
+--
+-- A comparação é por `to_jsonb` menos as colunas liberadas, e não por uma
+-- lista de colunas proibidas, de propósito: coluna nova criada no futuro nasce
+-- protegida em vez de nascer aberta.
+--
+-- DROP POLICY IF EXISTS "profiles_update_own_safe" ON public.profiles;
+-- CREATE POLICY "profiles_update_own_safe"
+-- ON public.profiles FOR UPDATE TO authenticated
+-- USING (auth.uid() = user_id)
+-- WITH CHECK (
+--   auth.uid() = user_id
+--   AND (to_jsonb(profiles) - 'name' - 'updated_at')
+--       = (
+--         SELECT to_jsonb(anterior) - 'name' - 'updated_at'
+--         FROM public.profiles anterior
+--         WHERE anterior.user_id = auth.uid()
+--       )
+-- );

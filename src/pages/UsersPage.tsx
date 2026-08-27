@@ -71,7 +71,7 @@ export default function UsersPage() {
   const hideTitleParam = urlSearchParams.get('hideTitle') === 'true';
   const { users, selectedUser, setSelectedUser, updateUser, deleteUser } = useApp();
   const { user: currentUser } = useAuth();
-  const { isAdmin, isManager, unit, delegatedUnits, canView, loading: roleLoading } = useUserRole();
+  const { isAdmin, isManager, isMarketing, unit, delegatedUnits, canView, loading: roleLoading } = useUserRole();
   const { dbUsers, loading: dbUsersLoading, refetch } = useDbUsers();
   const { configs, updateConfig, isLoading: configsLoading } = useViewConfigs();
   const { requests, loading: requestsLoading, approveRequest, rejectRequest } = useAccessRequests();
@@ -82,10 +82,22 @@ export default function UsersPage() {
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  /**
+   * Quem gerencia os outros: comunicação e admin geral.
+   *
+   * Não é `isManager`. A gestão de unidade entra no Painel para se ver, e só:
+   * com `isManager` ela editava o próprio perfil, e o formulário de edição
+   * grava `permission_level` e `unit` — dava para se promover a admin geral
+   * pela tela.
+   */
+  const podeGerirTodos = isMarketing;
+
   const [search, setSearch] = useState('');
-  const displayRequests = useMemo(() => {
-    return requests;
-  }, [requests, isAdmin, isManager, currentUser]);
+  const displayRequests = useMemo(
+    () => (podeGerirTodos ? requests : requests.filter((r) => r.user_id === currentUser?.id)),
+    [requests, podeGerirTodos, currentUser],
+  );
   const [showEdit, setShowEdit] = useState(false);
   const [editForm, setEditForm] = useState<AppUser | null>(null);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
@@ -413,26 +425,17 @@ export default function UsersPage() {
   const filtered = useMemo(() => {
     let baseUsers = combinedUsers;
     
-    if (!isAdmin) {
-      if (isManager) {
-        // Gestor pode ver gestores, editores, usuários, visualizadores e viewers
-        // Garantindo que níveis administrativos NUNCA apareçam para gestores
-        baseUsers = baseUsers.filter(u => 
-          ['gestor_unidade', 'editor', 'usuario_padrao', 'visualizador', 'viewer'].includes(u.permission_level as string) &&
-          u.permission_level !== 'admin_geral'
-        );
-      } else {
-        // Usuário e visualizador podem ver somente o seu próprio perfil
-        // Se não houver email do usuário atual, não mostra nada para segurança
-        if (!currentUser?.email) return [];
-        baseUsers = baseUsers.filter(u => u.email.toLowerCase() === currentUser.email?.toLowerCase());
-      }
+    // Fora da comunicação, cada pessoa vê só o próprio perfil. Sem e-mail do
+    // usuário atual não mostramos ninguém: é o lado seguro do erro.
+    if (!podeGerirTodos) {
+      if (!currentUser?.email) return [];
+      baseUsers = baseUsers.filter(u => u.email.toLowerCase() === currentUser.email?.toLowerCase());
     }
 
     if (!search) return baseUsers;
     const q = search.toLowerCase();
     return baseUsers.filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
-  }, [combinedUsers, search, isAdmin, isManager, currentUser]);
+  }, [combinedUsers, search, podeGerirTodos, currentUser]);
 
   const groupedUsers = useMemo(() => {
     const admins = filtered.filter(u => (u.permission_level as string) === 'admin' || (u.permission_level as string) === 'admin_geral' || u.email === 'mkt@anabrasil.org');
@@ -651,31 +654,14 @@ export default function UsersPage() {
       // Não permitir entrar como si mesmo
       if (authUserId === currentUser?.id) return false;
 
-      // 1. Administrador Geral: Permissão total em todos os outros usuários
-      if (isAdmin) return true;
-      
-      // 2. Gestor de unidade:
-      if (isManager) {
-        const targetLevel = (user.permission_level as string) || '';
-        
-        // Só pode entrar em usuários da mesma unidade
-        const isSameUnit = user.unit === unit || delegatedUnits.includes(user.unit || '');
-        if (!isSameUnit) return false;
-
-        // Pode entrar em perfis de Usuário Padrão e Visualizador
-        const isTargetStandardOrViewer = 
-          targetLevel === 'usuario_padrao' || 
-          targetLevel === 'visualizador' || 
-          targetLevel === 'viewer';
-          
-        if (isTargetStandardOrViewer) return true;
-        return false;
-      }
-      
-      return false;
+      // Só administrador geral. A edge function `admin-impersonate-user` exige
+      // isso desde 26/08 — mostrar o botão para mais gente só geraria erro.
+      return isAdmin;
     })();
 
-    const canEdit = isAdmin || (isManager && (user.unit === unit || delegatedUnits.includes(user.unit || '')));
+    // Editar perfil é da comunicação. Ninguém edita o próprio nível ou a
+    // própria unidade — nem o próprio perfil.
+    const canEdit = podeGerirTodos;
 
     return (
       <div className="flex items-center gap-1">
@@ -900,10 +886,8 @@ export default function UsersPage() {
   if (roleLoading) return <div className="p-8 text-center">Carregando permissões...</div>;
 
   // Redireciona se o usuário não for admin ou gestor
-  if (!isAdmin && !isManager) {
-    navigate('/', { replace: true });
-    return null;
-  }
+  // Sem portão: a página é de todo mundo que está logado. O que muda é o que
+  // ela mostra — ver `podeGerirTodos`.
 
   return (
     <div className="animate-fade-in space-y-8">
@@ -1021,7 +1005,7 @@ export default function UsersPage() {
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Clock className="h-4 w-4 text-primary" />
-                    {isAdmin || isManager ? 'Solicitações de Acesso Pendentes' : 'Minha Solicitação de Acesso'}
+                    {podeGerirTodos ? 'Solicitações de Acesso Pendentes' : 'Minha Solicitação de Acesso'}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -1030,7 +1014,7 @@ export default function UsersPage() {
                   ) : displayRequests.length === 0 ? (
                     <div className="text-center py-6">
                       <UserCheck className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">{isAdmin || isManager ? 'Nenhuma solicitação pendente' : 'Você não possui solicitações de acesso pendentes'}</p>
+                      <p className="text-sm text-muted-foreground">{podeGerirTodos ? 'Nenhuma solicitação pendente' : 'Você não possui solicitações de acesso pendentes'}</p>
                     </div>
                   ) : (
                     <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
@@ -1070,7 +1054,7 @@ export default function UsersPage() {
                                 </Badge>
                               )}
                             </div>
-                            {isManager && (
+                            {podeGerirTodos && (
                               <div className="flex gap-2">
                                 <Button
                                   size="sm"

@@ -118,6 +118,9 @@ const App = () => (
                       raiz, que era onde elas viviam; com a porta de entrada na raiz,
                       elas passam a morar aqui — igualmente públicas, sem guarda. */}
                   <Route path="/eventos" element={<PublicEventsPage />} />
+                  {/* Aberta a quem está logado: cada pessoa se vê aqui. Quem
+                      gerencia os outros é a comunicação, e isso a própria tela
+                      decide — ver `podeGerirTodos` em UsersPage. */}
                   <Route path="/usuarios" element={
                     <ProtectedRoute><UsersPage /></ProtectedRoute>
                   } />
