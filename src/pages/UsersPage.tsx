@@ -576,9 +576,19 @@ export default function UsersPage() {
     }
     
     try {
-      await approveRequest(req.id, req.user_id, req.requested_role, level, unit);
-        
-      toast({ title: 'Aprovado!', description: `Acesso de ${req.name} foi aprovado como ${ROLE_LABELS[req.requested_role]}.` });
+      const resultado = await approveRequest(req.id, req.user_id, req.requested_role, level, unit);
+
+      toast(
+        resultado?.avisoEnviado
+          ? {
+              title: 'Aprovado e avisado',
+              description: `${req.name} recebeu um e-mail com o link de entrada.`,
+            }
+          : {
+              title: 'Aprovado — avise a pessoa',
+              description: `O acesso de ${req.name} está liberado, mas o e-mail de aviso não saiu. Fale com ela por outro caminho.`,
+            },
+      );
       refetch();
     } catch (error: any) {
       toast({ title: 'Erro ao aprovar', description: error.message, variant: 'destructive' });
