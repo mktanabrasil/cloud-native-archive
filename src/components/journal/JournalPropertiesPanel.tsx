@@ -46,10 +46,10 @@ export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlo
         <p className="text-muted-foreground">
           Modelo: <strong>{page ? TEMPLATE_LABELS[page.template] : '—'}</strong>
         </p>
-        <p className="text-muted-foreground">Blocos nesta página: {page?.blocks.length ?? 0}</p>
+        <p className="text-muted-foreground">Peças nesta página: {page?.blocks.length ?? 0}</p>
         <p className="text-xs text-muted-foreground">
-          Clique em um bloco no canvas para editar seu conteúdo. Cabeçalho, rodapé e margens são
-          fixos pela identidade institucional.
+          Clique em uma peça da folha para trocar o conteúdo dela. Cabeçalho, rodapé, margens e
+          cores já vêm prontos da identidade da ANA.
         </p>
       </div>
     );
@@ -62,7 +62,7 @@ export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlo
         ? 'Imagem'
         : block.kind === 'agenda'
           ? 'Agenda'
-          : 'Indicador';
+          : 'Número em destaque';
 
   return (
     <div className="space-y-4 text-sm">
@@ -77,17 +77,17 @@ export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlo
 
       {locked ? (
         <p className="rounded-md bg-muted/60 px-2.5 py-2 text-[11px] text-muted-foreground">
-          Layout travado pelo modelo: tamanho e posição são fixos. Edite apenas o conteúdo (textos e
-          imagens). Para alterar a estrutura, destrave o layout na barra do canvas.
+          O formato desta página está protegido: tamanho e posição já vêm definidos. Troque os textos
+          e as fotos à vontade. Para mover as peças, libere o formato na barra acima da folha.
         </p>
       ) : (
         <p className="rounded-md bg-muted/60 px-2.5 py-2 text-[11px] text-muted-foreground">
-          Largura: <strong className="text-foreground">{block.span} de 6 colunas</strong> · Altura:{' '}
+          Ocupa <strong className="text-foreground">{block.span} de 6 colunas</strong> · Altura:{' '}
           <strong className="text-foreground">
             {block.height ? `${block.height}px` : 'automática'}
           </strong>
-          . No canvas: arraste a alça direita para largura, a alça inferior para altura (clique duplo
-          volta ao automático) e a alça esquerda para reordenar os blocos.
+          . Na folha: puxe a borda direita para mudar a largura e a de baixo para a altura (dois
+          cliques voltam ao automático). A alça da esquerda muda a ordem das peças.
         </p>
       )}
 
@@ -95,7 +95,7 @@ export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlo
       {!locked && rowSiblingCount > 0 && onEqualizeRow && (
         <Button variant="outline" size="sm" onClick={onEqualizeRow} className="w-full gap-2">
           <AlignVerticalSpaceAround className="h-4 w-4" />
-          Igualar alturas da fileira
+          Deixar todas da mesma altura
         </Button>
       )}
 
@@ -273,7 +273,7 @@ export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlo
             onClick={onRemoveBlock}
             className="w-full justify-start px-1 text-destructive hover:text-destructive"
           >
-            <Trash2 className="mr-1.5 h-4 w-4" /> Remover bloco
+            <Trash2 className="mr-1.5 h-4 w-4" /> Remover esta peça
           </Button>
         </div>
       )}
