@@ -14,8 +14,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { NEWS_UNIT_GROUPS } from '@/lib/news/units';
 import { cn } from '@/lib/utils';
+import { marcarPedidoEnviado, pedidoFoiEnviado } from '@/lib/pedidoEnviado';
 
 type Mode = 'login' | 'signup' | 'request_sent' | 'forgot';
+
 
 interface AccessFormProps {
   /** Título do card. */
@@ -50,7 +52,7 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
     stagger
       ? { className: 'ana-enter-item', style: { '--ana-i': i } as React.CSSProperties }
       : {};
-  const [mode, setMode] = useState<Mode>('login');
+  const [mode, setMode] = useState<Mode>(() => (pedidoFoiEnviado() ? 'request_sent' : 'login'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -144,6 +146,10 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
     // pessoa caía direto no app — logada, sem unidade e sem permissão nenhuma,
     // navegando por telas que não são dela. Encerramos a sessão e ficamos na
     // tela de espera até um administrador aprovar.
+    //
+    // A marca vem antes do `signOut`: entre um e outro o roteador remonta esta
+    // tela, e é ela que diz o que mostrar quando isso acontece.
+    marcarPedidoEnviado(true);
     await signOut();
 
     setMode('request_sent');
@@ -165,7 +171,14 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button variant="outline" onClick={() => { setMode('login'); }} className="w-full">
+          <Button
+            variant="outline"
+            onClick={() => {
+              marcarPedidoEnviado(false);
+              setMode('login');
+            }}
+            className="w-full"
+          >
             Voltar ao Login
           </Button>
         </CardContent>

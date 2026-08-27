@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppProvider } from "@/contexts/AppContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useUserRole } from "@/hooks/useUserRole";
+import { pedidoFoiEnviado } from "@/lib/pedidoEnviado";
 import { TestViewProvider } from "@/contexts/TestViewContext";
 import AppLayout from "@/components/AppLayout";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -77,11 +78,15 @@ function JournalRoute({ children }: { children: React.ReactNode }) {
 
 function AuthRedirect({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
+  // Quem acabou de pedir acesso fica onde está: o `signUp` cria sessão por um
+  // instante, e sem isto o app abre — logado — para quem ainda não foi
+  // aprovado. Ver `src/lib/pedidoEnviado.ts`.
+  const acabouDePedir = pedidoFoiEnviado();
   const [searchParams] = useSearchParams();
   const redirect = searchParams.get('redirect') || '/';
   
   if (loading) return null;
-  if (isAuthenticated) return <Navigate to={redirect} replace />;
+  if (isAuthenticated && !acabouDePedir) return <Navigate to={redirect} replace />;
   return <>{children}</>;
 }
 
