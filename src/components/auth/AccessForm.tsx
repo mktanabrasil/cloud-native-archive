@@ -129,6 +129,14 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
 
     setLoading(true);
 
+    // A marca vem ANTES do cadastro, e não depois.
+    //
+    // O `signUp` já devolve a sessão dentro dele: no instante em que ele
+    // resolve, o roteador ja viu a sessão e desviou. Marcar depois chegava
+    // tarde — o desvio acontecia com a marca ainda apagada, e a pessoa
+    // terminava na porta de entrada em vez da tela de espera.
+    marcarPedidoEnviado(true);
+
     const { error } = await signUp(email, password, {
       name,
       requested_role: requestedRole,
@@ -137,19 +145,14 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
     });
 
     if (error) {
+      marcarPedidoEnviado(false);
       setPopup({ title: 'Erro', message: error.message, type: 'error' });
       setLoading(false);
       return;
     }
 
-    // Pedir acesso não é entrar. O `signUp` devolve sessão, e sem isto a
-    // pessoa caía direto no app — logada, sem unidade e sem permissão nenhuma,
-    // navegando por telas que não são dela. Encerramos a sessão e ficamos na
-    // tela de espera até um administrador aprovar.
-    //
-    // A marca vem antes do `signOut`: entre um e outro o roteador remonta esta
-    // tela, e é ela que diz o que mostrar quando isso acontece.
-    marcarPedidoEnviado(true);
+    // Pedir acesso não é entrar: a sessão que o cadastro criou é encerrada
+    // aqui, e a pessoa fica na tela de espera até um administrador aprovar.
     await signOut();
 
     setMode('request_sent');
