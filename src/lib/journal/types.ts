@@ -244,14 +244,21 @@ export interface JournalRecord {
   updated_at: string;
 }
 
+/**
+ * Os nomes que aparecem na tela.
+ *
+ * Falam do papel que o texto cumpre na página, e não da tipografia: quem
+ * escolhe não precisa saber o que é corpo, entrelinha ou caixa-alta — só onde
+ * aquele texto entra.
+ */
 export const TEXT_STYLE_LABELS: Record<TextStyleKey, string> = {
-  titulo_capa: 'Título de capa',
-  titulo_materia: 'Título de matéria',
+  titulo_capa: 'Título da capa',
+  titulo_materia: 'Título da matéria',
   subtitulo: 'Subtítulo',
-  corpo: 'Corpo do texto',
+  corpo: 'Texto da matéria',
   destaque: 'Frase de destaque',
-  chamada: 'Chamada curta',
-  legenda: 'Legenda',
+  chamada: 'Linha de apoio',
+  legenda: 'Legenda da foto',
 };
 
 /** Funções de texto oferecidas no editor (as demais existem só para conteúdo legado). */
@@ -303,13 +310,17 @@ export const STATUS_BADGE_CLASSES: Record<string, string> = {
   arquivado: 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
 };
 
+/**
+ * `materias` e `materia` diferiam por uma letra e confundiam: os nomes agora
+ * dizem o que a página faz, e não como ela se chama por dentro.
+ */
 export const TEMPLATE_LABELS: Record<JournalTemplate, string> = {
   capa: 'Capa',
-  materias: 'Matérias',
-  materia: 'Matéria completa',
-  galeria: 'Galeria',
-  agenda: 'Agenda',
-  numeros: 'Resultados e números',
-  contracapa: 'Contracapa',
-  branco: 'Em branco',
+  materias: 'Duas notícias lado a lado',
+  materia: 'Uma matéria inteira',
+  galeria: 'Galeria de fotos',
+  agenda: 'Agenda de atividades',
+  numeros: 'Resultados em números',
+  contracapa: 'Página de encerramento',
+  branco: 'Página vazia',
 };

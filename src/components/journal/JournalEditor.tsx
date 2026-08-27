@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AlertTriangle,
   ArrowLeft,
   Copy,
   Download,
@@ -80,6 +81,7 @@ import {
   uid,
 } from '@/lib/journal/templates';
 import { rowSiblings } from '@/lib/journal/rows';
+import { avisoDeTransbordo, medirFolha, type Transbordo } from '@/lib/journal/transbordo';
 import { JournalElementLibrary } from './JournalElementLibrary';
 import { JournalDecorationProperties } from './JournalDecorationProperties';
 import {
@@ -270,6 +272,53 @@ export function JournalEditor({
     setHistoryTick((t) => t + 1);
     setPages(updater);
   }, [somenteLeitura]);
+
+  /**
+   * Quanto desta página está sobrando para fora da folha.
+   *
+   * Sem isto o excesso some em silêncio: a folha recorta, e nem a tela nem o
+   * PDF dão sinal. Medimos depois da pintura porque antes dela as alturas
+   * ainda são as do conteúdo anterior.
+   */
+  const [transbordo, setTransbordo] = useState<Transbordo | null>(null);
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      setTransbordo(medirFolha(document.querySelector<HTMLElement>('[data-journal-canvas="true"]')));
+    }, 80);
+    return () => window.clearTimeout(id);
+  }, [activePage, somenteLeitura]);
+
+  /**
+   * Move para uma página nova tudo o que não coube.
+   *
+   * Quem decide é ela, e não o sistema: a quebra automática cairia no ponto em
+   * que a medida estourou, que raramente é o ponto em que a matéria deveria
+   * virar de página.
+   */
+  const moverExcedente = useCallback(() => {
+    if (!transbordo?.transborda) return;
+    const corte = transbordo.primeiraFora;
+    // Cortar no primeiro bloco esvaziaria esta página e só mudaria o problema
+    // de lugar.
+    if (corte <= 0) return;
+
+    mutatePages((prev) => {
+      const indice = prev.findIndex((page) => page.id === activePage.id);
+      if (indice < 0) return prev;
+      const atual = prev[indice];
+      const ficam = atual.blocks.slice(0, corte);
+      const vao = atual.blocks.slice(corte);
+      if (!ficam.length || !vao.length) return prev;
+
+      const nova: JournalPage = {
+        id: uid(),
+        template: 'materia',
+        blocks: vao,
+        ...(atual.decorations ? { decorations: atual.decorations } : {}),
+      };
+      return [...prev.slice(0, indice), { ...atual, blocks: ficam }, nova, ...prev.slice(indice + 1)];
+    });
+  }, [activePage.id, mutatePages, transbordo]);
 
   const undo = useCallback(() => {
     const previous = undoStack.current.pop();
@@ -1168,16 +1217,16 @@ export function JournalEditor({
                     >
                       {layoutLocked ? (
                         <>
-                          <Lock className="mr-1.5 h-3.5 w-3.5" /> Layout travado pelo modelo
+                          <Lock className="mr-1.5 h-3.5 w-3.5" /> Formato do modelo protegido
                         </>
                       ) : (
                         <>
-                          <Unlock className="mr-1.5 h-3.5 w-3.5" /> Layout livre
+                          <Unlock className="mr-1.5 h-3.5 w-3.5" /> Posso mover as peças
                         </>
                       )}
                     </Button>
                     <p className="text-[10px] text-muted-foreground">
-                      Travado: só conteúdo. Livre: tamanho, ordem e posição dos blocos.
+                      Protegido: você troca textos e fotos. Liberado: também dá para mover, redimensionar e reordenar as peças.
                     </p>
                   </div>
                 </PopoverContent>
@@ -1185,15 +1234,30 @@ export function JournalEditor({
 
               {layoutLocked ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[10px] text-muted-foreground">
-                  <Lock className="h-3 w-3" /> Layout travado
+                  <Lock className="h-3 w-3" /> Formato protegido
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-1 text-[10px] text-accent-foreground">
-                  <Unlock className="h-3 w-3" /> Layout livre
+                  <Unlock className="h-3 w-3" /> Formato liberado
                 </span>
               )}
             </div>
           </div>
+
+          {/* O corte é silencioso; este aviso é o que impede que ele passe. */}
+          {!somenteLeitura && transbordo?.transborda && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-warning/40 bg-warning/10 px-3 py-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
+              <p className="min-w-0 flex-1 text-xs text-foreground">
+                {avisoDeTransbordo(transbordo)}
+              </p>
+              {transbordo.primeiraFora > 0 && (
+                <Button size="sm" variant="outline" className="h-7 shrink-0 text-xs" onClick={moverExcedente}>
+                  Mover para uma página nova
+                </Button>
+              )}
+            </div>
+          )}
 
           <div ref={canvasRef} className="flex-1 overflow-auto bg-journal-workspace p-6">
             <div
@@ -1234,15 +1298,15 @@ export function JournalEditor({
         <aside className="flex flex-col gap-3 overflow-y-auto rounded-lg border border-border bg-card p-3">
           {layoutLocked && (
             <p className="rounded-md bg-muted/60 px-2.5 py-2 text-[11px] text-muted-foreground">
-              Layout do modelo travado: clique em um bloco para trocar o texto ou enviar a imagem.
-              Para incluir/remover blocos ou mudar tamanhos, use “Layout livre” na barra do canvas.
+              O formato do modelo está protegido: clique em uma peça para trocar o texto ou enviar a foto.
+              Para incluir, remover ou redimensionar peças, libere o formato na barra acima da folha.
             </p>
           )}
 
           <div>
             <Label className="text-xs text-muted-foreground">
               {!layoutLocked && selectedBlock
-                ? 'Adicionar abaixo do bloco selecionado'
+                ? 'Adicionar abaixo da peça selecionada'
                 : 'Adicionar ao jornal'}
             </Label>
             <div className="mt-1.5 grid grid-cols-2 gap-1.5">

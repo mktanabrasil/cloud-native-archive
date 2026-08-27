@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useMemo, useState } from 'react';
-import { Plus, Copy, Trash2, Pencil, Lock, Loader2, Newspaper, Search } from 'lucide-react';
+import { Plus, Copy, Trash2, Pencil, Lock, Loader2, Newspaper, Search, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,8 @@ import { useJournals } from '@/hooks/useJournals';
 import { JournalEditor } from '@/components/journal/JournalEditor';
 import { JournalPageView, A4_W, A4_H } from '@/components/journal/JournalPageView';
 import { UnitBadge } from '@/components/journal/UnitBadge';
+import { JournalImportDialog } from '@/components/journal/JournalImportDialog';
+import { resumirImportacao } from '@/lib/journal/importar';
 import {
   newsUnitName,
   newsUnitForProfileUnit,
@@ -109,6 +111,8 @@ export default function JournalPage() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  /** Diálogo de criar a partir de um arquivo da unidade. */
+  const [importing, setImporting] = useState(false);
   /** Edição aguardando confirmação de exclusão — nada é removido antes do "sim". */
   const [pendingDelete, setPendingDelete] = useState<JournalRecord | null>(null);
   const [search, setSearch] = useState('');
@@ -237,9 +241,14 @@ export default function JournalPage() {
         </div>
         {/* Criar fora da própria unidade seria recusado pela RLS. */}
         {naMinhaUnidade && (
-          <Button onClick={openCreate} className="shrink-0">
-            <Plus className="mr-1.5 h-4 w-4" /> Criar jornal da unidade
-          </Button>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setImporting(true)}>
+              <Sparkles className="mr-1.5 h-4 w-4" /> Começar de um arquivo
+            </Button>
+            <Button onClick={openCreate}>
+              <Plus className="mr-1.5 h-4 w-4" /> Criar jornal da unidade
+            </Button>
+          </div>
         )}
       </header>
 
@@ -354,9 +363,14 @@ export default function JournalPage() {
                   {newsUnitName(activeUnitId) || 'Institucional geral'}
                 </span>
               </p>
-              <Button onClick={openCreate}>
-                <Plus className="mr-1.5 h-4 w-4" /> Criar jornal da unidade
-              </Button>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button onClick={openCreate}>
+                  <Plus className="mr-1.5 h-4 w-4" /> Criar jornal da unidade
+                </Button>
+                <Button variant="outline" onClick={() => setImporting(true)}>
+                  <Sparkles className="mr-1.5 h-4 w-4" /> Começar de um arquivo
+                </Button>
+              </div>
               <p className="text-[11px] text-muted-foreground">
                 A unidade já está definida — é só dar um nome à edição.
               </p>
@@ -589,6 +603,40 @@ export default function JournalPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <JournalImportDialog
+        aberto={importing}
+        onAberto={setImporting}
+        unitId={activeUnitId}
+        sugerirNome={suggestName}
+        podeTrocarUnidade={isMarketing}
+        onCriar={async (dados) => {
+          const criado = await create({
+            name: dados.name,
+            unitId: dados.unitId,
+            profileUnit: dados.unitId ? profileUnitForNewsUnit(dados.unitId) : null,
+            referenceMonth: dados.referenceMonth || null,
+            status: 'rascunho',
+            pages: dados.pages,
+          });
+          return criado?.id ?? null;
+        }}
+        onPronto={(journalId, resultado) => {
+          setEditingId(journalId);
+          toast.success('Pronto — confira antes de gerar o PDF', {
+            description: resumirImportacao(resultado),
+            duration: 8000,
+          });
+          // O que a leitura achou ambíguo vem separado: é ela quem decide o que
+          // fazer, e um aviso enfiado no resumo passaria batido.
+          if (resultado.observacoes) {
+            toast.warning('Confira este trecho', {
+              description: resultado.observacoes,
+              duration: 12000,
+            });
+          }
+        }}
+      />
     </div>
   );
 }

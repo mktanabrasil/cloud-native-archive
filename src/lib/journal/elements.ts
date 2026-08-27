@@ -58,7 +58,7 @@ export interface JournalElementDef {
 export const JOURNAL_ELEMENTS: JournalElementDef[] = [
   {
     key: 'elemento_01',
-    label: 'Elemento 01',
+    label: 'Forma 1',
     nativeSide: 'direita',
     viewBox: '3 3 135 107',
     ratio: 1.2617,
@@ -70,7 +70,7 @@ export const JOURNAL_ELEMENTS: JournalElementDef[] = [
   },
   {
     key: 'elemento_02',
-    label: 'Elemento 02',
+    label: 'Forma 2',
     nativeSide: 'esquerda',
     viewBox: '3 2 135 89',
     ratio: 1.5169,
@@ -83,7 +83,7 @@ export const JOURNAL_ELEMENTS: JournalElementDef[] = [
   },
   {
     key: 'elemento_03',
-    label: 'Elemento 03',
+    label: 'Forma 3',
     nativeSide: 'esquerda',
     viewBox: '5 4 248 240',
     ratio: 1.0333,
@@ -93,7 +93,7 @@ export const JOURNAL_ELEMENTS: JournalElementDef[] = [
   },
   {
     key: 'elemento_04',
-    label: 'Elemento 04',
+    label: 'Forma 4',
     nativeSide: 'direita',
     viewBox: '5 8 240 202',
     ratio: 1.1881,
@@ -108,7 +108,7 @@ export const JOURNAL_ELEMENTS: JournalElementDef[] = [
   },
   {
     key: 'elemento_05',
-    label: 'Elemento 05',
+    label: 'Forma 5',
     nativeSide: 'esquerda',
     viewBox: '5 1 240 208',
     ratio: 1.1538,
