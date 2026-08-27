@@ -134,7 +134,45 @@ Deno.serve(async (req) => {
 
     console.log(`[AUDIT] Admin ${callerId} aprovou e ativou usuário ${userId}`);
 
-    return new Response(JSON.stringify({ success: true }), {
+    // 4. Avisar a pessoa de que o acesso saiu.
+    //
+    // A conta já existe neste ponto — ela criou a senha ao solicitar —, então
+    // não cabe convite: o que se envia é um link de entrada. `shouldCreateUser`
+    // fica falso de propósito: se o e-mail não existir mais, é para falhar, não
+    // para criar conta nova.
+    //
+    // O envio usa o remetente configurado no Supabase. O embutido é de
+    // desenvolvimento e tem limite baixo por hora; com um SMTP próprio
+    // configurado no painel, o limite deixa de existir e o remetente passa a
+    // ser o de vocês.
+    //
+    // Falha aqui NÃO derruba a aprovação: o acesso já foi concedido, e quem
+    // aprovou precisa saber que o aviso não saiu para avisar por fora.
+    let avisoEnviado = false;
+    let avisoErro: string | null = null;
+    try {
+      const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const destino = Deno.env.get('APP_URL') ?? 'https://app.anabrasil.org';
+      const { data: perfil } = await adminClient
+        .from('profiles')
+        .select('email')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!perfil?.email) throw new Error('perfil sem e-mail');
+
+      const { error: envioErr } = await anonClient.auth.signInWithOtp({
+        email: perfil.email,
+        options: { shouldCreateUser: false, emailRedirectTo: destino },
+      });
+      if (envioErr) throw envioErr;
+      avisoEnviado = true;
+    } catch (e) {
+      avisoErro = e instanceof Error ? e.message : String(e);
+      console.warn('Aprovado, mas o aviso por e-mail não saiu:', avisoErro);
+    }
+
+    return new Response(JSON.stringify({ success: true, avisoEnviado, avisoErro }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

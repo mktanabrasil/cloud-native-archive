@@ -210,6 +210,10 @@ export function useAccessRequests() {
     }
 
     await fetchRequests();
+
+    // Quem aprovou precisa saber se o aviso saiu: se não saiu, o acesso está
+    // liberado do mesmo jeito e a pessoa só descobre se alguém contar.
+    return { avisoEnviado: data?.avisoEnviado === true, avisoErro: data?.avisoErro ?? null };
   };
 
   const rejectRequest = async (requestId: string) => {
