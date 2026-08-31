@@ -209,6 +209,81 @@ describe('conferir o arquivo antes de gastar uma chamada', () => {
   });
 });
 
+/**
+ * Fixture de campo, e não inventada: esta é a resposta que o `gemini-3.5-flash`
+ * devolveu ao ler o jornal do GOE em 31/08/2026, encurtada nos textos longos.
+ *
+ * Existe porque um teste feito com dados que eu mesmo imaginei prova apenas que
+ * o normalizador aceita o que eu imaginei. O que importa é ele aceitar o que a
+ * API realmente manda — inclusive as formas que eu não previ, como o
+ * `alinhamento: 'justify'` e as quebras de linha dentro do conteúdo.
+ */
+const RESPOSTA_REAL_DO_GEMINI = {
+  paginas: [
+    {
+      template: 'capa',
+      blocos: [
+        { tipo: 'texto', estilo: 'titulo_capa', conteudo: 'DA HORTA À MESA:\nCOLHER, CUIDAR E SABOREAR', largura: 6, alinhamento: 'center' },
+        { tipo: 'texto', estilo: 'subtitulo', conteudo: 'PROJETO HORTA: “COLHENDO DESCOBERTAS”', largura: 6, alinhamento: 'center' },
+        { tipo: 'texto', estilo: 'subtitulo', conteudo: 'PROJETO ALIMENTAÇÃO SAUDÁVEL: “SABORES QUE EDUCAM”', largura: 6, alinhamento: 'center' },
+        { tipo: 'texto', estilo: 'chamada', conteudo: 'Unidade: Grupo de Oração e Esperança - GOE\nEdição: Agosto/2026', largura: 6, alinhamento: 'center' },
+      ],
+    },
+    {
+      template: 'materia',
+      blocos: [
+        { tipo: 'texto', estilo: 'titulo_materia', conteudo: '1. A horta como espaço de descobertas', largura: 6, alinhamento: 'left' },
+        { tipo: 'texto', estilo: 'corpo', conteudo: 'No Grupo de Oração e Esperança - GOE, a horta se transformou em um verdadeiro espaço de descobertas.', largura: 6, alinhamento: 'justify' },
+        { tipo: 'texto', estilo: 'titulo_materia', conteudo: '2. O momento da colheita', largura: 6, alinhamento: 'left' },
+        { tipo: 'texto', estilo: 'corpo', conteudo: 'Durante a colheita, exploraram cores, formas, aromas e texturas.', largura: 6, alinhamento: 'justify' },
+      ],
+    },
+    {
+      template: 'contracapa',
+      blocos: [
+        { tipo: 'texto', estilo: 'destaque', conteudo: 'Da terra para as pequenas mãos.\nDas pequenas mãos para a cozinha.', largura: 6, alinhamento: 'center' },
+        { tipo: 'texto', estilo: 'chamada', conteudo: 'Grupo de Oração e Esperança - GOE', largura: 6, alinhamento: 'center' },
+      ],
+    },
+  ],
+  observacoes:
+    'O documento original foi dividido em 3 páginas para manter a legibilidade.',
+};
+
+describe('a resposta que o Gemini devolveu de verdade', () => {
+  it('atravessa o normalizador inteira, sem perder página nem peça', () => {
+    const { paginas } = normalizarImportacao(RESPOSTA_REAL_DO_GEMINI);
+
+    expect(paginas).toHaveLength(3);
+    expect(paginas.map((p) => p.template)).toEqual(['capa', 'materia', 'contracapa']);
+    expect(paginas.map((p) => p.blocks.length)).toEqual([4, 4, 2]);
+  });
+
+  it('aceita o alinhamento justificado, que só apareceu na resposta real', () => {
+    const { paginas } = normalizarImportacao(RESPOSTA_REAL_DO_GEMINI);
+    const corpo = paginas[1].blocks[1];
+
+    expect(corpo).toMatchObject({ kind: 'text', style: 'corpo', align: 'justify' });
+  });
+
+  it('preserva a quebra de linha dentro do conteúdo', () => {
+    const { paginas } = normalizarImportacao(RESPOSTA_REAL_DO_GEMINI);
+    const titulo = paginas[0].blocks[0];
+
+    expect(titulo.kind).toBe('text');
+    if (titulo.kind === 'text') expect(titulo.content).toContain('\n');
+  });
+
+  it('guarda a observação da leitura', () => {
+    expect(normalizarImportacao(RESPOSTA_REAL_DO_GEMINI).observacoes).toContain('3 páginas');
+  });
+
+  /** Nenhuma foto veio: o documento de teste não tinha imagem embutida. */
+  it('não inventa foto pendente quando não veio imagem', () => {
+    expect(normalizarImportacao(RESPOSTA_REAL_DO_GEMINI).fotosPendentes).toBe(0);
+  });
+});
+
 describe('resumir para a tela', () => {
   it('conta páginas, peças e fotos pendentes', () => {
     const resumo = resumirImportacao(
