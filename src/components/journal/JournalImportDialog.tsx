@@ -22,6 +22,8 @@ import {
   LIMITE_ARQUIVO_MB,
   type ResultadoImportacao,
 } from '@/lib/journal/importar';
+import { medirFotosDoPdf } from '@/lib/journal/pdfImagens';
+import { arranjarImagens } from '@/lib/journal/arranjarImagens';
 import type { JournalPage } from '@/lib/journal/types';
 
 interface Props {
@@ -45,6 +47,34 @@ interface Props {
 }
 
 type Etapa = 'escolher' | 'lendo' | 'erro';
+
+/**
+ * A mensagem que a função escreveu, e não a que o cliente inventou.
+ *
+ * Quando a edge function responde fora da faixa 2xx, o `invoke` devolve um erro
+ * cujo `message` é sempre o mesmo texto em inglês — "Edge Function returned a
+ * non-2xx status code" — e joga a resposta de verdade num `context`. O corpo
+ * traz o que nós escrevemos: "a leitura está congestionada", "seu acesso não
+ * permite criar jornais", e assim por diante.
+ *
+ * Sem esta função, toda falha do servidor chega à diretora como uma frase em
+ * inglês que não diz o que fazer.
+ */
+async function mensagemDoErro(erro: Error): Promise<string> {
+  const contexto = (erro as { context?: unknown }).context;
+  const resposta = contexto as Response | undefined;
+
+  if (resposta && typeof resposta.json === 'function') {
+    try {
+      const corpo = await resposta.json();
+      if (corpo && typeof corpo.error === 'string' && corpo.error.trim()) return corpo.error;
+    } catch {
+      /* corpo ilegível: sobra a mensagem genérica, melhor que nada */
+    }
+  }
+
+  return erro.message;
+}
 
 /**
  * Criar um jornal a partir de um arquivo que a unidade já tinha.
@@ -111,13 +141,20 @@ export function JournalImportDialog({
     setErro('');
 
     try {
-      const base64 = await arquivoParaBase64(arquivo);
+      const [base64, bytes] = await Promise.all([arquivoParaBase64(arquivo), arquivo.arrayBuffer()]);
 
-      const { data, error } = await supabase.functions.invoke('journal-import', {
-        body: { arquivo: base64, unidade, edicao: mes },
-      });
+      // A medida das fotos roda em paralelo com a leitura do texto: uma é local
+      // e instantânea, a outra leva segundos. Somar as duas esperas seria
+      // desperdício, e a medida não depende da resposta.
+      const [resposta, fotos] = await Promise.all([
+        supabase.functions.invoke('journal-import', {
+          body: { arquivo: base64, unidade, edicao: mes },
+        }),
+        medirFotosDoPdf(bytes),
+      ]);
 
-      if (error) throw new Error(error.message);
+      const { data, error } = resposta;
+      if (error) throw new Error(await mensagemDoErro(error));
       if (data?.error) throw new Error(data.error);
 
       const resultado = normalizarImportacao(data?.resultado);
@@ -127,11 +164,16 @@ export function JournalImportDialog({
         );
       }
 
+      // As fotos entram em fileira e na proporção que têm no arquivo. Sem esta
+      // passada elas saem empilhadas na largura toda, o que estoura a folha e
+      // recorta foto em pé.
+      const paginas = arranjarImagens(resultado.paginas, fotos);
+
       const id = await onCriar({
         name: nome || sugerirNome(unidade, mes),
         unitId: unidade,
         referenceMonth: mes,
-        pages: resultado.paginas,
+        pages: paginas,
       });
       if (!id) throw new Error('Li o arquivo, mas não consegui salvar o jornal. Tente de novo.');
 
@@ -271,8 +313,9 @@ export function JournalImportDialog({
             </div>
 
             <p className="rounded-md bg-muted/60 px-2.5 py-2 text-[11px] text-muted-foreground">
-              As fotos do arquivo não vêm junto: cada uma deixa o lugar reservado na página, e você
-              coloca a imagem no encaixe já pronto.
+              As fotos do arquivo não vêm junto, mas o lugar delas vem: cada encaixe já nasce com o
+              tamanho e o formato da foto original — em pé ou deitada, na mesma fileira em que você as
+              colocou. Basta arrastar cada imagem para o seu lugar.
             </p>
           </div>
         )}
