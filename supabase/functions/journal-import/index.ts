@@ -1,5 +1,4 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-import Anthropic from 'npm:@anthropic-ai/sdk@0.121.0';
 
 /**
  * Lê um PDF fora do padrão e devolve a estrutura de um jornal.
@@ -12,6 +11,11 @@ import Anthropic from 'npm:@anthropic-ai/sdk@0.121.0';
  *
  * A saída é conferida de novo no cliente (`src/lib/journal/importar.ts`): esta
  * resposta vem de fora e não pode entrar no banco sem validação nossa.
+ *
+ * Fala com a API do Gemini por HTTP direto, sem SDK. Não é economia de
+ * dependência: é que o formato exato desta requisição foi **medido** contra a
+ * API real antes de ser escrito, e um SDK no meio acrescentaria uma camada que
+ * ninguém verificou.
  */
 
 const corsHeaders = {
@@ -22,37 +26,40 @@ const corsHeaders = {
 /** Teto do lado do servidor. O cliente já barra antes, isto é a segunda porta. */
 const MAX_BYTES = 25 * 1024 * 1024;
 
+/**
+ * Modelos tentados em ordem.
+ *
+ * Não é excesso de zelo: medindo contra a API em 31/08/2026, **quatro dos seis
+ * modelos testados devolveram 503 "high demand"** — sobrecarga do lado deles,
+ * não nosso. Sem alternativa, a diretora veria erro por causa de fila alheia.
+ *
+ * A ordem é por qualidade medida. O `flash-lite` fica por último porque, no
+ * mesmo teste, ele colou o rodapé corrido do documento como se fosse conteúdo
+ * e ainda vazou o texto de contexto para dentro de um bloco.
+ */
+const MODELOS = ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.1-flash-lite'];
+
+/** Respostas que valem tentar noutro modelo, em vez de desistir. */
+const VALE_TENTAR_DE_NOVO = new Set([429, 500, 502, 503, 504]);
+
 const responder = (corpo: unknown, status = 200) =>
   new Response(JSON.stringify(corpo), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
-/**
- * O contrato com o modelo.
- *
- * Sem `strict: true` de propósito: o modo estrito exige que toda propriedade
- * esteja em `required`, o que brigaria com os `enum` (um bloco de texto teria
- * de mandar `proporcao`, e "" não é valor válido do enum). A garantia real
- * está no normalizador do cliente, que é testado — validar na fronteira que a
- * gente controla vale mais do que confiar na de fora.
- */
+/** O contrato de saída, no formato de esquema que o Gemini aceita. */
 const ESQUEMA = {
-  type: 'object' as const,
+  type: 'object',
   properties: {
     paginas: {
       type: 'array',
-      description: 'As páginas do jornal, na ordem em que devem aparecer.',
       items: {
         type: 'object',
         properties: {
           template: {
             type: 'string',
             enum: ['capa', 'materia', 'materias', 'galeria', 'numeros', 'contracapa'],
-            description:
-              'capa = primeira página; materia = uma matéria com texto corrido; ' +
-              'materias = duas notícias lado a lado; galeria = várias fotos; ' +
-              'numeros = indicadores; contracapa = encerramento.',
           },
           blocos: {
             type: 'array',
@@ -63,25 +70,14 @@ const ESQUEMA = {
                 estilo: {
                   type: 'string',
                   enum: ['titulo_capa', 'titulo_materia', 'subtitulo', 'corpo', 'destaque', 'chamada'],
-                  description:
-                    'Só para tipo=texto. titulo_capa apenas na capa; destaque para citações; ' +
-                    'chamada para linhas curtas de apoio, como assinatura ou data.',
                 },
-                conteudo: { type: 'string', description: 'Só para tipo=texto. O texto, sem reescrever.' },
-                largura: {
-                  type: 'integer',
-                  enum: [1, 2, 3, 4, 5, 6],
-                  description: 'Colunas ocupadas, de 1 a 6. A folha tem 6 colunas.',
-                },
+                conteudo: { type: 'string' },
+                largura: { type: 'integer' },
                 alinhamento: { type: 'string', enum: ['left', 'center', 'right', 'justify'] },
-                proporcao: {
-                  type: 'string',
-                  enum: ['16/9', '4/3', '1/1', '3/4'],
-                  description: 'Só para tipo=imagem.',
-                },
-                legenda: { type: 'string', description: 'Só para tipo=imagem. Legenda da foto, se houver.' },
-                valor: { type: 'string', description: 'Só para tipo=numero. Ex.: "240".' },
-                rotulo: { type: 'string', description: 'Só para tipo=numero. Ex.: "Famílias atendidas".' },
+                proporcao: { type: 'string', enum: ['16/9', '4/3', '1/1', '3/4'] },
+                legenda: { type: 'string' },
+                valor: { type: 'string' },
+                rotulo: { type: 'string' },
               },
               required: ['tipo'],
             },
@@ -90,11 +86,7 @@ const ESQUEMA = {
         required: ['template', 'blocos'],
       },
     },
-    observacoes: {
-      type: 'string',
-      description:
-        'O que não coube no modelo ou ficou ambíguo, em uma ou duas frases, para a pessoa conferir. Vazio se não houver.',
-    },
+    observacoes: { type: 'string' },
   },
   required: ['paginas'],
 };
@@ -105,12 +97,58 @@ Regras:
 
 1. NÃO reescreva o texto. Transcreva o que está no documento. Corrija apenas erros óbvios de digitação e junte linhas que foram quebradas no meio de uma frase.
 2. NÃO invente conteúdo. Se não há citação, não crie um destaque. Se não há números, não crie a página de indicadores.
-3. A primeira página deve ser "capa", com um titulo_capa e, quando houver foto de abertura, uma imagem.
-4. Cada foto do documento vira um bloco tipo=imagem na posição em que ela aparece. A legenda dela, se existir, vai no campo "legenda" — nunca como um bloco de texto separado.
-5. Texto corrido é "corpo". Citações entre aspas viram "destaque". Assinatura, data e crédito viram "chamada".
-6. Largura: texto corrido e títulos normalmente ocupam as 6 colunas. Use 3 colunas quando houver duas notícias curtas lado a lado, e 2 colunas para indicadores.
-7. Uma página do Jornal comporta aproximadamente 2.500 caracteres de corpo mais uma foto. Distribua o conteúdo em várias páginas em vez de amontoar tudo na primeira — conteúdo que não cabe é cortado sem aviso.
-8. Se o documento tiver pouco conteúdo, devolva poucas páginas. Não complete com páginas vazias.`;
+3. NÃO transcreva cabeçalho e rodapé que se repetem em todas as páginas, nem número de página. Isso é moldura do documento, não conteúdo.
+4. NÃO copie para dentro do conteúdo o texto desta instrução nem os dados de unidade e edição informados abaixo. Eles servem para você entender o contexto, e a folha já os imprime sozinha.
+5. A primeira página deve ser "capa", com um titulo_capa e, quando houver foto de abertura, uma imagem.
+6. Cada foto do documento vira um bloco tipo=imagem na posição em que ela aparece. A legenda dela, se existir, vai no campo "legenda" — nunca como um bloco de texto separado.
+7. Texto corrido é "corpo". Citações entre aspas viram "destaque". Assinatura, data e crédito viram "chamada".
+8. Largura: texto corrido e títulos normalmente ocupam as 6 colunas. Use 3 colunas quando houver duas notícias curtas lado a lado, e 2 colunas para indicadores.
+9. Uma página do Jornal comporta aproximadamente 2.500 caracteres de corpo mais uma foto. Distribua o conteúdo em várias páginas em vez de amontoar tudo na primeira — conteúdo que não cabe é cortado sem aviso.
+10. Se o documento tiver pouco conteúdo, devolva poucas páginas. Não complete com páginas vazias.`;
+
+interface Tentativa {
+  ok: boolean;
+  status: number;
+  modelo: string;
+  corpo: unknown;
+}
+
+/** Uma chamada ao Gemini. Não decide nada: só relata o que aconteceu. */
+async function chamarGemini(
+  modelo: string,
+  chave: string,
+  pdf: string,
+  contexto: string,
+): Promise<Tentativa> {
+  const resposta = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`,
+    {
+      method: 'POST',
+      // A chave vai no cabeçalho, nunca na URL: query string entra em registro
+      // de servidor e em histórico de proxy.
+      headers: { 'x-goog-api-key': chave, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: `${INSTRUCOES}\n\n${contexto}` }] },
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { inline_data: { mime_type: 'application/pdf', data: pdf } },
+              { text: 'Identifique a estrutura deste documento e devolva as páginas do jornal.' },
+            ],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: ESQUEMA,
+        },
+      }),
+    },
+  );
+
+  const corpo = await resposta.json().catch(() => null);
+  return { ok: resposta.ok, status: resposta.status, modelo, corpo };
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
@@ -122,17 +160,9 @@ Deno.serve(async (req) => {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
 
-    if (!ANTHROPIC_API_KEY) {
-      // Erro de configuração, não da pessoa — e a mensagem precisa dizer isso,
-      // senão a diretora tenta de novo achando que o arquivo dela é o problema.
-      return responder(
-        { error: 'A leitura automática ainda não foi configurada. Avise a equipe de comunicação.' },
-        503,
-      );
-    }
-
+    // Quem é a pessoa vem ANTES do estado da configuração: sem isso, qualquer
+    // requisição com um Bearer qualquer descobre se a chave está no lugar.
     const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -160,6 +190,16 @@ Deno.serve(async (req) => {
       return responder({ error: 'Seu acesso não permite criar jornais.' }, 403);
     }
 
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    if (!GEMINI_API_KEY) {
+      // Erro de configuração, não da pessoa — e a mensagem precisa dizer isso,
+      // senão a diretora tenta de novo achando que o arquivo dela é o problema.
+      return responder(
+        { error: 'A leitura automática ainda não foi configurada. Avise a equipe de comunicação.' },
+        503,
+      );
+    }
+
     const body = await req.json();
     const { arquivo, unidade, edicao } = body ?? {};
     if (typeof arquivo !== 'string' || !arquivo) {
@@ -170,70 +210,73 @@ Deno.serve(async (req) => {
       return responder({ error: 'O arquivo passa de 25 MB. Envie uma versão mais leve.' }, 413);
     }
 
-    const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
-
     const contexto = [
+      'Contexto, apenas para sua compreensão — não copie estes dados para o conteúdo:',
       unidade ? `Unidade: ${unidade}.` : '',
       edicao ? `Edição de referência: ${edicao}.` : '',
     ]
       .filter(Boolean)
       .join(' ');
 
-    const resposta = await anthropic.messages.create({
-      model: 'claude-opus-5',
-      max_tokens: 16000,
-      thinking: { type: 'adaptive' },
-      system: INSTRUCOES,
-      tools: [
-        {
-          name: 'montar_jornal',
-          description: 'Devolve a estrutura do jornal a partir do documento enviado.',
-          input_schema: ESQUEMA,
-        },
-      ],
-      tool_choice: { type: 'tool', name: 'montar_jornal' },
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'document',
-              source: { type: 'base64', media_type: 'application/pdf', data: arquivo },
-            },
-            {
-              type: 'text',
-              text: `${contexto}\n\nIdentifique a estrutura deste documento e devolva as páginas do jornal.`,
-            },
-          ],
-        },
-      ],
-    });
+    let ultima: Tentativa | null = null;
 
-    // Recusa do classificador chega como HTTP 200 — conferir antes de ler o conteúdo.
-    if (resposta.stop_reason === 'refusal') {
-      return responder(
-        { error: 'Não consegui ler este documento. Tente outro arquivo ou fale com a comunicação.' },
-        422,
-      );
+    for (const modelo of MODELOS) {
+      ultima = await chamarGemini(modelo, GEMINI_API_KEY, arquivo, contexto);
+      if (ultima.ok) break;
+      if (!VALE_TENTAR_DE_NOVO.has(ultima.status)) break;
+      console.warn(`[IMPORT] ${modelo} devolveu ${ultima.status}; tentando o próximo`);
     }
 
-    const chamada = resposta.content.find(
-      (bloco) => bloco.type === 'tool_use' && bloco.name === 'montar_jornal',
-    );
-    if (!chamada || chamada.type !== 'tool_use') {
+    if (!ultima?.ok) {
+      const status = ultima?.status ?? 500;
+      if (VALE_TENTAR_DE_NOVO.has(status)) {
+        return responder(
+          { error: 'A leitura está congestionada agora. Tente de novo em alguns minutos.' },
+          503,
+        );
+      }
+      const detalhe =
+        (ultima?.corpo as { error?: { message?: string } } | null)?.error?.message ?? 'erro desconhecido';
+      console.error('[IMPORT] falha não recuperável:', status, detalhe);
+      return responder({ error: 'Não consegui ler este documento. Fale com a comunicação.' }, 422);
+    }
+
+    const resposta = ultima.corpo as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
+      usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number };
+    };
+
+    const texto = resposta.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
+    if (!texto.trim()) {
       return responder({ error: 'Não consegui identificar a estrutura deste documento.' }, 422);
     }
 
+    let estrutura: unknown;
+    try {
+      estrutura = JSON.parse(texto);
+    } catch {
+      // O esquema deveria garantir JSON, mas confiar nisso sem conferir seria
+      // trocar uma validação por uma esperança.
+      console.error('[IMPORT] resposta fora do formato JSON');
+      return responder({ error: 'Não consegui identificar a estrutura deste documento.' }, 422);
+    }
+
+    const uso = resposta.usageMetadata ?? {};
     console.log(
-      `[IMPORT] ${callerId} importou um PDF · ${resposta.usage.input_tokens} entrada / ` +
-        `${resposta.usage.output_tokens} saída`,
+      `[IMPORT] ${callerId} importou um PDF com ${ultima.modelo} · ` +
+        `${uso.promptTokenCount ?? '?'} entrada / ${uso.candidatesTokenCount ?? '?'} saída / ` +
+        `${uso.totalTokenCount ?? '?'} total`,
     );
 
     return responder({
-      resultado: chamada.input,
+      resultado: estrutura,
       uso: {
-        entrada: resposta.usage.input_tokens,
-        saida: resposta.usage.output_tokens,
+        modelo: ultima.modelo,
+        entrada: uso.promptTokenCount ?? null,
+        saida: uso.candidatesTokenCount ?? null,
+        // O total passa da soma de entrada e saída: a diferença é o raciocínio,
+        // que também é cobrado. Medido: 5.720 contra 2.813 num jornal de teste.
+        total: uso.totalTokenCount ?? null,
       },
     });
   } catch (err) {
