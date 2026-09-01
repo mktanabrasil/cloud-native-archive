@@ -22,7 +22,25 @@ export interface FotoMedida {
   fileira: number;
   /** Largura dividida pela altura. Maior que 1 é deitada; menor, em pé. */
   proporcao: number;
+  /** A foto recortada da página, quando pedida. Ausente se o recorte falhou. */
+  recorte?: Blob;
+  /** Endereço público, preenchido depois do envio ao Storage. */
+  url?: string;
 }
+
+/**
+ * Escala da rasterização.
+ *
+ * Três vezes o tamanho do documento: uma página A4 de 596pt vira 1.788px, e uma
+ * foto que ocupe 35% dela sai com uns 620px. Serve para a tela e para o PDF em
+ * tamanho normal, que é o uso combinado. Subir mais melhoraria a impressão em
+ * tamanho grande ao custo de memória — uma página inteira a 3× já ocupa cerca
+ * de 18 MB de tela, e o celular é quem sente.
+ */
+const ESCALA_RECORTE = 3;
+
+/** Teto de segurança: documento maior que A4 não pode estourar a memória. */
+const LARGURA_MAXIMA = 2400;
 
 /** Proporções que o bloco de imagem do Jornal aceita. */
 const PROPORCOES = [
@@ -101,8 +119,14 @@ function semMolduras(todas: Bruta[], paginas: number): Bruta[] {
   return todas.filter((im) => !molduras.has(assinatura(im)));
 }
 
+/** A medida e o retângulo de origem dela, que o recorte precisa. */
+interface Emparelhada {
+  medida: FotoMedida;
+  bruta: Bruta;
+}
+
 /** Fotos que dividem a mesma faixa horizontal estão lado a lado. */
-function agruparEmFileiras(fotos: Bruta[]): FotoMedida[] {
+function agruparEmFileiras(fotos: Bruta[]): Emparelhada[] {
   const porPagina = new Map<number, Bruta[]>();
   fotos.forEach((foto) => {
     const lista = porPagina.get(foto.pagina) ?? [];
@@ -110,7 +134,7 @@ function agruparEmFileiras(fotos: Bruta[]): FotoMedida[] {
     porPagina.set(foto.pagina, lista);
   });
 
-  const medidas: FotoMedida[] = [];
+  const medidas: Emparelhada[] = [];
 
   [...porPagina.keys()]
     .sort((a, b) => a - b)
@@ -133,9 +157,12 @@ function agruparEmFileiras(fotos: Bruta[]): FotoMedida[] {
           .sort((a, b) => a.x - b.x)
           .forEach((foto) => {
             medidas.push({
-              pagina,
-              fileira: indice,
-              proporcao: foto.altura > 0 ? foto.largura / foto.altura : 1,
+              bruta: foto,
+              medida: {
+                pagina,
+                fileira: indice,
+                proporcao: foto.altura > 0 ? foto.largura / foto.altura : 1,
+              },
             });
           });
       });
@@ -159,7 +186,10 @@ function agruparEmFileiras(fotos: Bruta[]): FotoMedida[] {
  * Nunca lança. Se a leitura falhar, devolve lista vazia e a importação segue
  * sem a geometria: melhor um arranjo padrão do que uma importação perdida.
  */
-export async function medirFotosDoPdf(arquivo: ArrayBuffer): Promise<FotoMedida[]> {
+export async function medirFotosDoPdf(
+  arquivo: ArrayBuffer,
+  opcoes?: { recortar?: boolean },
+): Promise<FotoMedida[]> {
   try {
     const pdfjs = await import('pdfjs-dist');
     pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -211,7 +241,88 @@ export async function medirFotosDoPdf(arquivo: ArrayBuffer): Promise<FotoMedida[
       }
     }
 
-    return agruparEmFileiras(semMolduras(brutas, doc.numPages));
+    const emparelhadas = agruparEmFileiras(semMolduras(brutas, doc.numPages));
+    if (!opcoes?.recortar) return emparelhadas.map((e) => e.medida);
+
+    /*
+     * O recorte acontece aqui, e não numa segunda passada, por dois motivos: o
+     * documento já está aberto, e — o que mais importa — o `pdfjs` esvazia o
+     * buffer que recebeu, então uma segunda passada precisaria de outra leitura
+     * do arquivo.
+     *
+     * Uma renderização por página, vários recortes: rasterizar a mesma página
+     * uma vez por foto seria desperdício, e página inteira a 3× já é a parte
+     * cara.
+     */
+    for (let n = 1; n <= doc.numPages; n++) {
+      const daPagina = emparelhadas.filter((e) => e.bruta.pagina === n);
+      if (!daPagina.length) continue;
+
+      try {
+        const pagina = await doc.getPage(n);
+        const base = pagina.getViewport({ scale: 1 });
+        const escala = Math.min(ESCALA_RECORTE, LARGURA_MAXIMA / base.width);
+        const vista = pagina.getViewport({ scale: escala });
+
+        const folha = document.createElement('canvas');
+        folha.width = Math.ceil(vista.width);
+        folha.height = Math.ceil(vista.height);
+        const contexto = folha.getContext('2d');
+        if (!contexto) continue;
+
+        /*
+         * `intent: 'print'` não é sobre impressão: é o que desliga o
+         * `requestAnimationFrame` dentro do `pdfjs` (`useRequestAnimationFrame:
+         * !intentPrint`, no código dele).
+         *
+         * Sem isso, a renderização **para** quando a aba não está visível — o
+         * navegador engasga o rAF em aba de fundo. Medido: com a aba oculta, a
+         * promessa do render simplesmente nunca resolve. Na prática, a diretora
+         * que trocasse de aba no meio da importação veria "Preparando as fotos"
+         * para sempre.
+         */
+        await pagina
+          .render({ canvas: folha, canvasContext: contexto, viewport: vista, intent: 'print' })
+          .promise;
+
+        for (const { medida, bruta } of daPagina) {
+          const recorte = document.createElement('canvas');
+          recorte.width = Math.max(1, Math.round(bruta.largura * escala));
+          recorte.height = Math.max(1, Math.round(bruta.altura * escala));
+          const ctx = recorte.getContext('2d');
+          if (!ctx) continue;
+
+          ctx.drawImage(
+            folha,
+            Math.round(bruta.x * escala),
+            Math.round(bruta.topo * escala),
+            recorte.width,
+            recorte.height,
+            0,
+            0,
+            recorte.width,
+            recorte.height,
+          );
+
+          // JPEG, e não PNG: são fotografias, e o PNG delas sairia várias vezes
+          // maior sem ganho visível.
+          const blob = await new Promise<Blob | null>((resolve) =>
+            recorte.toBlob(resolve, 'image/jpeg', 0.82),
+          );
+          if (blob) medida.recorte = blob;
+        }
+
+        // Solta a tela grande antes da próxima página.
+        folha.width = 0;
+        folha.height = 0;
+      } catch {
+        // Página que não renderiza não derruba as outras: as fotos dela ficam
+        // sem recorte e a diretora as coloca à mão, como antes.
+        continue;
+      }
+    }
+
+    return emparelhadas.map((e) => e.medida);
   } catch {
     return [];
   }

@@ -67,6 +67,19 @@ const COUNTER_LABELS: Record<JournalStatus, string> = {
 const THUMB_W = 260;
 const THUMB_SCALE = THUMB_W / A4_W;
 
+/**
+ * A importação por arquivo está fechada de propósito.
+ *
+ * Ela funciona na parte das fotos — o recorte, a fileira e a proporção saem
+ * certos —, mas a leitura do texto ficou instável: o mesmo arquivo, lido duas
+ * vezes, ora devolve títulos e parágrafos, ora só as imagens. Enquanto isso não
+ * estiver resolvido, a ferramenta não vai para as diretoras: um botão que às
+ * vezes entrega meio jornal ensina a não confiar nele.
+ *
+ * Nada foi removido. Voltar a abrir é trocar este `false` por `true`.
+ */
+const IMPORTACAO_LIBERADA = false;
+
 
 /** Data relativa curta ("há 2 dias"), com fallback para data absoluta. */
 function relativeDate(iso: string): string {
@@ -242,9 +255,11 @@ export default function JournalPage() {
         {/* Criar fora da própria unidade seria recusado pela RLS. */}
         {naMinhaUnidade && (
           <div className="flex shrink-0 flex-wrap gap-2">
-            <Button variant="outline" onClick={() => setImporting(true)}>
-              <Sparkles className="mr-1.5 h-4 w-4" /> Começar de um arquivo
-            </Button>
+            {IMPORTACAO_LIBERADA && (
+              <Button variant="outline" onClick={() => setImporting(true)}>
+                <Sparkles className="mr-1.5 h-4 w-4" /> Começar de um arquivo
+              </Button>
+            )}
             <Button onClick={openCreate}>
               <Plus className="mr-1.5 h-4 w-4" /> Criar jornal da unidade
             </Button>
@@ -367,9 +382,11 @@ export default function JournalPage() {
                 <Button onClick={openCreate}>
                   <Plus className="mr-1.5 h-4 w-4" /> Criar jornal da unidade
                 </Button>
-                <Button variant="outline" onClick={() => setImporting(true)}>
-                  <Sparkles className="mr-1.5 h-4 w-4" /> Começar de um arquivo
-                </Button>
+                {IMPORTACAO_LIBERADA && (
+                  <Button variant="outline" onClick={() => setImporting(true)}>
+                    <Sparkles className="mr-1.5 h-4 w-4" /> Começar de um arquivo
+                  </Button>
+                )}
               </div>
               <p className="text-[11px] text-muted-foreground">
                 A unidade já está definida — é só dar um nome à edição.

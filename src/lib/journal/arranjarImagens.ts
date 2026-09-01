@@ -134,10 +134,14 @@ export function arranjarImagens(paginas: JournalPage[], fotos: FotoMedida[]): Jo
           fileira.forEach((indice) => {
             const original = sequencia[indice];
             if (original.kind !== 'image') return;
+            const url = medidas[indice]?.url;
             blocos.push({
               ...original,
               span,
               ...(proporcao ? { ratio: proporcao } : {}),
+              // A foto recortada do PDF, quando o envio deu certo. Sem ela o
+              // bloco segue vazio e a pessoa arrasta a imagem, como antes.
+              ...(url ? { url } : {}),
             });
           });
         });

@@ -147,6 +147,33 @@ describe('o que o arranjo não pode estragar', () => {
     expect(saida.blocks[2].span).toBe(6);
   });
 
+  it('a foto recortada e enviada entra no bloco', () => {
+    const comUrl = FOTOS_REAIS.slice(1, 3).map((f, i) => ({
+      ...f,
+      url: `https://exemplo.org/foto-${i}.jpg`,
+    }));
+    const [saida] = arranjarImagens([pagina(['a', 'b'].map(imagem))], comUrl);
+
+    expect(saida.blocks.map((b) => (b.kind === 'image' ? b.url : null))).toEqual([
+      'https://exemplo.org/foto-0.jpg',
+      'https://exemplo.org/foto-1.jpg',
+    ]);
+  });
+
+  /** Envio que falhou deixa o encaixe reservado, como antes — não quebra nada. */
+  it('foto sem envio deixa o bloco vazio, e as vizinhas seguem com a sua', () => {
+    const misto = [
+      { ...FOTOS_REAIS[1], url: 'https://exemplo.org/ok.jpg' },
+      FOTOS_REAIS[2],
+    ];
+    const [saida] = arranjarImagens([pagina(['a', 'b'].map(imagem))], misto);
+
+    expect(saida.blocks.map((b) => (b.kind === 'image' ? b.url : null))).toEqual([
+      'https://exemplo.org/ok.jpg',
+      '',
+    ]);
+  });
+
   it('a legenda da foto sobrevive ao arranjo', () => {
     const base = imagem('i');
     const comLegenda: JournalBlock =
