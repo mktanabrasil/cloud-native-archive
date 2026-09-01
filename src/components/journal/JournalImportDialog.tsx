@@ -23,6 +23,7 @@ import {
   type ResultadoImportacao,
 } from '@/lib/journal/importar';
 import { medirFotosDoPdf } from '@/lib/journal/pdfImagens';
+import { enviarRecortes } from '@/lib/journal/enviarFotos';
 import { arranjarImagens } from '@/lib/journal/arranjarImagens';
 import type { JournalPage } from '@/lib/journal/types';
 
@@ -96,6 +97,8 @@ export function JournalImportDialog({
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [erro, setErro] = useState<string>('');
   const [arrastando, setArrastando] = useState(false);
+  /** Progresso do envio das fotos recortadas, para a espera ter sinal. */
+  const [envio, setEnvio] = useState<{ feitas: number; total: number } | null>(null);
   const [unidade, setUnidade] = useState<string | null>(unitId);
   const [mes, setMes] = useState('');
   const [nome, setNome] = useState(() => sugerirNome(unitId, ''));
@@ -106,6 +109,7 @@ export function JournalImportDialog({
     setArquivo(null);
     setErro('');
     setArrastando(false);
+    setEnvio(null);
     setUnidade(unitId);
     setMes('');
     setNome(sugerirNome(unitId, ''));
@@ -143,14 +147,14 @@ export function JournalImportDialog({
     try {
       const [base64, bytes] = await Promise.all([arquivoParaBase64(arquivo), arquivo.arrayBuffer()]);
 
-      // A medida das fotos roda em paralelo com a leitura do texto: uma é local
-      // e instantânea, a outra leva segundos. Somar as duas esperas seria
-      // desperdício, e a medida não depende da resposta.
+      // A leitura das fotos roda em paralelo com a do texto: uma é local, a
+      // outra leva segundos no servidor. Somar as duas esperas seria
+      // desperdício, e uma não depende da outra.
       const [resposta, fotos] = await Promise.all([
         supabase.functions.invoke('journal-import', {
           body: { arquivo: base64, unidade, edicao: mes },
         }),
-        medirFotosDoPdf(bytes),
+        medirFotosDoPdf(bytes, { recortar: true }),
       ]);
 
       const { data, error } = resposta;
@@ -164,10 +168,17 @@ export function JournalImportDialog({
         );
       }
 
+      // Os recortes sobem só depois de a leitura dar certo: se ela falhar, não
+      // faz sentido encher o Storage de imagens de um jornal que não existirá.
+      setEnvio({ feitas: 0, total: fotos.filter((f) => f.recorte).length });
+      const fotosEnviadas = await enviarRecortes(fotos, (feitas, total) =>
+        setEnvio({ feitas, total }),
+      );
+
       // As fotos entram em fileira e na proporção que têm no arquivo. Sem esta
       // passada elas saem empilhadas na largura toda, o que estoura a folha e
       // recorta foto em pé.
-      const paginas = arranjarImagens(resultado.paginas, fotos);
+      const paginas = arranjarImagens(resultado.paginas, fotosEnviadas);
 
       const id = await onCriar({
         name: nome || sugerirNome(unidade, mes),
@@ -203,9 +214,15 @@ export function JournalImportDialog({
         {etapa === 'lendo' ? (
           <div className="flex flex-col items-center gap-3 py-10 text-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm font-medium text-foreground">Lendo o seu arquivo…</p>
+            <p className="text-sm font-medium text-foreground">
+              {envio && envio.total > 0
+                ? `Preparando as fotos… ${envio.feitas} de ${envio.total}`
+                : 'Lendo o seu arquivo…'}
+            </p>
             <p className="max-w-xs text-xs text-muted-foreground">
-              Costuma levar alguns segundos. Não feche esta janela.
+              {envio && envio.total > 0
+                ? 'Recortando cada foto do arquivo e guardando no lugar dela.'
+                : 'Costuma levar de dez segundos a um minuto, dependendo do tamanho. Não feche esta janela.'}
             </p>
           </div>
         ) : (
@@ -313,9 +330,9 @@ export function JournalImportDialog({
             </div>
 
             <p className="rounded-md bg-muted/60 px-2.5 py-2 text-[11px] text-muted-foreground">
-              As fotos do arquivo não vêm junto, mas o lugar delas vem: cada encaixe já nasce com o
-              tamanho e o formato da foto original — em pé ou deitada, na mesma fileira em que você as
-              colocou. Basta arrastar cada imagem para o seu lugar.
+              As fotos vêm junto: cada uma é recortada do arquivo e colocada no lugar dela, no tamanho
+              e no formato originais — em pé ou deitada, na mesma fileira em que você as pôs. Se alguma
+              não vier, o encaixe fica reservado e você arrasta a imagem para lá.
             </p>
           </div>
         )}
