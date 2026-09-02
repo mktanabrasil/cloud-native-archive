@@ -23,6 +23,7 @@ import {
   Maximize2,
   Settings2,
   Sparkles,
+  GraduationCap,
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -81,6 +82,8 @@ import {
   uid,
 } from '@/lib/journal/templates';
 import { rowSiblings } from '@/lib/journal/rows';
+import { JournalTutorial } from './JournalTutorial';
+import { jaViu } from '@/lib/journal/tutorial';
 import { avisoDeTransbordo, medirFolha, type Transbordo } from '@/lib/journal/transbordo';
 import { JournalElementLibrary } from './JournalElementLibrary';
 import { JournalDecorationProperties } from './JournalDecorationProperties';
@@ -196,6 +199,13 @@ export function JournalEditor({
   const undoStack = useRef<JournalPage[][]>([]);
   const redoStack = useRef<JournalPage[][]>([]);
   const [historyTick, setHistoryTick] = useState(0);
+  /** Tutorial do editor: abre sozinho na primeira edição que ela abrir. */
+  const [tutorial, setTutorial] = useState(false);
+  useEffect(() => {
+    // Só para quem pode editar: em modo leitura, metade dos passos aponta
+    // para controles que nem estão na tela.
+    if (!somenteLeitura && !jaViu('editor')) setTutorial(true);
+  }, [somenteLeitura]);
 
   useEffect(() => {
     pagesRef.current = pages;
@@ -824,12 +834,12 @@ export function JournalEditor({
               </>
             ) : (
               <>
-                <Check className="h-3 w-3" /> {savedAt ? `Tudo salvo · ${savedAt}` : 'Tudo salvo'}
+                <Check className="h-3 w-3" data-tutorial="salvo" /> {savedAt ? `Tudo salvo · ${savedAt}` : 'Tudo salvo'}
               </>
             )}
           </span>
           )}
-          <Badge className={STATUS_BADGE_CLASSES[status]} variant="secondary">
+          <Badge className={STATUS_BADGE_CLASSES[status]} variant="secondary" data-tutorial="status">
             {STATUS_LABELS[status]}
           </Badge>
           {/* Some da barra no celular e reaparece no menu: em 375px a barra
@@ -853,9 +863,19 @@ export function JournalEditor({
           </Button>
           )}
           <div className="ml-auto flex items-center gap-1.5">
+            {/* Depois do primeiro acesso, é por aqui que ela revê o tutorial. */}
+            <Button
+              size="sm"
+              variant="outline"
+              className="hidden sm:inline-flex"
+              onClick={() => setTutorial(true)}
+            >
+              <GraduationCap className="mr-1.5 h-4 w-4" /> Como usar
+            </Button>
             <Button
               size="sm"
               className="hidden sm:inline-flex"
+              data-tutorial="pdf"
               onClick={() => exportPdf('impressao')}
               disabled={exporting}
             >
@@ -980,7 +1000,10 @@ export function JournalEditor({
 
       <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden lg:grid-cols-[210px_1fr_300px]">
         {/* Miniaturas */}
-        <aside className="hidden flex-col gap-2 overflow-y-auto rounded-lg border border-border bg-card p-2 lg:flex">
+        <aside
+          data-tutorial="paginas"
+          className="hidden flex-col gap-2 overflow-y-auto rounded-lg border border-border bg-card p-2 lg:flex"
+        >
           {pages.map((page, index) => {
             const status = pageStatus(page);
             const active = page.id === activePageId;
@@ -1064,7 +1087,7 @@ export function JournalEditor({
 
         {/* Canvas */}
         {(!compacto || abaMovel === 'folha') && (
-        <section className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
+        <section data-tutorial="folha" className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
           <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-xs">
             <span className="font-medium text-muted-foreground">
               Página {pages.findIndex((page) => page.id === activePage.id) + 1} de {pages.length}
@@ -1233,11 +1256,11 @@ export function JournalEditor({
               </Popover>
 
               {layoutLocked ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[10px] text-muted-foreground">
+                <span data-tutorial="formato" className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[10px] text-muted-foreground">
                   <Lock className="h-3 w-3" /> Formato protegido
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-1 text-[10px] text-accent-foreground">
+                <span data-tutorial="formato" className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-1 text-[10px] text-accent-foreground">
                   <Unlock className="h-3 w-3" /> Formato liberado
                 </span>
               )}
@@ -1295,7 +1318,7 @@ export function JournalEditor({
 
         {/* Conteúdo da página */}
         {!somenteLeitura && (!compacto || abaMovel === 'conteudo') && (
-        <aside className="flex flex-col gap-3 overflow-y-auto rounded-lg border border-border bg-card p-3">
+        <aside data-tutorial="painel" className="flex flex-col gap-3 overflow-y-auto rounded-lg border border-border bg-card p-3">
           {layoutLocked && (
             <p className="rounded-md bg-muted/60 px-2.5 py-2 text-[11px] text-muted-foreground">
               O formato do modelo está protegido: clique em uma peça para trocar o texto ou enviar a foto.
@@ -1414,6 +1437,12 @@ export function JournalEditor({
           </div>
         ))}
       </div>
+
+      <JournalTutorial
+        percurso="editor"
+        aberto={tutorial}
+        onFechar={() => setTutorial(false)}
+      />
     </div>
   );
 }
