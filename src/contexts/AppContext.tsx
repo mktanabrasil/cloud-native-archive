@@ -16,6 +16,7 @@ interface AppContextType {
   addEvent: (event: Partial<AppEvent>) => Promise<void>;
   updateEvent: (event: AppEvent) => Promise<void>;
   deleteEvent: (id: string) => Promise<void>;
+  restoreEvent: (id: string) => Promise<void>;
   updateUser: (user: AppUser) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   detectConflicts: (event: AppEvent) => AppEvent[];
@@ -121,6 +122,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await fetchEvents();
   };
 
+  /**
+   * Tira o evento da lixeira.
+   *
+   * A lixeira é `deleted_at` preenchido, e nada mais — a linha nunca saiu do
+   * banco. Restaurar é apagar essa data, e o evento volta exatamente para
+   * onde estava, com a mesma unidade, o mesmo status e o mesmo banner.
+   */
+  const restoreEvent = async (id: string) => {
+    const { error } = await supabase.from('events').update({ deleted_at: null }).eq('id', id);
+    if (error) {
+      toast.error('Erro ao restaurar o evento');
+      throw error;
+    }
+    toast.success('Evento restaurado');
+    await fetchEvents();
+  };
+
   const updateUser = async (user: AppUser) => {
     // Logic for updating user in DB
     await fetchEvents();
@@ -135,7 +153,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <AppContext.Provider value={{
       events, users, loading, selectedEvent, selectedUser, selectedMonth,
       setSelectedEvent, setSelectedUser, setSelectedMonth,
-      addEvent, updateEvent, deleteEvent, updateUser, deleteUser, detectConflicts,
+      addEvent, updateEvent, deleteEvent, restoreEvent, updateUser, deleteUser, detectConflicts,
       refetchEvents: fetchEvents
     }}>
       {children}

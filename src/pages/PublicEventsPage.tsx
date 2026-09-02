@@ -4,12 +4,22 @@ import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useApp } from '@/contexts/AppContext';
 import { AppEvent, UNIT_BG_COLORS } from '@/types';
-import { CalendarDays, MapPin, Clock, Search, ExternalLink, ChevronLeft, ChevronRight, LayoutPanelTop, Eye, EyeOff, Globe, CheckCircle2, AlertCircle, Camera, Handshake, Rocket } from 'lucide-react';
+import { CalendarDays, MapPin, Clock, Search, ExternalLink, ChevronLeft, ChevronRight, LayoutPanelTop, Eye, EyeOff, Globe, CheckCircle2, AlertCircle, Camera, Handshake, Rocket, RotateCcw, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import PageHeader from '@/components/PageHeader';
@@ -38,12 +48,28 @@ export default function PublicEventsPage() {
   const [detailEvent, setDetailEvent] = useState<AppEvent | null>(null);
   const [showDetail, setShowDetail] = useState(false);
   const { isAdmin, canEdit } = useUserRole();
-  const { updateEvent, setSelectedEvent, selectedEvent, deleteEvent } = useApp();
+  const { updateEvent, setSelectedEvent, selectedEvent, deleteEvent, restoreEvent } = useApp();
   const { showBetaUI } = useUIVersions();
   
   const [showTrash, setShowTrash] = useState(false);
-  const allEvents = useFilteredEvents(false, showTrash);
-  const events = useFilteredEvents(true, false); // Public view never shows trash
+  const [pendingPurge, setPendingPurge] = useState<AppEvent | null>(null);
+
+  /**
+   * Três listas, e cada uma responde a uma pergunta diferente.
+   *
+   * `events` é a vitrine: só confirmado e público, é o que a grade mostra e
+   * o que qualquer visitante vê. `allEvents` é a agenda de verdade, filtrada
+   * pelo papel de quem olha — alimenta as pílulas e os diálogos de conflito.
+   * `trashEvents` é a lixeira, e precisa ser a terceira: ela guarda evento
+   * interno também, então não pode sair da vitrine.
+   *
+   * Antes eram duas, e o `showTrash` mexia na segunda. A grade lia da
+   * primeira e nunca mudava: o título virava "Lixeira" com os mesmos eventos
+   * ativos embaixo, como se todos tivessem sido excluídos.
+   */
+  const allEvents = useFilteredEvents(false, false);
+  const trashEvents = useFilteredEvents(false, true);
+  const events = useFilteredEvents(true, false);
 
 
   const stats = useMemo(() => {
@@ -59,16 +85,18 @@ export default function PublicEventsPage() {
   }, [allEvents]);
 
 
+  /** A busca vale para as duas telas — inclusive para procurar na lixeira. */
   const filtered = useMemo(() => {
+    const base = showTrash ? trashEvents : events;
     const searchTerm = search.toLowerCase().trim();
-    if (!searchTerm) return events;
+    if (!searchTerm) return base;
 
-    return events.filter(e => 
+    return base.filter(e => 
       e.title.toLowerCase().includes(searchTerm) || 
       (e.location || '').toLowerCase().includes(searchTerm) ||
       (e.description || '').toLowerCase().includes(searchTerm)
     );
-  }, [events, search]);
+  }, [events, trashEvents, showTrash, search]);
 
   // Sort by date (nearest first)
   const sortedEvents = useMemo(() => {
@@ -216,7 +244,8 @@ export default function PublicEventsPage() {
     <div className="min-h-screen bg-background">
 
 
-      {bannerEvents.length > 0 && (
+      {/* Na lixeira o herói não tem o que fazer: ele mostra evento ativo. */}
+      {!showTrash && bannerEvents.length > 0 && (
         <section className="relative w-full h-[400px] md:h-[500px] overflow-hidden bg-slate-900">
           {bannerEvents.map((event, index) => (
             <div 
@@ -383,7 +412,7 @@ export default function PublicEventsPage() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* A 320px, cinco pílulas com flex-1 ficavam com 33px cada e o rótulo
             sumia. Abaixo de sm viram faixa rolável com largura natural. */}
-        {(isAuthenticated && isAdmin) && (
+        {(isAuthenticated && isAdmin && !showTrash) && (
           <div className="w-full mb-8 -mx-6 px-6 flex items-center gap-2 overflow-x-auto pb-1 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible sm:pb-0">
             <div className="shrink-0 sm:flex-1 sm:min-w-0 flex items-center gap-2 px-3 py-2 rounded-full bg-info text-info-foreground border border-info/20 text-[10px] sm:text-xs font-medium justify-center whitespace-nowrap">
               <CalendarDays className="h-3.5 w-3.5 shrink-0" />
@@ -474,16 +503,32 @@ export default function PublicEventsPage() {
 
         {sortedEvents.length === 0 ? (
           <div className="text-center py-20 bg-card rounded-2xl border border-dashed border-border">
-            <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground">Nenhum evento encontrado</h3>
-            <p className="text-muted-foreground">Tente ajustar sua busca ou volte mais tarde.</p>
+            {showTrash ? (
+              <>
+                <Trash2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground">
+                  {search ? 'Nada na lixeira com esse termo' : 'A lixeira está vazia'}
+                </h3>
+                <p className="text-muted-foreground">
+                  {search
+                    ? 'Tente outra busca, ou volte para os eventos ativos.'
+                    : 'Nenhum evento foi excluído.'}
+                </p>
+              </>
+            ) : (
+              <>
+                <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground">Nenhum evento encontrado</h3>
+                <p className="text-muted-foreground">Tente ajustar sua busca ou volte mais tarde.</p>
+              </>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sortedEvents.map(event => (
               <Card 
                 key={event.id} 
-                className="overflow-hidden border-border hover:shadow-lg transition-shadow bg-card flex flex-col group cursor-pointer"
+                className={`overflow-hidden border-border hover:shadow-lg transition-shadow bg-card flex flex-col group ${showTrash ? '' : 'cursor-pointer'}`}
                 onClick={() => handleCardClick(event)}
               >
 
@@ -514,7 +559,8 @@ export default function PublicEventsPage() {
                     {event.unit}
                   </Badge>
                   
-                  {isAdmin && isAuthenticated && (
+                  {/* Ligar banner de um evento excluído não faz sentido. */}
+                  {isAdmin && isAuthenticated && !showTrash && (
                     <div className="absolute top-3 right-3 flex gap-2.5">
                       <button 
                         onClick={(e) => {
@@ -533,7 +579,14 @@ export default function PublicEventsPage() {
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex gap-2">
-                      {isAuthenticated && (
+                      {isAuthenticated && showTrash && (
+                        <Badge variant="outline" className="border-destructive/20 bg-destructive/10 font-medium text-[10px] text-destructive">
+                          {event.deleted_at
+                            ? `Excluído em ${format(new Date(event.deleted_at), "dd/MM/yyyy 'às' HH:mm")}`
+                            : 'Excluído'}
+                        </Badge>
+                      )}
+                      {isAuthenticated && !showTrash && (
                         <>
                           <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-medium text-[10px]">
                             Confirmado
@@ -577,6 +630,34 @@ export default function PublicEventsPage() {
                     </p>
                   )}
                 </CardContent>
+
+                {/* As duas saídas da lixeira: voltar, ou acabar de vez. */}
+                {showTrash && isAuthenticated && isAdmin && (
+                  <div className="flex items-center gap-2 border-t border-border p-4">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 gap-1.5"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        restoreEvent(event.id);
+                      }}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" /> Restaurar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPendingPurge(event);
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Excluir
+                    </Button>
+                  </div>
+                )}
               </Card>
             ))}
           </div>
@@ -630,6 +711,42 @@ export default function PublicEventsPage() {
           onEventClick={(e) => { setShowFiltered(null); setTimeout(() => { setDetailEvent(e); setShowDetail(true); }, 200); }}
         />
       )}
+
+      {/* Aqui a linha some do banco. É a única tela do app que faz isso com
+          evento, e por isso ela pergunta, mostrando qual. */}
+      <AlertDialog open={!!pendingPurge} onOpenChange={(open) => !open && setPendingPurge(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir este evento definitivamente?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
+                  <p className="font-medium text-foreground">{pendingPurge?.title}</p>
+                  <p className="mt-1 text-muted-foreground">
+                    {pendingPurge?.unit}
+                    {pendingPurge?.start_datetime
+                      ? ` · ${format(new Date(pendingPurge.start_datetime), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`
+                      : ''}
+                  </p>
+                </div>
+                <p>Ele sai do banco de vez. Não há como restaurá-lo depois.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (pendingPurge) deleteEvent(pendingPurge.id);
+                setPendingPurge(null);
+              }}
+            >
+              Excluir definitivamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <EventDetailPanel
         event={detailEvent}
