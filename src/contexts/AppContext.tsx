@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { AppEvent, AppUser } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+import { SELECT_PUBLICO } from '@/lib/events/camposPublicos';
 
 interface AppContextType {
   events: AppEvent[];
@@ -26,6 +28,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [events, setEvents] = useState<AppEvent[]>([]);
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,11 +36,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
 
+  /**
+   * Quem não tem sessão recebe só as colunas da vitrine.
+   *
+   * O `*` mandava a linha inteira para o navegador de qualquer visitante —
+   * inclusive as anotações internas de logística. A tela nunca mostrou isso,
+   * mas estava no tráfego. Agora a consulta pede o que a tela usa, e nada
+   * mais; ver `camposPublicos.ts` para o que entra na lista e por quê.
+   *
+   * As permissões de coluna no banco fecham o resto: mesmo pedindo `*`, a
+   * chave pública não alcança as colunas internas.
+   */
   const fetchEvents = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('events')
-        .select('*');
+        .select(isAuthenticated ? '*' : SELECT_PUBLICO);
       
       if (error) throw error;
       
@@ -57,11 +71,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
+    // Espera a sessão se resolver: buscar antes traria a lista pública para
+    // quem está logado, e obrigaria a uma segunda busca no quadro seguinte.
+    if (authLoading) return;
     fetchEvents();
-  }, [fetchEvents]);
+  }, [authLoading, fetchEvents]);
 
   const detectConflicts = useCallback((event: AppEvent): AppEvent[] => {
     return events.filter(e => {

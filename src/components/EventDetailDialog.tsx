@@ -116,7 +116,13 @@ export function EventDetailDialog({ open, onOpenChange, event }: Props) {
                 </p>
               </div>
 
-              {(event.target_audience || event.support_team || event.food_logistics || event.equipment_needed || event.printed_materials) && (
+              {/* Logística é combinação da equipe: quem leva o som, quem cuida
+                  do lanche. Só o bloco de marketing era interno; este ficou de
+                  fora da regra e aparecia para qualquer visitante. Hoje os campos
+                  estão vazios nos eventos públicos, então ninguém viu nada — mas
+                  bastava alguém preencher "Alimentação". */}
+              {isInternalView &&
+                (event.target_audience || event.support_team || event.food_logistics || event.equipment_needed || event.printed_materials) && (
                 <div className="pt-6 border-t border-border space-y-4">
                   <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Logística e Apoio</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
