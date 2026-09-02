@@ -63,7 +63,8 @@
     --info: 199 100% 50%;
     --info-foreground: 40 27% 99%;
 
-    /* News (Informativo) paper + institutional footer bar */
+    /* Papel e cores de marca: vieram do Informativo, hoje servem a folha do
+       Jornal e à barra institucional do rodapé. O prefixo `news` ficou. */
     --news-paper: 50 29% 92%;
     --news-brand-1: 37 74% 85%;
     --news-brand-2: 49 100% 49%;
