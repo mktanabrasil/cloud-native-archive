@@ -1,5 +1,7 @@
 import { useEffect, useCallback, useMemo, useState } from 'react';
-import { Plus, Copy, Trash2, Pencil, Lock, Loader2, Newspaper, Search, Sparkles } from 'lucide-react';
+import {
+  Plus, Copy, Trash2, Pencil, Lock, Loader2, Newspaper, Search, Sparkles, GraduationCap,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +30,8 @@ import { JournalPageView, A4_W, A4_H } from '@/components/journal/JournalPageVie
 import { UnitBadge } from '@/components/journal/UnitBadge';
 import { JournalImportDialog } from '@/components/journal/JournalImportDialog';
 import { resumirImportacao } from '@/lib/journal/importar';
+import { JournalTutorial } from '@/components/journal/JournalTutorial';
+import { jaViu } from '@/lib/journal/tutorial';
 import {
   newsUnitName,
   newsUnitForProfileUnit,
@@ -126,6 +130,8 @@ export default function JournalPage() {
   const [creating, setCreating] = useState(false);
   /** Diálogo de criar a partir de um arquivo da unidade. */
   const [importing, setImporting] = useState(false);
+  /** Tutorial da listagem: abre sozinho no primeiro acesso, e pelo botão depois. */
+  const [tutorial, setTutorial] = useState(false);
   /** Edição aguardando confirmação de exclusão — nada é removido antes do "sim". */
   const [pendingDelete, setPendingDelete] = useState<JournalRecord | null>(null);
   const [search, setSearch] = useState('');
@@ -175,6 +181,19 @@ export default function JournalPage() {
   );
 
   const hasActiveFilters = search.trim() !== '' || statusFilter !== 'todos' || monthFilter !== 'todos';
+
+  /**
+   * Primeiro acesso: o tutorial da lista abre sozinho.
+   *
+   * Fica antes dos retornos antecipados porque hook não pode ser condicional —
+   * as guardas de permissão vêm logo abaixo. O `jaViu` é que decide, e ele
+   * responde falso enquanto o papel ainda está carregando, o que evitaria abrir
+   * na tela vazia: por isso o efeito espera `roleLoading` terminar.
+   */
+  useEffect(() => {
+    if (roleLoading || !canAccessJournal) return;
+    if (!jaViu('listagem')) setTutorial(true);
+  }, [roleLoading, canAccessJournal]);
 
   if (roleLoading) return null;
 
@@ -260,7 +279,10 @@ export default function JournalPage() {
                 <Sparkles className="mr-1.5 h-4 w-4" /> Começar de um arquivo
               </Button>
             )}
-            <Button onClick={openCreate}>
+            <Button variant="outline" onClick={() => setTutorial(true)} data-tutorial="ajuda">
+              <GraduationCap className="mr-1.5 h-4 w-4" /> Como usar
+            </Button>
+            <Button onClick={openCreate} data-tutorial="criar">
               <Plus className="mr-1.5 h-4 w-4" /> Criar jornal da unidade
             </Button>
           </div>
@@ -268,6 +290,7 @@ export default function JournalPage() {
       </header>
 
       <UnitBadge
+        data-tutorial="unidade"
         variant="banner"
         unitId={activeUnitId}
         label={naMinhaUnidade ? 'Minha unidade' : 'Vendo outra unidade'}
@@ -395,7 +418,7 @@ export default function JournalPage() {
           )}
         </div>
       ) : (
-        <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-tutorial="lista">
           {filtered.map((journal) => {
             const cover = journal.pages?.[0];
             return (
@@ -620,6 +643,12 @@ export default function JournalPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <JournalTutorial
+        percurso="listagem"
+        aberto={tutorial}
+        onFechar={() => setTutorial(false)}
+      />
 
       <JournalImportDialog
         aberto={importing}
