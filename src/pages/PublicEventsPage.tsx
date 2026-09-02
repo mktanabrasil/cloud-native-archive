@@ -489,9 +489,14 @@ export default function PublicEventsPage() {
           
           <div className="mt-6 relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            {/* `bg-card`, e não `bg-white`: o campo precisa se destacar do fundo
+                da página, e era isso que o branco fazia — só que no escuro ele
+                continuava branco, com o texto claro por cima. Medido a 1,06:1:
+                a pessoa digitava sem ver. O token faz as duas coisas — quase
+                branco no claro, superfície escura no escuro. */}
             <Input 
               placeholder="Buscar por título, local ou descrição..." 
-              className="pl-10 h-12 shadow-sm border-border focus-visible:ring-primary bg-white"
+              className="pl-10 h-12 shadow-sm border-border bg-card focus-visible:ring-primary"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />

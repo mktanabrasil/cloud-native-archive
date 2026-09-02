@@ -155,6 +155,20 @@ describe('a grade lê da lista certa', () => {
   });
 });
 
+describe('o campo de busca', () => {
+  it('não fixa a cor de fundo, para acompanhar o tema', () => {
+    // Ele já esteve com `bg-white`: no escuro ficava branco com o texto claro
+    // por cima, 1,06:1, e a pessoa digitava sem ver. O jsdom não calcula
+    // Tailwind, então o que dá para fixar aqui é a causa — a cor crua.
+    montar();
+
+    const busca = screen.getByPlaceholderText(/buscar por/i);
+
+    expect(busca.className).not.toMatch(/bg-white/);
+    expect(busca.className).toMatch(/bg-card/);
+  });
+});
+
 describe('as duas saídas da lixeira', () => {
   it('restaura pelo botão do card', async () => {
     montar();
