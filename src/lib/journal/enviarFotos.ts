@@ -1,11 +1,12 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { FotoMedida } from './pdfImagens';
+import { caminhoDaFoto } from './caminhoDaFoto';
 
 /**
  * Sobe os recortes das fotos e devolve as medidas com o endereço preenchido.
  *
  * Usa o mesmo balde e a mesma convenção de caminho que o envio manual do
- * Jornal (`ImageBlockField`): `event-attachments`, em `news/ano/mês/uuid.jpg`.
+ * Jornal (`ImageBlockField`): `event-attachments`, em `jornal/ano/mês/uuid.jpg`.
  * Nada de infraestrutura nova — se um dia as regras do balde mudarem, mudam
  * para os dois caminhos de uma vez.
  *
@@ -17,18 +18,11 @@ import type { FotoMedida } from './pdfImagens';
 /** Quantos envios ao mesmo tempo. Vinte de uma vez sufoca conexão de escola. */
 const SIMULTANEOS = 4;
 
-function caminhoDoArquivo(): string {
-  const agora = new Date();
-  const ano = agora.getFullYear();
-  const mes = String(agora.getMonth() + 1).padStart(2, '0');
-  return `news/${ano}/${mes}/${crypto.randomUUID()}.jpg`;
-}
-
 async function enviarUma(foto: FotoMedida): Promise<FotoMedida> {
   if (!foto.recorte) return foto;
 
   try {
-    const caminho = caminhoDoArquivo();
+    const caminho = caminhoDaFoto('jpg');
     const { error } = await supabase.storage
       .from('event-attachments')
       .upload(caminho, foto.recorte, { contentType: 'image/jpeg', upsert: false });
