@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Upload, Link as LinkIcon, Loader2, Image as ImageIcon, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { caminhoDaFoto } from '@/lib/journal/caminhoDaFoto';
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_DIM = 2000;
@@ -71,8 +72,7 @@ export function ImageBlockField({ value, onChange, placeholder }: Props) {
     try {
       const blob = await compress(file);
       const ext = blob.type === 'image/jpeg' ? 'jpg' : file.name.split('.').pop() || 'jpg';
-      const now = new Date();
-      const path = `news/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${crypto.randomUUID()}.${ext}`;
+      const path = caminhoDaFoto(ext);
       const { error } = await supabase.storage
         .from('event-attachments')
         .upload(path, blob, { contentType: blob.type, upsert: false });
