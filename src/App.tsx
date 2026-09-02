@@ -20,7 +20,6 @@ import PublicEventsPage from "./pages/PublicEventsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AuthConfirmPage from "./pages/AuthConfirmPage";
 import DesignManualPage from "./pages/DesignManualPage";
-import NewsGeneratorPage from "./pages/NewsGeneratorPage";
 import JournalPage from "./pages/JournalPage";
 import MarketingHubPage from "./pages/MarketingHubPage";
 import EventsHubPage from "./pages/EventsHubPage";
@@ -134,9 +133,6 @@ const App = () => (
                   } />
                   <Route path="/design-manual" element={
                     <MarketingRoute><DesignManualPage /></MarketingRoute>
-                  } />
-                  <Route path="/noticias" element={
-                    <ProtectedRoute><NewsGeneratorPage /></ProtectedRoute>
                   } />
                   <Route path="/jornal-institucional" element={
                     <JournalRoute><JournalPage /></JournalRoute>

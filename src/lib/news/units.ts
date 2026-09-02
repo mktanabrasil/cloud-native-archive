@@ -1,5 +1,10 @@
 /**
- * Fonte canônica das unidades para o Informativo.
+ * Fonte canônica das unidades do app.
+ *
+ * Nasceu para o Informativo — daí a pasta e os nomes com `news` —, mas o
+ * Informativo saiu do ar em 02/09/2026 e isto ficou: o Jornal, a tela de
+ * acesso e o seletor de unidade leem daqui. Renomear é mexer em oito
+ * arquivos; fica para quando houver outro motivo de tocar neles.
  *
  * Derivada de `transparency_configs` (Portal da Transparência), com:
  *  - remoção do prefixo numérico de ordenação de pasta ("1 ", "14 ");
