@@ -38,6 +38,25 @@ export function statBlock(value = '0', label = 'Indicador', span: BlockSpan = 2)
   return { id: uid(), kind: 'stat', value, label, span };
 }
 
+/**
+ * Os blocos da galeria — um lugar só.
+ *
+ * Havia duas composições para a mesma coisa: a de "Adicionar página" trazia
+ * uma linha de introdução e uma imagem de largura cheia que a do modelo não
+ * tinha. Além de a galeria mudar de cara conforme a porta de entrada, os dois
+ * blocos a mais estouravam a folha: a última fileira de fotos terminava 10px
+ * abaixo da área visível e era comida pelo rodapé.
+ *
+ * O título é o que varia entre os modelos; o resto não varia mais.
+ */
+const blocosDaGaleria = (titulo = 'Galeria de fotos'): JournalBlock[] => [
+  textBlock('titulo_materia', titulo),
+  imageBlock(3, '4/3'),
+  imageBlock(3, '4/3'),
+  imageBlock(3, '4/3'),
+  imageBlock(3, '4/3'),
+];
+
 /** Composição inicial de cada modelo de página (v1). */
 export function createPage(template: JournalTemplate): JournalPage {
   const blocks: JournalBlock[] = (() => {
@@ -70,15 +89,7 @@ export function createPage(template: JournalTemplate): JournalPage {
           textBlock('corpo', 'Continuação do texto da matéria.'),
         ];
       case 'galeria':
-        return [
-          textBlock('titulo_materia', 'Galeria de fotos'),
-          textBlock('corpo', 'Breve introdução da galeria.'),
-          imageBlock(6, '16/9'),
-          imageBlock(3, '4/3'),
-          imageBlock(3, '4/3'),
-          imageBlock(3, '4/3'),
-          imageBlock(3, '4/3'),
-        ];
+        return blocosDaGaleria();
       case 'numeros':
         return [
           textBlock('titulo_materia', 'Resultados e números'),
@@ -151,13 +162,7 @@ const closingPage = (texto: string): JournalPage =>
   ]);
 
 const galleryPage = (titulo: string): JournalPage =>
-  page('galeria', [
-    textBlock('titulo_materia', titulo),
-    imageBlock(3, '4/3'),
-    imageBlock(3, '4/3'),
-    imageBlock(3, '4/3'),
-    imageBlock(3, '4/3'),
-  ]);
+  page('galeria', blocosDaGaleria(titulo));
 
 export const JOURNAL_MODELS: JournalModel[] = [
   {
