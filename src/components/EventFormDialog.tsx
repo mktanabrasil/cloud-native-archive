@@ -19,6 +19,7 @@ import { EventDetailDialog } from './EventDetailDialog';
 import { BannerMissingDialog } from './BannerMissingDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { GrupoDeOpcoes } from './events/GrupoDeOpcoes';
+import { TituloDoEvento } from './events/TituloDoEvento';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface Props {
@@ -1336,10 +1337,9 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                         ) : (
                           <h3 
                             className={`font-bold text-white drop-shadow-xl line-clamp-3 ${form.full_height_title ? 'text-3xl md:text-5xl' : 'text-xl'}`}
-                            dangerouslySetInnerHTML={{ 
-                              __html: (form.title || 'Título do Evento').replace(/<br\s*\/?>/gi, '<br/>') 
-                            }}
-                          />
+                          >
+                            <TituloDoEvento texto={form.title || 'Título do Evento'} />
+                          </h3>
                         )}
                         
                         <div className="flex items-center gap-2 text-[10px] text-white/80 mt-2">
