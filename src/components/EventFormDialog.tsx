@@ -18,6 +18,7 @@ import { FileUpload } from './FileUpload';
 import { EventDetailDialog } from './EventDetailDialog';
 import { BannerMissingDialog } from './BannerMissingDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { GrupoDeOpcoes } from './events/GrupoDeOpcoes';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface Props {
@@ -36,6 +37,53 @@ const slugify = (text: string): string =>
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-');
 
+/**
+ * Onde cada erro mora na tela, e como ele se chama para quem lê.
+ *
+ * Os quatro campos de logística ficam entre 1300px e 2400px de altura, numa
+ * janela de 745px: quem aperta "Criar Programação" com eles em branco vê o
+ * botão não fazer nada, porque o motivo está muito abaixo da dobra.
+ */
+const CAMPOS_COM_ERRO: { chave: string; ancora: string; rotulo: string }[] = [
+  { chave: 'title', ancora: 'campo-title', rotulo: 'Título' },
+  { chave: 'start_datetime', ancora: 'campo-start_datetime', rotulo: 'Início' },
+  { chave: 'end_datetime', ancora: 'campo-end_datetime', rotulo: 'Término' },
+  { chave: 'location', ancora: 'campo-location', rotulo: 'Localização' },
+  { chave: 'target_audience', ancora: 'campo-publico', rotulo: 'Público-alvo' },
+  { chave: 'support_team', ancora: 'campo-apoio', rotulo: 'Equipe de apoio' },
+  { chave: 'food_logistics', ancora: 'campo-comida', rotulo: 'Logística de alimentação' },
+  { chave: 'equipment_needed', ancora: 'campo-equip', rotulo: 'Equipamentos necessários' },
+  { chave: 'marketing_items', ancora: 'campo-marketing', rotulo: 'Solicitação de marketing' },
+];
+
+/** O resumo no topo: diz quantas faltam e leva até cada uma. */
+function ResumoDePendencias({ erros }: { erros: Record<string, string> }) {
+  const pendentes = CAMPOS_COM_ERRO.filter(c => erros[c.chave]);
+  if (pendentes.length === 0) return null;
+
+  return (
+    <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3">
+      <p className="text-sm font-semibold text-destructive">
+        {pendentes.length === 1
+          ? 'Falta 1 campo para criar a programação'
+          : `Faltam ${pendentes.length} campos para criar a programação`}
+      </p>
+      <ul className="mt-2 space-y-1">
+        {pendentes.map(c => (
+          <li key={c.chave}>
+            <button
+              type="button"
+              className="text-left text-xs text-foreground underline underline-offset-4 decoration-destructive/60 hover:decoration-destructive"
+              onClick={() => document.getElementById(c.ancora)?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })}
+            >
+              {c.rotulo} — {erros[c.chave]}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 const emptyEvent = (): Partial<AppEvent> => ({
   title: '',
   description: '',
@@ -72,6 +120,7 @@ const emptyEvent = (): Partial<AppEvent> => ({
   target_audience: '',
   support_team: '',
   food_logistics: '',
+  food_details: '',
   marketing_info: '',
   printed_materials: '',
   equipment_needed: '',
@@ -84,7 +133,7 @@ const emptyEvent = (): Partial<AppEvent> => ({
 
 export default function EventFormDialog({ open, onOpenChange, event }: Props) {
   const { addEvent, updateEvent, detectConflicts, setSelectedEvent, events } = useApp();
-  const { userName, unit, isAdmin } = useUserRole();
+  const { userName, unit, isAdmin, isMarketing } = useUserRole();
   const [form, setForm] = useState<Partial<AppEvent>>(emptyEvent());
   const [conflicts, setConflicts] = useState<AppEvent[]>([]);
   const [showConflictAlert, setShowConflictAlert] = useState(false);
@@ -94,8 +143,18 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
   const [slugMode, setSlugMode] = useState<'auto' | 'custom'>('auto');
   const [showSlugPrompt, setShowSlugPrompt] = useState(false);
   const [autoSlugPreview, setAutoSlugPreview] = useState('');
+  /**
+   * Quais interruptores "Outro" estão ligados.
+   *
+   * Fica aqui, e não dentro do grupo, porque a validação precisa saber que
+   * alguém abriu a caixa e não escreveu nada — o valor guardado não conta isso.
+   */
+  const [outroAberto, setOutroAberto] = useState<Record<string, boolean>>({});
 
   const isEditing = !!event;
+
+  /** Quantos campos o botão ainda espera. Zero antes da primeira tentativa. */
+  const pendencias = Object.keys(errors).length;
 
   // Gera um slug único a partir de um texto base, adicionando um sufixo numérico
   // caso já exista outro evento com o mesmo slug.
@@ -163,6 +222,7 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
     setShowConflictAlert(false);
     setShowBannerWarning(false);
     setTransportExtraEquipment(false);
+    setOutroAberto({});
     setErrors({});
   }, [event, open]);
 
@@ -178,6 +238,21 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
     if (!form.support_team?.trim()) errs.support_team = 'Informe a equipe de apoio';
     if (!form.food_logistics?.trim()) errs.food_logistics = 'Informe a logística de alimentação';
     if (!form.equipment_needed?.trim()) errs.equipment_needed = 'Informe os equipamentos necessários';
+
+    // Interruptor "Outro" ligado e caixa vazia: antes isso passava — o valor
+    // virava "Outro: ", que conta como preenchido e não diz nada a ninguém.
+    const outroVazio = (campo: keyof AppEvent, opcoes: string[]) => {
+      const valor = ((form[campo] as string) || '').split(', ').map(v => v.trim()).filter(Boolean);
+      return !valor.some(v => !opcoes.includes(v));
+    };
+    if (outroAberto.publico && outroVazio('target_audience', ["Os funcionários", "Os atendidos", "Os atendidos e suas famílias", "Será aberto para a comunidade"]))
+      errs.target_audience = 'Escreva qual público, ou desligue “Outro público”';
+    if (outroAberto.apoio && outroVazio('support_team', ["Funcionários", "Voluntários"]))
+      errs.support_team = 'Escreva qual equipe, ou desligue “Outra equipe”';
+    if (outroAberto.comida && outroVazio('food_logistics', ["Almoço", "Coffee Break", "Lanche", "Jantar", "Nenhum"]))
+      errs.food_logistics = 'Escreva qual logística, ou desligue “Outra logística”';
+    if (outroAberto.equip && outroVazio('equipment_needed', ["Som", "Microfone", "Projetor", "Televisão", "Notebook", "Nenhum"]))
+      errs.equipment_needed = 'Escreva qual equipamento, ou desligue “Outro equipamento”';
     
     // Condicional para marketing
     if (form.marketing_request) {
@@ -241,6 +316,7 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
       target_audience: form.target_audience || '',
       support_team: form.support_team || '',
       food_logistics: form.food_logistics || '',
+      food_details: form.food_details || '',
       marketing_info: form.marketing_info || '',
       printed_materials: form.printed_materials || '',
       equipment_needed: form.equipment_needed || '',
@@ -253,7 +329,13 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
   };
 
   const handleSubmit = () => {
-    if (!validate()) return;
+    if (!validate()) {
+      // Quem apertou o botão estava no fim do formulário; o resumo fica no topo.
+      // `?.scrollIntoView?.` porque nem todo ambiente tem o método — o jsdom
+      // não tem, e uma rolagem que falha não pode derrubar o envio.
+      document.getElementById('campo-title')?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+      return;
+    }
 
     const fullEvent = getFullEvent();
 
@@ -340,7 +422,9 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
               </div>
             ) : (
               <div className="space-y-4">
-                <div>
+                <ResumoDePendencias erros={errors} />
+
+                <div id="campo-title">
                   <Label className="text-sm font-semibold mb-1.5 block">Título *</Label>
                   <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Nome do evento" />
                   {errors.title && <p className="mt-1 text-xs text-destructive">{errors.title}</p>}
@@ -362,7 +446,10 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                   <div>
                     <Label className="text-sm font-semibold mb-1.5 block">Tipo *</Label>
                     <Select value={form.event_type} onValueChange={v => setForm({ ...form, event_type: v as EventType })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      {/* `capitalize` nos dois: sem ele no gatilho, a lista mostrava
+                          "Evento Institucional" e o campo, depois de escolhido,
+                          "evento institucional". O valor guardado é minúsculo nos dois. */}
+                      <SelectTrigger className="capitalize"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {EVENT_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
                       </SelectContent>
@@ -370,7 +457,7 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="relative group">
+                  <div className="relative group" id="campo-start_datetime">
                     <Label className="text-sm font-semibold mb-1.5 block">Início *</Label>
                     <div className="relative">
                       <Input 
@@ -383,7 +470,7 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                     </div>
                     {errors.start_datetime && <p className="mt-1 text-xs text-destructive">{errors.start_datetime}</p>}
                   </div>
-                  <div className="relative group">
+                  <div className="relative group" id="campo-end_datetime">
                     <Label className="text-sm font-semibold mb-1.5 block">Término *</Label>
                     <div className="relative">
                       <Input 
@@ -397,13 +484,15 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                     {errors.end_datetime && <p className="mt-1 text-xs text-destructive">{errors.end_datetime}</p>}
                   </div>
                 </div>
-                <div>
+                <div id="campo-location">
                   <Label className="text-sm font-semibold mb-1.5 block">Localização *</Label>
                   <Input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="Local do evento" />
                   {errors.location && <p className="mt-1 text-xs text-destructive">{errors.location}</p>}
                 </div>
 
-                {isAdmin && (
+                {/* `isMarketing` é "admin geral ou comunicação". Com `isAdmin`, quem
+                    cuida da comunicação e não é admin não via este bloco. */}
+                {isMarketing && (
                   <div className="space-y-4 border-t pt-4">
                     <Label className="flex items-center gap-2 text-sm font-semibold text-primary">
                       <Globe className="h-4 w-4" /> Configurações de Compartilhamento (Público)
@@ -446,7 +535,7 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                 <div>
                   <Label className="text-sm font-semibold mb-1.5 block">Status</Label>
                   <Select value={form.status} onValueChange={v => setForm({ ...form, status: v as EventStatus })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="capitalize"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {EVENT_STATUSES.map(s => (
                         <SelectItem key={s} value={s} className="capitalize">
@@ -464,6 +553,10 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                     </p>
                   )}
                 </div>
+                {/* Publicar no site é decisão da administração geral e da comunicação.
+                    Para os demais o bloco não aparece, e o evento fica interno — que
+                    já é o padrão de um evento novo. */}
+                {isMarketing && (
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <Label className="text-sm font-semibold">Onde este evento deve aparecer?</Label>
@@ -508,16 +601,46 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                       <span className="text-[11px] opacity-70">Visível para todos</span>
                     </button>
                   </div>
-                </div>
 
-                {form.visibility === 'publico' && (
-                  <div className={`space-y-6 rounded-2xl border-2 border-blue-200 p-5 bg-blue-50/30 ${!isAdmin ? 'opacity-70 pointer-events-none grayscale-[0.5]' : ''}`}>
+                  {/* A página pública mostra só evento confirmado. Sem este aviso, a
+                      pessoa marca "Visível para todos", cumpre o checklist inteiro e o
+                      evento nunca aparece — sem nada explicando por quê. */}
+                  {form.visibility === 'publico' && form.status !== 'confirmado' && (
+                    <div className="mt-3 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                      <div className="space-y-2">
+                        <p className="text-xs text-amber-900">
+                          <strong>Ainda não vai aparecer no site.</strong> A página pública mostra só
+                          eventos confirmados, e este está como {form.status}.
+                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => setForm({ ...form, status: 'confirmado' })}
+                        >
+                          Marcar como confirmado
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {form.visibility === 'publico' && form.status === 'confirmado' && (
+                    <p className="mt-3 flex items-center gap-2 text-xs text-emerald-700">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Vai aparecer no site assim que for salvo.
+                    </p>
+                  )}
+                </div>
+                )}
+
+                {isMarketing && form.visibility === 'publico' && (
+                  <div className="space-y-6 rounded-2xl border-2 border-blue-200 p-5 bg-blue-50/30">
                     <div className="flex justify-between items-center border-b border-blue-100 pb-3">
                       <div className="flex items-center gap-2">
                         <Share2 className="h-4 w-4 text-blue-600" />
                         <Label className="text-sm font-semibold text-blue-800 uppercase tracking-wider">Checklist de publicação</Label>
                       </div>
-                      {!isAdmin && <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-600 border-amber-200">Apenas Admin</Badge>}
+
                     </div>
                     
                     <div className="flex items-center justify-between gap-3 p-2 bg-primary/5 rounded-md border border-primary/10">
@@ -676,220 +799,75 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                   <Label className="text-sm font-semibold mb-1.5 block">Detalhes logísticos e público-alvo</Label>
                   
                   <div className="space-y-4">
+                    <GrupoDeOpcoes
+                      id="publico"
+                      titulo="Público-alvo *"
+                      opcoes={["Os funcionários", "Os atendidos", "Os atendidos e suas famílias", "Será aberto para a comunidade"]}
+                      valor={form.target_audience || ''}
+                      onChange={v => setForm({ ...form, target_audience: v })}
+                      rotuloOutro="Outro público"
+                      pistaOutro="Qual público?"
+                      outroAberto={!!outroAberto.publico}
+                      onOutroAberto={a => setOutroAberto(prev => ({ ...prev, publico: a }))}
+                      erro={errors.target_audience}
+                    />
+
+                    <GrupoDeOpcoes
+                      id="apoio"
+                      titulo="Equipe de apoio (Auxílio) *"
+                      opcoes={["Funcionários", "Voluntários"]}
+                      valor={form.support_team || ''}
+                      onChange={v => setForm({ ...form, support_team: v })}
+                      rotuloOutro="Outra equipe"
+                      pistaOutro="Especifique a equipe..."
+                      outroAberto={!!outroAberto.apoio}
+                      onOutroAberto={a => setOutroAberto(prev => ({ ...prev, apoio: a }))}
+                      erro={errors.support_team}
+                    />
+
                     <div>
-                      <Label className="text-sm font-semibold mb-2 block">Público-alvo *</Label>
-                      <div className="space-y-2">
-                        {["Os funcionários", "Os atendidos", "Os atendidos e suas famílias", "Será aberto para a comunidade"].map((option) => (
-                          <div key={option} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card shadow-sm">
-                            <Switch
-                              id={`target-${option}`}
-                              checked={form.target_audience === option}
-                              onCheckedChange={checked => {
-                                if (checked) {
-                                  setForm({ ...form, target_audience: option });
-                                } else if (form.target_audience === option) {
-                                  setForm({ ...form, target_audience: "" });
-                                }
-                              }}
-                            />
-                            <Label htmlFor={`target-${option}`} className="text-sm cursor-pointer flex-1 font-medium">{option}</Label>
-                          </div>
-                        ))}
-                        <div className="space-y-2 p-3 rounded-lg border border-border bg-card shadow-sm">
-                          <div className="flex items-center gap-3">
-                            <Switch
-                              id="target-other-switch"
-                              checked={!!form.target_audience && !["Os funcionários", "Os atendidos", "Os atendidos e suas famílias", "Será aberto para a comunidade"].includes(form.target_audience)}
-                              onCheckedChange={checked => {
-                                if (checked) {
-                                  setForm({ ...form, target_audience: "Outro: " });
-                                } else {
-                                  setForm({ ...form, target_audience: "" });
-                                }
-                              }}
-                            />
-                            <Label htmlFor="target-other-switch" className="text-sm cursor-pointer flex-1 font-medium">Outro público</Label>
-                          </div>
-                          {(form.target_audience?.startsWith("Outro: ") || (form.target_audience !== "" && !["Os funcionários", "Os atendidos", "Os atendidos e suas famílias", "Será aberto para a comunidade"].includes(form.target_audience || ""))) && (
-                            <Input 
-                              className="h-9 mt-2"
-                              value={form.target_audience?.replace("Outro: ", "")}
-                              onChange={e => setForm({ ...form, target_audience: `Outro: ${e.target.value}` })}
-                              placeholder="Especifique o público..."
-                            />
-                          )}
-                        </div>
-                      </div>
-                      {errors.target_audience && <p className="mt-1 text-xs text-destructive">{errors.target_audience}</p>}
+                      <GrupoDeOpcoes
+                        id="comida"
+                        titulo="Logística de alimentação *"
+                        opcoes={["Almoço", "Coffee Break", "Lanche", "Jantar", "Nenhum"]}
+                        valor={form.food_logistics || ''}
+                        onChange={v => setForm({ ...form, food_logistics: v })}
+                        rotuloOutro="Outra logística"
+                        pistaOutro="Especifique a alimentação..."
+                        temNenhum
+                        outroAberto={!!outroAberto.comida}
+                        onOutroAberto={a => setOutroAberto(prev => ({ ...prev, comida: a }))}
+                        erro={errors.food_logistics}
+                      />
+                      {/* Espaço livre para o que as opções não cabem: quantas pessoas,
+                          restrição alimentar, horário. Coluna própria, e não grudado
+                          em `food_logistics` — misturar escolha com texto livre foi o
+                          que tornou o `notes` ilegível. */}
+                      <Label htmlFor="food_details" className="text-xs font-medium mt-3 mb-1 block text-muted-foreground">
+                        Mais detalhes da alimentação (opcional)
+                      </Label>
+                      <Textarea
+                        id="food_details"
+                        rows={2}
+                        value={form.food_details || ''}
+                        onChange={e => setForm({ ...form, food_details: e.target.value })}
+                        placeholder="Quantas pessoas, restrição alimentar, horário…"
+                      />
                     </div>
 
-                    <div className="pt-2">
-                      <Label className="text-sm font-semibold mb-2 block">Equipe de apoio (Auxílio) *</Label>
-                      <div className="space-y-2">
-                        {["Funcionários", "Voluntários"].map((option) => (
-                          <div key={option} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card shadow-sm">
-                            <Switch
-                              id={`support-${option}`}
-                              checked={form.support_team?.includes(option)}
-                              onCheckedChange={(checked) => {
-                                const current = form.support_team ? form.support_team.split(", ") : [];
-                                let next;
-                                if (checked) {
-                                  next = [...current, option];
-                                } else {
-                                  next = current.filter(c => c !== option);
-                                }
-                                setForm({ ...form, support_team: next.join(", ") });
-                              }}
-                            />
-                            <Label htmlFor={`support-${option}`} className="text-sm cursor-pointer flex-1 font-medium">{option}</Label>
-                          </div>
-                        ))}
-                        <div className="space-y-2 p-3 rounded-lg border border-border bg-card shadow-sm">
-                          <div className="flex items-center gap-3">
-                            <Switch
-                              id="support-other-switch"
-                              checked={!!form.support_team && !form.support_team.split(", ").every(val => ["Funcionários", "Voluntários"].includes(val))}
-                              onCheckedChange={(checked) => {
-                                if (!checked) {
-                                  const next = (form.support_team?.split(", ") || []).filter(val => ["Funcionários", "Voluntários"].includes(val));
-                                  setForm({ ...form, support_team: next.join(", ") });
-                                }
-                              }}
-                            />
-                            <Label htmlFor="support-other-switch" className="text-sm cursor-pointer flex-1 font-medium">Outra equipe</Label>
-                          </div>
-                          {(!!form.support_team && !form.support_team.split(", ").every(val => ["Funcionários", "Voluntários"].includes(val))) && (
-                            <Input 
-                              className="h-9 mt-2"
-                              value={(form.support_team?.split(", ") || []).filter(val => !["Funcionários", "Voluntários"].includes(val)).join(", ")}
-                              onChange={e => {
-                                const base = (form.support_team?.split(", ") || []).filter(val => ["Funcionários", "Voluntários"].includes(val));
-                                if (e.target.value.trim()) {
-                                  setForm({ ...form, support_team: [...base, e.target.value].join(", ") });
-                                } else {
-                                  setForm({ ...form, support_team: base.join(", ") });
-                                }
-                              }}
-                              placeholder="Especifique a equipe..."
-                            />
-                          )}
-                        </div>
-                      </div>
-                      {errors.support_team && <p className="mt-1 text-xs text-destructive">{errors.support_team}</p>}
-                    </div>
-
-                    <div className="pt-2">
-                      <Label className="text-sm font-semibold mb-2 block">Logística de alimentação *</Label>
-                      <div className="space-y-2">
-                        {["Almoço", "Coffee Break", "Lanche", "Jantar", "Nenhum"].map((option) => (
-                          <div key={option} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card shadow-sm">
-                            <Switch
-                              id={`food-${option}`}
-                              checked={form.food_logistics?.includes(option)}
-                              onCheckedChange={(checked) => {
-                                const current = form.food_logistics ? form.food_logistics.split(", ").filter(Boolean) : [];
-                                let next;
-                                if (checked) {
-                                  next = [...current, option];
-                                } else {
-                                  next = current.filter(c => c !== option);
-                                }
-                                setForm({ ...form, food_logistics: next.join(", ") });
-                              }}
-                            />
-                            <Label htmlFor={`food-${option}`} className="text-sm cursor-pointer flex-1 font-medium">{option}</Label>
-                          </div>
-                        ))}
-                        <div className="space-y-2 p-3 rounded-lg border border-border bg-card shadow-sm">
-                          <div className="flex items-center gap-3">
-                            <Switch
-                              id="food-other-switch"
-                              checked={!!form.food_logistics && !form.food_logistics.split(", ").every(val => ["Almoço", "Coffee Break", "Lanche", "Jantar", "Nenhum"].includes(val))}
-                              onCheckedChange={(checked) => {
-                                if (!checked) {
-                                  const next = (form.food_logistics?.split(", ") || []).filter(val => ["Almoço", "Coffee Break", "Lanche", "Jantar", "Nenhum"].includes(val));
-                                  setForm({ ...form, food_logistics: next.join(", ") });
-                                }
-                              }}
-                            />
-                            <Label htmlFor="food-other-switch" className="text-sm cursor-pointer flex-1 font-medium">Outra logística</Label>
-                          </div>
-                          {(!!form.food_logistics && !form.food_logistics.split(", ").every(val => ["Almoço", "Coffee Break", "Lanche", "Jantar", "Nenhum"].includes(val))) && (
-                            <Input 
-                              className="h-9 mt-2"
-                              value={(form.food_logistics?.split(", ") || []).filter(val => !["Almoço", "Coffee Break", "Lanche", "Jantar", "Nenhum"].includes(val)).join(", ")}
-                              onChange={e => {
-                                const base = (form.food_logistics?.split(", ") || []).filter(val => ["Almoço", "Coffee Break", "Lanche", "Jantar", "Nenhum"].includes(val));
-                                if (e.target.value.trim()) {
-                                  setForm({ ...form, food_logistics: [...base, e.target.value].join(", ") });
-                                } else {
-                                  setForm({ ...form, food_logistics: base.join(", ") });
-                                }
-                              }}
-                              placeholder="Especifique a alimentação..."
-                            />
-                          )}
-                        </div>
-                      </div>
-                      {errors.food_logistics && <p className="mt-1 text-xs text-destructive">{errors.food_logistics}</p>}
-                    </div>
-
-                    <div className="pt-2">
-                      <Label className="text-sm font-semibold mb-2 block">Equipamentos necessários *</Label>
-                      <div className="space-y-2">
-                        {["Som", "Microfone", "Projetor", "Televisão", "Notebook", "Nenhum"].map((option) => (
-                          <div key={option} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card shadow-sm">
-                            <Switch
-                              id={`equip-${option}`}
-                              checked={form.equipment_needed?.includes(option)}
-                              onCheckedChange={(checked) => {
-                                const current = form.equipment_needed ? form.equipment_needed.split(", ").filter(Boolean) : [];
-                                let next;
-                                if (checked) {
-                                  next = [...current, option];
-                                } else {
-                                  next = current.filter(c => c !== option);
-                                }
-                                setForm({ ...form, equipment_needed: next.join(", ") });
-                              }}
-                            />
-                            <Label htmlFor={`equip-${option}`} className="text-sm cursor-pointer flex-1 font-medium">{option}</Label>
-                          </div>
-                        ))}
-                        <div className="space-y-2 p-3 rounded-lg border border-border bg-card shadow-sm">
-                          <div className="flex items-center gap-3">
-                            <Switch
-                              id="equip-other-switch"
-                              checked={!!form.equipment_needed && !form.equipment_needed.split(", ").every(val => ["Som", "Microfone", "Projetor", "Televisão", "Notebook", "Nenhum"].includes(val))}
-                              onCheckedChange={(checked) => {
-                                if (!checked) {
-                                  const next = (form.equipment_needed?.split(", ") || []).filter(val => ["Som", "Microfone", "Projetor", "Televisão", "Notebook", "Nenhum"].includes(val));
-                                  setForm({ ...form, equipment_needed: next.join(", ") });
-                                }
-                              }}
-                            />
-                            <Label htmlFor="equip-other-switch" className="text-sm cursor-pointer flex-1 font-medium">Outro equipamento</Label>
-                          </div>
-                          {(!!form.equipment_needed && !form.equipment_needed.split(", ").every(val => ["Som", "Microfone", "Projetor", "Televisão", "Notebook", "Nenhum"].includes(val))) && (
-                            <Input 
-                              className="h-9 mt-2"
-                              value={(form.equipment_needed?.split(", ") || []).filter(val => !["Som", "Microfone", "Projetor", "Televisão", "Notebook", "Nenhum"].includes(val)).join(", ")}
-                              onChange={e => {
-                                const base = (form.equipment_needed?.split(", ") || []).filter(val => ["Som", "Microfone", "Projetor", "Televisão", "Notebook", "Nenhum"].includes(val));
-                                if (e.target.value.trim()) {
-                                  setForm({ ...form, equipment_needed: [...base, e.target.value].join(", ") });
-                                } else {
-                                  setForm({ ...form, equipment_needed: base.join(", ") });
-                                }
-                              }}
-                              placeholder="Especifique os equipamentos..."
-                            />
-                          )}
-                        </div>
-                      </div>
-                      {errors.equipment_needed && <p className="mt-1 text-xs text-destructive">{errors.equipment_needed}</p>}
-                    </div>
+                    <GrupoDeOpcoes
+                      id="equip"
+                      titulo="Equipamentos necessários *"
+                      opcoes={["Som", "Microfone", "Projetor", "Televisão", "Notebook", "Nenhum"]}
+                      valor={form.equipment_needed || ''}
+                      onChange={v => setForm({ ...form, equipment_needed: v })}
+                      rotuloOutro="Outro equipamento"
+                      pistaOutro="Especifique os equipamentos..."
+                      temNenhum
+                      outroAberto={!!outroAberto.equip}
+                      onOutroAberto={a => setOutroAberto(prev => ({ ...prev, equip: a }))}
+                      erro={errors.equipment_needed}
+                    />
                   </div>
                 </div>
 
@@ -995,7 +973,7 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                 </div>
 
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 rounded-lg border border-border p-3">
+                  <div className="flex items-center gap-3 rounded-lg border border-border p-3" id="campo-marketing">
                     <Switch
                       id="marketing_request"
                       checked={form.marketing_request || false}
@@ -1292,7 +1270,12 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
             {!showConflictAlert && (
               <DialogFooter className="sticky bottom-0 bg-background pt-4 pb-2">
                 <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-                <Button onClick={handleSubmit}>{isEditing ? 'Salvar Alterações' : 'Criar Programação'}</Button>
+                {/* A contagem no botão é o que responde "por que não salvou?"
+                    sem obrigar a pessoa a caçar campo pela tela. */}
+                <Button onClick={handleSubmit}>
+                  {isEditing ? 'Salvar Alterações' : 'Criar Programação'}
+                  {pendencias > 0 && ` (${pendencias} ${pendencias === 1 ? 'pendência' : 'pendências'})`}
+                </Button>
               </DialogFooter>
             )}
           </div>

@@ -62,6 +62,8 @@ export interface AppEvent {
   target_audience?: string;
   support_team?: string;
   food_logistics?: string;
+  /** Texto livre da alimentação: quantas pessoas, restrição, horário. */
+  food_details?: string;
   marketing_info?: string;
   printed_materials?: string;
   equipment_needed?: string;
