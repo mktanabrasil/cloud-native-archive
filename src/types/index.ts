@@ -51,7 +51,8 @@ export interface AppEvent {
   banner_image_mobile?: string;
   custom_color?: string;
   show_in_banner?: boolean;
-  slug?: string;
+  /** Vazio vira `null`: a coluna é única, e um segundo `''` colide com o primeiro. */
+  slug?: string | null;
   use_logo_as_title?: boolean;
   event_logo_url?: string;
   show_banner_fade?: boolean;
