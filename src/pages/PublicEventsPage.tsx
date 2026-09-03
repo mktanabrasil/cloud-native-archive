@@ -27,6 +27,7 @@ import logoImg from '@/assets/logo.png';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { EventDetailDialog } from '@/components/EventDetailDialog';
+import { TituloDoEvento } from '@/components/events/TituloDoEvento';
 import EventFormDialog from '@/components/EventFormDialog';
 import { BannerMissingDialog } from '@/components/BannerMissingDialog';
 import ConflictDialog from '@/components/ConflictDialog';
@@ -307,12 +308,9 @@ export default function PublicEventsPage() {
                 ) : (
                   <h2 
                     className={`font-bold text-white mb-4 leading-tight drop-shadow-lg ${event.full_height_title ? 'text-4xl md:text-8xl lg:text-9xl max-w-5xl' : 'text-3xl md:text-6xl max-w-3xl'}`}
-                    dangerouslySetInnerHTML={{ 
-                      __html: event.title.replace(/<br\s*\/?>/gi, (match) => {
-                        return '<span class="hidden md:inline"><br/></span>';
-                      }) 
-                    }}
-                  />
+                  >
+                    <TituloDoEvento texto={event.title} apenasNoDesktop />
+                  </h2>
                 )}
                 <div className="flex flex-wrap gap-4 text-slate-200 text-sm md:text-base mb-6">
 
