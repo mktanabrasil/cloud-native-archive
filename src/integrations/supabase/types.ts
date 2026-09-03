@@ -121,6 +121,8 @@ export type Database = {
           id: string
           location: string | null
           marketing_info: string | null
+
+          marketing_coverage: boolean | null
           marketing_items: Json | null
           marketing_request: boolean | null
           notes: string | null
@@ -175,6 +177,8 @@ export type Database = {
           id?: string
           location?: string | null
           marketing_info?: string | null
+
+          marketing_coverage?: boolean | null
           marketing_items?: Json | null
           marketing_request?: boolean | null
           notes?: string | null
@@ -229,6 +233,8 @@ export type Database = {
           id?: string
           location?: string | null
           marketing_info?: string | null
+
+          marketing_coverage?: boolean | null
           marketing_items?: Json | null
           marketing_request?: boolean | null
           notes?: string | null

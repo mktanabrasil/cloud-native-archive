@@ -151,6 +151,11 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
    * alguém abriu a caixa e não escreveu nada — o valor guardado não conta isso.
    */
   const [outroAberto, setOutroAberto] = useState<Record<string, boolean>>({});
+  /** Uma gravação em curso. Trava o botão e segura o diálogo aberto.
+   *
+   *  Sem isto, dois cliques rápidos criavam dois eventos: o primeiro ainda
+   *  estava indo quando o segundo saía. */
+  const [salvando, setSalvando] = useState(false);
 
   const isEditing = !!event;
 
@@ -307,7 +312,10 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
       banner_image_mobile: form.banner_image_mobile || '',
       custom_color: form.custom_color || SYSTEM_COLORS[0],
       show_in_banner: form.show_in_banner || false,
-      slug: form.slug || '',
+      // `null`, e não `''`: `events_slug_key` é única. Já existe uma linha com
+      // slug vazio, e a segunda quebrava com "duplicate key" — mensagem que não
+      // diz nada a quem só queria salvar um evento. `null` nunca colide.
+      slug: form.slug?.trim() ? form.slug.trim() : null,
       use_logo_as_title: form.use_logo_as_title || false,
       event_logo_url: form.event_logo_url || '',
       show_banner_fade: form.show_banner_fade !== undefined ? form.show_banner_fade : true,
@@ -329,7 +337,42 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
     };
   };
 
-  const handleSubmit = () => {
+  /**
+   * Grava o evento e só então fecha o formulário.
+   *
+   * Antes o `addEvent` era disparado sem `await` e sem `catch`, e a linha
+   * seguinte já fechava o diálogo. Se o banco recusasse, a pessoa via um toast
+   * de erro com o formulário fechado e **tudo o que digitou perdido** — sem
+   * chance de tentar de novo.
+   *
+   * Marcar os conflitos vem depois, e num `allSettled`: é trabalho secundário,
+   * e falhar nele não pode custar o evento que já foi salvo.
+   */
+  const salvar = async (evento: AppEvent, conflitantes: AppEvent[]) => {
+    if (salvando) return;
+    setSalvando(true);
+    try {
+      if (isEditing) await updateEvent(evento);
+      else await addEvent(evento);
+    } catch {
+      // O contexto já disse o que deu errado. O formulário fica aberto,
+      // preenchido, para ela tentar de novo.
+      setSalvando(false);
+      return;
+    }
+
+    await Promise.allSettled(
+      conflitantes
+        .filter(c => !c.has_conflict)
+        .map(c => updateEvent({ ...c, has_conflict: true, updated_at: new Date().toISOString() })),
+    );
+
+    setSalvando(false);
+    setSelectedEvent(null);
+    onOpenChange(false);
+  };
+
+  const handleSubmit = async () => {
     if (!validate()) {
       // Quem apertou o botão estava no fim do formulário; o resumo fica no topo.
       // `?.scrollIntoView?.` porque nem todo ambiente tem o método — o jsdom
@@ -348,39 +391,13 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
     }
 
     fullEvent.has_conflict = found.length > 0;
-
-    found.forEach(c => {
-      if (!c.has_conflict) {
-        updateEvent({ ...c, has_conflict: true, updated_at: new Date().toISOString() });
-      }
-    });
-
-    if (isEditing) {
-      updateEvent(fullEvent);
-    } else {
-      addEvent(fullEvent);
-    }
-    setSelectedEvent(null);
-    onOpenChange(false);
+    await salvar(fullEvent, found);
   };
 
-  const handleForceSubmit = () => {
+  const handleForceSubmit = async () => {
     const fullEvent = getFullEvent();
     fullEvent.has_conflict = true;
-
-    conflicts.forEach(c => {
-      if (!c.has_conflict) {
-        updateEvent({ ...c, has_conflict: true, updated_at: new Date().toISOString() });
-      }
-    });
-
-    if (isEditing) {
-      updateEvent(fullEvent);
-    } else {
-      addEvent(fullEvent);
-    }
-    setSelectedEvent(null);
-    onOpenChange(false);
+    await salvar(fullEvent, conflicts);
   };
 
   return (
@@ -418,7 +435,7 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                 </div>
                 <DialogFooter className="gap-2">
                   <Button variant="outline" onClick={() => setShowConflictAlert(false)}>Voltar e Corrigir</Button>
-                  <Button onClick={handleForceSubmit}>Salvar Mesmo Assim</Button>
+                  <Button onClick={handleForceSubmit} disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar Mesmo Assim'}</Button>
                 </DialogFooter>
               </div>
             ) : (
@@ -1273,8 +1290,8 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                 <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
                 {/* A contagem no botão é o que responde "por que não salvou?"
                     sem obrigar a pessoa a caçar campo pela tela. */}
-                <Button onClick={handleSubmit}>
-                  {isEditing ? 'Salvar Alterações' : 'Criar Programação'}
+                <Button onClick={handleSubmit} disabled={salvando}>
+                  {salvando ? 'Salvando…' : isEditing ? 'Salvar Alterações' : 'Criar Programação'}
                   {pendencias > 0 && ` (${pendencias} ${pendencias === 1 ? 'pendência' : 'pendências'})`}
                 </Button>
               </DialogFooter>
