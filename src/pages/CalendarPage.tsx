@@ -111,6 +111,8 @@ export default function CalendarPage() {
 
   const filtered = useMemo(() => {
     return events.filter(e => {
+      // Lixeira fica de fora: para o admin o banco não filtra `deleted_at`.
+      if (e.deleted_at) return false;
       if (filterUnit !== 'all' && e.unit !== filterUnit) return false;
       if (filterStatus !== 'all' && e.status !== filterStatus) return false;
       if (filterType !== 'all' && e.event_type !== filterType) return false;
@@ -122,7 +124,7 @@ export default function CalendarPage() {
 
   const conflictDates = useMemo(() => {
     const dates = new Set<string>();
-    events.filter(e => e.has_conflict).forEach(e => {
+    events.filter(e => e.has_conflict && !e.deleted_at).forEach(e => {
       dates.add(format(new Date(e.start_datetime), 'yyyy-MM-dd'));
     });
     return dates;

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { SELECT_PUBLICO } from '@/lib/events/camposPublicos';
 import { descreverErroDeGravacao } from '@/lib/events/mensagemDeErro';
+import { conflitosDe, marcarConflitos } from '@/lib/events/conflitos';
 
 interface AppContextType {
   events: AppEvent[];
@@ -66,7 +67,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         marketing_items: Array.isArray(e.marketing_items) ? e.marketing_items : [],
       }));
       
-      setEvents(adaptedEvents);
+      // A bandeira de conflito nasce aqui, das datas — o que veio na coluna
+      // é ignorado. Ver `conflitos.ts`.
+      setEvents(marcarConflitos(adaptedEvents));
     } catch (error) {
       console.error('Error fetching events:', error);
     } finally {
@@ -81,18 +84,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     fetchEvents();
   }, [authLoading, fetchEvents]);
 
-  const detectConflicts = useCallback((event: AppEvent): AppEvent[] => {
-    return events.filter(e => {
-      if (e.id === event.id) return false;
-      if (e.status === 'cancelado' || event.status === 'cancelado') return false;
-      const eStart = new Date(e.start_datetime).getTime();
-      const eEnd = new Date(e.end_datetime).getTime();
-      const eventStart = new Date(event.start_datetime).getTime();
-      const eventEnd = new Date(event.end_datetime).getTime();
-      const sameScope = e.unit === event.unit || e.unit === 'Administração' || event.unit === 'Administração';
-      return sameScope && eStart < eventEnd && eEnd > eventStart;
-    });
-  }, [events]);
+  const detectConflicts = useCallback((event: AppEvent): AppEvent[] => conflitosDe(event, events), [events]);
 
   /**
    * Avisa o que deu errado, com nome.
