@@ -769,7 +769,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       {/* `capitalize` nos dois: sem ele no gatilho, a lista mostrava
                           "Evento Institucional" e o campo, depois de escolhido,
                           "evento institucional". O valor guardado é minúsculo nos dois. */}
-                      <SelectTrigger className={`capitalize ${errors.event_type ? 'border-destructive' : ''}`}>
+                      {/* `capitalize` só com valor: no placeholder ele fazia
+                          "Selecione O Tipo". */}
+                      <SelectTrigger className={`${form.event_type ? 'capitalize' : ''} ${errors.event_type ? 'border-destructive' : ''}`}>
                         <SelectValue placeholder="Selecione o tipo" />
                       </SelectTrigger>
                       <SelectContent>

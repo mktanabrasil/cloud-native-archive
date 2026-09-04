@@ -188,7 +188,8 @@ describe('Tipo e Status', () => {
     abrir();
 
     expect(screen.getByText('Selecione o tipo')).toBeInTheDocument();
-    expect(document.querySelector('#campo-tipo button')?.className).toMatch(/capitalize/);
+    // sem valor, sem `capitalize`: o placeholder ficava "Selecione O Tipo"
+    expect(document.querySelector('#campo-tipo button')?.className).not.toMatch(/capitalize/);
 
     fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
     expect(screen.getAllByText('Escolha o tipo do evento').length).toBeGreaterThan(0);
@@ -199,6 +200,7 @@ describe('Tipo e Status', () => {
 
     escolherTipo('apresentação');
     expect(screen.queryAllByText('Escolha o tipo do evento').length).toBe(0);
+    expect(document.querySelector('#campo-tipo button')?.className).toMatch(/capitalize/);
   });
 });
 
