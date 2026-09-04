@@ -448,6 +448,60 @@ describe('checklist de publicação', () => {
   });
 });
 
+describe('os combinados da cobertura', () => {
+  it('ao pedir cobertura, a unidade lê os dois combinados', () => {
+    abrir();
+    fireEvent.click(screen.getByRole('switch', { name: /solicitação de marketing/i }));
+    expect(screen.queryByTestId('combinados-da-cobertura')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('switch', { name: /solicitar cobertura do evento/i }));
+
+    const bloco = screen.getByTestId('combinados-da-cobertura');
+    expect(bloco).toHaveTextContent('1. A presença do marketing é confirmada caso a caso.');
+    expect(bloco).toHaveTextContent('2. O registro do evento é sempre da unidade.');
+    expect(bloco).toHaveTextContent('os registros da unidade completam a cobertura');
+    // a gestora não responde — só o admin
+    expect(screen.queryByRole('switch', { name: /marketing vai estar presente/i })).not.toBeInTheDocument();
+  });
+
+  it('o admin responde, e a resposta vai gravada', async () => {
+    espiao.papel = { ...espiao.papel, userName: 'MKT ANA', isAdmin: true, isMarketing: true };
+    const pedido = { ...eventoGravado(), status: 'pendente' as const, marketing_request: true, marketing_coverage: true, submitted_at: '2026-03-19T13:00:00.000Z' };
+    render(<EventFormDialog open onOpenChange={fechou} event={pedido} revisao />);
+
+    expect(screen.getByTestId('resposta-da-cobertura')).toHaveTextContent('presença a confirmar');
+    fireEvent.click(screen.getByRole('switch', { name: /marketing vai estar presente/i }));
+    expect(screen.getByTestId('resposta-da-cobertura')).toHaveTextContent('marketing confirmado');
+
+    fireEvent.click(screen.getByRole('button', { name: /aprovar e confirmar/i }));
+    await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalled());
+    expect((espiao.updateEvent.mock.calls[0][0] as AppEvent).marketing_confirmed).toBe(true);
+  });
+
+  it('com o não do marketing, a vaga sai da conta do transporte', () => {
+    espiao.papel = { ...espiao.papel, isAdmin: true, isMarketing: true };
+    const evento = { ...eventoGravado(), marketing_request: true, marketing_coverage: true, marketing_confirmed: false, transport_needed: true, transport_vehicle: 'van' as const, transport_passengers: 10 };
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+
+    expect(screen.getByTestId('conta-do-transporte')).toHaveTextContent('10 + 1 motorista = 11 pessoas no veículo');
+    expect(screen.getByTestId('combinados-da-cobertura')).toHaveTextContent('Sem marketing neste evento');
+  });
+
+  it('sem pedido de cobertura, a resposta volta a nulo ao salvar', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    const evento = { ...eventoGravado(), marketing_request: true, marketing_coverage: true, marketing_confirmed: true };
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+
+    fireEvent.click(screen.getByRole('switch', { name: /solicitar cobertura do evento/i }));
+    fireEvent.click(screen.getByRole('switch', { name: /demanda gráfica/i }));
+    fireEvent.change(screen.getByPlaceholderText(/ex: card instagram/i), { target: { value: 'Card' } });
+    fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
+
+    await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalled());
+    expect((espiao.updateEvent.mock.calls[0][0] as AppEvent).marketing_confirmed).toBeNull();
+  });
+});
+
 describe('materiais impressos', () => {
   it('o campo mora no bloco de marketing e grava em printed_materials', async () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
@@ -513,7 +567,7 @@ describe('transporte', () => {
     fireEvent.click(marketing);
     fireEvent.click(screen.getByRole('switch', { name: /solicitar cobertura do evento/i }));
     // o motorista aparece na soma mostrada; os lugares continuam sendo assentos − 1
-    expect(screen.getByTestId('conta-do-transporte')).toHaveTextContent('13 + 1 do marketing + 1 motorista (cobertura pedida) = 15 pessoas no veículo');
+    expect(screen.getByTestId('conta-do-transporte')).toHaveTextContent('13 + 1 do marketing + 1 motorista (se confirmado) = 15 pessoas no veículo');
     // o aviso antigo em duplicata, dentro do marketing, saiu
     expect(screen.queryByText(/1 vaga do marketing está sendo contabilizada/i)).not.toBeInTheDocument();
   });
@@ -564,7 +618,8 @@ describe('transporte', () => {
 
     expect(screen.queryByText(/^Sugestão:/)).not.toBeInTheDocument();
     expect(screen.getByTestId('aviso-frota')).toHaveTextContent('Não cabe na frota da ANA');
-    expect(screen.getByTestId('aviso-frota')).toHaveTextContent('faltam 3');
+    // sem cobertura pedida: 27 passageiros, frota de 25, faltam 2
+    expect(screen.getByTestId('aviso-frota')).toHaveTextContent('faltam 2');
     expect(screen.getByTestId('conta-do-transporte')).toHaveTextContent('27 + 2 motoristas = 29 pessoas · 2 veículos · a frota carrega 25');
 
     fireEvent.click(screen.getByRole('switch', { name: /precisa de apoio externo para transporte/i }));

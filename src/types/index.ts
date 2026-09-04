@@ -90,6 +90,12 @@ export interface AppEvent {
   equipment_needed?: string;
   marketing_items?: Array<{ type: 'cobertura' | 'demanda_grafica'; item: string; description: string }>;
   marketing_coverage?: boolean;
+  /**
+   * Resposta do admin ao pedido de cobertura: `null` a confirmar, `true`
+   * presente, `false` sem marketing (registro pela unidade). Com `false`, a
+   * vaga do marketing sai do transporte.
+   */
+  marketing_confirmed?: boolean | null;
   transport_needed?: boolean;
   transport_vehicle?: TransportVehicle | '';
   /** Segundo veículo quando o principal não cabe todo mundo. */

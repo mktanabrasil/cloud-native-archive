@@ -26,6 +26,7 @@ import { descreverErroDeGravacao } from '@/lib/events/mensagemDeErro';
 import { contar, erroDeLimite, type CampoComLimite } from '@/lib/events/limites';
 import { apagarDoBalde, urlDoAnexo } from '@/lib/events/anexos';
 import { FROTA, TETO_DA_FROTA, apoiosPossiveis, errosDeTransporte, motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
+import { estadoDaCobertura } from '@/lib/events/cobertura';
 import { errosDasListas, limparListas } from '@/lib/events/listas';
 import { toast } from 'sonner';
 import { format as formatarData } from 'date-fns';
@@ -167,6 +168,7 @@ const emptyEvent = (): Partial<AppEvent> => ({
   equipment_needed: '',
   marketing_items: [],
   marketing_coverage: false,
+  marketing_confirmed: null,
   transport_needed: false,
   transport_vehicle: '',
   transport_passengers: 0,
@@ -513,6 +515,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       equipment_needed: normalizarOpcoes(form.equipment_needed),
       marketing_items: form.marketing_items || [],
       marketing_coverage: form.marketing_coverage || false,
+      // A resposta só faz sentido com pedido de cobertura; sem ele, volta a nulo.
+      marketing_confirmed: form.marketing_request && form.marketing_coverage ? (form.marketing_confirmed ?? null) : null,
       transport_needed: form.transport_needed || false,
       transport_vehicle: form.transport_needed ? (form.transport_vehicle || '') : '',
       transport_passengers: form.transport_needed ? (Number(form.transport_passengers) || 0) : 0,
@@ -587,7 +591,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       toast.success(aviso.titulo, { description: aviso.descricao });
     } else if (enviaParaAprovacao && !isEditing) {
       toast.success('Enviado para aprovação', {
-        description: `“${gravado.title}”, ${quando} · ${eventUnitLabel(gravado.unit)}, está como pendente. A administração geral vai revisar.`,
+        description: `“${gravado.title}”, ${quando} · ${eventUnitLabel(gravado.unit)}, está como pendente. A administração geral vai revisar.${
+          gravado.marketing_request && gravado.marketing_coverage ? ' A presença do marketing será confirmada na resposta.' : ''
+        }`,
       });
     } else {
       toast.success(isEditing ? 'Alterações salvas' : 'Programação criada', {
@@ -989,6 +995,32 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       <CheckCircle2 className="h-3.5 w-3.5" /> Vai aparecer no site assim que for salvo.
                     </p>
                   )}
+
+                  {/* A resposta ao pedido de cobertura. Só quem publica responde, e
+                      só faz sentido quando a unidade pediu. "Não" tira a vaga do
+                      marketing da conta do transporte. */}
+                  {form.marketing_request && form.marketing_coverage && (
+                    <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50/60 p-3" data-testid="resposta-da-cobertura">
+                      <p className="mb-2 text-xs font-semibold text-blue-900">Cobertura pedida pela unidade</p>
+                      <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-2.5 shadow-sm">
+                        <Switch
+                          id="marketing_confirmed"
+                          checked={form.marketing_confirmed === true}
+                          onCheckedChange={v => setForm({ ...form, marketing_confirmed: !!v })}
+                        />
+                        <Label htmlFor="marketing_confirmed" className="cursor-pointer flex-1 text-sm font-medium">
+                          Marketing vai estar presente
+                        </Label>
+                      </div>
+                      <p className="mt-1.5 text-[11px] text-muted-foreground">
+                        {form.marketing_confirmed === true
+                          ? 'A unidade vê “marketing confirmado”; a vaga no transporte fica.'
+                          : form.marketing_confirmed === false
+                            ? 'A unidade vê “sem marketing — registro pela unidade”; a vaga sai do transporte.'
+                            : 'Ainda sem resposta: a unidade vê “presença a confirmar”. Desligado ao salvar = não.'}
+                      </p>
+                    </div>
+                  )}
                 </div>
                 )}
 
@@ -1263,13 +1295,31 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                             <Label htmlFor="marketing_cobertura" className="cursor-pointer flex-1 text-sm font-medium text-blue-900">Solicitar Cobertura do Evento</Label>
                           </div>
                           
-                          {/* A vaga no transporte aparece na conta do transporte, logo
-                              abaixo — não aqui em duplicata. */}
+                          {/* Dois combinados que a unidade precisa ler ao pedir: a
+                              presença é confirmada caso a caso, e o registro é dela em
+                              qualquer caso. Redação aprovada em 04/09 (quadro 18). A vaga
+                              no transporte aparece na conta do transporte, não aqui. */}
                           {form.marketing_coverage && (
-                            <div className="px-3 py-2 bg-blue-50/50 rounded-md border border-dashed border-blue-200 animate-in fade-in zoom-in-95 duration-200">
-                              <p className="text-[11px] text-blue-600 flex items-center gap-1.5 font-medium">
-                                <CheckCircle2 className="h-3 w-3" /> Cobertura fotográfica e/ou vídeo solicitada — 1 pessoa do marketing vai junto
+                            <div
+                              className="rounded-lg border border-blue-200 bg-blue-50/70 px-3 py-2.5 text-[12px] leading-relaxed text-blue-900 animate-in fade-in zoom-in-95 duration-200"
+                              data-testid="combinados-da-cobertura"
+                            >
+                              <p className="mb-1.5 font-semibold">Pedido registrado. Dois combinados:</p>
+                              <p className="mb-1.5">
+                                <strong>1. A presença do marketing é confirmada caso a caso.</strong> A equipe é pequena e
+                                atende todas as unidades, então o pedido entra na agenda e a resposta vem com a aprovação do evento.
                               </p>
+                              <p>
+                                <strong>2. O registro do evento é sempre da unidade.</strong> Fotos e vídeos pelo celular, no dia — e o
+                                material vai para o marketing depois. Isso vale também quando o marketing estiver presente:
+                                os registros da unidade completam a cobertura.
+                              </p>
+                              {form.marketing_confirmed === true && (
+                                <p className="mt-2 font-semibold text-emerald-700">✓ Marketing confirmado para este evento.</p>
+                              )}
+                              {form.marketing_confirmed === false && (
+                                <p className="mt-2 font-semibold text-amber-800">Sem marketing neste evento — o registro é pela unidade.</p>
+                              )}
                             </div>
                           )}
 
@@ -1421,7 +1471,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                     <span className="font-semibold text-foreground">
                                       {r.passageiros}{r.vagaMarketing > 0 && ' + 1 do marketing'} + {motoristas} {motoristas === 1 ? 'motorista' : 'motoristas'}
                                     </span>
-                                    {r.vagaMarketing > 0 && ' (cobertura pedida)'}
+                                    {r.vagaMarketing > 0 && (estadoDaCobertura(form) === 'confirmada' ? ' (confirmado)' : ' (se confirmado)')}
                                     {' '}= <span className="font-semibold text-foreground">{soma}</span>
                                     {' '}{soma === 1 ? 'pessoa' : 'pessoas'}{motoristas > 1 ? ` · ${motoristas} veículos` : ' no veículo'}
                                     {r.acimaDoTeto && <> · a frota carrega <span className="font-semibold text-destructive">{TETO_DA_FROTA}</span></>}

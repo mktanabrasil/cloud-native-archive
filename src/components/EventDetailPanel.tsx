@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Pencil, Trash2, Megaphone, Users, Paperclip, Globe, Lock, Truck, AlertTriangle } from 'lucide-react';
 import { motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
+import { ROTULO_DA_COBERTURA, estadoDaCobertura } from '@/lib/events/cobertura';
 
 const unitBadgeColors: Record<Unit, string> = {
   'DIC': 'bg-unit-dic text-primary-foreground',
@@ -141,7 +142,19 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
                   <span className="text-sm font-medium text-foreground">Solicitação de Marketing</span>
                 </div>
                 {event.marketing_coverage && (
-                  <p className="text-xs text-blue-900">Cobertura fotográfica e/ou vídeo solicitada.</p>
+                  <p className="text-xs text-blue-900 flex flex-wrap items-center gap-2">
+                    Cobertura solicitada
+                    {(() => {
+                      const estado = estadoDaCobertura(event);
+                      if (estado === 'nao-pedida') return null;
+                      const classe = estado === 'confirmada'
+                        ? 'bg-success/15 text-success border-success/40'
+                        : estado === 'sem-marketing'
+                          ? 'bg-amber-100 text-amber-900 border-amber-300'
+                          : 'bg-muted text-muted-foreground border-border';
+                      return <Badge variant="outline" className={`text-[10px] font-medium ${classe}`}>{ROTULO_DA_COBERTURA[estado]}</Badge>;
+                    })()}
+                  </p>
                 )}
                 {event.marketing_items && event.marketing_items.length > 0 && (
                   <div className="space-y-2">

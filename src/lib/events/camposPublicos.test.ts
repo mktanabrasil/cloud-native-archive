@@ -22,6 +22,7 @@ const PROIBIDOS = [
   'marketing_items',
   'marketing_request',
   'marketing_coverage',
+  'marketing_confirmed',
   'partner_involved',
   'partner_name',
   'partner_type',
