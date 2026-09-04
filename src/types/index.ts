@@ -97,6 +97,8 @@ export interface AppEvent {
   transport_passengers?: number;
   /** Leva equipamentos/materiais volumosos: pede veículo de apoio. */
   transport_extra_equipment?: boolean;
+  /** A frota da ANA (VAN + Kombi, 25 lugares) não basta: vai acionar apoio de fora. */
+  transport_external_support?: boolean;
   /**
    * O pedido de aprovação. A gestora envia (`submitted_at`), o admin geral
    * confirma ou devolve (`reviewed_*`, `review_note`). Nulos num evento que

@@ -557,6 +557,23 @@ describe('transporte', () => {
     expect((espiao.updateEvent.mock.calls[0][0] as AppEvent).transport_support_vehicle).toBe('kombi');
   });
 
+  it('acima do teto da frota: sem sugestão, aviso para acionar apoio, e o envio segue', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    const evento = { ...eventoGravado(), transport_needed: true, transport_vehicle: 'van' as const, transport_support_vehicle: 'kombi' as const, transport_passengers: 27 };
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+
+    expect(screen.queryByText(/^Sugestão:/)).not.toBeInTheDocument();
+    expect(screen.getByTestId('aviso-frota')).toHaveTextContent('Não cabe na frota da ANA');
+    expect(screen.getByTestId('aviso-frota')).toHaveTextContent('faltam 3');
+    expect(screen.getByTestId('conta-do-transporte')).toHaveTextContent('27 + 2 motoristas = 29 pessoas · 2 veículos · a frota carrega 25');
+
+    fireEvent.click(screen.getByRole('switch', { name: /precisa de apoio externo para transporte/i }));
+    fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
+
+    await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalled());
+    expect((espiao.updateEvent.mock.calls[0][0] as AppEvent).transport_external_support).toBe(true);
+  });
+
   it('desligado, nada é cobrado nem gravado', async () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
     const evento = { ...eventoGravado(), transport_needed: true, transport_vehicle: 'van' as const, transport_passengers: 3, transport_extra_equipment: true };
