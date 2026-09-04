@@ -520,12 +520,12 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
    * de erro com o formulário fechado e **tudo o que digitou perdido** — sem
    * chance de tentar de novo.
    *
-   * Marcar os conflitos vem depois, e num `allSettled`: é trabalho secundário,
-   * e falhar nele não pode custar o evento que já foi salvo.
+   * O conflito não é mais gravado nos outros eventos: a bandeira é calculada
+   * das datas ao carregar (`conflitos.ts`), então mover este evento já limpa
+   * o outro lado sozinho.
    */
   const salvar = async (
     evento: AppEvent,
-    conflitantes: AppEvent[],
     aviso: { titulo: string; descricao: string } | null = null,
   ) => {
     if (salvando) return;
@@ -559,12 +559,6 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
         return;
       }
     }
-
-    await Promise.allSettled(
-      conflitantes
-        .filter(c => !c.has_conflict)
-        .map(c => updateEvent({ ...c, has_conflict: true, updated_at: new Date().toISOString() })),
-    );
 
     // Anexos que estavam no evento e saíram da lista: agora que o evento
     // gravou sem eles, o arquivo pode ir. (Os que subiram e saíram antes de
@@ -621,13 +615,13 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     }
 
     fullEvent.has_conflict = found.length > 0;
-    await salvar(fullEvent, found, aviso);
+    await salvar(fullEvent, aviso);
   };
 
   const handleForceSubmit = async () => {
     const fullEvent = ajusteRef.current ? ajusteRef.current(getFullEvent()) : getFullEvent();
     fullEvent.has_conflict = true;
-    await salvar(fullEvent, conflicts, avisoRef.current);
+    await salvar(fullEvent, avisoRef.current);
   };
 
   /**
@@ -661,7 +655,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       reviewed_at: new Date().toISOString(),
       reviewed_by: userName || 'Administração',
     };
-    await salvar(evento, [], {
+    await salvar(evento, {
       titulo: `Devolvido para ${eventUnitLabel(evento.unit)}`,
       descricao: 'A unidade vê a observação ao abrir o evento.',
     });

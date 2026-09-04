@@ -80,6 +80,10 @@ export default function Dashboard() {
     const searchWords = searchTerm.split(/\s+/);
 
     return events.filter(e => {
+      // 0. Lixeira não é programação. Para o admin, a política do banco não
+      //    filtra `deleted_at`, então a tela precisa filtrar.
+      if (e.deleted_at) return false;
+
       // 1. Unit filter
       if (filterUnit !== 'all' && e.unit !== filterUnit) return false;
       
