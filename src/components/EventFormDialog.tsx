@@ -20,6 +20,7 @@ import { BannerMissingDialog } from './BannerMissingDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { GrupoDeOpcoes } from './events/GrupoDeOpcoes';
 import { TituloDoEvento } from './events/TituloDoEvento';
+import { paraCampoDataHora, rotuloDoFuso } from '@/lib/events/horaLocal';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface Props {
@@ -203,20 +204,13 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
 
   useEffect(() => {
     if (event) {
-      const formatDate = (dateStr: string) => {
-        try {
-          const d = new Date(dateStr);
-          if (isNaN(d.getTime())) return '';
-          return d.toISOString().slice(0, 16);
-        } catch (e) {
-          return '';
-        }
-      };
-
+      // Hora local, e não `toISOString().slice(0, 16)`: aquilo era UTC num
+      // campo que fala hora local, e cada edição adiantava o evento em 3 h.
+      // Ver `horaLocal.ts`.
       setForm({
         ...event,
-        start_datetime: formatDate(event.start_datetime),
-        end_datetime: formatDate(event.end_datetime),
+        start_datetime: paraCampoDataHora(event.start_datetime),
+        end_datetime: paraCampoDataHora(event.end_datetime),
       });
     } else {
       setForm({ ...emptyEvent(), unit: (unit as Unit) || 'DIC' });
@@ -501,6 +495,11 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                     </div>
                     {errors.end_datetime && <p className="mt-1 text-xs text-destructive">{errors.end_datetime}</p>}
                   </div>
+                  {/* Quem edita de outro estado precisa saber em que relógio o
+                      horário está. O fuso é o do computador de quem preenche. */}
+                  <p className="col-span-2 -mt-1 text-[11px] text-muted-foreground">
+                    Horários no fuso deste computador ({rotuloDoFuso()}).
+                  </p>
                 </div>
                 <div id="campo-location">
                   <Label className="text-sm font-semibold mb-1.5 block">Localização *</Label>
