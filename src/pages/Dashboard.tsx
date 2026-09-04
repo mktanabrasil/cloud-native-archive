@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { AppEvent, EventStatus, UNITS, EVENT_STATUSES, Unit } from '@/types';
+import { AppEvent, EventStatus, UNITS, EVENT_STATUSES, EVENT_TYPES, Unit } from '@/types';
 import { CalendarDays, CheckCircle2, Clock, AlertCircle, Plus, ChevronLeft, ChevronRight, ChevronDown, AlertTriangle, Camera, Handshake, Search, LayoutGrid, List, Calendar as CalendarIcon, Globe, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -55,6 +55,7 @@ export default function Dashboard() {
   const [search, setSearch] = useState('');
   const [filterUnit, setFilterUnit] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterType, setFilterType] = useState<string>('all');
   const [conflictOnly, setConflictOnly] = useState(false);
   const [showConflicts, setShowConflicts] = useState(false);
   const [showFiltered, setShowFiltered] = useState<'marketing' | 'partners' | 'confirmed' | 'pending' | null>(null);
@@ -89,6 +90,9 @@ export default function Dashboard() {
       
       // 2. Status filter
       if (filterStatus !== 'all' && e.status !== filterStatus) return false;
+
+      // 2b. Tipo
+      if (filterType !== 'all' && e.event_type !== filterType) return false;
       
       // 3. Conflict filter
       if (conflictOnly && !e.has_conflict) return false;
@@ -106,7 +110,7 @@ export default function Dashboard() {
       
       return true;
     });
-  }, [events, filterUnit, filterStatus, conflictOnly, search]);
+  }, [events, filterUnit, filterStatus, filterType, conflictOnly, search]);
 
   const monthEvents = useMemo(() => filtered.filter(e => {
     const d = new Date(e.start_datetime);
@@ -236,6 +240,13 @@ export default function Dashboard() {
                 <SelectContent>
                   <SelectItem value="all">Todos os Status</SelectItem>
                   {EVENT_STATUSES.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger className="h-10 w-[130px] shadow-sm bg-background"><SelectValue placeholder="Tipo" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os Tipos</SelectItem>
+                  {EVENT_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
                 </SelectContent>
               </Select>
                 

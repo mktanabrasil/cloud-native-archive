@@ -30,6 +30,40 @@ vi.mock('@/contexts/AppContext', () => ({
 }));
 
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'u1' } }) }));
+
+/**
+ * O Select do Radix não abre no jsdom (depende de pointer events que o jsdom
+ * não tem). Aqui ele vira um `<select>` nativo com a mesma API: o gatilho
+ * continua um botão com o `className` (os testes de `capitalize` leem isso),
+ * o valor escolhido ou o placeholder aparece nele, e as opções ficam num
+ * `<select>` que `fireEvent.change` consegue mexer.
+ */
+vi.mock('@/components/ui/select', async () => {
+  const React = await import('react');
+  const Ctx = React.createContext<{ value: string; onValueChange: (v: string) => void }>({ value: '', onValueChange: () => {} });
+  const Select = ({ value, onValueChange, children }: any) => (
+    <Ctx.Provider value={{ value: value ?? '', onValueChange }}><div data-select>{children}</div></Ctx.Provider>
+  );
+  const SelectTrigger = ({ children, className }: any) => {
+    const c = React.useContext(Ctx);
+    return <button type="button" role="combobox" className={className} data-value={c.value}>{children}</button>;
+  };
+  const SelectValue = ({ placeholder }: any) => {
+    const c = React.useContext(Ctx);
+    return <span>{c.value || placeholder || ''}</span>;
+  };
+  const SelectContent = ({ children }: any) => {
+    const c = React.useContext(Ctx);
+    return (
+      <select aria-label="opções" value={c.value} onChange={e => c.onValueChange(e.target.value)}>
+        <option value="" hidden></option>
+        {children}
+      </select>
+    );
+  };
+  const SelectItem = ({ value, children }: any) => <option value={value}>{children}</option>;
+  return { Select, SelectTrigger, SelectValue, SelectContent, SelectItem };
+});
 vi.mock('./FileUpload', () => ({ FileUpload: () => null }));
 vi.mock('./EventDetailDialog', () => ({ EventDetailDialog: () => null }));
 vi.mock('./BannerMissingDialog', () => ({ BannerMissingDialog: () => null }));
@@ -84,12 +118,20 @@ const eventoGravado = (): AppEvent => ({
   equipment_needed: 'Nenhum',
 });
 
-/** Deixa o formulário válido: título, datas, local e os quatro de logística. */
+/** Escolhe o tipo no `<select>` que o mock acima põe dentro de `#campo-tipo`. */
+function escolherTipo(valor: string) {
+  const select = document.querySelector('#campo-tipo select') as HTMLSelectElement;
+  fireEvent.change(select, { target: { value: valor } });
+}
+
+/** Deixa o formulário válido: título, tipo, datas, local e os quatro de logística. */
 function preencher() {
   const escrever = (rotulo: RegExp, valor: string) =>
     fireEvent.change(screen.getByPlaceholderText(rotulo), { target: { value: valor } });
 
   escrever(/nome do evento/i, 'Festa da Primavera');
+  // Tipo não tem mais padrão silencioso: escolhe-se pelo teclado no gatilho.
+  escolherTipo('apresentação');
   const datas = document.querySelectorAll('input[type="datetime-local"]');
   fireEvent.change(datas[0], { target: { value: '2026-10-10T14:00' } });
   fireEvent.change(datas[1], { target: { value: '2026-10-10T18:00' } });
@@ -128,17 +170,35 @@ describe('publicar no site', () => {
 });
 
 describe('Tipo e Status', () => {
-  it.each([
-    ['Tipo', 'reunião'],
-    ['Status', 'pendente'],
-  ])('%s mostra o escolhido com a mesma letra da lista', (_campo, valor) => {
+  it('Status mostra o escolhido com a mesma letra da lista', () => {
     // A lista tinha `capitalize` e o gatilho não: escolhido, "Evento
-    // Institucional" virava "evento institucional". O mesmo no Status.
+    // Institucional" virava "evento institucional".
     abrir();
 
-    const gatilho = screen.getByText(valor).closest('button');
+    // "pendente" aparece no gatilho e na lista de opções; o gatilho é o botão.
+    const gatilho = screen.getAllByText('pendente').map(e => e.closest('button')).find(Boolean);
 
     expect(gatilho?.className).toMatch(/capitalize/);
+  });
+
+  it('Tipo abre vazio, é obrigatório e não oferece “cobertura”', async () => {
+    // "reunião" pré-marcado fazia festa virar reunião sem ninguém perceber.
+    // "cobertura" era o pedido de marketing disfarçado de tipo.
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+
+    expect(screen.getByText('Selecione o tipo')).toBeInTheDocument();
+    expect(document.querySelector('#campo-tipo button')?.className).toMatch(/capitalize/);
+
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    expect(screen.getAllByText('Escolha o tipo do evento').length).toBeGreaterThan(0);
+    expect(espiao.addEvent).not.toHaveBeenCalled();
+
+    const opcoes = [...document.querySelectorAll('#campo-tipo option')].map(o => o.textContent).filter(Boolean);
+    expect(opcoes).toEqual(['reunião', 'evento institucional', 'apresentação', 'ação externa', 'programação interna', 'outro']);
+
+    escolherTipo('apresentação');
+    expect(screen.queryAllByText('Escolha o tipo do evento').length).toBe(0);
   });
 });
 
