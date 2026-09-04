@@ -277,6 +277,36 @@ describe('a gestora envia para aprovação', () => {
   });
 });
 
+describe('checklist de publicação', () => {
+  const abrirComoComunicacao = () => {
+    espiao.papel = { ...espiao.papel, isAdmin: false, isMarketing: true };
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: /público \/ site/i }));
+  };
+
+  it('a comunicação, sem ser admin, liga o que antes vinha travado', () => {
+    abrirComoComunicacao();
+
+    for (const nome of [/exibir no banner superior/i, /usar logo como título/i, /cortina de opacidade/i, /efeito de sombreamento/i, /ocupar toda a altura/i]) {
+      expect(screen.getByRole('switch', { name: nome })).not.toBeDisabled();
+    }
+    expect(screen.getByLabelText(/tempo de exibição/i)).not.toBeDisabled();
+
+    fireEvent.click(screen.getByRole('switch', { name: /exibir no banner superior/i }));
+    expect(screen.getByRole('switch', { name: /exibir no banner superior/i })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('banner ligado sem imagem avisa; desligar tira o aviso', () => {
+    abrirComoComunicacao();
+
+    fireEvent.click(screen.getByRole('switch', { name: /exibir no banner superior/i }));
+    expect(screen.getByText(/ligado sem imagem/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('switch', { name: /exibir no banner superior/i }));
+    expect(screen.queryByText(/ligado sem imagem/i)).not.toBeInTheDocument();
+  });
+});
+
 describe('materiais impressos', () => {
   it('o campo mora no bloco de marketing e grava em printed_materials', async () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
