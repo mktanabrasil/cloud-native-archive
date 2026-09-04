@@ -18,6 +18,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import EventFormDialog from '@/components/EventFormDialog';
+import { AprovacoesPendentes } from '@/components/events/AprovacoesPendentes';
 import EventDetailPanel from '@/components/EventDetailPanel';
 import ConflictDialog from '@/components/ConflictDialog';
 import FilteredEventsDialog from '@/components/FilteredEventsDialog';
@@ -42,13 +43,15 @@ export default function Dashboard() {
   const { events: rawEvents, selectedMonth, setSelectedMonth, setSelectedEvent, deleteEvent, updateEvent } = useApp();
   const events = useFilteredEvents();
   const { isAuthenticated } = useAuth();
-  const { canEdit, canCreate, unit } = useUserRole();
+  const { canEdit, canCreate, unit, isMarketing } = useUserRole();
   const isMobile = useIsMobile();
   const [showNewEvent, setShowNewEvent] = useState(false);
   const [detailEvent, setDetailEvent] = useState<AppEvent | null>(null);
   const [showDetail, setShowDetail] = useState(false);
   const [editingEvent, setEditingEvent] = useState<AppEvent | null>(null);
   const [showEdit, setShowEdit] = useState(false);
+  /** O formulário abriu a partir de "Aprovações pendentes". */
+  const [revisando, setRevisando] = useState(false);
   const [search, setSearch] = useState('');
   const [filterUnit, setFilterUnit] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -147,6 +150,13 @@ export default function Dashboard() {
   const handleDelete = (id: string) => {
     deleteEvent(id);
     setShowDetail(false);
+  };
+
+  const handleRevisar = (event: AppEvent) => {
+    setSelectedEvent(event);
+    setEditingEvent(event);
+    setRevisando(true);
+    setShowEdit(true);
   };
 
   const handleConflictEventClick = (event: AppEvent) => {
@@ -306,6 +316,10 @@ export default function Dashboard() {
       </div>
 
 
+      {/* O que as unidades enviaram e ainda espera a administração geral.
+          Sai de `rawEvents`: não depende do mês nem dos filtros da tela. */}
+      {isMarketing && <AprovacoesPendentes eventos={rawEvents} onRevisar={handleRevisar} />}
+
       {/* Timeline da Semana */}
       <Card>
         <CardContent className="p-4 sm:p-5">
@@ -357,7 +371,12 @@ export default function Dashboard() {
 
 
       <EventFormDialog open={showNewEvent} onOpenChange={setShowNewEvent} />
-      <EventFormDialog open={showEdit} onOpenChange={(v) => { setShowEdit(v); if (!v) setEditingEvent(null); }} event={editingEvent} />
+      <EventFormDialog
+        open={showEdit}
+        onOpenChange={(v) => { setShowEdit(v); if (!v) { setEditingEvent(null); setRevisando(false); } }}
+        event={editingEvent}
+        revisao={revisando}
+      />
       <EventDetailPanel event={detailEvent} open={showDetail} onOpenChange={setShowDetail} onEdit={canEdit ? handleEdit : undefined} onDelete={canEdit ? handleDelete : undefined} />
       <ConflictDialog events={monthEvents} selectedMonth={selectedMonth} open={showConflicts} onOpenChange={setShowConflicts} onEventClick={handleConflictEventClick} />
       {showFiltered && (
