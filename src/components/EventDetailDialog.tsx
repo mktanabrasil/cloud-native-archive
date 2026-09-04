@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { linkPublicoDoEvento } from '@/lib/events/linkPublico';
 
 interface Props {
   open: boolean;
@@ -21,7 +22,7 @@ export function EventDetailDialog({ open, onOpenChange, event }: Props) {
   const isInternalView = activePersona ? activePersona.id !== 'test-nao-logado' : !!user;
   if (!event) return null;
 
-  const eventUrl = `${window.location.origin}/eventos?slug=${event.slug || event.id}`;
+  const eventUrl = linkPublicoDoEvento(event.slug || event.id);
 
   const shareOnWhatsApp = () => {
     const text = `Confira este evento: ${event.title}\n${eventUrl}`;

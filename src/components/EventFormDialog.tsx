@@ -21,6 +21,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { GrupoDeOpcoes } from './events/GrupoDeOpcoes';
 import { TituloDoEvento } from './events/TituloDoEvento';
 import { paraCampoDataHora, rotuloDoFuso } from '@/lib/events/horaLocal';
+import { linkPublicoDoEvento, prefixoDoLinkPublico, proximoSlug } from '@/lib/events/linkPublico';
+import { descreverErroDeGravacao } from '@/lib/events/mensagemDeErro';
+import { toast } from 'sonner';
+import { format as formatarData } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface Props {
@@ -345,14 +350,34 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
   const salvar = async (evento: AppEvent, conflitantes: AppEvent[]) => {
     if (salvando) return;
     setSalvando(true);
-    try {
-      if (isEditing) await updateEvent(evento);
-      else await addEvent(evento);
-    } catch {
-      // O contexto já disse o que deu errado. O formulário fica aberto,
-      // preenchido, para ela tentar de novo.
-      setSalvando(false);
-      return;
+
+    // O slug é conferido contra os eventos carregados — e quem enxerga só a
+    // própria unidade pode escolher um que outra unidade já usa. O banco
+    // recusa (`events_slug_key`). Em vez de desistir, avançamos o sufixo e
+    // tentamos de novo, até três vezes; a pessoa fica sabendo no aviso final.
+    const slugPedido = evento.slug;
+    let gravado = evento;
+    for (let tentativa = 0; ; tentativa++) {
+      try {
+        if (isEditing) await updateEvent(gravado);
+        else await addEvent(gravado);
+        break;
+      } catch (erro) {
+        const d = descreverErroDeGravacao(erro, { acao: isEditing ? 'atualizar' : 'criar', unidade: gravado.unit, slug: gravado.slug });
+        if (d.tipo === 'slug' && gravado.slug && tentativa < 3) {
+          gravado = { ...gravado, slug: proximoSlug(gravado.slug) };
+          continue;
+        }
+        if (d.tipo === 'slug') toast.error(d.titulo, { description: 'Escolha outro link e tente de novo.' });
+        // Nos demais casos o contexto já avisou. O formulário fica aberto,
+        // preenchido, para ela tentar de novo.
+        if (gravado.slug !== slugPedido) {
+          setSlugMode('custom');
+          setForm(prev => ({ ...prev, slug: gravado.slug }));
+        }
+        setSalvando(false);
+        return;
+      }
     }
 
     await Promise.allSettled(
@@ -360,6 +385,14 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
         .filter(c => !c.has_conflict)
         .map(c => updateEvent({ ...c, has_conflict: true, updated_at: new Date().toISOString() })),
     );
+
+    const quando = formatarData(new Date(gravado.start_datetime), "d MMM", { locale: ptBR });
+    const linkAjustado = gravado.slug !== slugPedido && gravado.slug
+      ? ` Link ajustado para “${gravado.slug}”: o original já estava em uso.`
+      : '';
+    toast.success(isEditing ? 'Alterações salvas' : 'Programação criada', {
+      description: `“${gravado.title}”, ${quando} · ${eventUnitLabel(gravado.unit)}.${linkAjustado}`,
+    });
 
     setSalvando(false);
     setSelectedEvent(null);
@@ -532,19 +565,34 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                           </button>
                         )}
                       </div>
+                      {/* O prefixo é o endereço que abre de verdade (era
+                          `anabrasil.com/eventos/`, que responde 404). */}
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">anabrasil.com/eventos/</span>
-                        <Input 
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">{prefixoDoLinkPublico()}</span>
+                        <Input
                           id="slug"
-                          value={form.slug} 
+                          value={form.slug ?? ''}
                           onChange={e => {
                             setSlugMode('custom');
                             setForm({ ...form, slug: slugify(e.target.value) });
-                          }} 
+                          }}
                           placeholder="meu-evento-especial"
                         />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-9 shrink-0"
+                          disabled={!form.slug}
+                          onClick={() => {
+                            navigator.clipboard?.writeText(linkPublicoDoEvento(form.slug || ''));
+                            toast.success('Link copiado', { description: linkPublicoDoEvento(form.slug || '') });
+                          }}
+                        >
+                          Copiar
+                        </Button>
                       </div>
-                      <p className="text-[11px] text-muted-foreground mt-1">Gerado automaticamente a partir do título. Edite para personalizar.</p>
+                      <p className="text-[11px] text-muted-foreground mt-1">Gerado do título; só letras, números e hífen. Edite para personalizar.</p>
                     </div>
                   </div>
                 )}
@@ -583,7 +631,7 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                           <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p className="max-w-xs text-xs">Eventos públicos ficam visíveis para visitantes sem login em anabrasil.com/eventos. Eventos internos aparecem apenas para a equipe no calendário restrito.</p>
+                          <p className="max-w-xs text-xs">Eventos públicos ficam visíveis para visitantes sem login na página pública de eventos. Eventos internos aparecem apenas para a equipe no calendário restrito.</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -1312,7 +1360,7 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                     <div className="h-2 w-2 rounded-full bg-emerald-400" />
                   </div>
                   <div className="text-[10px] text-muted-foreground font-mono">
-                    anabrasil.com/eventos/{form.slug || 'preview'}
+                    {prefixoDoLinkPublico()}{form.slug || 'preview'}
                   </div>
                 </div>
                 <div className="p-0 overflow-y-auto max-h-[75vh] flex-1">
@@ -1400,7 +1448,7 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
               className="w-full text-left rounded-md border border-border p-3 transition-colors hover:border-primary hover:bg-accent"
             >
               <p className="text-xs font-medium text-foreground mb-0.5">Usar automático (baseado no título)</p>
-              <p className="text-xs text-muted-foreground break-all">anabrasil.com/eventos/{autoSlugPreview}</p>
+              <p className="text-xs text-muted-foreground break-all">{prefixoDoLinkPublico()}{autoSlugPreview}</p>
             </button>
             <button
               type="button"
@@ -1408,7 +1456,7 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
               className="w-full text-left rounded-md border border-border p-3 transition-colors hover:border-primary hover:bg-accent"
             >
               <p className="text-xs font-medium text-foreground mb-0.5">Manter personalizado</p>
-              <p className="text-xs text-muted-foreground break-all">anabrasil.com/eventos/{form.slug || 'preview'}</p>
+              <p className="text-xs text-muted-foreground break-all">{prefixoDoLinkPublico()}{form.slug || 'preview'}</p>
             </button>
           </div>
         </AlertDialogContent>

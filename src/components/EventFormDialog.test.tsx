@@ -223,6 +223,50 @@ describe('quando dá certo', () => {
   });
 });
 
+describe('quando o slug colide com um evento que ela não vê', () => {
+  const colisao = () => Object.assign(new Error('duplicate key value violates unique constraint "events_slug_key"'), { code: '23505' });
+
+  it('avança o sufixo e tenta de novo, sem incomodar', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    espiao.addEvent.mockRejectedValueOnce(colisao()).mockResolvedValue(undefined);
+    abrir();
+    preencher();
+
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+
+    await waitFor(() => expect(fechou).toHaveBeenCalledWith(false));
+    expect(espiao.addEvent).toHaveBeenCalledTimes(2);
+    expect(espiao.addEvent.mock.calls[0][0].slug).toBe('festa-da-primavera');
+    expect(espiao.addEvent.mock.calls[1][0].slug).toBe('festa-da-primavera-2');
+  });
+
+  it('desiste depois de três ajustes e deixa o último sufixo no campo', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    espiao.addEvent.mockRejectedValue(colisao());
+    abrir();
+    preencher();
+
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalledTimes(4));
+    expect(fechou).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect((screen.getByPlaceholderText('meu-evento-especial') as HTMLInputElement).value).toBe('festa-da-primavera-4'),
+    );
+  });
+});
+
+describe('o link mostrado', () => {
+  it('é o endereço que abre de verdade, não anabrasil.com', () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    preencher();
+
+    expect(document.body.textContent).not.toMatch(/anabrasil\.com\/eventos/);
+    expect(screen.getAllByText(/\/eventos\?slug=/).length).toBeGreaterThan(0);
+  });
+});
+
 describe('editar sem mexer nas datas', () => {
   it('salva a mesma data que abriu', async () => {
     // Antes: o campo abria em UTC (`toISOString().slice(0,16)`) e salvava em
