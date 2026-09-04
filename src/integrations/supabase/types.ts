@@ -127,6 +127,7 @@ export type Database = {
           marketing_request: boolean | null
           notes: string | null
           submitted_at: string | null
+          transport_extra_equipment: boolean
           reviewed_at: string | null
           reviewed_by: string | null
           review_note: string | null
@@ -187,6 +188,7 @@ export type Database = {
           marketing_request?: boolean | null
           notes?: string | null
           submitted_at?: string | null
+          transport_extra_equipment?: boolean
           reviewed_at?: string | null
           reviewed_by?: string | null
           review_note?: string | null
@@ -247,6 +249,7 @@ export type Database = {
           marketing_request?: boolean | null
           notes?: string | null
           submitted_at?: string | null
+          transport_extra_equipment?: boolean
           reviewed_at?: string | null
           reviewed_by?: string | null
           review_note?: string | null

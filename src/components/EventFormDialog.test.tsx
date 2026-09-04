@@ -277,6 +277,50 @@ describe('a gestora envia para aprovação', () => {
   });
 });
 
+describe('transporte', () => {
+  it('ligado sem veículo e sem gente, o envio para e diz o que falta', () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    preencher();
+    fireEvent.click(screen.getByRole('switch', { name: /logística de transporte/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+
+    expect(espiao.addEvent).not.toHaveBeenCalled();
+    expect(screen.getAllByText(/escolha o veículo, ou desligue o transporte/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/informe quantas pessoas vão/i).length).toBeGreaterThan(0);
+  });
+
+  it('"leva volumosos" é gravado, e desligar o transporte zera tudo', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    const evento = { ...eventoGravado(), transport_needed: true, transport_vehicle: 'van' as const, transport_passengers: 14 };
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+
+    fireEvent.click(screen.getByRole('switch', { name: /leva equipamentos\/materiais volumosos/i }));
+    expect(screen.getByText(/transporte de equipamentos — contabilize um veículo de apoio/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
+    await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalled());
+    expect((espiao.updateEvent.mock.calls[0][0] as AppEvent).transport_extra_equipment).toBe(true);
+  });
+
+  it('desligado, nada é cobrado nem gravado', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    const evento = { ...eventoGravado(), transport_needed: true, transport_vehicle: 'van' as const, transport_passengers: 3, transport_extra_equipment: true };
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+
+    fireEvent.click(screen.getByRole('switch', { name: /logística de transporte/i }));
+    fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
+
+    await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalled());
+    const salvo = espiao.updateEvent.mock.calls[0][0] as AppEvent;
+    expect(salvo.transport_needed).toBe(false);
+    expect(salvo.transport_vehicle).toBe('');
+    expect(salvo.transport_passengers).toBe(0);
+    expect(salvo.transport_extra_equipment).toBe(false);
+  });
+});
+
 describe('limites de texto', () => {
   it('conta embaixo do campo enquanto escreve', () => {
     abrir();

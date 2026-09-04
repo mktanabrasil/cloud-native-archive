@@ -25,6 +25,7 @@ import { linkPublicoDoEvento, prefixoDoLinkPublico, proximoSlug } from '@/lib/ev
 import { descreverErroDeGravacao } from '@/lib/events/mensagemDeErro';
 import { contar, erroDeLimite, type CampoComLimite } from '@/lib/events/limites';
 import { apagarDoBalde, urlDoAnexo } from '@/lib/events/anexos';
+import { errosDeTransporte, motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
 import { toast } from 'sonner';
 import { format as formatarData } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -68,6 +69,8 @@ const CAMPOS_COM_ERRO: { chave: string; ancora: string; rotulo: string }[] = [
   { chave: 'support_team', ancora: 'campo-apoio', rotulo: 'Equipe de apoio' },
   { chave: 'food_logistics', ancora: 'campo-comida', rotulo: 'Logística de alimentação' },
   { chave: 'equipment_needed', ancora: 'campo-equip', rotulo: 'Equipamentos necessários' },
+  { chave: 'transport_vehicle', ancora: 'campo-transporte', rotulo: 'Transporte' },
+  { chave: 'transport_passengers', ancora: 'campo-transporte', rotulo: 'Passageiros' },
   { chave: 'marketing_items', ancora: 'campo-marketing', rotulo: 'Solicitação de marketing' },
 ];
 
@@ -161,6 +164,7 @@ const emptyEvent = (): Partial<AppEvent> => ({
   transport_needed: false,
   transport_vehicle: '',
   transport_passengers: 0,
+  transport_extra_equipment: false,
 });
 
 export default function EventFormDialog({ open, onOpenChange, event, revisao = false }: Props) {
@@ -171,7 +175,6 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
   const [showConflictAlert, setShowConflictAlert] = useState(false);
   const [showBannerWarning, setShowBannerWarning] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [transportExtraEquipment, setTransportExtraEquipment] = useState(false);
   const [slugMode, setSlugMode] = useState<'auto' | 'custom'>('auto');
   const [showSlugPrompt, setShowSlugPrompt] = useState(false);
   const [autoSlugPreview, setAutoSlugPreview] = useState('');
@@ -293,7 +296,6 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     setConflicts([]);
     setShowConflictAlert(false);
     setShowBannerWarning(false);
-    setTransportExtraEquipment(false);
     setOutroAberto({});
     setErrors({});
     setDevolvendo(false);
@@ -381,6 +383,10 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     if (outroAberto.equip && outroVazio('equipment_needed', ["Som", "Microfone", "Projetor", "Televisão", "Notebook", "Nenhum"]))
       errs.equipment_needed = 'Escreva qual equipamento, ou desligue “Outro equipamento”';
     
+    // Transporte ligado pede veículo e gente: sem isso a logística não sabe
+    // o que reservar.
+    Object.assign(errs, errosDeTransporte(form));
+
     // Condicional para marketing
     if (form.marketing_request) {
       const hasCoverage = form.marketing_coverage;
@@ -462,6 +468,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       transport_needed: form.transport_needed || false,
       transport_vehicle: form.transport_needed ? (form.transport_vehicle || '') : '',
       transport_passengers: form.transport_needed ? (Number(form.transport_passengers) || 0) : 0,
+      transport_extra_equipment: form.transport_needed ? !!form.transport_extra_equipment : false,
     };
   };
 
@@ -1174,7 +1181,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-3" id="campo-transporte">
                   <div className="flex items-center gap-3 rounded-lg border border-border p-3">
                     <Switch
                       id="transport_needed"
@@ -1187,45 +1194,47 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   </div>
 
                   {form.transport_needed && (() => {
-                    const vehicle = TRANSPORT_VEHICLES.find(v => v.value === form.transport_vehicle);
-                    const capacity = vehicle?.capacity ?? 0;
-                    const marketingSeat = (form.marketing_request && form.marketing_coverage) ? 1 : 0;
-                    const passengers = Number(form.transport_passengers) || 0;
-                    const occupied = passengers + marketingSeat;
-                    const seatsFull = capacity > 0 && occupied >= capacity;
-                    const seatsOver = capacity > 0 && occupied > capacity;
-                    const needSupport = seatsFull || transportExtraEquipment;
+                    // A conta mora em `transporte.ts`, a mesma que os painéis
+                    // de detalhe usam. Aqui só se desenha.
+                    const r = resumoDoTransporte(form)!;
+                    const apoio = motivoDoApoio(r);
                     return (
                       <div className="rounded-lg border border-amber-100 bg-amber-50/30 p-4 space-y-4 animate-in fade-in slide-in-from-top-1">
                         <div className="grid gap-3 sm:grid-cols-2">
                           <div>
-                            <Label className="text-xs font-medium mb-1 block">Veículo</Label>
+                            <Label className="text-xs font-medium mb-1 block">Veículo *</Label>
                             <Select
                               value={form.transport_vehicle || ''}
                               onValueChange={v => setForm({ ...form, transport_vehicle: v as TransportVehicle })}
                             >
-                              <SelectTrigger><SelectValue placeholder="Selecione o veículo" /></SelectTrigger>
+                              <SelectTrigger className={errors.transport_vehicle ? 'border-destructive' : undefined}>
+                                <SelectValue placeholder="Selecione o veículo" />
+                              </SelectTrigger>
                               <SelectContent>
                                 {TRANSPORT_VEHICLES.map(v => (
                                   <SelectItem key={v.value} value={v.value}>{v.label} — {v.capacity} assentos</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
+                            {errors.transport_vehicle && <p className="mt-1 text-xs text-destructive">{errors.transport_vehicle}</p>}
                           </div>
                           <div>
-                            <Label className="text-xs font-medium mb-1 block">Passageiros previstos</Label>
+                            <Label htmlFor="transport_passengers" className="text-xs font-medium mb-1 block">Passageiros previstos *</Label>
                             <Input
+                              id="transport_passengers"
                               type="number"
                               min={0}
                               value={form.transport_passengers ?? 0}
                               onChange={e => setForm({ ...form, transport_passengers: Math.max(0, Number(e.target.value) || 0) })}
+                              className={errors.transport_passengers ? 'border-destructive' : undefined}
                             />
+                            {errors.transport_passengers && <p className="mt-1 text-xs text-destructive">{errors.transport_passengers}</p>}
                           </div>
                         </div>
 
                         <p className="text-[11px] text-muted-foreground">Capacidade já inclui o motorista.</p>
 
-                        {marketingSeat > 0 && (
+                        {r.vagaMarketing > 0 && (
                           <div className="px-3 py-2 bg-amber-50/60 rounded-md border border-dashed border-amber-300">
                             <p className="text-[11px] text-amber-700 flex items-center gap-1.5 font-medium">
                               <CheckCircle2 className="h-3 w-3" /> 1 vaga do marketing está sendo contabilizada na logística de transporte
@@ -1233,33 +1242,30 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                           </div>
                         )}
 
-                        {capacity > 0 && (
+                        {r.capacidade > 0 && (
                           <p className="text-xs text-foreground">
-                            Ocupação: <span className="font-semibold">{occupied}</span> / {capacity} assentos
-                            {marketingSeat > 0 && <span className="text-muted-foreground"> (inclui 1 do marketing)</span>}
+                            Ocupação: <span className="font-semibold">{r.ocupados}</span> / {r.capacidade} assentos
+                            {r.vagaMarketing > 0 && <span className="text-muted-foreground"> (inclui 1 do marketing)</span>}
                           </p>
                         )}
 
+                        {/* Gravado em `transport_extra_equipment` — antes era só
+                            estado da tela e sumia ao salvar. */}
                         <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 shadow-sm">
                           <Switch
                             id="transport_extra_equipment"
-                            checked={transportExtraEquipment}
-                            onCheckedChange={v => setTransportExtraEquipment(!!v)}
+                            checked={!!form.transport_extra_equipment}
+                            onCheckedChange={v => setForm({ ...form, transport_extra_equipment: !!v })}
                           />
                           <Label htmlFor="transport_extra_equipment" className="cursor-pointer flex-1 text-sm font-medium">
-                            Será necessário levar equipamentos/materiais volumosos
+                            Leva equipamentos/materiais volumosos
                           </Label>
                         </div>
 
-                        {needSupport && (
+                        {apoio && (
                           <div className="px-3 py-2 bg-destructive/10 rounded-md border border-dashed border-destructive/40 animate-in fade-in zoom-in-95 duration-200">
                             <p className="text-[11px] text-destructive flex items-center gap-1.5 font-medium">
-                              <AlertTriangle className="h-3 w-3" />
-                              {seatsOver
-                                ? 'Assentos excedidos — contabilize um veículo de apoio.'
-                                : seatsFull
-                                  ? 'Todos os assentos estão ocupados — contabilize um veículo de apoio.'
-                                  : 'Transporte de equipamentos — contabilize um veículo de apoio.'}
+                              <AlertTriangle className="h-3 w-3" /> {apoio}
                             </p>
                           </div>
                         )}
