@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FROTA, errosDeTransporte, motivoDoApoio, resumoDoTransporte, sugerirTransporte, totalDePessoas } from './transporte';
+import { FROTA, TETO_DA_FROTA, apoiosPossiveis, errosDeTransporte, motivoDoApoio, resumoDoTransporte, sugerirTransporte, totalDePessoas } from './transporte';
 
 describe('a frota', () => {
   it('os assentos incluem o motorista: lugares para passageiros são um a menos', () => {
@@ -35,6 +35,19 @@ describe('sugerirTransporte', () => {
     expect(s.texto).toBe('VAN + Kombi de apoio');
   });
 
+  it('nunca repete veículo: há uma VAN e uma Kombi', () => {
+    // Em produção, com 25, apareceu "VAN + VAN de apoio".
+    expect(TETO_DA_FROTA).toBe(25);
+    const s = sugerirTransporte(25)!;
+    expect(s.texto).toBe('VAN + Kombi de apoio');
+    expect(s.apoio!.value).not.toBe(s.principal.value);
+  });
+
+  it('acima do teto não há veículo a sugerir', () => {
+    expect(sugerirTransporte(26)).toBeNull();
+    expect(sugerirTransporte(45)).toBeNull();
+  });
+
   it('volumosos somam o utilitário', () => {
     expect(sugerirTransporte(8, true)!.texto).toBe('Kombi + utilitário');
   });
@@ -68,6 +81,24 @@ describe('resumoDoTransporte', () => {
     expect(com.texto).toBe('VAN 14/14 + Kombi 4/11 · 17 + 1 marketing · leva volumosos');
   });
 
+  it('acima do teto: avisa quanto falta e pede a equipe de apoio; com o interruptor, o detalhe registra', () => {
+    const r = resumoDoTransporte({ transport_needed: true, transport_vehicle: 'van', transport_support_vehicle: 'kombi', transport_passengers: 27, marketing_request: true, marketing_coverage: true })!;
+    expect(r.acimaDoTeto).toBe(true);
+    expect(r.faltamNaFrota).toBe(3);
+    expect(r.motoristas).toBe(2);
+    expect(r.sugestao).toBeNull();
+    expect(motivoDoApoio(r)).toBe('Não cabe na frota da ANA: VAN + Kombi levam 25, faltam 3. Acione a equipe de apoio para transporte.');
+    expect(r.texto).toBe('VAN 14/14 + Kombi 11/11 · 27 + 1 marketing · faltam 3 na frota');
+
+    const marcado = resumoDoTransporte({ transport_needed: true, transport_vehicle: 'van', transport_support_vehicle: 'kombi', transport_passengers: 28, transport_external_support: true })!;
+    expect(marcado.texto).toBe('VAN 14/14 + Kombi 11/11 · 28 pessoas · faltam 3 — apoio externo');
+  });
+
+  it('o apoio só oferece o que sobrou da frota', () => {
+    expect(apoiosPossiveis('van').map(v => v.value)).toEqual(['kombi', 'utilitario']);
+    expect(apoiosPossiveis('').map(v => v.value)).toEqual(['van', 'kombi', 'utilitario']);
+  });
+
   it('sem veículo escolhido, o texto diz que falta definir', () => {
     expect(resumoDoTransporte({ transport_needed: true, transport_vehicle: '', transport_passengers: 4 })!.texto).toBe('Veículo a definir · 4 pessoas');
   });
@@ -88,6 +119,15 @@ describe('errosDeTransporte', () => {
   it('não cabe no veículo escolhido e sem apoio: cobra o apoio', () => {
     const r = errosDeTransporte({ transport_needed: true, transport_vehicle: 'kombi', transport_passengers: 12 });
     expect(r.transport_support_vehicle).toMatch(/não cabem 12 no kombi/i);
+  });
+
+  it('apoio igual ao principal é erro: só há um de cada', () => {
+    const r = errosDeTransporte({ transport_needed: true, transport_vehicle: 'van', transport_support_vehicle: 'van', transport_passengers: 20 });
+    expect(r.transport_support_vehicle).toMatch(/outro veículo/i);
+  });
+
+  it('acima do teto NÃO é erro: só avisa, o envio segue', () => {
+    expect(errosDeTransporte({ transport_needed: true, transport_vehicle: 'van', transport_support_vehicle: 'kombi', transport_passengers: 40 })).toEqual({});
   });
 
   it('completo e cabendo, passa', () => {

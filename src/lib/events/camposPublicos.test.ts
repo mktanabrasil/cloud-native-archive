@@ -31,6 +31,7 @@ const PROIBIDOS = [
   'transport_passengers',
   'transport_extra_equipment',
   'transport_support_vehicle',
+  'transport_external_support',
   'submitted_at',
   'reviewed_at',
   'reviewed_by',

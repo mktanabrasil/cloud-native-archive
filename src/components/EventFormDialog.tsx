@@ -25,7 +25,7 @@ import { linkPublicoDoEvento, prefixoDoLinkPublico, proximoSlug } from '@/lib/ev
 import { descreverErroDeGravacao } from '@/lib/events/mensagemDeErro';
 import { contar, erroDeLimite, type CampoComLimite } from '@/lib/events/limites';
 import { apagarDoBalde, urlDoAnexo } from '@/lib/events/anexos';
-import { FROTA, errosDeTransporte, motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
+import { FROTA, TETO_DA_FROTA, apoiosPossiveis, errosDeTransporte, motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
 import { errosDasListas, limparListas } from '@/lib/events/listas';
 import { toast } from 'sonner';
 import { format as formatarData } from 'date-fns';
@@ -171,6 +171,7 @@ const emptyEvent = (): Partial<AppEvent> => ({
   transport_vehicle: '',
   transport_passengers: 0,
   transport_support_vehicle: '',
+  transport_external_support: false,
   transport_extra_equipment: false,
 });
 
@@ -517,6 +518,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       transport_passengers: form.transport_needed ? (Number(form.transport_passengers) || 0) : 0,
       transport_extra_equipment: form.transport_needed ? !!form.transport_extra_equipment : false,
       transport_support_vehicle: form.transport_needed ? (form.transport_support_vehicle || null) : null,
+      transport_external_support: form.transport_needed ? !!form.transport_external_support : false,
     };
   };
 
@@ -1411,12 +1413,21 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                 veículo), mas não na conta de lugares — esses já são
                                 "assentos menos o motorista". */}
                             <p className="text-[11px] text-muted-foreground" data-testid="conta-do-transporte">
-                              <span className="font-semibold text-foreground">
-                                {r.passageiros}{r.vagaMarketing > 0 && ' + 1 do marketing'} + 1 motorista
-                              </span>
-                              {r.vagaMarketing > 0 && ' (cobertura pedida)'}
-                              {' '}= <span className="font-semibold text-foreground">{r.total + 1}</span>
-                              {' '}{r.total + 1 === 1 ? 'pessoa' : 'pessoas'} no veículo
+                              {(() => {
+                                const motoristas = Math.max(1, r.motoristas);
+                                const soma = r.total + motoristas;
+                                return (
+                                  <>
+                                    <span className="font-semibold text-foreground">
+                                      {r.passageiros}{r.vagaMarketing > 0 && ' + 1 do marketing'} + {motoristas} {motoristas === 1 ? 'motorista' : 'motoristas'}
+                                    </span>
+                                    {r.vagaMarketing > 0 && ' (cobertura pedida)'}
+                                    {' '}= <span className="font-semibold text-foreground">{soma}</span>
+                                    {' '}{soma === 1 ? 'pessoa' : 'pessoas'}{motoristas > 1 ? ` · ${motoristas} veículos` : ' no veículo'}
+                                    {r.acimaDoTeto && <> · a frota carrega <span className="font-semibold text-destructive">{TETO_DA_FROTA}</span></>}
+                                  </>
+                                );
+                              })()}
                             </p>
                           </div>
                           {errors.transport_passengers && <p className="mt-1 text-xs text-destructive">{errors.transport_passengers}</p>}
@@ -1472,7 +1483,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="nenhum">Nenhum</SelectItem>
-                                {FROTA.map(v => (
+                                {/* Só o que sobrou da frota: há um de cada. */}
+                                {apoiosPossiveis(form.transport_vehicle).map(v => (
                                   <SelectItem key={v.value} value={v.value}>
                                     {v.label} — {v.carga ? 'carga, 1 acompanhante' : `${v.lugares} lugares`}
                                   </SelectItem>
@@ -1496,7 +1508,43 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                           </Label>
                         </div>
 
-                        {motivo && (
+                        {/* Acima do teto da frota (VAN + Kombi = 25) não há veículo a
+                            sugerir: o aviso pede para acionar a equipe de apoio, e o
+                            interruptor grava que ela vai acionar. Só avisa — o envio
+                            segue; o fretado é decisão de quem aprova. */}
+                        {r.acimaDoTeto ? (
+                          <div className="rounded-md border border-dashed border-destructive/40 bg-destructive/10 p-3 space-y-2 animate-in fade-in zoom-in-95 duration-200" data-testid="aviso-frota">
+                            <p className="text-sm font-semibold text-destructive">Não cabe na frota da ANA</p>
+                            <p className="text-[11px] text-destructive">
+                              VAN + Kombi levam {TETO_DA_FROTA} passageiros; faltam <b>{r.faltamNaFrota}</b>.{' '}
+                              <b>Acione a equipe de apoio para transporte</b> — ônibus fretado, segunda viagem ou carona de parceiro.
+                              Registre o combinado nas observações.
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {(form.transport_vehicle !== 'van' || (form.transport_support_vehicle || '') !== 'kombi') && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() => setForm({ ...form, transport_vehicle: 'van', transport_support_vehicle: 'kombi' })}
+                                >
+                                  Usar VAN + Kombi mesmo assim
+                                </Button>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-2.5 shadow-sm">
+                              <Switch
+                                id="transport_external_support"
+                                checked={!!form.transport_external_support}
+                                onCheckedChange={v => setForm({ ...form, transport_external_support: !!v })}
+                              />
+                              <Label htmlFor="transport_external_support" className="cursor-pointer flex-1 text-sm font-medium">
+                                Precisa de apoio externo para transporte
+                              </Label>
+                            </div>
+                          </div>
+                        ) : motivo && (
                           <div className={`px-3 py-2 rounded-md border border-dashed animate-in fade-in zoom-in-95 duration-200 ${
                             r.excedido ? 'bg-destructive/10 border-destructive/40' : 'bg-amber-50/60 border-amber-300'
                           }`}>

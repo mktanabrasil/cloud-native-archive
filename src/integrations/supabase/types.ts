@@ -129,6 +129,7 @@ export type Database = {
           submitted_at: string | null
           transport_extra_equipment: boolean
           transport_support_vehicle: string | null
+          transport_external_support: boolean
           reviewed_at: string | null
           reviewed_by: string | null
           review_note: string | null
@@ -191,6 +192,7 @@ export type Database = {
           submitted_at?: string | null
           transport_extra_equipment?: boolean
           transport_support_vehicle?: string | null
+          transport_external_support?: boolean
           reviewed_at?: string | null
           reviewed_by?: string | null
           review_note?: string | null
@@ -253,6 +255,7 @@ export type Database = {
           submitted_at?: string | null
           transport_extra_equipment?: boolean
           transport_support_vehicle?: string | null
+          transport_external_support?: boolean
           reviewed_at?: string | null
           reviewed_by?: string | null
           review_note?: string | null
