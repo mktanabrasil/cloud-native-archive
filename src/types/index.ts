@@ -12,7 +12,13 @@ export type BondType =
 
 export type EventStatus = 'confirmado' | 'pendente' | 'cancelado' | 'concluido';
 
-export type EventType = 'reunião' | 'evento institucional' | 'apresentação' | 'cobertura' | 'ação externa' | 'programação interna' | 'outro';
+/**
+ * "cobertura" saiu em 04/09/2026: não era tipo de evento, era o pedido de
+ * marketing — que já existe como `marketing_coverage`. Duas verdades para o
+ * mesmo fato. Os dados antigos (`interno`/`externo`, do sistema anterior)
+ * viraram `programação interna`/`ação externa` na mesma migração.
+ */
+export type EventType = 'reunião' | 'evento institucional' | 'apresentação' | 'ação externa' | 'programação interna' | 'outro';
 
 export type PermissionLevel = 'admin_geral' | 'gestor_unidade' | 'eventos_parceiros' | 'editor' | 'usuario_padrao';
 
@@ -163,7 +169,7 @@ export const UNIT_BG_COLORS: Record<Unit, string> = {
   'Administração': 'bg-unit-geral',
 };
 
-export const EVENT_TYPES: EventType[] = ['reunião', 'evento institucional', 'apresentação', 'cobertura', 'ação externa', 'programação interna', 'outro'];
+export const EVENT_TYPES: EventType[] = ['reunião', 'evento institucional', 'apresentação', 'ação externa', 'programação interna', 'outro'];
 
 export const EVENT_STATUSES: EventStatus[] = ['confirmado', 'pendente', 'cancelado', 'concluido'];
 

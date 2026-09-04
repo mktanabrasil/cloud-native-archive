@@ -63,6 +63,7 @@ const slugify = (text: string): string =>
 const CAMPOS_COM_ERRO: { chave: string; ancora: string; rotulo: string }[] = [
   { chave: 'title', ancora: 'campo-title', rotulo: 'Título' },
   { chave: 'description', ancora: 'campo-description', rotulo: 'Descrição' },
+  { chave: 'event_type', ancora: 'campo-tipo', rotulo: 'Tipo' },
   { chave: 'start_datetime', ancora: 'campo-start_datetime', rotulo: 'Início' },
   { chave: 'end_datetime', ancora: 'campo-end_datetime', rotulo: 'Término' },
   { chave: 'location', ancora: 'campo-location', rotulo: 'Localização' },
@@ -127,7 +128,9 @@ const emptyEvent = (): Partial<AppEvent> => ({
   title: '',
   description: '',
   unit: 'DIC',
-  event_type: 'reunião',
+  // Sem padrão: "reunião" pré-marcado fazia festa virar reunião sem ninguém
+  // perceber. Vazio obriga a escolher.
+  event_type: '' as EventType,
   start_datetime: '',
   end_datetime: '',
   location: '',
@@ -364,6 +367,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
   const calcularErros = (): Record<string, string> => {
     const errs: Record<string, string> = {};
     if (!form.title?.trim()) errs.title = 'Título obrigatório';
+    if (!form.event_type || !(EVENT_TYPES as string[]).includes(form.event_type)) errs.event_type = 'Escolha o tipo do evento';
     if (!form.start_datetime) errs.start_datetime = 'Data/hora início obrigatória';
     if (!form.end_datetime) errs.end_datetime = 'Data/hora término obrigatória';
     if (!form.location?.trim()) errs.location = 'Localização obrigatória';
@@ -759,17 +763,20 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
+                  <div id="campo-tipo">
                     <Label className="text-sm font-semibold mb-1.5 block">Tipo *</Label>
-                    <Select value={form.event_type} onValueChange={v => setForm({ ...form, event_type: v as EventType })}>
+                    <Select value={form.event_type || ''} onValueChange={v => setForm({ ...form, event_type: v as EventType })}>
                       {/* `capitalize` nos dois: sem ele no gatilho, a lista mostrava
                           "Evento Institucional" e o campo, depois de escolhido,
                           "evento institucional". O valor guardado é minúsculo nos dois. */}
-                      <SelectTrigger className="capitalize"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className={`capitalize ${errors.event_type ? 'border-destructive' : ''}`}>
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
                       <SelectContent>
                         {EVENT_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                    {errors.event_type && <p className="mt-1 text-xs text-destructive">{errors.event_type}</p>}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
