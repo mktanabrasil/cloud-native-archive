@@ -277,6 +277,68 @@ describe('a gestora envia para aprovação', () => {
   });
 });
 
+describe('linhas em branco nas listas', () => {
+  it('parceiro ligado com linha vazia não passa, e aponta', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    preencher();
+    fireEvent.click(screen.getByRole('switch', { name: /parceiro envolvido/i }));
+    fireEvent.click(screen.getByRole('button', { name: /adicionar parceiro/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+
+    expect(espiao.addEvent).not.toHaveBeenCalled();
+    expect(screen.getAllByText(/adicione ao menos um parceiro/i).length).toBeGreaterThan(0);
+  });
+
+  it('instituição em branco não vai para o site', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    preencher();
+    fireEvent.click(screen.getByRole('switch', { name: /parceria com unidade ou instituição/i }));
+    fireEvent.click(screen.getByRole('button', { name: /adicionar instituição/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+
+    expect(espiao.addEvent).not.toHaveBeenCalled();
+    expect(screen.getAllByText(/marque uma unidade ou adicione uma instituição/i).length).toBeGreaterThan(0);
+
+    fireEvent.change(screen.getByPlaceholderText(/nome da instituição/i), { target: { value: '  Igreja do Nazareno  ' } });
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
+    expect((espiao.addEvent.mock.calls[0][0] as AppEvent).external_collaborators).toEqual([{ name: 'Igreja do Nazareno', details: '' }]);
+  });
+});
+
+describe('a contagem de pendências acompanha a correção', () => {
+  it('preencher um campo que errou tira ele da conta, sem novo clique', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    const antes = Number(screen.getByRole('button', { name: /criar programação \((\d+) pendências\)/i }).textContent!.match(/\((\d+)/)![1]);
+
+    fireEvent.change(screen.getByPlaceholderText(/nome do evento/i), { target: { value: 'Festa' } });
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: new RegExp(`criar programação \\(${antes - 1} pendências\\)`, 'i') })).toBeInTheDocument(),
+    );
+    expect(screen.queryByText('Título obrigatório')).not.toBeInTheDocument();
+  });
+
+  it('não grita antes da primeira tentativa', () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+
+    fireEvent.change(screen.getByPlaceholderText(/nome do evento/i), { target: { value: 'F' } });
+    fireEvent.change(screen.getByPlaceholderText(/nome do evento/i), { target: { value: '' } });
+
+    expect(screen.queryByText('Título obrigatório')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^criar programação$/i })).toBeInTheDocument();
+  });
+});
+
 describe('checklist de publicação', () => {
   const abrirComoComunicacao = () => {
     espiao.papel = { ...espiao.papel, isAdmin: false, isMarketing: true };
