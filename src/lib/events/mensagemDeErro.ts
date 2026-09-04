@@ -88,6 +88,17 @@ export function descreverErroDeGravacao(
   }
 
   if (e.code === '23514') {
+    // As constraints de tamanho chamam-se `events_<coluna>_limite`.
+    const limite = msg.match(/events_(title|location|description)_limite/)?.[1];
+    if (limite) {
+      const nomes: Record<string, [string, number]> = { title: ['Título', 120], location: ['Localização', 160], description: ['Descrição', 1000] };
+      const [nome, max] = nomes[limite];
+      return {
+        tipo: 'invalido',
+        titulo: `${nome} passa de ${max} caracteres`,
+        descricao: 'Encurte o texto e tente de novo.',
+      };
+    }
     return {
       tipo: 'invalido',
       titulo: 'Um valor não é aceito pelo banco',
