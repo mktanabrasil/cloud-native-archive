@@ -508,11 +508,12 @@ describe('transporte', () => {
 
     fireEvent.click(transporte);
     fireEvent.change(screen.getByLabelText(/quantas pessoas vão/i), { target: { value: '13' } });
-    expect(screen.getByTestId('conta-do-transporte')).toHaveTextContent('13 passageiros · sem vaga do marketing');
+    expect(screen.getByTestId('conta-do-transporte')).toHaveTextContent('13 + 1 motorista = 14 pessoas no veículo');
 
     fireEvent.click(marketing);
     fireEvent.click(screen.getByRole('switch', { name: /solicitar cobertura do evento/i }));
-    expect(screen.getByTestId('conta-do-transporte')).toHaveTextContent('13 + 1 do marketing (cobertura pedida) = 14');
+    // o motorista aparece na soma mostrada; os lugares continuam sendo assentos − 1
+    expect(screen.getByTestId('conta-do-transporte')).toHaveTextContent('13 + 1 do marketing + 1 motorista (cobertura pedida) = 15 pessoas no veículo');
     // o aviso antigo em duplicata, dentro do marketing, saiu
     expect(screen.queryByText(/1 vaga do marketing está sendo contabilizada/i)).not.toBeInTheDocument();
   });

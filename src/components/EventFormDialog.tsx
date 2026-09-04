@@ -1407,13 +1407,16 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                             {/* A vaga do marketing entra aqui, na linha da conta —
                                 não num aviso separado. O bloco de marketing fica acima
                                 justamente para esta linha já nascer certa. */}
+                            {/* O motorista entra na soma mostrada (é um assento do
+                                veículo), mas não na conta de lugares — esses já são
+                                "assentos menos o motorista". */}
                             <p className="text-[11px] text-muted-foreground" data-testid="conta-do-transporte">
-                              {r.vagaMarketing > 0 ? (
-                                <><span className="font-semibold text-foreground">{r.passageiros} + 1 do marketing</span> (cobertura pedida) = <span className="font-semibold text-foreground">{r.total}</span></>
-                              ) : (
-                                <>{r.total} {r.total === 1 ? 'passageiro' : 'passageiros'} · sem vaga do marketing</>
-                              )}
-                              {' '}· motorista à parte
+                              <span className="font-semibold text-foreground">
+                                {r.passageiros}{r.vagaMarketing > 0 && ' + 1 do marketing'} + 1 motorista
+                              </span>
+                              {r.vagaMarketing > 0 && ' (cobertura pedida)'}
+                              {' '}= <span className="font-semibold text-foreground">{r.total + 1}</span>
+                              {' '}{r.total + 1 === 1 ? 'pessoa' : 'pessoas'} no veículo
                             </p>
                           </div>
                           {errors.transport_passengers && <p className="mt-1 text-xs text-destructive">{errors.transport_passengers}</p>}
