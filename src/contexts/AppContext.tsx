@@ -118,11 +118,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateEvent = async (event: AppEvent) => {
+    // `.select('id')` para saber se alguma linha mudou. Quando o RLS filtra a
+    // linha (gestora editando um evento já confirmado), o UPDATE não dá erro:
+    // afeta zero linhas e volta em silêncio — e a tela diria "salvo".
     // @ts-ignore
-    const { error } = await supabase.from('events').update(event).eq('id', event.id);
+    const { data, error } = await supabase.from('events').update(event).eq('id', event.id).select('id');
     if (error) {
       avisarFalha(error, 'atualizar', event);
       throw error;
+    }
+    if (!data || data.length === 0) {
+      const nada = Object.assign(new Error('permission denied: nenhuma linha foi alterada'), { code: '42501' });
+      avisarFalha(nada, 'atualizar', event);
+      throw nada;
     }
     await fetchEvents();
   };

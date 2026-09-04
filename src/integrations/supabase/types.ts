@@ -126,6 +126,10 @@ export type Database = {
           marketing_items: Json | null
           marketing_request: boolean | null
           notes: string | null
+          submitted_at: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          review_note: string | null
           partner_involved: boolean | null
           partner_name: string | null
           partner_type: string | null
@@ -182,6 +186,10 @@ export type Database = {
           marketing_items?: Json | null
           marketing_request?: boolean | null
           notes?: string | null
+          submitted_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          review_note?: string | null
           partner_involved?: boolean | null
           partner_name?: string | null
           partner_type?: string | null
@@ -238,6 +246,10 @@ export type Database = {
           marketing_items?: Json | null
           marketing_request?: boolean | null
           notes?: string | null
+          submitted_at?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          review_note?: string | null
           partner_involved?: boolean | null
           partner_name?: string | null
           partner_type?: string | null

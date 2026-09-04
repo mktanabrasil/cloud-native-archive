@@ -64,7 +64,7 @@ const CAMPOS_COM_ERRO: { chave: string; ancora: string; rotulo: string }[] = [
 ];
 
 /** O resumo no topo: diz quantas faltam e leva até cada uma. */
-function ResumoDePendencias({ erros }: { erros: Record<string, string> }) {
+function ResumoDePendencias({ erros, acao }: { erros: Record<string, string>; acao: string }) {
   const pendentes = CAMPOS_COM_ERRO.filter(c => erros[c.chave]);
   if (pendentes.length === 0) return null;
 
@@ -72,8 +72,8 @@ function ResumoDePendencias({ erros }: { erros: Record<string, string> }) {
     <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3">
       <p className="text-sm font-semibold text-destructive">
         {pendentes.length === 1
-          ? 'Falta 1 campo para criar a programação'
-          : `Faltam ${pendentes.length} campos para criar a programação`}
+          ? `Falta 1 campo para ${acao}`
+          : `Faltam ${pendentes.length} campos para ${acao}`}
       </p>
       <ul className="mt-2 space-y-1">
         {pendentes.map(c => (
@@ -164,6 +164,21 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
   const [salvando, setSalvando] = useState(false);
 
   const isEditing = !!event;
+
+  /**
+   * Quem não é da comunicação não publica: **envia**, e o admin geral
+   * completa (link, onde aparece) e confirma. O evento dela nasce pendente e
+   * interno — é só isso que o banco aceita (`events_gestor_insert`).
+   */
+  const enviaParaAprovacao = !isMarketing;
+  /**
+   * Já confirmado pela administração: ela não altera mais. O banco também
+   * recusa (`events_gestor_update`), mas recusa em silêncio — zero linhas —,
+   * então a trava precisa estar aqui, com explicação.
+   */
+  const travadoParaEla = enviaParaAprovacao && isEditing && event?.status === 'confirmado';
+  const statusDisponiveis: EventStatus[] = enviaParaAprovacao ? ['pendente', 'cancelado'] : EVENT_STATUSES;
+  const acaoDoBotao = isEditing ? 'salvar as alterações' : enviaParaAprovacao ? 'enviar a programação' : 'criar a programação';
 
   /** Quantos campos o botão ainda espera. Zero antes da primeira tentativa. */
   const pendencias = Object.keys(errors).length;
@@ -288,8 +303,15 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
       start_datetime: form.start_datetime ? new Date(form.start_datetime).toISOString() : new Date().toISOString(),
       end_datetime: form.end_datetime ? new Date(form.end_datetime).toISOString() : new Date().toISOString(),
       location: form.location!.trim(),
-      status: form.status as EventStatus,
-      visibility: (form.visibility as 'publico' | 'interno') || 'interno',
+      // A gestora só envia pendente e interno; cancelar o próprio pedido pode.
+      status: enviaParaAprovacao
+        ? (form.status === 'cancelado' ? 'cancelado' : 'pendente')
+        : (form.status as EventStatus),
+      visibility: enviaParaAprovacao ? 'interno' : ((form.visibility as 'publico' | 'interno') || 'interno'),
+      submitted_at: enviaParaAprovacao ? (event?.submitted_at || new Date().toISOString()) : (event?.submitted_at ?? null),
+      reviewed_at: event?.reviewed_at ?? null,
+      reviewed_by: event?.reviewed_by ?? null,
+      review_note: event?.review_note ?? null,
       has_conflict: false,
       created_by: event?.created_by || userName || 'Usuário',
       updated_by: isEditing ? (userName || 'Usuário') : undefined,
@@ -390,9 +412,15 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
     const linkAjustado = gravado.slug !== slugPedido && gravado.slug
       ? ` Link ajustado para “${gravado.slug}”: o original já estava em uso.`
       : '';
-    toast.success(isEditing ? 'Alterações salvas' : 'Programação criada', {
-      description: `“${gravado.title}”, ${quando} · ${eventUnitLabel(gravado.unit)}.${linkAjustado}`,
-    });
+    if (enviaParaAprovacao && !isEditing) {
+      toast.success('Enviado para aprovação', {
+        description: `“${gravado.title}”, ${quando} · ${eventUnitLabel(gravado.unit)}, está como pendente. A administração geral vai revisar.`,
+      });
+    } else {
+      toast.success(isEditing ? 'Alterações salvas' : 'Programação criada', {
+        description: `“${gravado.title}”, ${quando} · ${eventUnitLabel(gravado.unit)}.${linkAjustado}`,
+      });
+    }
 
     setSalvando(false);
     setSelectedEvent(null);
@@ -400,6 +428,7 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
   };
 
   const handleSubmit = async () => {
+    if (travadoParaEla) return;
     if (!validate()) {
       // Quem apertou o botão estava no fim do formulário; o resumo fica no topo.
       // `?.scrollIntoView?.` porque nem todo ambiente tem o método — o jsdom
@@ -462,12 +491,34 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                 </div>
                 <DialogFooter className="gap-2">
                   <Button variant="outline" onClick={() => setShowConflictAlert(false)}>Voltar e Corrigir</Button>
-                  <Button onClick={handleForceSubmit} disabled={salvando}>{salvando ? 'Salvando…' : 'Salvar Mesmo Assim'}</Button>
+                  <Button onClick={handleForceSubmit} disabled={salvando}>
+                    {salvando ? 'Salvando…' : enviaParaAprovacao && !isEditing ? 'Enviar mesmo assim' : 'Salvar Mesmo Assim'}
+                  </Button>
                 </DialogFooter>
               </div>
             ) : (
               <div className="space-y-4">
-                <ResumoDePendencias erros={errors} />
+                <ResumoDePendencias erros={errors} acao={acaoDoBotao} />
+
+                {travadoParaEla && (
+                  <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
+                    <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                    <p className="text-xs text-amber-900">
+                      <strong>Já confirmado pela administração geral.</strong> Para alterar, peça à administração —
+                      ela pode devolver o evento para pendente.
+                    </p>
+                  </div>
+                )}
+
+                {event?.review_note && event.status !== 'confirmado' && (
+                  <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                    <p className="text-xs text-amber-900">
+                      <strong>Devolvido pela administração{event.reviewed_by ? ` (${event.reviewed_by})` : ''}:</strong>{' '}
+                      {event.review_note}
+                    </p>
+                  </div>
+                )}
 
                 <div id="campo-title">
                   <Label className="text-sm font-semibold mb-1.5 block">Título *</Label>
@@ -602,7 +653,7 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                   <Select value={form.status} onValueChange={v => setForm({ ...form, status: v as EventStatus })}>
                     <SelectTrigger className="capitalize"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {EVENT_STATUSES.map(s => (
+                      {statusDisponiveis.map(s => (
                         <SelectItem key={s} value={s} className="capitalize">
                           <span className="flex items-center gap-2">
                             <span className={`h-2.5 w-2.5 rounded-full ${getStatusDotClass(s)}`} />
@@ -615,6 +666,11 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                   {form.status === 'concluido' && (
                     <p className="text-[11px] text-muted-foreground mt-1 italic">
                       Este evento será mantido no histórico como concluído.
+                    </p>
+                  )}
+                  {enviaParaAprovacao && (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      A administração geral confirma ao aprovar.
                     </p>
                   )}
                 </div>
@@ -1332,13 +1388,28 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
               </div>
             )}
             
+            {!showConflictAlert && enviaParaAprovacao && !isEditing && (
+              <div className="flex items-start gap-3 rounded-lg border border-dashed border-blue-200 bg-blue-50/60 p-3">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                <p className="text-xs text-blue-900">
+                  Vai para a administração geral, que define o link e onde o evento aparece, e confirma.
+                </p>
+              </div>
+            )}
+
             {!showConflictAlert && (
               <DialogFooter className="sticky bottom-0 bg-background pt-4 pb-2">
                 <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
                 {/* A contagem no botão é o que responde "por que não salvou?"
                     sem obrigar a pessoa a caçar campo pela tela. */}
-                <Button onClick={handleSubmit} disabled={salvando}>
-                  {salvando ? 'Salvando…' : isEditing ? 'Salvar Alterações' : 'Criar Programação'}
+                <Button onClick={handleSubmit} disabled={salvando || travadoParaEla}>
+                  {salvando
+                    ? 'Salvando…'
+                    : isEditing
+                      ? 'Salvar Alterações'
+                      : enviaParaAprovacao
+                        ? 'Enviar para aprovação'
+                        : 'Criar Programação'}
                   {pendencias > 0 && ` (${pendencias} ${pendencias === 1 ? 'pendência' : 'pendências'})`}
                 </Button>
               </DialogFooter>

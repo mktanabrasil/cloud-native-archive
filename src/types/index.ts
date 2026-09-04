@@ -73,6 +73,15 @@ export interface AppEvent {
   transport_needed?: boolean;
   transport_vehicle?: TransportVehicle | '';
   transport_passengers?: number;
+  /**
+   * O pedido de aprovação. A gestora envia (`submitted_at`), o admin geral
+   * confirma ou devolve (`reviewed_*`, `review_note`). Nulos num evento que
+   * o admin criou direto.
+   */
+  submitted_at?: string | null;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
+  review_note?: string | null;
 }
 
 export type TransportVehicle = 'van' | 'kombi' | 'utilitario';
