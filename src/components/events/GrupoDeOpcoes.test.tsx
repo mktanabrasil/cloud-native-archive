@@ -45,6 +45,33 @@ const COMIDA = ['Almoço', 'Coffee Break', 'Lanche', 'Jantar', 'Nenhum'];
 const valor = () => screen.getByTestId('valor').textContent;
 const chave = (nome: string | RegExp) => screen.getByRole('switch', { name: nome });
 
+describe('escrever com espaço no “Outro”', () => {
+  it('o espaço sobrevive tecla a tecla — "Pais e mães" dá para escrever', () => {
+    // O defeito: `montar` aparava o texto a cada tecla. "Pais " virava "Pais"
+    // antes do "e" chegar; não havia como separar duas palavras.
+    render(<Palco opcoes={COMIDA} temNenhum />);
+    fireEvent.click(chave(/outra coisa/i));
+    const caixa = screen.getByPlaceholderText('Especifique...');
+
+    for (const parcial of ['P', 'Pa', 'Pai', 'Pais', 'Pais ', 'Pais e', 'Pais e ', 'Pais e m', 'Pais e mães']) {
+      fireEvent.change(caixa, { target: { value: parcial } });
+    }
+
+    expect((caixa as HTMLInputElement).value).toBe('Pais e mães');
+    expect(valor()).toBe('Pais e mães');
+  });
+
+  it('junto com opções fixas, o texto continua inteiro', () => {
+    render(<Palco opcoes={COMIDA} temNenhum />);
+    fireEvent.click(chave('Lanche'));
+    fireEvent.click(chave(/outra coisa/i));
+    fireEvent.change(screen.getByPlaceholderText('Especifique...'), { target: { value: 'bolo de fubá ' } });
+
+    expect(valor()).toBe('Lanche, bolo de fubá ');
+    expect((screen.getByPlaceholderText('Especifique...') as HTMLInputElement).value).toBe('bolo de fubá ');
+  });
+});
+
 describe('o interruptor “Outro”', () => {
   it('acende ao ser ligado e abre a caixa de texto', () => {
     // O defeito: o handler só reagia a desligar (`if (!checked)`), então ligar

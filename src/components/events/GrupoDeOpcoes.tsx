@@ -50,6 +50,18 @@ export interface GrupoDeOpcoesProps {
 const separar = (valor: string): string[] =>
   valor.split(', ').map((v) => v.trim()).filter(Boolean);
 
+/**
+ * O valor pronto para gravar: cada parte aparada, vazios fora.
+ *
+ * Enquanto a pessoa digita, o texto do "Outro" fica como está — inclusive o
+ * espaço no fim, que é o que ela acabou de teclar para escrever a próxima
+ * palavra. Aparar a cada tecla (como era) engolia esse espaço antes da letra
+ * seguinte chegar: "Pais e mães" não tinha como ser escrito. Apara-se aqui,
+ * uma vez, na hora de salvar.
+ */
+export const normalizarOpcoes = (valor: string | null | undefined): string =>
+  separar(valor ?? '').join(', ');
+
 export function GrupoDeOpcoes({
   id,
   titulo,
@@ -63,13 +75,18 @@ export function GrupoDeOpcoes({
   onOutroAberto,
   erro,
 }: GrupoDeOpcoesProps) {
-  const marcados = separar(valor);
+  // Sem aparar: `separar` apara, e isso comeria o espaço final enquanto
+  // se digita. As opções fixas são comparadas aparadas, como antes.
+  const partes = valor.split(', ').filter((v) => v.trim());
+  const marcados = partes.map((v) => v.trim());
   const escolhidos = marcados.filter((m) => opcoes.includes(m));
-  const texto = marcados.find((m) => !opcoes.includes(m)) ?? '';
+  const texto = partes.find((p) => !opcoes.includes(p.trim())) ?? '';
   const mostraOutro = outroAberto || texto !== '';
 
+  // `custom` vai como veio: o espaço que a pessoa acabou de digitar precisa
+  // sobreviver até a próxima letra. Ver `normalizarOpcoes`.
   const montar = (lista: string[], custom: string) =>
-    [...lista, ...(custom.trim() ? [custom.trim()] : [])].join(', ');
+    [...lista, ...(custom.trim() ? [custom] : [])].join(', ');
 
   const alternar = (opcao: string) => {
     if (escolhidos.includes(opcao)) {
