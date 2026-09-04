@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { SELECT_PUBLICO } from '@/lib/events/camposPublicos';
+import { descreverErroDeGravacao } from '@/lib/events/mensagemDeErro';
 
 interface AppContextType {
   events: AppEvent[];
@@ -93,11 +94,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [events]);
 
+  /**
+   * Avisa o que deu errado, com nome.
+   *
+   * Era "Erro ao adicionar evento" para tudo. Agora a frase diz se foi
+   * permissão, campo, rede… O slug duplicado fica de fora: o formulário
+   * trata sozinho (ajusta o sufixo e tenta de novo), e um toast aqui só
+   * confundiria.
+   */
+  const avisarFalha = (error: unknown, acao: 'criar' | 'atualizar', event: Partial<AppEvent>) => {
+    const d = descreverErroDeGravacao(error, { acao, unidade: event.unit, slug: event.slug });
+    if (d.tipo !== 'slug') toast.error(d.titulo, { description: d.descricao });
+  };
+
   const addEvent = async (event: Partial<AppEvent>) => {
     // @ts-ignore - Supabase type mismatch with AppEvent
     const { error } = await supabase.from('events').insert([event]);
     if (error) {
-      toast.error('Erro ao adicionar evento');
+      avisarFalha(error, 'criar', event);
       throw error;
     }
     await fetchEvents();
@@ -107,7 +121,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // @ts-ignore
     const { error } = await supabase.from('events').update(event).eq('id', event.id);
     if (error) {
-      toast.error('Erro ao atualizar evento');
+      avisarFalha(error, 'atualizar', event);
       throw error;
     }
     await fetchEvents();
