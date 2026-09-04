@@ -223,6 +223,60 @@ describe('quando dá certo', () => {
   });
 });
 
+describe('a gestora envia para aprovação', () => {
+  // `isMarketing: false` é o padrão do espião: gestora de unidade.
+
+  it('o botão diz o que acontece, e o evento nasce pendente e interno', async () => {
+    abrir();
+    preencher();
+
+    expect(screen.getByText(/vai para a administração geral/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /enviar para aprovação/i }));
+
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
+    const enviado = espiao.addEvent.mock.calls[0][0] as AppEvent;
+    expect(enviado.status).toBe('pendente');
+    expect(enviado.visibility).toBe('interno');
+    expect(enviado.submitted_at).toBeTruthy();
+    expect(enviado.unit).toBe('DIC');
+  });
+
+  it('não consegue mandar como confirmado, mesmo que o estado tente', async () => {
+    abrir();
+    preencher();
+    // não há opção "confirmado" no select dela; se houvesse, o banco negaria
+    expect(screen.queryByRole('option', { name: 'confirmado' })).not.toBeInTheDocument();
+    expect(screen.getByText(/a administração geral confirma ao aprovar/i)).toBeInTheDocument();
+  });
+
+  it('um evento já confirmado abre travado para ela', () => {
+    const evento = { ...eventoGravado(), status: 'confirmado' as const };
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+
+    expect(screen.getByText(/já confirmado pela administração geral/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /salvar alterações/i })).toBeDisabled();
+  });
+
+  it('mostra a observação quando a administração devolveu', () => {
+    const evento = { ...eventoGravado(), status: 'pendente' as const, review_note: 'Falta o horário de término real.', reviewed_by: 'MKT ANA' };
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+
+    expect(screen.getByText(/devolvido pela administração \(MKT ANA\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/falta o horário de término real/i)).toBeInTheDocument();
+  });
+
+  it('a comunicação continua criando direto', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    preencher();
+
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
+    expect((espiao.addEvent.mock.calls[0][0] as AppEvent).submitted_at).toBeNull();
+  });
+});
+
 describe('quando o slug colide com um evento que ela não vê', () => {
   const colisao = () => Object.assign(new Error('duplicate key value violates unique constraint "events_slug_key"'), { code: '23505' });
 
@@ -271,6 +325,9 @@ describe('editar sem mexer nas datas', () => {
   it('salva a mesma data que abriu', async () => {
     // Antes: o campo abria em UTC (`toISOString().slice(0,16)`) e salvava em
     // hora local. Em Brasília, cada "Salvar Alterações" adiantava 3 horas.
+    // Como a comunicação: o evento de exemplo é confirmado, e a gestora
+    // abre um confirmado travado (é outro teste).
+    espiao.papel = { ...espiao.papel, isMarketing: true };
     const evento = eventoGravado();
     render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
 
