@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -32,6 +32,11 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   event?: AppEvent | null;
+  /**
+   * Aberto a partir de "Aprovações pendentes": o admin geral completa o que
+   * só ele preenche e confirma, ou devolve com observação.
+   */
+  revisao?: boolean;
 }
 
 const slugify = (text: string): string =>
@@ -138,7 +143,7 @@ const emptyEvent = (): Partial<AppEvent> => ({
   transport_passengers: 0,
 });
 
-export default function EventFormDialog({ open, onOpenChange, event }: Props) {
+export default function EventFormDialog({ open, onOpenChange, event, revisao = false }: Props) {
   const { addEvent, updateEvent, detectConflicts, setSelectedEvent, events } = useApp();
   const { userName, unit, isAdmin, isMarketing } = useUserRole();
   const [form, setForm] = useState<Partial<AppEvent>>(emptyEvent());
@@ -162,8 +167,20 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
    *  Sem isto, dois cliques rápidos criavam dois eventos: o primeiro ainda
    *  estava indo quando o segundo saía. */
   const [salvando, setSalvando] = useState(false);
+  /** A caixa de "Devolver com observação" e o que foi escrito nela. */
+  const [devolvendo, setDevolvendo] = useState(false);
+  const [observacao, setObservacao] = useState('');
+  /**
+   * O que "Aprovar" muda no evento antes de gravar. Fica numa ref porque a
+   * tela de conflito ("Salvar mesmo assim") precisa aplicar o mesmo ajuste
+   * depois, sem que ele tenha ficado no estado.
+   */
+  const ajusteRef = useRef<((e: AppEvent) => AppEvent) | null>(null);
+  const avisoRef = useRef<{ titulo: string; descricao: string } | null>(null);
 
   const isEditing = !!event;
+  /** Revisão só faz sentido para quem publica, sobre um evento que existe. */
+  const emRevisao = revisao && isEditing && isMarketing;
 
   /**
    * Quem não é da comunicação não publica: **envia**, e o admin geral
@@ -244,6 +261,10 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
     setTransportExtraEquipment(false);
     setOutroAberto({});
     setErrors({});
+    setDevolvendo(false);
+    setObservacao('');
+    ajusteRef.current = null;
+    avisoRef.current = null;
   }, [event, open]);
 
   const validate = (): boolean => {
@@ -369,7 +390,11 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
    * Marcar os conflitos vem depois, e num `allSettled`: é trabalho secundário,
    * e falhar nele não pode custar o evento que já foi salvo.
    */
-  const salvar = async (evento: AppEvent, conflitantes: AppEvent[]) => {
+  const salvar = async (
+    evento: AppEvent,
+    conflitantes: AppEvent[],
+    aviso: { titulo: string; descricao: string } | null = null,
+  ) => {
     if (salvando) return;
     setSalvando(true);
 
@@ -412,7 +437,9 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
     const linkAjustado = gravado.slug !== slugPedido && gravado.slug
       ? ` Link ajustado para “${gravado.slug}”: o original já estava em uso.`
       : '';
-    if (enviaParaAprovacao && !isEditing) {
+    if (aviso) {
+      toast.success(aviso.titulo, { description: aviso.descricao });
+    } else if (enviaParaAprovacao && !isEditing) {
       toast.success('Enviado para aprovação', {
         description: `“${gravado.title}”, ${quando} · ${eventUnitLabel(gravado.unit)}, está como pendente. A administração geral vai revisar.`,
       });
@@ -427,7 +454,10 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
     onOpenChange(false);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (
+    ajuste: ((e: AppEvent) => AppEvent) | null = null,
+    aviso: { titulo: string; descricao: string } | null = null,
+  ) => {
     if (travadoParaEla) return;
     if (!validate()) {
       // Quem apertou o botão estava no fim do formulário; o resumo fica no topo.
@@ -437,7 +467,9 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
       return;
     }
 
-    const fullEvent = getFullEvent();
+    ajusteRef.current = ajuste;
+    avisoRef.current = aviso;
+    const fullEvent = ajuste ? ajuste(getFullEvent()) : getFullEvent();
 
     const found = detectConflicts(fullEvent);
     if (found.length > 0 && !showConflictAlert) {
@@ -447,13 +479,50 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
     }
 
     fullEvent.has_conflict = found.length > 0;
-    await salvar(fullEvent, found);
+    await salvar(fullEvent, found, aviso);
   };
 
   const handleForceSubmit = async () => {
-    const fullEvent = getFullEvent();
+    const fullEvent = ajusteRef.current ? ajusteRef.current(getFullEvent()) : getFullEvent();
     fullEvent.has_conflict = true;
-    await salvar(fullEvent, conflicts);
+    await salvar(fullEvent, conflicts, avisoRef.current);
+  };
+
+  /**
+   * Aprovar = confirmar, com a visibilidade que o admin escolheu na tela,
+   * assinando a revisão. A observação de uma devolução anterior é apagada:
+   * o pedido foi atendido.
+   */
+  const aprovar = () =>
+    handleSubmit(
+      e => ({ ...e, status: 'confirmado', reviewed_at: new Date().toISOString(), reviewed_by: userName || 'Administração', review_note: null }),
+      {
+        titulo: 'Programação aprovada',
+        descricao: `“${form.title?.trim()}” está confirmada${form.visibility === 'publico' ? ' e vai aparecer no site' : ''}.`,
+      },
+    );
+
+  /**
+   * Devolver = continua pendente, com a observação para a unidade ler no
+   * topo do formulário dela. Não passa pela validação: o motivo de devolver
+   * costuma ser justamente algo que falta.
+   */
+  const devolver = async () => {
+    const nota = observacao.trim();
+    if (!nota || !event) return;
+    setDevolvendo(false);
+    const evento: AppEvent = {
+      ...getFullEvent(),
+      status: 'pendente',
+      visibility: 'interno',
+      review_note: nota,
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: userName || 'Administração',
+    };
+    await salvar(evento, [], {
+      titulo: `Devolvido para ${eventUnitLabel(evento.unit)}`,
+      descricao: 'A unidade vê a observação ao abrir o evento.',
+    });
   };
 
   return (
@@ -461,7 +530,15 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
       <DialogContent className={`max-h-[95vh] overflow-y-auto ${isAdmin ? 'sm:max-w-[95vw] lg:max-w-[90vw]' : 'sm:max-w-lg'}`}>
         <DialogHeader>
           <div className="flex justify-between items-center pr-8">
-            <DialogTitle>{isEditing ? 'Editar Evento' : 'Nova Programação'}</DialogTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              <DialogTitle>{emRevisao ? 'Revisar programação' : isEditing ? 'Editar Evento' : 'Nova Programação'}</DialogTitle>
+              {emRevisao && event && (
+                <Badge variant="outline" className="border-warning/60 bg-warning/15 text-foreground text-[11px] font-medium">
+                  Pendente · {eventUnitLabel(event.unit)} · {event.created_by}
+                  {event.submitted_at && ` · enviado ${formatarData(new Date(event.submitted_at), "dd/MM 'às' HH:mm", { locale: ptBR })}`}
+                </Badge>
+              )}
+            </div>
             {isAdmin && (
               <Badge variant="outline" className="text-primary border-primary/20 bg-primary/5 flex items-center gap-1.5 px-3 py-1">
                 <Layout className="h-3.5 w-3.5" /> Modo Split (Admin)
@@ -593,8 +670,14 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
 
                 {/* `isMarketing` é "admin geral ou comunicação". Com `isAdmin`, quem
                     cuida da comunicação e não é admin não via este bloco. */}
+                {emRevisao && (
+                  <p className="text-xs text-muted-foreground">
+                    Preenchido pela unidade. Os blocos destacados são da administração geral.
+                  </p>
+                )}
+
                 {isMarketing && (
-                  <div className="space-y-4 border-t pt-4">
+                  <div className={emRevisao ? 'space-y-4 rounded-xl border-2 border-primary/50 bg-primary/5 p-3' : 'space-y-4 border-t pt-4'}>
                     <Label className="flex items-center gap-2 text-sm font-semibold text-primary">
                       <Globe className="h-4 w-4" /> Configurações de Compartilhamento (Público)
                     </Label>
@@ -678,7 +761,7 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
                     Para os demais o bloco não aparece, e o evento fica interno — que
                     já é o padrão de um evento novo. */}
                 {isMarketing && (
-                <div>
+                <div className={emRevisao ? 'rounded-xl border-2 border-primary/50 bg-primary/5 p-3' : undefined}>
                   <div className="flex items-center gap-2 mb-3">
                     <Label className="text-sm font-semibold">Onde este evento deve aparecer?</Label>
                     <TooltipProvider>
@@ -1397,12 +1480,25 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
               </div>
             )}
 
-            {!showConflictAlert && (
+            {!showConflictAlert && emRevisao && (
+              <DialogFooter className="sticky bottom-0 bg-background pt-4 pb-2 gap-2">
+                <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+                <Button variant="outline" onClick={() => setDevolvendo(true)} disabled={salvando}>
+                  Devolver com observação
+                </Button>
+                <Button onClick={() => aprovar()} disabled={salvando}>
+                  {salvando ? 'Salvando…' : 'Aprovar e confirmar'}
+                  {pendencias > 0 && ` (${pendencias} ${pendencias === 1 ? 'pendência' : 'pendências'})`}
+                </Button>
+              </DialogFooter>
+            )}
+
+            {!showConflictAlert && !emRevisao && (
               <DialogFooter className="sticky bottom-0 bg-background pt-4 pb-2">
                 <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
                 {/* A contagem no botão é o que responde "por que não salvou?"
                     sem obrigar a pessoa a caçar campo pela tela. */}
-                <Button onClick={handleSubmit} disabled={salvando || travadoParaEla}>
+                <Button onClick={() => handleSubmit()} disabled={salvando || travadoParaEla}>
                   {salvando
                     ? 'Salvando…'
                     : isEditing
@@ -1499,6 +1595,31 @@ export default function EventFormDialog({ open, onOpenChange, event }: Props) {
           )}
         </div>
       </DialogContent>
+
+      <AlertDialog open={devolvendo} onOpenChange={setDevolvendo}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Devolver para {event ? eventUnitLabel(event.unit) : 'a unidade'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              O evento continua pendente. Quem enviou vê esta observação ao abrir o formulário.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Textarea
+            autoFocus
+            rows={3}
+            value={observacao}
+            onChange={e => setObservacao(e.target.value)}
+            placeholder="O que falta ou precisa mudar…"
+            aria-label="Observação da devolução"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction onClick={devolver} disabled={!observacao.trim() || salvando}>
+              Devolver
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={showSlugPrompt} onOpenChange={setShowSlugPrompt}>
         <AlertDialogContent>

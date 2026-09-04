@@ -277,6 +277,74 @@ describe('a gestora envia para aprovação', () => {
   });
 });
 
+describe('o admin revisa um pedido', () => {
+  const pedido = (): AppEvent => ({
+    ...eventoGravado(),
+    status: 'pendente',
+    unit: 'Santana',
+    created_by: 'Vitória De Faria',
+    submitted_at: '2026-03-19T13:00:00.000Z',
+    review_note: 'Falta o horário.',
+    reviewed_by: 'MKT ANA',
+  });
+  const abrirRevisao = () => {
+    espiao.papel = { ...espiao.papel, userName: 'MKT ANA', isAdmin: true, isMarketing: true };
+    render(<EventFormDialog open onOpenChange={fechou} event={pedido()} revisao />);
+  };
+
+  it('a tela diz de quem é o pedido e oferece os dois caminhos', () => {
+    abrirRevisao();
+
+    expect(screen.getByText('Revisar programação')).toBeInTheDocument();
+    expect(screen.getByText(/Pendente · Santana · Vitória De Faria/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /aprovar e confirmar/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /devolver com observação/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /salvar alterações/i })).not.toBeInTheDocument();
+  });
+
+  it('aprovar confirma, assina e apaga a observação antiga', async () => {
+    abrirRevisao();
+
+    fireEvent.click(screen.getByRole('button', { name: /aprovar e confirmar/i }));
+
+    await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalled());
+    const salvo = espiao.updateEvent.mock.calls[0][0] as AppEvent;
+    expect(salvo.status).toBe('confirmado');
+    expect(salvo.reviewed_by).toBe('MKT ANA');
+    expect(salvo.reviewed_at).toBeTruthy();
+    expect(salvo.review_note).toBeNull();
+    expect(salvo.submitted_at).toBe('2026-03-19T13:00:00.000Z');
+    await waitFor(() => expect(fechou).toHaveBeenCalledWith(false));
+  });
+
+  it('devolver exige a observação e mantém pendente', async () => {
+    abrirRevisao();
+
+    fireEvent.click(screen.getByRole('button', { name: /devolver com observação/i }));
+    const confirmar = () => screen.getByRole('button', { name: 'Devolver' });
+    expect(confirmar()).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(/observação da devolução/i), { target: { value: '  Confirme o término real.  ' } });
+    expect(confirmar()).not.toBeDisabled();
+    fireEvent.click(confirmar());
+
+    await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalled());
+    const salvo = espiao.updateEvent.mock.calls[0][0] as AppEvent;
+    expect(salvo.status).toBe('pendente');
+    expect(salvo.visibility).toBe('interno');
+    expect(salvo.review_note).toBe('Confirme o término real.');
+    expect(salvo.reviewed_by).toBe('MKT ANA');
+  });
+
+  it('sem a prop, o mesmo evento abre como edição comum', () => {
+    espiao.papel = { ...espiao.papel, isAdmin: true, isMarketing: true };
+    render(<EventFormDialog open onOpenChange={fechou} event={pedido()} />);
+
+    expect(screen.getByText('Editar Evento')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /salvar alterações/i })).toBeInTheDocument();
+  });
+});
+
 describe('quando o slug colide com um evento que ela não vê', () => {
   const colisao = () => Object.assign(new Error('duplicate key value violates unique constraint "events_slug_key"'), { code: '23505' });
 
