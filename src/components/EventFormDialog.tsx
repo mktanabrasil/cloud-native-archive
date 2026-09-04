@@ -26,6 +26,7 @@ import { descreverErroDeGravacao } from '@/lib/events/mensagemDeErro';
 import { contar, erroDeLimite, type CampoComLimite } from '@/lib/events/limites';
 import { apagarDoBalde, urlDoAnexo } from '@/lib/events/anexos';
 import { errosDeTransporte, motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
+import { errosDasListas, limparListas } from '@/lib/events/listas';
 import { toast } from 'sonner';
 import { format as formatarData } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -72,6 +73,8 @@ const CAMPOS_COM_ERRO: { chave: string; ancora: string; rotulo: string }[] = [
   { chave: 'transport_vehicle', ancora: 'campo-transporte', rotulo: 'Transporte' },
   { chave: 'transport_passengers', ancora: 'campo-transporte', rotulo: 'Passageiros' },
   { chave: 'marketing_items', ancora: 'campo-marketing', rotulo: 'Solicitação de marketing' },
+  { chave: 'partners', ancora: 'campo-parceiros', rotulo: 'Parceiros' },
+  { chave: 'external_collaborators', ancora: 'campo-parceria', rotulo: 'Parceria com unidade ou instituição' },
 ];
 
 /**
@@ -174,6 +177,13 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
   const [showConflictAlert, setShowConflictAlert] = useState(false);
   const [showBannerWarning, setShowBannerWarning] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  /**
+   * Já houve uma tentativa de enviar. A partir daí, os campos que erraram
+   * são reavaliados a cada mudança — o botão dizia "(4 pendências)" até o
+   * próximo clique, mesmo com três já corrigidas. Só os que já erraram: o
+   * formulário não grita antes da primeira tentativa.
+   */
+  const [tentou, setTentou] = useState(false);
   const [slugMode, setSlugMode] = useState<'auto' | 'custom'>('auto');
   const [showSlugPrompt, setShowSlugPrompt] = useState(false);
   const [autoSlugPreview, setAutoSlugPreview] = useState('');
@@ -297,6 +307,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     setShowBannerWarning(false);
     setOutroAberto({});
     setErrors({});
+    setTentou(false);
     setDevolvendo(false);
     setObservacao('');
     ajusteRef.current = null;
@@ -347,7 +358,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     onOpenChange(false);
   };
 
-  const validate = (): boolean => {
+  /** Tudo o que está errado agora. Puro: não mexe no estado. */
+  const calcularErros = (): Record<string, string> => {
     const errs: Record<string, string> = {};
     if (!form.title?.trim()) errs.title = 'Título obrigatório';
     if (!form.start_datetime) errs.start_datetime = 'Data/hora início obrigatória';
@@ -401,9 +413,35 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     if (form.start_datetime && form.end_datetime && new Date(form.start_datetime) >= new Date(form.end_datetime)) {
       errs.end_datetime = 'Término deve ser após o início';
     }
+
+    // Listas: linha em branco não passa — e instituição vazia iria para o site.
+    Object.assign(errs, errosDasListas(form));
+
+    return errs;
+  };
+
+  const validate = (): boolean => {
+    const errs = calcularErros();
     setErrors(errs);
+    setTentou(true);
     return Object.keys(errs).length === 0;
   };
+
+  // Depois da primeira tentativa, o que já errou é reavaliado a cada mudança.
+  // Só remove: um erro novo só aparece no próximo clique, para o formulário
+  // não gritar enquanto a pessoa ainda está escrevendo.
+  useEffect(() => {
+    if (!tentou) return;
+    const agora = calcularErros();
+    setErrors(prev => {
+      const mantidos: Record<string, string> = {};
+      for (const chave of Object.keys(prev)) if (agora[chave]) mantidos[chave] = agora[chave];
+      return Object.keys(mantidos).length === Object.keys(prev).length && Object.keys(mantidos).every(k => mantidos[k] === prev[k])
+        ? prev
+        : mantidos;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, outroAberto, tentou]);
 
   const getFullEvent = (): AppEvent => {
     return {
@@ -434,10 +472,12 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       partner_involved: form.partner_involved || false,
       partner_type: (form.partner_type as PartnerType) || '',
       partner_name: form.partner_name || '',
-      partners: form.partners || [],
+      // Sem linhas em branco, mesmo que a validação não tenha barrado
+      // (devolver, por exemplo, não valida).
+      partners: limparListas(form).partners,
       has_unit_collaboration: form.has_unit_collaboration || false,
       collaborating_units: form.collaborating_units || [],
-      external_collaborators: form.external_collaborators || [],
+      external_collaborators: limparListas(form).external_collaborators,
       attachments: form.attachments || [],
       banner_url_desktop: form.banner_url_desktop || '',
       banner_url_mobile: form.banner_url_mobile || '',
@@ -1434,7 +1474,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 </div>
 
                 {form.partner_involved && (
-                  <div className="space-y-2 rounded-lg border border-border p-3">
+                  <div className={`space-y-2 rounded-lg border p-3 ${errors.partners ? 'border-destructive/60' : 'border-border'}`} id="campo-parceiros">
                     <Label className="text-sm font-medium">Parceiros</Label>
                     {(form.partners || []).map((partner, idx) => (
                       <div key={idx} className="flex items-center gap-2">
@@ -1459,7 +1499,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                             setForm({ ...form, partners: updated });
                           }}
                           placeholder="Nome do parceiro"
-                          className="flex-1"
+                          className={`flex-1 ${errors.partners && !partner.name.trim() ? 'border-destructive' : ''}`}
                         />
                         <Button
                           type="button"
@@ -1485,6 +1525,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       <Plus className="h-3.5 w-3.5" />
                       Adicionar Parceiro
                     </Button>
+                    {errors.partners && <p className="text-xs text-destructive">{errors.partners}</p>}
                   </div>
                 )}
 
@@ -1498,7 +1539,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 </div>
 
                 {form.has_unit_collaboration && (
-                  <div className="space-y-3 rounded-lg border border-border p-3">
+                  <div className={`space-y-3 rounded-lg border p-3 ${errors.external_collaborators ? 'border-destructive/60' : 'border-border'}`} id="campo-parceria">
                     <div>
                       <Label className="text-sm font-semibold mb-2 block">Unidades parceiras</Label>
                       <div className="flex flex-wrap gap-2 mt-2">
@@ -1539,7 +1580,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                   setForm({ ...form, external_collaborators: updated });
                                 }}
                                 placeholder="Nome da instituição"
-                                className="flex-1 h-8 text-sm"
+                                className={`flex-1 h-8 text-sm ${errors.external_collaborators && !(typeof ext === 'string' ? ext : ext.name).trim() ? 'border-destructive' : ''}`}
                               />
                               <Button
                                 type="button"
@@ -1585,6 +1626,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                         </Button>
                       </div>
                     </div>
+                    {errors.external_collaborators && <p className="text-xs text-destructive">{errors.external_collaborators}</p>}
                   </div>
                 )}
 
