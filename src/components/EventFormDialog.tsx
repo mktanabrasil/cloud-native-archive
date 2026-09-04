@@ -18,7 +18,7 @@ import { FileUpload } from './FileUpload';
 import { EventDetailDialog } from './EventDetailDialog';
 import { BannerMissingDialog } from './BannerMissingDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { GrupoDeOpcoes } from './events/GrupoDeOpcoes';
+import { GrupoDeOpcoes, normalizarOpcoes } from './events/GrupoDeOpcoes';
 import { TituloDoEvento } from './events/TituloDoEvento';
 import { paraCampoDataHora, rotuloDoFuso } from '@/lib/events/horaLocal';
 import { linkPublicoDoEvento, prefixoDoLinkPublico, proximoSlug } from '@/lib/events/linkPublico';
@@ -495,14 +495,15 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       full_height_title: form.full_height_title || false,
       banner_display_time: form.banner_display_time || 5,
       show_banner_overlay: form.show_banner_overlay !== undefined ? form.show_banner_overlay : true,
-      target_audience: form.target_audience || '',
-      support_team: form.support_team || '',
-      food_logistics: form.food_logistics || '',
+      // Aparado só aqui: durante a digitação o espaço final precisa ficar.
+      target_audience: normalizarOpcoes(form.target_audience),
+      support_team: normalizarOpcoes(form.support_team),
+      food_logistics: normalizarOpcoes(form.food_logistics),
       food_details: form.food_details || '',
       // `marketing_info` deixou de ser gravado: nenhuma linha o usava (0/108
       // em 04/09/2026) e não havia campo. A coluna fica no banco até um DROP.
       printed_materials: form.printed_materials?.trim() || '',
-      equipment_needed: form.equipment_needed || '',
+      equipment_needed: normalizarOpcoes(form.equipment_needed),
       marketing_items: form.marketing_items || [],
       marketing_coverage: form.marketing_coverage || false,
       transport_needed: form.transport_needed || false,

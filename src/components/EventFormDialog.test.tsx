@@ -277,6 +277,23 @@ describe('a gestora envia para aprovação', () => {
   });
 });
 
+describe('o texto do “Outro” vai aparado só ao salvar', () => {
+  it('espaço no fim sobrevive na tela e sai no registro gravado', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    preencher();
+    fireEvent.click(screen.getByRole('switch', { name: /outro público/i }));
+    const caixa = screen.getByPlaceholderText('Qual público?');
+    fireEvent.change(caixa, { target: { value: 'Pais e mães ' } });
+    expect((caixa as HTMLInputElement).value).toBe('Pais e mães ');
+
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
+    expect((espiao.addEvent.mock.calls[0][0] as AppEvent).target_audience).toBe('Os atendidos, Pais e mães');
+  });
+});
+
 describe('linhas em branco nas listas', () => {
   it('parceiro ligado com linha vazia não passa, e aponta', async () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
