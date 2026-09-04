@@ -39,6 +39,15 @@ describe('descreverErroDeGravacao', () => {
     expect(r.titulo).toBe('Falta preencher Localização');
   });
 
+  it('CHECK de tamanho diz qual campo passou', () => {
+    const r = descreverErroDeGravacao(
+      { code: '23514', message: 'new row for relation "events" violates check constraint "events_title_limite"' },
+      criar,
+    );
+    expect(r.tipo).toBe('invalido');
+    expect(r.titulo).toBe('Título passa de 120 caracteres');
+  });
+
   it('rede caída não tem código, mas tem cara', () => {
     const r = descreverErroDeGravacao(new TypeError('Failed to fetch'), { acao: 'atualizar' });
     expect(r.tipo).toBe('rede');

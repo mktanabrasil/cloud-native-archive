@@ -277,6 +277,43 @@ describe('a gestora envia para aprovação', () => {
   });
 });
 
+describe('limites de texto', () => {
+  it('conta embaixo do campo enquanto escreve', () => {
+    abrir();
+
+    fireEvent.change(screen.getByPlaceholderText(/nome do evento/i), { target: { value: 'Encontro de Famílias' } });
+
+    expect(screen.getByText('20/120')).toBeInTheDocument();
+    expect(screen.getByText('0/160')).toBeInTheDocument();
+    expect(screen.getByText('0/1000')).toBeInTheDocument();
+  });
+
+  it('passou do limite: contador vermelho com quanto encurtar, e o envio para', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    preencher();
+    fireEvent.change(screen.getByPlaceholderText(/local do evento/i), { target: { value: 'x'.repeat(174) } });
+
+    expect(screen.getByText('174/160 — encurte 14 caracteres')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+
+    expect(espiao.addEvent).not.toHaveBeenCalled();
+    expect(screen.getAllByText(/localização passa de 160 caracteres/i).length).toBeGreaterThan(0);
+  });
+
+  it('no limite exato, passa', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    preencher();
+    fireEvent.change(screen.getByPlaceholderText(/nome do evento/i), { target: { value: 'T'.repeat(120) } });
+
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
+  });
+});
+
 describe('fechar sem querer', () => {
   const cancelar = () => fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
 

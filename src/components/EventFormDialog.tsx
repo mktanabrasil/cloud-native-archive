@@ -23,6 +23,7 @@ import { TituloDoEvento } from './events/TituloDoEvento';
 import { paraCampoDataHora, rotuloDoFuso } from '@/lib/events/horaLocal';
 import { linkPublicoDoEvento, prefixoDoLinkPublico, proximoSlug } from '@/lib/events/linkPublico';
 import { descreverErroDeGravacao } from '@/lib/events/mensagemDeErro';
+import { contar, erroDeLimite, type CampoComLimite } from '@/lib/events/limites';
 import { toast } from 'sonner';
 import { format as formatarData } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -58,6 +59,7 @@ const slugify = (text: string): string =>
  */
 const CAMPOS_COM_ERRO: { chave: string; ancora: string; rotulo: string }[] = [
   { chave: 'title', ancora: 'campo-title', rotulo: 'Título' },
+  { chave: 'description', ancora: 'campo-description', rotulo: 'Descrição' },
   { chave: 'start_datetime', ancora: 'campo-start_datetime', rotulo: 'Início' },
   { chave: 'end_datetime', ancora: 'campo-end_datetime', rotulo: 'Término' },
   { chave: 'location', ancora: 'campo-location', rotulo: 'Localização' },
@@ -67,6 +69,23 @@ const CAMPOS_COM_ERRO: { chave: string; ancora: string; rotulo: string }[] = [
   { chave: 'equipment_needed', ancora: 'campo-equip', rotulo: 'Equipamentos necessários' },
   { chave: 'marketing_items', ancora: 'campo-marketing', rotulo: 'Solicitação de marketing' },
 ];
+
+/**
+ * "61/120" embaixo do campo; vermelho e com instrução quando passou.
+ * Discreto de propósito: quem escreve dentro do limite nem repara.
+ */
+function Contador({ campo, valor }: { campo: CampoComLimite; valor: string | null | undefined }) {
+  const c = contar(campo, valor);
+  return (
+    <p
+      className={`mt-1 text-right text-[11px] tabular-nums ${c.excedeu ? 'text-destructive' : 'text-muted-foreground'}`}
+      aria-live={c.excedeu ? 'polite' : undefined}
+    >
+      {c.texto}
+      {c.aviso && ` — ${c.aviso}`}
+    </p>
+  );
+}
 
 /** O resumo no topo: diz quantas faltam e leva até cada uma. */
 function ResumoDePendencias({ erros, acao }: { erros: Record<string, string>; acao: string }) {
@@ -332,6 +351,13 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     if (!form.start_datetime) errs.start_datetime = 'Data/hora início obrigatória';
     if (!form.end_datetime) errs.end_datetime = 'Data/hora término obrigatória';
     if (!form.location?.trim()) errs.location = 'Localização obrigatória';
+
+    // Limites de texto: o banco também recusa (CHECK), mas aqui a pessoa
+    // sabe antes, com o campo apontado e quanto encurtar.
+    for (const campo of ['title', 'location', 'description'] as CampoComLimite[]) {
+      const erro = erroDeLimite(campo, form[campo]);
+      if (erro && !errs[campo]) errs[campo] = erro;
+    }
     
     // Novos campos obrigatórios
     if (!form.target_audience?.trim()) errs.target_audience = 'Selecione o público-alvo';
@@ -660,10 +686,13 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   <Label className="text-sm font-semibold mb-1.5 block">Título *</Label>
                   <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Nome do evento" />
                   {errors.title && <p className="mt-1 text-xs text-destructive">{errors.title}</p>}
+                  <Contador campo="title" valor={form.title} />
                 </div>
-                <div>
+                <div id="campo-description">
                   <Label className="text-sm font-semibold mb-1.5 block">Descrição</Label>
                   <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Descrição do evento" rows={2} />
+                  {errors.description && <p className="mt-1 text-xs text-destructive">{errors.description}</p>}
+                  <Contador campo="description" valor={form.description} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -725,6 +754,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   <Label className="text-sm font-semibold mb-1.5 block">Localização *</Label>
                   <Input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="Local do evento" />
                   {errors.location && <p className="mt-1 text-xs text-destructive">{errors.location}</p>}
+                  <Contador campo="location" valor={form.location} />
                 </div>
 
                 {/* `isMarketing` é "admin geral ou comunicação". Com `isAdmin`, quem
