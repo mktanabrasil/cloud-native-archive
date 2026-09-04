@@ -24,6 +24,7 @@ import { paraCampoDataHora, rotuloDoFuso } from '@/lib/events/horaLocal';
 import { linkPublicoDoEvento, prefixoDoLinkPublico, proximoSlug } from '@/lib/events/linkPublico';
 import { descreverErroDeGravacao } from '@/lib/events/mensagemDeErro';
 import { contar, erroDeLimite, type CampoComLimite } from '@/lib/events/limites';
+import { apagarDoBalde, urlDoAnexo } from '@/lib/events/anexos';
 import { toast } from 'sonner';
 import { format as formatarData } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -517,6 +518,15 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
         .filter(c => !c.has_conflict)
         .map(c => updateEvent({ ...c, has_conflict: true, updated_at: new Date().toISOString() })),
     );
+
+    // Anexos que estavam no evento e saíram da lista: agora que o evento
+    // gravou sem eles, o arquivo pode ir. (Os que subiram e saíram antes de
+    // salvar o próprio FileUpload já apagou.)
+    if (event) {
+      const ficaram = new Set((gravado.attachments || []).map(urlDoAnexo));
+      const removidos = (event.attachments || []).map(urlDoAnexo).filter(u => !ficaram.has(u));
+      if (removidos.length > 0) await apagarDoBalde(removidos);
+    }
 
     const quando = formatarData(new Date(gravado.start_datetime), "d MMM", { locale: ptBR });
     const linkAjustado = gravado.slug !== slugPedido && gravado.slug
@@ -1549,12 +1559,12 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   </div>
                 )}
 
+                {/* Um rótulo só: o de dentro. Antes "Anexos" aparecia duas vezes. */}
                 <div className="rounded-lg border border-border p-3">
-                  <Label className="text-sm font-semibold mb-2 block">Anexos</Label>
                   <FileUpload
                     mode="multiple"
                     attachments={form.attachments || []}
-                    onChange={(urls) => setForm({ ...form, attachments: urls as string[] })}
+                    onChange={(lista) => setForm({ ...form, attachments: lista as AppEvent['attachments'] })}
                   />
                 </div>
               </div>

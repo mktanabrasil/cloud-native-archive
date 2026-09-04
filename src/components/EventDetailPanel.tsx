@@ -1,4 +1,5 @@
 import { AppEvent, PARTNER_TYPES, Unit } from '@/types';
+import { categoriaDoAnexo, normalizarAnexo, rotuloDoTamanho } from '@/lib/events/anexos';
 import { useUserRole } from '@/hooks/useUserRole';
 import { getStatusBadgeClass } from '@/lib/statusColors';
 import { format } from 'date-fns';
@@ -196,16 +197,18 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-muted-foreground">Anexos</p>
                 <div className="flex flex-wrap gap-2">
-                  {event.attachments.map((url, idx) => (
+                  {event.attachments.map(normalizarAnexo).map(a => (
                     <a
-                      key={idx}
-                      href={url}
+                      key={a.url}
+                      href={a.url}
                       target="_blank"
                       rel="noopener noreferrer"
+                      title={`${categoriaDoAnexo(a)}${rotuloDoTamanho(a.size) ? ` · ${rotuloDoTamanho(a.size)}` : ''}`}
                       className="flex items-center gap-2 bg-muted/50 border border-border rounded-md px-3 py-1.5 text-xs hover:bg-muted transition-colors"
                     >
                       <Paperclip className="h-3 w-3 text-muted-foreground" />
-                      <span className="max-w-[120px] truncate text-foreground">Anexo {idx + 1}</span>
+                      <span className="max-w-[200px] truncate text-foreground">{a.name}</span>
+                      {rotuloDoTamanho(a.size) && <span className="text-muted-foreground">{rotuloDoTamanho(a.size)}</span>}
                     </a>
                   ))}
                 </div>
