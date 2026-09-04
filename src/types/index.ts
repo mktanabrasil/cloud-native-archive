@@ -86,6 +86,8 @@ export interface AppEvent {
   marketing_coverage?: boolean;
   transport_needed?: boolean;
   transport_vehicle?: TransportVehicle | '';
+  /** Segundo veículo quando o principal não cabe todo mundo. */
+  transport_support_vehicle?: TransportVehicle | '' | null;
   transport_passengers?: number;
   /** Leva equipamentos/materiais volumosos: pede veículo de apoio. */
   transport_extra_equipment?: boolean;

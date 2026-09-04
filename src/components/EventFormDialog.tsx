@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { AppEvent, UNITS, EVENT_TYPES, EVENT_STATUSES, PARTNER_TYPES, Unit, EventType, EventStatus, PartnerType, SYSTEM_COLORS, eventUnitLabel, TRANSPORT_VEHICLES, TransportVehicle } from '@/types';
+import { AppEvent, UNITS, EVENT_TYPES, EVENT_STATUSES, PARTNER_TYPES, Unit, EventType, EventStatus, PartnerType, SYSTEM_COLORS, eventUnitLabel, TransportVehicle } from '@/types';
 import { getStatusDotClass } from '@/lib/statusColors';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -25,7 +25,7 @@ import { linkPublicoDoEvento, prefixoDoLinkPublico, proximoSlug } from '@/lib/ev
 import { descreverErroDeGravacao } from '@/lib/events/mensagemDeErro';
 import { contar, erroDeLimite, type CampoComLimite } from '@/lib/events/limites';
 import { apagarDoBalde, urlDoAnexo } from '@/lib/events/anexos';
-import { errosDeTransporte, motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
+import { FROTA, errosDeTransporte, motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
 import { errosDasListas, limparListas } from '@/lib/events/listas';
 import { toast } from 'sonner';
 import { format as formatarData } from 'date-fns';
@@ -72,6 +72,7 @@ const CAMPOS_COM_ERRO: { chave: string; ancora: string; rotulo: string }[] = [
   { chave: 'equipment_needed', ancora: 'campo-equip', rotulo: 'Equipamentos necessários' },
   { chave: 'transport_vehicle', ancora: 'campo-transporte', rotulo: 'Transporte' },
   { chave: 'transport_passengers', ancora: 'campo-transporte', rotulo: 'Passageiros' },
+  { chave: 'transport_support_vehicle', ancora: 'campo-transporte', rotulo: 'Veículo de apoio' },
   { chave: 'marketing_items', ancora: 'campo-marketing', rotulo: 'Solicitação de marketing' },
   { chave: 'partners', ancora: 'campo-parceiros', rotulo: 'Parceiros' },
   { chave: 'external_collaborators', ancora: 'campo-parceria', rotulo: 'Parceria com unidade ou instituição' },
@@ -166,6 +167,7 @@ const emptyEvent = (): Partial<AppEvent> => ({
   transport_needed: false,
   transport_vehicle: '',
   transport_passengers: 0,
+  transport_support_vehicle: '',
   transport_extra_equipment: false,
 });
 
@@ -510,6 +512,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       transport_vehicle: form.transport_needed ? (form.transport_vehicle || '') : '',
       transport_passengers: form.transport_needed ? (Number(form.transport_passengers) || 0) : 0,
       transport_extra_equipment: form.transport_needed ? !!form.transport_extra_equipment : false,
+      transport_support_vehicle: form.transport_needed ? (form.transport_support_vehicle || null) : null,
     };
   };
 
@@ -1221,106 +1224,6 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   </div>
                 </div>
 
-                <div className="space-y-3" id="campo-transporte">
-                  <div className="flex items-center gap-3 rounded-lg border border-border p-3">
-                    <Switch
-                      id="transport_needed"
-                      checked={form.transport_needed || false}
-                      onCheckedChange={v => setForm({ ...form, transport_needed: v })}
-                    />
-                    <Label htmlFor="transport_needed" className="cursor-pointer flex-1 text-sm font-semibold flex items-center gap-2">
-                      <Truck className="h-4 w-4" /> Logística de Transporte
-                    </Label>
-                  </div>
-
-                  {form.transport_needed && (() => {
-                    // A conta mora em `transporte.ts`, a mesma que os painéis
-                    // de detalhe usam. Aqui só se desenha.
-                    const r = resumoDoTransporte(form)!;
-                    const apoio = motivoDoApoio(r);
-                    return (
-                      <div className="rounded-lg border border-amber-100 bg-amber-50/30 p-4 space-y-4 animate-in fade-in slide-in-from-top-1">
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div>
-                            <Label className="text-xs font-medium mb-1 block">Veículo *</Label>
-                            <Select
-                              value={form.transport_vehicle || ''}
-                              onValueChange={v => setForm({ ...form, transport_vehicle: v as TransportVehicle })}
-                            >
-                              <SelectTrigger className={errors.transport_vehicle ? 'border-destructive' : undefined}>
-                                <SelectValue placeholder="Selecione o veículo" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {TRANSPORT_VEHICLES.map(v => (
-                                  <SelectItem key={v.value} value={v.value}>{v.label} — {v.capacity} assentos</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            {errors.transport_vehicle && <p className="mt-1 text-xs text-destructive">{errors.transport_vehicle}</p>}
-                          </div>
-                          <div>
-                            <Label htmlFor="transport_passengers" className="text-xs font-medium mb-1 block">Passageiros previstos *</Label>
-                            <Input
-                              id="transport_passengers"
-                              type="number"
-                              min={0}
-                              value={form.transport_passengers ?? 0}
-                              onChange={e => setForm({ ...form, transport_passengers: Math.max(0, Number(e.target.value) || 0) })}
-                              className={errors.transport_passengers ? 'border-destructive' : undefined}
-                            />
-                            {errors.transport_passengers && <p className="mt-1 text-xs text-destructive">{errors.transport_passengers}</p>}
-                          </div>
-                        </div>
-
-                        <p className="text-[11px] text-muted-foreground">Capacidade já inclui o motorista.</p>
-
-                        {r.vagaMarketing > 0 && (
-                          <div className="px-3 py-2 bg-amber-50/60 rounded-md border border-dashed border-amber-300">
-                            <p className="text-[11px] text-amber-700 flex items-center gap-1.5 font-medium">
-                              <CheckCircle2 className="h-3 w-3" /> 1 vaga do marketing está sendo contabilizada na logística de transporte
-                            </p>
-                          </div>
-                        )}
-
-                        {r.capacidade > 0 && (
-                          <p className="text-xs text-foreground">
-                            Ocupação: <span className="font-semibold">{r.ocupados}</span> / {r.capacidade} assentos
-                            {r.vagaMarketing > 0 && <span className="text-muted-foreground"> (inclui 1 do marketing)</span>}
-                          </p>
-                        )}
-
-                        {/* Gravado em `transport_extra_equipment` — antes era só
-                            estado da tela e sumia ao salvar. */}
-                        <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 shadow-sm">
-                          <Switch
-                            id="transport_extra_equipment"
-                            checked={!!form.transport_extra_equipment}
-                            onCheckedChange={v => setForm({ ...form, transport_extra_equipment: !!v })}
-                          />
-                          <Label htmlFor="transport_extra_equipment" className="cursor-pointer flex-1 text-sm font-medium">
-                            Leva equipamentos/materiais volumosos
-                          </Label>
-                        </div>
-
-                        {apoio && (
-                          <div className="px-3 py-2 bg-destructive/10 rounded-md border border-dashed border-destructive/40 animate-in fade-in zoom-in-95 duration-200">
-                            <p className="text-[11px] text-destructive flex items-center gap-1.5 font-medium">
-                              <AlertTriangle className="h-3 w-3" /> {apoio}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-
-
-
-                <div className="space-y-4 pt-4 border-t">
-                  <Label className="text-sm font-semibold mb-1.5 block">Observações internas</Label>
-                  <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Notas internas gerais..." rows={2} />
-                </div>
-
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 rounded-lg border border-border p-3" id="campo-marketing">
                     <Switch
@@ -1349,18 +1252,13 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                             <Label htmlFor="marketing_cobertura" className="cursor-pointer flex-1 text-sm font-medium text-blue-900">Solicitar Cobertura do Evento</Label>
                           </div>
                           
+                          {/* A vaga no transporte aparece na conta do transporte, logo
+                              abaixo — não aqui em duplicata. */}
                           {form.marketing_coverage && (
-                            <div className="space-y-2 animate-in fade-in zoom-in-95 duration-200">
-                              <div className="px-3 py-2 bg-blue-50/50 rounded-md border border-dashed border-blue-200">
-                                <p className="text-[11px] text-blue-600 flex items-center gap-1.5 font-medium">
-                                  <CheckCircle2 className="h-3 w-3" /> Cobertura fotográfica e/ou vídeo solicitada
-                                </p>
-                              </div>
-                              <div className="px-3 py-2 bg-amber-50/60 rounded-md border border-dashed border-amber-300">
-                                <p className="text-[11px] text-amber-700 flex items-center gap-1.5 font-medium">
-                                  <CheckCircle2 className="h-3 w-3" /> 1 vaga do marketing está sendo contabilizada na logística de transporte
-                                </p>
-                              </div>
+                            <div className="px-3 py-2 bg-blue-50/50 rounded-md border border-dashed border-blue-200 animate-in fade-in zoom-in-95 duration-200">
+                              <p className="text-[11px] text-blue-600 flex items-center gap-1.5 font-medium">
+                                <CheckCircle2 className="h-3 w-3" /> Cobertura fotográfica e/ou vídeo solicitada — 1 pessoa do marketing vai junto
+                              </p>
                             </div>
                           )}
 
@@ -1457,6 +1355,151 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       </div>
                     </div>
                   )}
+                </div>
+
+                <div className="space-y-3" id="campo-transporte">
+                  <div className="flex items-center gap-3 rounded-lg border border-border p-3">
+                    <Switch
+                      id="transport_needed"
+                      checked={form.transport_needed || false}
+                      onCheckedChange={v => setForm({ ...form, transport_needed: v })}
+                    />
+                    <Label htmlFor="transport_needed" className="cursor-pointer flex-1 text-sm font-semibold flex items-center gap-2">
+                      <Truck className="h-4 w-4" /> Logística de Transporte
+                    </Label>
+                  </div>
+
+                  {form.transport_needed && (() => {
+                    // A conta mora em `transporte.ts`, a mesma que os painéis
+                    // de detalhe usam. Aqui só se desenha. A ordem é a da
+                    // pergunta que a pessoa sabe responder: quantos vão → a
+                    // tela sugere o veículo → ela confirma ou troca.
+                    const r = resumoDoTransporte(form)!;
+                    const motivo = motivoDoApoio(r);
+                    const s = r.sugestao;
+                    const apoioEscolhido = (form.transport_support_vehicle || '') as TransportVehicle | '';
+                    const sugestaoJaEscolhida =
+                      !!s && form.transport_vehicle === s.principal.value && apoioEscolhido === (s.apoio?.value ?? '');
+                    const usarSugestao = () =>
+                      s && setForm({ ...form, transport_vehicle: s.principal.value, transport_support_vehicle: s.apoio?.value ?? '' });
+                    return (
+                      <div className="rounded-lg border border-amber-100 bg-amber-50/30 p-4 space-y-4 animate-in fade-in slide-in-from-top-1">
+                        <div>
+                          <Label htmlFor="transport_passengers" className="text-xs font-medium mb-1 block">Quantas pessoas vão? *</Label>
+                          <div className="grid gap-3 sm:grid-cols-[120px_1fr] sm:items-center">
+                            <Input
+                              id="transport_passengers"
+                              type="number"
+                              min={0}
+                              value={form.transport_passengers ?? 0}
+                              onChange={e => setForm({ ...form, transport_passengers: Math.max(0, Number(e.target.value) || 0) })}
+                              className={errors.transport_passengers ? 'border-destructive' : undefined}
+                            />
+                            {/* A vaga do marketing entra aqui, na linha da conta —
+                                não num aviso separado. O bloco de marketing fica acima
+                                justamente para esta linha já nascer certa. */}
+                            <p className="text-[11px] text-muted-foreground" data-testid="conta-do-transporte">
+                              {r.vagaMarketing > 0 ? (
+                                <><span className="font-semibold text-foreground">{r.passageiros} + 1 do marketing</span> (cobertura pedida) = <span className="font-semibold text-foreground">{r.total}</span></>
+                              ) : (
+                                <>{r.total} {r.total === 1 ? 'passageiro' : 'passageiros'} · sem vaga do marketing</>
+                              )}
+                              {' '}· motorista à parte
+                            </p>
+                          </div>
+                          {errors.transport_passengers && <p className="mt-1 text-xs text-destructive">{errors.transport_passengers}</p>}
+                        </div>
+
+                        {s && !sugestaoJaEscolhida && (
+                          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/60 bg-primary/10 p-3">
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">Sugestão: {s.texto}</p>
+                              <p className="text-[11px] text-muted-foreground">
+                                {s.apoio
+                                  ? `${s.principal.label} ${s.principal.lugares}/${s.principal.lugares} + ${s.apoio.label} ${s.sobra}/${s.apoio.lugares} lugares`
+                                  : `${r.total} de ${s.principal.lugares} lugares para passageiros (${s.principal.assentos} assentos, 1 do motorista)`}
+                                {s.utilitario && ' · utilitário pelos volumosos'}
+                              </p>
+                            </div>
+                            <Button type="button" size="sm" className="h-8" onClick={usarSugestao}>
+                              Usar sugestão
+                            </Button>
+                          </div>
+                        )}
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <Label className="text-xs font-medium mb-1 block">Veículo *</Label>
+                            <Select
+                              value={form.transport_vehicle || ''}
+                              onValueChange={v => setForm({ ...form, transport_vehicle: v as TransportVehicle })}
+                            >
+                              <SelectTrigger className={errors.transport_vehicle ? 'border-destructive' : undefined}>
+                                <SelectValue placeholder="Selecione o veículo" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {FROTA.map(v => (
+                                  <SelectItem key={v.value} value={v.value}>
+                                    {v.label} — {v.carga ? 'carga, 1 acompanhante' : `${v.lugares} lugares`}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {errors.transport_vehicle && <p className="mt-1 text-xs text-destructive">{errors.transport_vehicle}</p>}
+                          </div>
+                          <div>
+                            <Label className="text-xs font-medium mb-1 block">
+                              Veículo de apoio <span className="font-normal text-muted-foreground">(se não couber)</span>
+                            </Label>
+                            <Select
+                              value={apoioEscolhido || 'nenhum'}
+                              onValueChange={v => setForm({ ...form, transport_support_vehicle: v === 'nenhum' ? '' : (v as TransportVehicle) })}
+                            >
+                              <SelectTrigger className={errors.transport_support_vehicle ? 'border-destructive' : undefined}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="nenhum">Nenhum</SelectItem>
+                                {FROTA.map(v => (
+                                  <SelectItem key={v.value} value={v.value}>
+                                    {v.label} — {v.carga ? 'carga, 1 acompanhante' : `${v.lugares} lugares`}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {errors.transport_support_vehicle && <p className="mt-1 text-xs text-destructive">{errors.transport_support_vehicle}</p>}
+                          </div>
+                        </div>
+
+                        {/* Gravado em `transport_extra_equipment` — antes era só
+                            estado da tela e sumia ao salvar. */}
+                        <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 shadow-sm">
+                          <Switch
+                            id="transport_extra_equipment"
+                            checked={!!form.transport_extra_equipment}
+                            onCheckedChange={v => setForm({ ...form, transport_extra_equipment: !!v })}
+                          />
+                          <Label htmlFor="transport_extra_equipment" className="cursor-pointer flex-1 text-sm font-medium">
+                            Leva equipamentos/materiais volumosos
+                          </Label>
+                        </div>
+
+                        {motivo && (
+                          <div className={`px-3 py-2 rounded-md border border-dashed animate-in fade-in zoom-in-95 duration-200 ${
+                            r.excedido ? 'bg-destructive/10 border-destructive/40' : 'bg-amber-50/60 border-amber-300'
+                          }`}>
+                            <p className={`text-[11px] flex items-center gap-1.5 font-medium ${r.excedido ? 'text-destructive' : 'text-amber-700'}`}>
+                              <AlertTriangle className="h-3 w-3" /> {motivo}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+                <div className="space-y-4 pt-4 border-t">
+                  <Label className="text-sm font-semibold mb-1.5 block">Observações internas</Label>
+                  <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Notas internas gerais..." rows={2} />
                 </div>
 
                 <div className="flex items-center gap-3 rounded-lg border border-border p-3">
