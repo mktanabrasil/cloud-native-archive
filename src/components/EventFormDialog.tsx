@@ -962,9 +962,20 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                         id="show_in_banner"
                         checked={form.show_in_banner || false}
                         onCheckedChange={v => setForm({ ...form, show_in_banner: v })}
-                        disabled={!isAdmin}
                       />
                     </div>
+
+                    {/* Antes passava em silêncio: o carrossel mostrava um bloco só de
+                        cor. A ordem de fallback é a mesma do preview ao lado. */}
+                    {form.show_in_banner && !form.banner_image_desktop && !form.banner_url_desktop && !form.banner_url_mobile && (
+                      <div className="flex items-start gap-3 rounded-lg border border-dashed border-amber-300 bg-amber-50 p-3">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                        <p className="text-xs text-amber-900">
+                          <strong>“Exibir no banner” ligado sem imagem.</strong> O carrossel vai usar só a cor do card.
+                          Envie ao menos o Banner Desktop (21:9) abaixo.
+                        </p>
+                      </div>
+                    )}
 
                     <div className="flex items-center justify-between gap-3 p-2 bg-muted rounded-md border border-border">
                       <div className="flex flex-col">
@@ -975,7 +986,6 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                         id="use_logo_as_title"
                         checked={form.use_logo_as_title || false}
                         onCheckedChange={v => setForm({ ...form, use_logo_as_title: v })}
-                        disabled={!isAdmin}
                       />
                     </div>
 
@@ -988,7 +998,6 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                         id="show_banner_overlay"
                         checked={form.show_banner_overlay !== undefined ? form.show_banner_overlay : true}
                         onCheckedChange={v => setForm({ ...form, show_banner_overlay: v })}
-                        disabled={!isAdmin}
                       />
                     </div>
 
@@ -1001,7 +1010,6 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                         id="show_banner_fade"
                         checked={form.show_banner_fade !== undefined ? form.show_banner_fade : true}
                         onCheckedChange={v => setForm({ ...form, show_banner_fade: v })}
-                        disabled={!isAdmin}
                       />
                     </div>
 
@@ -1014,7 +1022,6 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                         id="full_height_title"
                         checked={form.full_height_title || false}
                         onCheckedChange={v => setForm({ ...form, full_height_title: v })}
-                        disabled={!isAdmin}
                       />
                     </div>
 
@@ -1030,9 +1037,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                         max="30"
                         step="1"
                         value={form.banner_display_time || 5}
-                        onChange={(e) => setForm({ ...form, banner_display_time: parseInt(e.target.value) })}
-                        disabled={!isAdmin}
-                        className="w-full h-1.5 bg-muted-foreground/20 rounded-lg appearance-none cursor-pointer accent-primary"
+                        onChange={(e) => setForm({ ...form, banner_display_time: parseInt(e.target.value) })}                        className="w-full h-1.5 bg-muted-foreground/20 rounded-lg appearance-none cursor-pointer accent-primary"
                       />
                       
                     </div>
