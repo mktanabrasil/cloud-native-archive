@@ -177,6 +177,16 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
    */
   const ajusteRef = useRef<((e: AppEvent) => AppEvent) | null>(null);
   const avisoRef = useRef<{ titulo: string; descricao: string } | null>(null);
+  /**
+   * O formulário como estava ao abrir, para saber se algo foi mexido.
+   *
+   * Esc, clique fora e "Cancelar" fechavam na hora e levavam tudo junto: nove
+   * obrigatórios, quatro grupos de interruptores, listas. Um Esc para fechar
+   * o seletor de data no momento errado apagava minutos de trabalho. Agora,
+   * com algo digitado, fechar pergunta antes.
+   */
+  const inicialRef = useRef<string>('');
+  const [confirmarSaida, setConfirmarSaida] = useState(false);
 
   const isEditing = !!event;
   /** Revisão só faz sentido para quem publica, sobre um evento que existe. */
@@ -244,14 +254,19 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       // Hora local, e não `toISOString().slice(0, 16)`: aquilo era UTC num
       // campo que fala hora local, e cada edição adiantava o evento em 3 h.
       // Ver `horaLocal.ts`.
-      setForm({
+      const aberto = {
         ...event,
         start_datetime: paraCampoDataHora(event.start_datetime),
         end_datetime: paraCampoDataHora(event.end_datetime),
-      });
+      };
+      setForm(aberto);
+      inicialRef.current = JSON.stringify(aberto);
     } else {
-      setForm({ ...emptyEvent(), unit: (unit as Unit) || 'DIC' });
+      const vazio = { ...emptyEvent(), unit: (unit as Unit) || 'DIC' };
+      setForm(vazio);
+      inicialRef.current = JSON.stringify(vazio);
     }
+    setConfirmarSaida(false);
     // Ao editar um evento que já possui slug, preserva o valor existente.
     setSlugMode(event?.slug ? 'custom' : 'auto');
     setShowSlugPrompt(false);
@@ -266,6 +281,50 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     ajusteRef.current = null;
     avisoRef.current = null;
   }, [event, open]);
+
+  /**
+   * O que a pessoa mexeu, sem o que a tela derivou sozinha.
+   *
+   * Em modo automático o slug nasce do título — inclusive ao abrir um evento
+   * antigo que não tinha slug, o que faria o formulário parecer alterado
+   * antes de qualquer tecla. Mudança de título já conta pelo título.
+   */
+  const soOQueElaMexeu = (obj: Record<string, unknown>): Record<string, unknown> => {
+    if (slugMode !== 'auto') return obj;
+    const { slug: _slug, ...resto } = obj;
+    return resto;
+  };
+
+  const camposMexidosLista = (): string[] => {
+    if (!inicialRef.current) return [];
+    const inicial = soOQueElaMexeu(JSON.parse(inicialRef.current) as Record<string, unknown>);
+    const atual = soOQueElaMexeu(form as Record<string, unknown>);
+    return Object.keys({ ...inicial, ...atual }).filter(k => JSON.stringify(inicial[k]) !== JSON.stringify(atual[k]));
+  };
+
+  /** Algo mudou desde que abriu. */
+  const mexido = camposMexidosLista().length > 0;
+
+  /** Quantos campos diferem do que estava ao abrir — para a pergunta dizer o tamanho da perda. */
+  const camposMexidos = (): number => camposMexidosLista().length;
+
+  /**
+   * Todo caminho de fechar passa aqui: Esc, clique fora, "Cancelar".
+   * Salvar com sucesso chama `onOpenChange(false)` direto — não pergunta.
+   */
+  const pedirParaFechar = (aberto: boolean) => {
+    if (aberto) return onOpenChange(true);
+    if (mexido && !salvando) {
+      setConfirmarSaida(true);
+      return;
+    }
+    onOpenChange(false);
+  };
+
+  const descartar = () => {
+    setConfirmarSaida(false);
+    onOpenChange(false);
+  };
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
@@ -526,7 +585,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={pedirParaFechar}>
       <DialogContent className={`max-h-[95vh] overflow-y-auto ${isAdmin ? 'sm:max-w-[95vw] lg:max-w-[90vw]' : 'sm:max-w-lg'}`}>
         <DialogHeader>
           <div className="flex justify-between items-center pr-8">
@@ -1482,7 +1541,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
 
             {!showConflictAlert && emRevisao && (
               <DialogFooter className="sticky bottom-0 bg-background pt-4 pb-2 gap-2">
-                <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+                <Button variant="outline" onClick={() => pedirParaFechar(false)}>Cancelar</Button>
                 <Button variant="outline" onClick={() => setDevolvendo(true)} disabled={salvando}>
                   Devolver com observação
                 </Button>
@@ -1495,7 +1554,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
 
             {!showConflictAlert && !emRevisao && (
               <DialogFooter className="sticky bottom-0 bg-background pt-4 pb-2">
-                <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+                <Button variant="outline" onClick={() => pedirParaFechar(false)}>Cancelar</Button>
                 {/* A contagem no botão é o que responde "por que não salvou?"
                     sem obrigar a pessoa a caçar campo pela tela. */}
                 <Button onClick={() => handleSubmit()} disabled={salvando || travadoParaEla}>
@@ -1595,6 +1654,30 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
           )}
         </div>
       </DialogContent>
+
+      <AlertDialog open={confirmarSaida} onOpenChange={setConfirmarSaida}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{isEditing ? 'Descartar as alterações?' : 'Descartar esta programação?'}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {(() => {
+                const n = camposMexidos();
+                const titulo = form.title?.trim();
+                const oque = titulo ? ` de “${titulo}”` : '';
+                return isEditing
+                  ? `Você alterou ${n} ${n === 1 ? 'campo' : 'campos'}${oque}. Se sair agora, o evento fica como estava.`
+                  : `Você preencheu ${n} ${n === 1 ? 'campo' : 'campos'}${oque}. Se sair agora, isso se perde.`;
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continuar editando</AlertDialogCancel>
+            <AlertDialogAction onClick={descartar} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Descartar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={devolvendo} onOpenChange={setDevolvendo}>
         <AlertDialogContent>

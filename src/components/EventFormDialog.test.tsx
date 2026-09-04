@@ -277,6 +277,77 @@ describe('a gestora envia para aprovação', () => {
   });
 });
 
+describe('fechar sem querer', () => {
+  const cancelar = () => fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+  it('sem nada digitado, fecha na hora', () => {
+    abrir();
+
+    cancelar();
+
+    expect(fechou).toHaveBeenCalledWith(false);
+    expect(screen.queryByText(/descartar esta programação/i)).not.toBeInTheDocument();
+  });
+
+  it('com algo digitado, pergunta — e “Continuar editando” mantém tudo', () => {
+    abrir();
+    fireEvent.change(screen.getByPlaceholderText(/nome do evento/i), { target: { value: 'Festa da Primavera' } });
+    fireEvent.change(screen.getByPlaceholderText(/local do evento/i), { target: { value: 'Quadra' } });
+
+    cancelar();
+
+    expect(fechou).not.toHaveBeenCalled();
+    expect(screen.getByText('Descartar esta programação?')).toBeInTheDocument();
+    // título + local; o slug que o título gera sozinho não conta
+    expect(screen.getByText(/você preencheu 2 campos de “Festa da Primavera”/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /continuar editando/i }));
+
+    expect(fechou).not.toHaveBeenCalled();
+    expect(screen.getByDisplayValue('Festa da Primavera')).toBeInTheDocument();
+  });
+
+  it('“Descartar” fecha de verdade', () => {
+    abrir();
+    fireEvent.change(screen.getByPlaceholderText(/nome do evento/i), { target: { value: 'Festa' } });
+
+    cancelar();
+    fireEvent.click(screen.getByRole('button', { name: 'Descartar' }));
+
+    expect(fechou).toHaveBeenCalledWith(false);
+  });
+
+  it('Esc também pergunta', () => {
+    abrir();
+    fireEvent.change(screen.getByPlaceholderText(/nome do evento/i), { target: { value: 'Festa' } });
+
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+
+    expect(fechou).not.toHaveBeenCalled();
+    expect(screen.getByText('Descartar esta programação?')).toBeInTheDocument();
+  });
+
+  it('ao editar, a pergunta fala em alterações e o que fica é o evento como estava', () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    render(<EventFormDialog open onOpenChange={fechou} event={eventoGravado()} />);
+    fireEvent.change(screen.getByPlaceholderText(/local do evento/i), { target: { value: 'Quadra' } });
+
+    cancelar();
+
+    expect(screen.getByText('Descartar as alterações?')).toBeInTheDocument();
+    expect(screen.getByText(/você alterou 1 campo de/i)).toBeInTheDocument();
+  });
+
+  it('abrir e cancelar um evento gravado não pergunta', () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    render(<EventFormDialog open onOpenChange={fechou} event={eventoGravado()} />);
+
+    cancelar();
+
+    expect(fechou).toHaveBeenCalledWith(false);
+  });
+});
+
 describe('o admin revisa um pedido', () => {
   const pedido = (): AppEvent => ({
     ...eventoGravado(),
