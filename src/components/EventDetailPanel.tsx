@@ -140,7 +140,10 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
                   <Megaphone className="h-4 w-4 text-primary" />
                   <span className="text-sm font-medium text-foreground">Solicitação de Marketing</span>
                 </div>
-                {event.marketing_items && event.marketing_items.length > 0 ? (
+                {event.marketing_coverage && (
+                  <p className="text-xs text-blue-900">Cobertura fotográfica e/ou vídeo solicitada.</p>
+                )}
+                {event.marketing_items && event.marketing_items.length > 0 && (
                   <div className="space-y-2">
                     {event.marketing_items.map((item, idx) => (
                       <div key={idx} className="rounded-lg border border-blue-100 bg-blue-50/30 p-2 text-[11px] text-blue-900">
@@ -149,11 +152,11 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
                       </div>
                     ))}
                   </div>
-                ) : event.marketing_info && (
-                  <div className="rounded-lg border border-blue-100 bg-blue-50/30 p-2 text-xs text-blue-900">
-                    <p className="font-semibold mb-1">Detalhes da Arte:</p>
-                    <p className="whitespace-pre-wrap">{event.marketing_info}</p>
-                  </div>
+                )}
+                {event.printed_materials && (
+                  <p className="text-xs text-muted-foreground">
+                    Já existe: <span className="font-medium text-foreground break-all">{event.printed_materials}</span>
+                  </p>
                 )}
               </div>
             )}
