@@ -14,6 +14,7 @@ import type { AppEvent } from '@/types';
 const espiao = vi.hoisted(() => ({
   papel: { userName: 'Quem preenche', unit: 'DIC', isAdmin: false, isMarketing: false },
   addEvent: vi.fn(),
+  updateEvent: vi.fn(),
 }));
 
 vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => espiao.papel }));
@@ -21,7 +22,7 @@ vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => espiao.papel }));
 vi.mock('@/contexts/AppContext', () => ({
   useApp: () => ({
     addEvent: espiao.addEvent,
-    updateEvent: vi.fn(),
+    updateEvent: espiao.updateEvent,
     detectConflicts: () => [],
     setSelectedEvent: vi.fn(),
     events: [] as AppEvent[],
@@ -46,7 +47,41 @@ beforeEach(() => {
   espiao.papel = { userName: 'Quem preenche', unit: 'DIC', isAdmin: false, isMarketing: false };
   espiao.addEvent.mockClear();
   espiao.addEvent.mockResolvedValue(undefined);
+  espiao.updateEvent.mockClear();
+  espiao.updateEvent.mockResolvedValue(undefined);
   fechou.mockClear();
+});
+
+/** Um evento já gravado, válido, para abrir em modo de edição. */
+const eventoGravado = (): AppEvent => ({
+  id: 'ev-1',
+  title: 'Festa Encerramento mês férias',
+  description: '',
+  unit: 'DIC',
+  event_type: 'evento institucional',
+  start_datetime: '2025-07-31T11:00:00.000Z',
+  end_datetime: '2025-07-31T15:00:00.000Z',
+  location: 'Pátio',
+  status: 'confirmado',
+  visibility: 'interno',
+  has_conflict: false,
+  created_by: 'MKT ANA',
+  created_at: '2026-05-21T12:00:00.000Z',
+  updated_at: '2026-05-21T12:00:00.000Z',
+  notes: '',
+  marketing_request: false,
+  partner_involved: false,
+  partner_type: '',
+  partner_name: '',
+  partners: [],
+  has_unit_collaboration: false,
+  collaborating_units: [],
+  external_collaborators: [],
+  attachments: [],
+  target_audience: 'Os atendidos',
+  support_team: 'Funcionários',
+  food_logistics: 'Nenhum',
+  equipment_needed: 'Nenhum',
 });
 
 /** Deixa o formulário válido: título, datas, local e os quatro de logística. */
@@ -185,6 +220,34 @@ describe('quando dá certo', () => {
 
     await waitFor(() => expect(fechou).toHaveBeenCalled());
     expect(espiao.addEvent).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('editar sem mexer nas datas', () => {
+  it('salva a mesma data que abriu', async () => {
+    // Antes: o campo abria em UTC (`toISOString().slice(0,16)`) e salvava em
+    // hora local. Em Brasília, cada "Salvar Alterações" adiantava 3 horas.
+    const evento = eventoGravado();
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
+
+    await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalled());
+    const salvo = espiao.updateEvent.mock.calls[0][0] as AppEvent;
+    expect(salvo.start_datetime).toBe(evento.start_datetime);
+    expect(salvo.end_datetime).toBe(evento.end_datetime);
+  });
+
+  it('mostra no campo a hora local do evento', () => {
+    const evento = eventoGravado();
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+
+    const inicio = new Date(evento.start_datetime);
+    const hh = String(inicio.getHours()).padStart(2, '0');
+    const campo = document.querySelector('input[type="datetime-local"]') as HTMLInputElement;
+
+    expect(campo.value).toMatch(new RegExp(`T${hh}:00$`));
+    expect(screen.getByText(/horários no fuso deste computador/i)).toBeInTheDocument();
   });
 });
 
