@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { linkPublicoDoEvento } from '@/lib/events/linkPublico';
 import { motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
+import { ROTULO_DA_COBERTURA, estadoDaCobertura } from '@/lib/events/cobertura';
 
 interface Props {
   open: boolean;
@@ -220,9 +221,22 @@ export function EventDetailDialog({ open, onOpenChange, event }: Props) {
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest flex items-center gap-1.5">
                               <CheckCircle2 className="h-3 w-3 text-blue-500" /> Cobertura do Evento Solicitada
                             </p>
-                            <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-                              <p className="text-blue-900 text-sm font-medium italic opacity-80">
-                                Foi solicitada a cobertura fotográfica e de vídeo para este evento.
+                            <div className="bg-blue-50 rounded-xl p-4 border border-blue-100 space-y-2">
+                              <p className="text-blue-900 text-sm font-medium">
+                                Cobertura fotográfica e/ou vídeo solicitada pela unidade.
+                              </p>
+                              {(() => {
+                                const estado = estadoDaCobertura(event);
+                                if (estado === 'nao-pedida') return null;
+                                const classe = estado === 'confirmada'
+                                  ? 'bg-success/15 text-success border-success/40'
+                                  : estado === 'sem-marketing'
+                                    ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                    : 'bg-white text-muted-foreground border-border';
+                                return <Badge variant="outline" className={`text-[11px] font-medium ${classe}`}>{ROTULO_DA_COBERTURA[estado]}</Badge>;
+                              })()}
+                              <p className="text-[11px] text-blue-900/80">
+                                Em todo caso, a unidade registra o evento (fotos e vídeos pelo celular) e envia o material ao marketing.
                               </p>
                             </div>
                           </div>

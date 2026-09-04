@@ -1,4 +1,5 @@
 import { TRANSPORT_VEHICLES, type AppEvent, type TransportVehicle } from '@/types';
+import { vagaDoMarketing } from './cobertura';
 
 /**
  * A conta do transporte, num lugar só.
@@ -22,7 +23,7 @@ import { TRANSPORT_VEHICLES, type AppEvent, type TransportVehicle } from '@/type
 type CamposDeTransporte = Pick<
   AppEvent,
   | 'transport_needed' | 'transport_vehicle' | 'transport_support_vehicle' | 'transport_passengers'
-  | 'transport_extra_equipment' | 'transport_external_support' | 'marketing_request' | 'marketing_coverage'
+  | 'transport_extra_equipment' | 'transport_external_support' | 'marketing_request' | 'marketing_coverage' | 'marketing_confirmed'
 >;
 
 export interface Veiculo {
@@ -59,7 +60,8 @@ export const apoiosPossiveis = (principal: TransportVehicle | '' | null | undefi
 /** Quantos vão, contando a vaga do marketing quando a cobertura foi pedida. */
 export function totalDePessoas(e: Partial<CamposDeTransporte>): { passageiros: number; vagaMarketing: number; total: number } {
   const passageiros = Number(e.transport_passengers) || 0;
-  const vagaMarketing = e.marketing_request && e.marketing_coverage ? 1 : 0;
+  // A vaga existe enquanto a cobertura foi pedida e o marketing não disse não.
+  const vagaMarketing = vagaDoMarketing(e);
   return { passageiros, vagaMarketing, total: passageiros + vagaMarketing };
 }
 

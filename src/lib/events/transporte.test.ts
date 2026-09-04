@@ -17,6 +17,11 @@ describe('totalDePessoas', () => {
     expect(totalDePessoas({ transport_passengers: 8, marketing_request: true, marketing_coverage: false }).total).toBe(8);
     expect(totalDePessoas({ transport_passengers: 8, marketing_request: false, marketing_coverage: true }).total).toBe(8);
   });
+
+  it('com o não do marketing, a vaga sai; a confirmar, fica reservada', () => {
+    expect(totalDePessoas({ transport_passengers: 8, marketing_request: true, marketing_coverage: true, marketing_confirmed: false }).total).toBe(8);
+    expect(totalDePessoas({ transport_passengers: 8, marketing_request: true, marketing_coverage: true, marketing_confirmed: null }).total).toBe(9);
+  });
 });
 
 describe('sugerirTransporte', () => {
