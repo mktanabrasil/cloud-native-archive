@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { linkPublicoDoEvento } from '@/lib/events/linkPublico';
+import { motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
 
 interface Props {
   open: boolean;
@@ -123,7 +124,7 @@ export function EventDetailDialog({ open, onOpenChange, event }: Props) {
                   estão vazios nos eventos públicos, então ninguém viu nada — mas
                   bastava alguém preencher "Alimentação". */}
               {isInternalView &&
-                (event.target_audience || event.support_team || event.food_logistics || event.equipment_needed || event.printed_materials) && (
+                (event.target_audience || event.support_team || event.food_logistics || event.equipment_needed || event.printed_materials || event.transport_needed) && (
                 <div className="pt-6 border-t border-border space-y-4">
                   <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Logística e Apoio</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -157,6 +158,18 @@ export function EventDetailDialog({ open, onOpenChange, event }: Props) {
                         <p className="text-foreground">{event.printed_materials}</p>
                       </div>
                     )}
+                    {(() => {
+                      const t = resumoDoTransporte(event);
+                      if (!t) return null;
+                      const apoio = motivoDoApoio(t);
+                      return (
+                        <div className="col-span-1 md:col-span-2">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Transporte</p>
+                          <p className="text-foreground">{t.texto}</p>
+                          {apoio && <p className="text-xs font-medium text-destructive">{apoio}</p>}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               )}

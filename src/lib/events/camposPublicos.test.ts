@@ -29,6 +29,11 @@ const PROIBIDOS = [
   'transport_needed',
   'transport_vehicle',
   'transport_passengers',
+  'transport_extra_equipment',
+  'submitted_at',
+  'reviewed_at',
+  'reviewed_by',
+  'review_note',
   'attachments',
   'external_id',
 ];

@@ -87,6 +87,8 @@ export interface AppEvent {
   transport_needed?: boolean;
   transport_vehicle?: TransportVehicle | '';
   transport_passengers?: number;
+  /** Leva equipamentos/materiais volumosos: pede veículo de apoio. */
+  transport_extra_equipment?: boolean;
   /**
    * O pedido de aprovação. A gestora envia (`submitted_at`), o admin geral
    * confirma ou devolve (`reviewed_*`, `review_note`). Nulos num evento que

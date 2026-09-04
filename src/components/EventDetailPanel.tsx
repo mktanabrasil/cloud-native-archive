@@ -7,7 +7,8 @@ import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, Trash2, Megaphone, Users, Paperclip, Globe, Lock } from 'lucide-react';
+import { Pencil, Trash2, Megaphone, Users, Paperclip, Globe, Lock, Truck, AlertTriangle } from 'lucide-react';
+import { motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
 
 const unitBadgeColors: Record<Unit, string> = {
   'DIC': 'bg-unit-dic text-primary-foreground',
@@ -100,6 +101,20 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
                 <p className="text-sm text-muted-foreground">{event.notes}</p>
               </div>
             )}
+            {(() => {
+              const t = resumoDoTransporte(event);
+              if (!t) return null;
+              const apoio = motivoDoApoio(t);
+              return (
+                <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-3 space-y-1">
+                  <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><Truck className="h-3.5 w-3.5" /> Transporte</p>
+                  <p className="text-sm text-foreground">{t.texto}</p>
+                  {apoio && (
+                    <p className="text-[11px] font-medium text-destructive flex items-center gap-1.5"><AlertTriangle className="h-3 w-3" /> {apoio}</p>
+                  )}
+                </div>
+              );
+            })()}
             {(event.target_audience || event.support_team || event.food_logistics || event.equipment_needed || event.printed_materials) && (
               <div className="rounded-xl border border-border p-4 space-y-3 bg-muted/10">
                 <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 mb-2">
