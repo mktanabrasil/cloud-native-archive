@@ -18,6 +18,16 @@ export type PermissionLevel = 'admin_geral' | 'gestor_unidade' | 'eventos_parcei
 
 export type PartnerType = 'padrinho' | 'doador' | 'empresa' | 'figura_publica' | 'outro' | '';
 
+export interface Anexo {
+  url: string;
+  /** O nome que a pessoa deu ao arquivo — "oficio-secretaria.pdf", não "2rdksrr22q.png". */
+  name: string;
+  /** Em bytes. Zero quando não sabemos (anexo antigo). */
+  size: number;
+  /** MIME, quando o navegador informou. */
+  type: string;
+}
+
 export interface AppEvent {
   id: string;
   title: string;
@@ -44,7 +54,11 @@ export interface AppEvent {
   has_unit_collaboration: boolean;
   collaborating_units: Unit[];
   external_collaborators: Array<string | { name: string; details: string }>;
-  attachments: string[]; // URLs of uploaded files
+  /**
+   * Anexos: os antigos são só a URL (nome aleatório na raiz do balde); os
+   * novos trazem nome, tamanho e tipo. `normalizarAnexo()` iguala os dois.
+   */
+  attachments: Array<string | Anexo>;
   banner_url_desktop?: string;
   banner_url_mobile?: string;
   banner_image_desktop?: string;
