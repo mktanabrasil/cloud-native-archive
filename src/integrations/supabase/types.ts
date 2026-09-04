@@ -128,6 +128,7 @@ export type Database = {
           notes: string | null
           submitted_at: string | null
           transport_extra_equipment: boolean
+          transport_support_vehicle: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           review_note: string | null
@@ -189,6 +190,7 @@ export type Database = {
           notes?: string | null
           submitted_at?: string | null
           transport_extra_equipment?: boolean
+          transport_support_vehicle?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           review_note?: string | null
@@ -250,6 +252,7 @@ export type Database = {
           notes?: string | null
           submitted_at?: string | null
           transport_extra_equipment?: boolean
+          transport_support_vehicle?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           review_note?: string | null

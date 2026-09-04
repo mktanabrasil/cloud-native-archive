@@ -424,15 +424,74 @@ describe('transporte', () => {
 
   it('"leva volumosos" é gravado, e desligar o transporte zera tudo', async () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
-    const evento = { ...eventoGravado(), transport_needed: true, transport_vehicle: 'van' as const, transport_passengers: 14 };
+    // 10 na VAN (14 lugares): com folga, o único motivo é o dos volumosos.
+    const evento = { ...eventoGravado(), transport_needed: true, transport_vehicle: 'van' as const, transport_passengers: 10 };
     render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
 
     fireEvent.click(screen.getByRole('switch', { name: /leva equipamentos\/materiais volumosos/i }));
-    expect(screen.getByText(/transporte de equipamentos — contabilize um veículo de apoio/i)).toBeInTheDocument();
+    expect(screen.getByText(/volumosos vão no utilitário/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
     await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalled());
     expect((espiao.updateEvent.mock.calls[0][0] as AppEvent).transport_extra_equipment).toBe(true);
+  });
+
+  it('o pedido de marketing vem antes do transporte, e a cobertura entra na conta', () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    const marketing = screen.getByRole('switch', { name: /solicitação de marketing/i });
+    const transporte = screen.getByRole('switch', { name: /logística de transporte/i });
+    // marketing precede transporte no documento
+    expect(marketing.compareDocumentPosition(transporte) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    fireEvent.click(transporte);
+    fireEvent.change(screen.getByLabelText(/quantas pessoas vão/i), { target: { value: '13' } });
+    expect(screen.getByTestId('conta-do-transporte')).toHaveTextContent('13 passageiros · sem vaga do marketing');
+
+    fireEvent.click(marketing);
+    fireEvent.click(screen.getByRole('switch', { name: /solicitar cobertura do evento/i }));
+    expect(screen.getByTestId('conta-do-transporte')).toHaveTextContent('13 + 1 do marketing (cobertura pedida) = 14');
+    // o aviso antigo em duplicata, dentro do marketing, saiu
+    expect(screen.queryByText(/1 vaga do marketing está sendo contabilizada/i)).not.toBeInTheDocument();
+  });
+
+  it('sugere o menor veículo que cabe, e "Usar sugestão" preenche', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    preencher();
+    fireEvent.click(screen.getByRole('switch', { name: /logística de transporte/i }));
+    fireEvent.change(screen.getByLabelText(/quantas pessoas vão/i), { target: { value: '8' } });
+
+    expect(screen.getByText('Sugestão: Kombi')).toBeInTheDocument();
+    expect(screen.getByText(/8 de 11 lugares para passageiros \(12 assentos, 1 do motorista\)/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /usar sugestão/i }));
+    expect(screen.queryByText('Sugestão: Kombi')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
+    const salvo = espiao.addEvent.mock.calls[0][0] as AppEvent;
+    expect(salvo.transport_vehicle).toBe('kombi');
+    expect(salvo.transport_support_vehicle).toBeNull();
+    expect(salvo.transport_passengers).toBe(8);
+  });
+
+  it('acima da VAN sugere apoio, e sem apoio o envio para', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    const evento = { ...eventoGravado(), transport_needed: true, transport_vehicle: 'van' as const, transport_passengers: 17 };
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+
+    expect(screen.getByText('Sugestão: VAN + Kombi de apoio')).toBeInTheDocument();
+    expect(screen.getByText(/faltam 3 lugares/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
+    expect(espiao.updateEvent).not.toHaveBeenCalled();
+    expect(screen.getAllByText(/não cabem 17 no van/i).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: /usar sugestão/i }));
+    fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
+    await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalled());
+    expect((espiao.updateEvent.mock.calls[0][0] as AppEvent).transport_support_vehicle).toBe('kombi');
   });
 
   it('desligado, nada é cobrado nem gravado', async () => {
@@ -449,6 +508,7 @@ describe('transporte', () => {
     expect(salvo.transport_vehicle).toBe('');
     expect(salvo.transport_passengers).toBe(0);
     expect(salvo.transport_extra_equipment).toBe(false);
+    expect(salvo.transport_support_vehicle).toBeNull();
   });
 });
 
