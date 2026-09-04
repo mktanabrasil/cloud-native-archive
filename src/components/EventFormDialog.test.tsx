@@ -277,6 +277,28 @@ describe('a gestora envia para aprovação', () => {
   });
 });
 
+describe('materiais impressos', () => {
+  it('o campo mora no bloco de marketing e grava em printed_materials', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    preencher();
+    expect(screen.queryByLabelText(/materiais impressos já existentes/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('switch', { name: /solicitação de marketing/i }));
+    fireEvent.click(screen.getByRole('switch', { name: /solicitar cobertura do evento/i }));
+    fireEvent.change(screen.getByLabelText(/materiais impressos já existentes/i), {
+      target: { value: '  https://drive.google.com/open?id=1Oygl  ' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
+    const salvo = espiao.addEvent.mock.calls[0][0] as AppEvent & { marketing_info?: unknown };
+    expect(salvo.printed_materials).toBe('https://drive.google.com/open?id=1Oygl');
+    expect('marketing_info' in salvo).toBe(false);
+  });
+});
+
 describe('transporte', () => {
   it('ligado sem veículo e sem gente, o envio para e diz o que falta', () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };

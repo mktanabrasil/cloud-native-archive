@@ -156,7 +156,6 @@ const emptyEvent = (): Partial<AppEvent> => ({
   support_team: '',
   food_logistics: '',
   food_details: '',
-  marketing_info: '',
   printed_materials: '',
   equipment_needed: '',
   marketing_items: [],
@@ -460,8 +459,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       support_team: form.support_team || '',
       food_logistics: form.food_logistics || '',
       food_details: form.food_details || '',
-      marketing_info: form.marketing_info || '',
-      printed_materials: form.printed_materials || '',
+      // `marketing_info` deixou de ser gravado: nenhuma linha o usava (0/108
+      // em 04/09/2026) e não havia campo. A coluna fica no banco até um DROP.
+      printed_materials: form.printed_materials?.trim() || '',
       equipment_needed: form.equipment_needed || '',
       marketing_items: form.marketing_items || [],
       marketing_coverage: form.marketing_coverage || false,
@@ -1396,6 +1396,24 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                           })}
                         </div>
                         {errors.marketing_items && <p className="mt-1 text-xs text-destructive">{errors.marketing_items}</p>}
+
+                        {/* A coluna existia e o detalhe a exibia ("Materiais
+                            Impressos"), mas não havia onde escrever: o único
+                            valor entrou por migração. Aqui, junto do pedido de
+                            marketing, é onde a pessoa diz o que já está pronto. */}
+                        <div className="pt-2 border-t border-blue-100">
+                          <Label htmlFor="printed_materials" className="text-xs font-medium mb-1 block text-blue-900">
+                            Materiais impressos já existentes <span className="font-normal text-muted-foreground">(opcional)</span>
+                          </Label>
+                          <Input
+                            id="printed_materials"
+                            value={form.printed_materials || ''}
+                            onChange={e => setForm({ ...form, printed_materials: e.target.value })}
+                            placeholder="Link ou descrição: cartaz, folder, lista de presença…"
+                            className="bg-background h-9 text-sm"
+                          />
+                          <p className="text-[11px] text-muted-foreground mt-1">O que já está pronto, para o marketing não refazer.</p>
+                        </div>
                       </div>
                     </div>
                   )}

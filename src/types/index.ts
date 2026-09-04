@@ -79,7 +79,7 @@ export interface AppEvent {
   food_logistics?: string;
   /** Texto livre da alimentação: quantas pessoas, restrição, horário. */
   food_details?: string;
-  marketing_info?: string;
+  /** Cartaz, folder, lista que já existem: link ou descrição. Editado no bloco de marketing. */
   printed_materials?: string;
   equipment_needed?: string;
   marketing_items?: Array<{ type: 'cobertura' | 'demanda_grafica'; item: string; description: string }>;

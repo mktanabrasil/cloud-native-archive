@@ -212,7 +212,7 @@ export function EventDetailDialog({ open, onOpenChange, event }: Props) {
                     <h3 className="text-sm font-bold uppercase tracking-wider text-blue-500">Solicitação de Marketing</h3>
                   </div>
                   <div className="grid grid-cols-1 gap-6">
-                    {(event.marketing_coverage || (event.marketing_items && event.marketing_items.length > 0)) ? (
+                    {(event.marketing_coverage || (event.marketing_items && event.marketing_items.length > 0)) && (
                       <div className="space-y-6">
                         {/* Cobertura */}
                         {event.marketing_coverage && (
@@ -243,21 +243,15 @@ export function EventDetailDialog({ open, onOpenChange, event }: Props) {
                           </div>
                         )}
                       </div>
-                    ) : (
-                      <>
-                        {event.marketing_info && (
-                          <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-                            <p className="text-xs font-bold text-blue-700 uppercase tracking-tighter mb-2">Minuta / Briefing da Arte</p>
-                            <p className="text-blue-900 text-sm whitespace-pre-wrap leading-relaxed">{event.marketing_info}</p>
-                          </div>
-                        )}
-                        {event.printed_materials && (
-                          <div className="bg-muted/50 rounded-xl p-4 border border-border">
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-tighter mb-1">Materiais Impressos Necessários</p>
-                            <p className="text-foreground text-sm">{event.printed_materials}</p>
-                          </div>
-                        )}
-                      </>
+                    )}
+                    {/* O que já está pronto, para o marketing não refazer. Aparece
+                        junto do pedido, seja qual for o pedido. `marketing_info`
+                        saiu: nunca teve campo nem dado. */}
+                    {event.printed_materials && (
+                      <div className="bg-muted/50 rounded-xl p-4 border border-border">
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-tighter mb-1">Materiais impressos já existentes</p>
+                        <p className="text-foreground text-sm break-all">{event.printed_materials}</p>
+                      </div>
                     )}
                   </div>
                 </div>
