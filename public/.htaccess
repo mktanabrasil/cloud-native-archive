@@ -20,6 +20,32 @@
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
 
+  # Arquivo que não existe em /assets/ é 404 de verdade. Sem isto, o fallback
+  # abaixo entregava o index.html com código 200 para qualquer nome de bundle
+  # — o navegador recebia HTML no lugar de JavaScript e quem conferia a
+  # publicação achava que o arquivo existia (08/09/2026).
+  RewriteRule ^assets/ - [R=404,L]
+
   # Todo o resto entrega o index.html, e o React resolve a rota.
   RewriteRule . /index.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  # O index.html não tem hash no nome: se o navegador o guardar, continua
+  # apontando para bundles antigos depois de uma publicação. Foi a causa do
+  # 404 intermitente de 21/08/2026. `no-cache` não proíbe guardar, só obriga
+  # a reconferir com o servidor a cada abertura. Os assets, que têm hash no
+  # nome, continuam com a semana de cache que o servidor já dá.
+  <Files "index.html">
+    Header set Cache-Control "no-cache"
+  </Files>
+
+  # Cabeçalhos de segurança sem efeito colateral. Quem pode embutir a página
+  # (frame-ancestors) ficou de fora de propósito: o site institucional usa o
+  # modo ?embed=true em iframe, e a lista de sites não foi confirmada.
+  Header set X-Content-Type-Options "nosniff"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+  # Seis meses. A Hostinger já redireciona para HTTPS; isto só formaliza.
+  Header set Strict-Transport-Security "max-age=15552000"
 </IfModule>
