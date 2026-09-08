@@ -69,6 +69,23 @@ describe('“Nenhum” em primeiro, e o resto some quando ele está ligado', () 
     expect(valor()).toBe('Nenhum');
   });
 
+  it('as opções escondidas continuam no DOM (para a transição), mas fora da acessibilidade e do clique', () => {
+    // A lista encolhe em 180 ms em vez de sumir num quadro; para isso os
+    // itens não podem ser desmontados. Escondidos, saem da árvore acessível.
+    render(<Palco opcoes={COMIDA} temNenhum inicial="Nenhum" />);
+
+    const todos = document.querySelectorAll('button[role="switch"]');
+    expect(todos).toHaveLength(6); // Nenhum + 4 opções + Outra coisa, todos no DOM
+    expect(screen.getAllByRole('switch')).toHaveLength(1); // só "Nenhum" acessível
+
+    const lista = document.querySelector('[aria-hidden="true"]') as HTMLElement;
+    expect(lista).not.toBeNull();
+    expect(lista.className).toMatch(/grid-rows-\[0fr\]/);
+    expect(lista.className).toMatch(/grid-template-rows_180ms_ease-out/);
+    expect(lista.className).toMatch(/motion-reduce:transition-none/);
+    expect((lista.firstElementChild as HTMLElement).className).toMatch(/pointer-events-none/);
+  });
+
   it('desligado, tudo volta na mesma ordem', () => {
     render(<Palco opcoes={COMIDA} temNenhum inicial="Nenhum" />);
     expect(screen.getAllByRole('switch')).toHaveLength(1);
