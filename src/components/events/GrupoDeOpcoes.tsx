@@ -126,7 +126,6 @@ export function GrupoDeOpcoes({
   // Ordem fixa: Nenhum · opções · Outro. Com "Nenhum" ligado, só ele fica.
   const nenhumLigado = temNenhum && escolhidos.includes('Nenhum');
   const demais = temNenhum ? opcoes.filter((o) => o !== 'Nenhum') : opcoes;
-  const ordenadas = temNenhum && opcoes.includes('Nenhum') ? ['Nenhum', ...demais] : opcoes;
   /** O "Outro" também conta como opção escondida. */
   const ocultas = demais.length + 1;
 
@@ -159,20 +158,41 @@ export function GrupoDeOpcoes({
       </Label>
 
       <div className="space-y-2">
-        {nenhumLigado ? (
-          <>
-            {linha('Nenhum')}
-            <p className="pl-3 text-[11px] text-muted-foreground" data-testid={`${id}-ocultas`}>
-              {ocultas} opções ocultas · desligue “Nenhum” para escolher
-            </p>
-          </>
-        ) : (
-          <div className="space-y-2 animate-in fade-in duration-150">
-            {ordenadas.map(linha)}
-          </div>
+        {/* "Nenhum" fica sempre visível, no topo, quando existe. */}
+        {temNenhum && opcoes.includes('Nenhum') && linha('Nenhum')}
+
+        {nenhumLigado && (
+          <p
+            className="pl-3 text-[11px] text-muted-foreground animate-in fade-in slide-in-from-top-1 duration-150 delay-75 fill-mode-backwards"
+            data-testid={`${id}-ocultas`}
+          >
+            {ocultas} opções ocultas · desligue “Nenhum” para escolher
+          </p>
         )}
 
-        {!nenhumLigado && (
+        {/*
+          As demais opções ficam no DOM e a lista encolhe/cresce em 180 ms:
+          `grid-template-rows` 1fr → 0fr no contêiner (sem medir altura em JS,
+          vale para qualquer número de opções e com o "Outro" aberto), e os
+          itens esmaecem e sobem 4 px em 150 ms. Fechada, a lista sai da
+          acessibilidade e do clique (`aria-hidden`, `invisible`,
+          `pointer-events-none`). Quem pediu "reduzir movimento" vê o corte
+          imediato. Aprovado em 08/09/2026 (quadro 20 dos mockups).
+        */}
+        <div
+          className={`grid ${nenhumLigado ? 'grid-rows-[0fr]' : 'grid-rows-[1fr]'} [transition:grid-template-rows_180ms_ease-out] motion-reduce:transition-none`}
+          aria-hidden={nenhumLigado || undefined}
+        >
+          <div
+            className={`min-h-0 overflow-hidden ${
+              nenhumLigado
+                ? 'invisible opacity-0 -translate-y-1 pointer-events-none [transition:opacity_150ms_ease-out,transform_180ms_ease-out,visibility_0s_linear_180ms]'
+                : 'visible opacity-100 translate-y-0 [transition:opacity_150ms_ease-out,transform_180ms_ease-out,visibility_0s]'
+            } motion-reduce:transition-none`}
+          >
+            <div className="space-y-2">
+              {demais.map(linha)}
+
         <div className="space-y-2 p-3 rounded-lg border border-border bg-card shadow-sm">
           <div className="flex items-center gap-3">
             <Switch id={`${id}-outro`} checked={mostraOutro} onCheckedChange={alternarOutro} />
@@ -194,7 +214,9 @@ export function GrupoDeOpcoes({
             </>
           )}
         </div>
-        )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {erro && <p className="mt-1 text-xs text-destructive">{erro}</p>}
