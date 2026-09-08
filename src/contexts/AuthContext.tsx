@@ -15,6 +15,10 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/** Troca o objeto só quando muda a identidade, ou quando entra ou sai. */
+const mesmaPessoa = (anterior: User | null, novo: User | null): User | null =>
+  anterior && novo && anterior.id === novo.id ? anterior : novo;
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -23,7 +27,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      setUser(session?.user ?? null);
+      // A mesma pessoa continua sendo o mesmo objeto. O Supabase avisa login e
+      // renovação de token a cada volta de aba; se cada aviso trocasse o
+      // objeto, tudo que depende de `user` recomeçaria (papel, rotas, telas).
+      setUser(prev => mesmaPessoa(prev, session?.user ?? null));
       setLoading(false);
     });
 

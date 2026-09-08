@@ -35,6 +35,20 @@ export function useUserRole() {
   const [delegatedUnits, setDelegatedUnits] = useState<string[]>([]);
   const [bondType, setBondType] = useState<string | null>(null);
 
+  /**
+   * O que identifica a pessoa, e não o objeto que a carrega.
+   *
+   * Ao voltar de outra aba, o Supabase reconfere a sessão e avisa o app com um
+   * evento de login, mesmo sem nada ter mudado — e o contexto entrega um
+   * objeto de usuário novo para a mesma pessoa. Se o efeito abaixo dependesse
+   * do objeto, ele voltaria a `loading` e refaria as consultas a cada volta; a
+   * guarda da rota, enquanto isso, desmontava a página inteira, e no Jornal a
+   * unidade escolhida voltava para a geral (08/09/2026). Dependendo só do id,
+   * a mesma identidade não reinicia nada.
+   */
+  const userId = user?.id ?? null;
+  const userEmail = user?.email ?? null;
+  const userMetaName = (user?.user_metadata?.name as string | undefined) ?? null;
 
   useEffect(() => {
     // If a test persona is active, use it instead of real DB role
@@ -56,7 +70,7 @@ export function useUserRole() {
       return;
     }
 
-    if (!isAuthenticated || !user) {
+    if (!isAuthenticated || !userId) {
       setRole(null);
       setLoading(false);
       setAccessStatus(null);
@@ -70,14 +84,14 @@ export function useUserRole() {
       const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .maybeSingle();
 
       // Also check profile for permission_level and name
       const { data: profileData } = await supabase
         .from('profiles')
         .select('permission_level, name, is_active, view_restrictions, unit, delegated_units, is_beta_tester, bond_type')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .maybeSingle();
       
       if (profileData) {
@@ -89,14 +103,14 @@ export function useUserRole() {
         setUnit(profileData.unit);
         setDelegatedUnits(profileData.delegated_units as string[] || []);
         setBondType((profileData as any).bond_type || null);
-      } else if (user.user_metadata?.name) {
-        setUserName(user.user_metadata.name);
+      } else if (userMetaName) {
+        setUserName(userMetaName);
       } else {
-        setUserName(user.email || 'Usuário');
+        setUserName(userEmail || 'Usuário');
       }
 
       let effectiveRole = roleData?.role;
-      const isAdminEmail = user.email === 'mkt@anabrasil.org' || user.email === 'alyson-viana@hotmail.com' || user.email === 'contato@anabrasil.org' || user.email === 'transparencia@anabrasil.org';
+      const isAdminEmail = userEmail === 'mkt@anabrasil.org' || userEmail === 'alyson-viana@hotmail.com' || userEmail === 'contato@anabrasil.org' || userEmail === 'transparencia@anabrasil.org';
       
       if (isAdminEmail) {
         effectiveRole = 'admin';
@@ -116,7 +130,7 @@ export function useUserRole() {
         const { data: requestData } = await (supabase
           .from('access_requests') as any)
         .select('status')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .order('requested_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -128,7 +142,7 @@ export function useUserRole() {
     };
 
     fetchRole();
-  }, [user, isAuthenticated, activePersona]);
+  }, [userId, userEmail, userMetaName, isAuthenticated, activePersona]);
 
   const isAdminEmail = user?.email === 'mkt@anabrasil.org' || user?.email === 'alyson-viana@hotmail.com' || user?.email === 'contato@anabrasil.org' || user?.email === 'transparencia@anabrasil.org';
   const isAdmin = role === 'admin' || permissionLevel === 'admin_geral' || isAdminEmail;
