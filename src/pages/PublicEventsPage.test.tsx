@@ -529,3 +529,26 @@ describe('a imagem do card', () => {
     expect(screen.getByRole('img', { name: 'Com Capa' })).toHaveAttribute('src', 'https://exemplo/capa.jpg');
   });
 });
+
+describe('o rodapé', () => {
+  it('para o visitante, convida a conhecer a ANA', () => {
+    espiao.autenticado = false;
+    montar();
+
+    const rodape = screen.getByRole('contentinfo');
+    expect(rodape).toHaveTextContent('Construindo oportunidades para transformar vidas e inspirar voos mais altos.');
+    expect(rodape).toHaveTextContent(/© \d{4} ANA Brasil/);
+    expect(screen.getByRole('link', { name: /anabrasil\.org/i })).toHaveAttribute('href', 'https://anabrasil.org');
+    expect(screen.getByRole('link', { name: /@anabrasilorg/i })).toHaveAttribute('href', 'https://www.instagram.com/anabrasilorg');
+    expect(screen.getByRole('img', { name: 'ANA Brasil' })).toBeInTheDocument();
+  });
+
+  it('a equipe não o vê; com "Ver como visitante" ligado, vê', () => {
+    const equipe = montar();
+    expect(screen.queryByRole('contentinfo')).toBeNull();
+    equipe.unmount();
+
+    montar('/eventos?como=visitante');
+    expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+  });
+});
