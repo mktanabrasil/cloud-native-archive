@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { linkPublicoDoEvento } from '@/lib/events/linkPublico';
 import { motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
 import { ROTULO_DA_COBERTURA, estadoDaCobertura } from '@/lib/events/cobertura';
+import { ResumoDeItens } from './events/ResumoDeItens';
 
 interface Props {
   open: boolean;
@@ -141,13 +142,23 @@ export function EventDetailDialog({ open, onOpenChange, event }: Props) {
                         <p className="text-foreground">{event.support_team}</p>
                       </div>
                     )}
-                    {event.food_logistics && (
+                    {event.food_items && event.food_items.length > 0 ? (
+                      <div className="col-span-1 md:col-span-2"><ResumoDeItens titulo="Alimentação" itens={event.food_items} copiar /></div>
+                    ) : event.food_logistics && (
                       <div className="col-span-1 md:col-span-2">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Alimentação</p>
                         <p className="text-foreground whitespace-pre-wrap">{event.food_logistics}</p>
                       </div>
                     )}
-                    {event.equipment_needed && (
+                    {event.food_details && (
+                      <div className="col-span-1 md:col-span-2">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Observações gerais da alimentação</p>
+                        <p className="text-foreground whitespace-pre-wrap">{event.food_details}</p>
+                      </div>
+                    )}
+                    {event.equipment_items && event.equipment_items.length > 0 ? (
+                      <div className="col-span-1 md:col-span-2"><ResumoDeItens titulo="Equipamentos" itens={event.equipment_items} copiar /></div>
+                    ) : event.equipment_needed && (
                       <div>
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Equipamentos</p>
                         <p className="text-foreground">{event.equipment_needed}</p>

@@ -65,6 +65,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         external_collaborators: Array.isArray(e.external_collaborators) ? e.external_collaborators : [],
         partners: Array.isArray(e.partners) ? e.partners : [],
         marketing_items: Array.isArray(e.marketing_items) ? e.marketing_items : [],
+        food_items: Array.isArray(e.food_items) ? e.food_items : [],
+        equipment_items: Array.isArray(e.equipment_items) ? e.equipment_items : [],
       }));
       
       // A bandeira de conflito nasce aqui, das datas — o que veio na coluna

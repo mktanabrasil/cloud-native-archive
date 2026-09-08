@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Pencil, Trash2, Megaphone, Users, Paperclip, Globe, Lock, Truck, AlertTriangle } from 'lucide-react';
 import { motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
 import { ROTULO_DA_COBERTURA, estadoDaCobertura } from '@/lib/events/cobertura';
+import { ResumoDeItens } from './events/ResumoDeItens';
 
 const unitBadgeColors: Record<Unit, string> = {
   'DIC': 'bg-unit-dic text-primary-foreground',
@@ -124,13 +125,20 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
                 <div className="grid grid-cols-1 gap-3">
                   {event.target_audience && <DetailRow label="Público-Alvo" value={event.target_audience} />}
                   {event.support_team && <DetailRow label="Equipe de Apoio" value={event.support_team} />}
-                  {event.food_logistics && (
+                  {/* Por item, com detalhe, quando o evento tem a lista (desde
+                      08/09/2026); a string antiga é o fallback. */}
+                  {event.food_items && event.food_items.length > 0 ? (
+                    <ResumoDeItens titulo="Alimentação" itens={event.food_items} copiar />
+                  ) : event.food_logistics && (
                     <div>
                       <p className="text-xs font-semibold text-muted-foreground">Logística de Alimentação</p>
                       <p className="text-sm text-foreground whitespace-pre-wrap">{event.food_logistics}</p>
                     </div>
                   )}
-                  {event.equipment_needed && <DetailRow label="Equipamentos" value={event.equipment_needed} />}
+                  {event.food_details && <DetailRow label="Observações gerais da alimentação" value={event.food_details} />}
+                  {event.equipment_items && event.equipment_items.length > 0 ? (
+                    <ResumoDeItens titulo="Equipamentos" itens={event.equipment_items} copiar />
+                  ) : event.equipment_needed && <DetailRow label="Equipamentos" value={event.equipment_needed} />}
                   {event.printed_materials && <DetailRow label="Materiais Impressos" value={event.printed_materials} />}
                 </div>
               </div>

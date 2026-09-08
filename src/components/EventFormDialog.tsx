@@ -19,6 +19,9 @@ import { EventDetailDialog } from './EventDetailDialog';
 import { BannerMissingDialog } from './BannerMissingDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { GrupoDeOpcoes, normalizarOpcoes } from './events/GrupoDeOpcoes';
+import { ResumoDeItens } from './events/ResumoDeItens';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { OPCOES_COMIDA, OPCOES_EQUIP, comDetalhe, itensDeTexto, limparItens, sincronizarItens } from '@/lib/events/itens';
 import { TituloDoEvento } from './events/TituloDoEvento';
 import { paraCampoDataHora, rotuloDoFuso } from '@/lib/events/horaLocal';
 import { linkPublicoDoEvento, prefixoDoLinkPublico, proximoSlug } from '@/lib/events/linkPublico';
@@ -163,6 +166,8 @@ const emptyEvent = (): Partial<AppEvent> => ({
   target_audience: '',
   support_team: '',
   food_logistics: '',
+  food_items: [],
+  equipment_items: [],
   food_details: '',
   printed_materials: '',
   equipment_needed: '',
@@ -298,6 +303,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
         ...event,
         start_datetime: paraCampoDataHora(event.start_datetime),
         end_datetime: paraCampoDataHora(event.end_datetime),
+        // Evento de antes do modelo por item: a lista nasce da string, sem detalhes.
+        food_items: event.food_items?.length ? event.food_items : itensDeTexto(event.food_logistics, OPCOES_COMIDA),
+        equipment_items: event.equipment_items?.length ? event.equipment_items : itensDeTexto(event.equipment_needed, OPCOES_EQUIP),
       };
       setForm(aberto);
       inicialRef.current = JSON.stringify(aberto);
@@ -398,9 +406,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       errs.target_audience = 'Escreva qual público, ou desligue “Outro público”';
     if (outroAberto.apoio && outroVazio('support_team', ["Funcionários", "Voluntários"]))
       errs.support_team = 'Escreva qual equipe, ou desligue “Outra equipe”';
-    if (outroAberto.comida && outroVazio('food_logistics', ["Almoço", "Coffee Break", "Lanche", "Jantar", "Nenhum"]))
+    if (outroAberto.comida && outroVazio('food_logistics', OPCOES_COMIDA))
       errs.food_logistics = 'Escreva qual logística, ou desligue “Outra logística”';
-    if (outroAberto.equip && outroVazio('equipment_needed', ["Som", "Microfone", "Projetor", "Televisão", "Notebook", "Nenhum"]))
+    if (outroAberto.equip && outroVazio('equipment_needed', OPCOES_EQUIP))
       errs.equipment_needed = 'Escreva qual equipamento, ou desligue “Outro equipamento”';
     
     // Transporte ligado pede veículo e gente: sem isso a logística não sabe
@@ -508,7 +516,11 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       target_audience: normalizarOpcoes(form.target_audience),
       support_team: normalizarOpcoes(form.support_team),
       food_logistics: normalizarOpcoes(form.food_logistics),
-      food_details: form.food_details || '',
+      // A lista por item é a fonte; a string acima é derivada dela para as
+      // telas e a validação antigas. `limparItens` apara e limita a 300.
+      food_items: limparItens(sincronizarItens(form.food_logistics, form.food_items, OPCOES_COMIDA)),
+      equipment_items: limparItens(sincronizarItens(form.equipment_needed, form.equipment_items, OPCOES_EQUIP)),
+      food_details: form.food_details?.trim() || '',
       // `marketing_info` deixou de ser gravado: nenhuma linha o usava (0/108
       // em 04/09/2026) e não havia campo. A coluna fica no banco até um DROP.
       printed_materials: form.printed_materials?.trim() || '',
@@ -1225,9 +1237,14 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       <GrupoDeOpcoes
                         id="comida"
                         titulo="Logística de alimentação *"
-                        opcoes={["Almoço", "Coffee Break", "Lanche", "Jantar", "Nenhum"]}
+                        opcoes={OPCOES_COMIDA}
                         valor={form.food_logistics || ''}
-                        onChange={v => setForm({ ...form, food_logistics: v })}
+                        onChange={v => setForm({ ...form, food_logistics: v, food_items: sincronizarItens(v, form.food_items, OPCOES_COMIDA) })}
+                        detalhes={{
+                          itens: form.food_items || [],
+                          onDetalhe: (chave, texto) => setForm({ ...form, food_items: comDetalhe(sincronizarItens(form.food_logistics, form.food_items, OPCOES_COMIDA), chave, texto) }),
+                          pista: 'Para quantos, a que hora, cardápio, quem fornece…',
+                        }}
                         rotuloOutro="Outra logística"
                         pistaOutro="Especifique a alimentação..."
                         temNenhum
@@ -1240,24 +1257,31 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                           restrição alimentar, horário. Coluna própria, e não grudado
                           em `food_logistics` — misturar escolha com texto livre foi o
                           que tornou o `notes` ilegível. */}
+                      {/* O que não é de um item só: restrição do grupo, aviso da
+                          nutricionista. O detalhe de cada item mora no item. */}
                       <Label htmlFor="food_details" className="text-xs font-medium mt-3 mb-1 block text-muted-foreground">
-                        Mais detalhes da alimentação (opcional)
+                        Observações gerais da alimentação (opcional)
                       </Label>
                       <Textarea
                         id="food_details"
                         rows={2}
                         value={form.food_details || ''}
                         onChange={e => setForm({ ...form, food_details: e.target.value })}
-                        placeholder="Quantas pessoas, restrição alimentar, horário…"
+                        placeholder="Restrição alimentar do grupo, aviso da nutricionista…"
                       />
                     </div>
 
                     <GrupoDeOpcoes
                       id="equip"
                       titulo="Equipamentos necessários *"
-                      opcoes={["Som", "Microfone", "Projetor", "Televisão", "Notebook", "Nenhum"]}
+                      opcoes={OPCOES_EQUIP}
                       valor={form.equipment_needed || ''}
-                      onChange={v => setForm({ ...form, equipment_needed: v })}
+                      onChange={v => setForm({ ...form, equipment_needed: v, equipment_items: sincronizarItens(v, form.equipment_items, OPCOES_EQUIP) })}
+                      detalhes={{
+                        itens: form.equipment_items || [],
+                        onDetalhe: (chave, texto) => setForm({ ...form, equipment_items: comDetalhe(sincronizarItens(form.equipment_needed, form.equipment_items, OPCOES_EQUIP), chave, texto) }),
+                        pista: 'Quantos, modelo, quem traz, onde liga…',
+                      }}
                       rotuloOutro="Outro equipamento"
                       pistaOutro="Especifique os equipamentos..."
                       temNenhum
@@ -1266,6 +1290,22 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       onOutroAberto={a => setOutroAberto(prev => ({ ...prev, equip: a }))}
                       erro={errors.equipment_needed}
                     />
+
+                    {/* A tabelinha para quem não tem a coluna da direita: a
+                        gestora vê o que está montando, item por item. */}
+                    {!isAdmin && (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button type="button" variant="outline" size="sm" className="gap-1.5">
+                            Ver resumo
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="start" className="w-[360px] max-w-[90vw] space-y-4" data-testid="popover-resumo">
+                          <ResumoDeItens titulo="Alimentação" itens={sincronizarItens(form.food_logistics, form.food_items, OPCOES_COMIDA)} compacto />
+                          <ResumoDeItens titulo="Equipamentos" itens={sincronizarItens(form.equipment_needed, form.equipment_items, OPCOES_EQUIP)} compacto />
+                        </PopoverContent>
+                      </Popover>
+                    )}
                   </div>
                 </div>
 
@@ -1907,6 +1947,13 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       </div>
                       <h4 className="text-sm font-bold text-foreground mb-1">{form.title || 'Título do evento'}</h4>
                       <p className="text-[11px] text-muted-foreground line-clamp-3 leading-relaxed">{form.description || 'Sem descrição.'}</p>
+                    </div>
+
+                    {/* O quadro-resumo da logística, abaixo do preview: atualiza
+                        enquanto se digita. Aprovado em 08/09 (quadro 21). */}
+                    <div className="p-6 border-t space-y-4" data-testid="resumo-coluna-direita">
+                      <ResumoDeItens titulo="Alimentação" itens={sincronizarItens(form.food_logistics, form.food_items, OPCOES_COMIDA)} compacto />
+                      <ResumoDeItens titulo="Equipamentos" itens={sincronizarItens(form.equipment_needed, form.equipment_items, OPCOES_EQUIP)} compacto />
                     </div>
                   </div>
                 </div>
