@@ -293,3 +293,44 @@ describe('o título no card', () => {
     expect(card.querySelector('br')).not.toBeNull();
   });
 });
+
+/**
+ * Sem evento nenhum, a página muda de figura: sem busca a ajustar, um painel
+ * que diz o que está acontecendo e convida a conhecer a ANA.
+ */
+describe('a vitrine vazia', () => {
+  it('troca a busca e o "nenhum evento encontrado" pelo painel', () => {
+    espiao.eventos = [naLixeira];
+    montar();
+
+    expect(screen.getByRole('heading', { name: /a próxima programação está sendo montada/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /conhecer a ana/i })).toHaveAttribute('href', 'https://anabrasil.org');
+    expect(screen.queryByPlaceholderText(/buscar por/i)).toBeNull();
+    expect(screen.queryByText(/nenhum evento encontrado/i)).toBeNull();
+    expect(screen.queryByRole('tablist')).toBeNull();
+  });
+
+  it('a equipe ganha "Criar programação"; como visitante e anônimo, não', () => {
+    espiao.eventos = [];
+    const { unmount } = montar();
+    expect(screen.getByRole('button', { name: /criar programação/i })).toBeInTheDocument();
+    unmount();
+
+    const comoVisitante = montar('/eventos?como=visitante');
+    expect(screen.queryByRole('button', { name: /criar programação/i })).toBeNull();
+    comoVisitante.unmount();
+
+    espiao.autenticado = false;
+    montar();
+    expect(screen.queryByRole('button', { name: /criar programação/i })).toBeNull();
+  });
+
+  it('com eventos, a busca sem resultado continua como antes', () => {
+    montar();
+
+    fireEvent.change(screen.getByPlaceholderText(/buscar por/i), { target: { value: 'churrasco' } });
+
+    expect(screen.getByText(/nenhum evento encontrado/i)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /a próxima programação/i })).toBeNull();
+  });
+});
