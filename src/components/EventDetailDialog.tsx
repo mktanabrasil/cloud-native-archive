@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarDays, MapPin, Clock, Share2, X, Instagram, MessageCircle, Copy, Megaphone, CheckCircle2 } from 'lucide-react';
+import { CalendarDays, MapPin, Clock, Share2, X, MessageCircle, Copy, Megaphone, CheckCircle2 } from 'lucide-react';
 import { AppEvent, UNIT_BG_COLORS } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTestView } from '@/contexts/TestViewContext';
@@ -12,6 +12,8 @@ import { linkPublicoDoEvento } from '@/lib/events/linkPublico';
 import { motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
 import { ROTULO_DA_COBERTURA, estadoDaCobertura } from '@/lib/events/cobertura';
 import { ResumoDeItens } from './events/ResumoDeItens';
+import { TituloDoEvento } from './events/TituloDoEvento';
+import { tituloEmTexto } from '@/lib/events/titulo';
 
 interface Props {
   open: boolean;
@@ -28,7 +30,7 @@ export function EventDetailDialog({ open, onOpenChange, event }: Props) {
   const eventUrl = linkPublicoDoEvento(event.slug || event.id);
 
   const shareOnWhatsApp = () => {
-    const text = `Confira este evento: ${event.title}\n${eventUrl}`;
+    const text = `Confira este evento: ${tituloEmTexto(event.title)}\n${eventUrl}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -44,7 +46,7 @@ export function EventDetailDialog({ open, onOpenChange, event }: Props) {
           {(event.banner_image_desktop || event.banner_url_desktop || event.banner_url_mobile) ? (
             <img 
               src={event.banner_image_desktop || event.banner_url_desktop || event.banner_url_mobile} 
-              alt={event.title}
+              alt={tituloEmTexto(event.title)}
               className="w-full h-full object-cover opacity-80"
             />
           ) : (
@@ -58,7 +60,7 @@ export function EventDetailDialog({ open, onOpenChange, event }: Props) {
                   fontSize: event.title.length < 15 ? '4rem' : event.title.length < 30 ? '3rem' : event.title.length < 50 ? '2rem' : '1.5rem',
                 }}
               >
-                {event.title}
+                <TituloDoEvento texto={event.title} />
               </span>
             </div>
           )}
@@ -79,7 +81,7 @@ export function EventDetailDialog({ open, onOpenChange, event }: Props) {
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
             <div className="flex-1 space-y-4">
               <h2 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight leading-tight">
-                {event.title}
+                <TituloDoEvento texto={event.title} />
               </h2>
               
               <div className="flex flex-wrap gap-6 text-muted-foreground">
@@ -288,25 +290,21 @@ export function EventDetailDialog({ open, onOpenChange, event }: Props) {
                 <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
                   <Share2 className="h-4 w-4" /> Compartilhar
                 </h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <Button 
-                    variant="outline" 
-                    className="flex flex-col h-auto py-3 gap-2 border-border hover:bg-green-50 hover:text-green-600 hover:border-green-200"
+                {/* Havia um botão "Instagram" aqui, sem ação nenhuma: o
+                    Instagram não aceita compartilhar link pela web. Saiu em
+                    08/09/2026; ficam os dois que funcionam. */}
+                <div className="grid grid-cols-1 gap-3">
+                  <Button
+                    variant="outline"
+                    className="flex items-center justify-center gap-2 border-border hover:bg-green-50 hover:text-green-600 hover:border-green-200"
                     onClick={shareOnWhatsApp}
                   >
-                    <MessageCircle className="h-5 w-5" />
-                    <span className="text-[10px] font-bold uppercase">WhatsApp</span>
+                    <MessageCircle className="h-4 w-4" />
+                    <span className="text-xs">WhatsApp</span>
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    className="flex flex-col h-auto py-3 gap-2 border-border hover:bg-pink-50 hover:text-pink-600 hover:border-pink-200"
-                  >
-                    <Instagram className="h-5 w-5" />
-                    <span className="text-[10px] font-bold uppercase">Instagram</span>
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="col-span-2 flex items-center justify-center gap-2 border-border"
+                  <Button
+                    variant="outline"
+                    className="flex items-center justify-center gap-2 border-border"
                     onClick={copyLink}
                   >
                     <Copy className="h-4 w-4" />
