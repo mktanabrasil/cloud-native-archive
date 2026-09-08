@@ -5,7 +5,7 @@ import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useApp } from '@/contexts/AppContext';
 import { AppEvent, UNIT_BG_COLORS } from '@/types';
-import { CalendarDays, MapPin, Clock, Search, ChevronLeft, ChevronRight, LayoutPanelTop, Eye, EyeOff, Pencil, Users } from 'lucide-react';
+import { CalendarDays, MapPin, Clock, Search, ChevronLeft, ChevronRight, LayoutPanelTop, Eye, EyeOff, Pencil, Users, Info, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ import { EventDetailDialog } from '@/components/EventDetailDialog';
 import { TituloDoEvento } from '@/components/events/TituloDoEvento';
 import { tituloEmTexto } from '@/lib/events/titulo';
 import { abaInicial, jaAconteceu, lerAba, separarPorData, type Aba } from '@/lib/events/proximosEPassados';
+import { textoDaData, textoDoHorario } from '@/lib/events/periodo';
 import EventFormDialog from '@/components/EventFormDialog';
 import { BannerMissingDialog } from '@/components/BannerMissingDialog';
 import { VitrineVazia } from '@/components/events/VitrineVazia';
@@ -54,7 +55,7 @@ export default function PublicEventsPage() {
   const [carrosselPausado, setCarrosselPausado] = useState(false);
   const reduzMovimento = useReduzMovimento();
   const { isAdmin, canEdit } = useUserRole();
-  const { updateEvent, setSelectedEvent, selectedEvent } = useApp();
+  const { updateEvent, setSelectedEvent, selectedEvent, loading } = useApp();
 
   const comoVisitante = searchParams.get('como') === 'visitante';
   /** Logado e sem o interruptor ligado: vê e faz o que é da equipe. */
@@ -176,13 +177,25 @@ export default function PublicEventsPage() {
 
   // O link com `?slug=` abre o detalhe para todo mundo. Para o admin ele
   // abria a edição: quem testava o link que ia enviar via outra coisa.
+  //
+  // Se nenhum evento da vitrine casa com o slug (voltou a pendente, virou
+  // interno, foi para a lixeira, ou o endereço veio errado), a página avisa
+  // em vez de abrir como se nada tivesse acontecido. Só depois que a lista
+  // carregou: antes disso, a vitrine vazia não diz nada.
+  const slugNaUrl = searchParams.get('slug');
+  const slugInvalido = !!slugNaUrl && !loading && !events.some(e => e.slug === slugNaUrl || e.id === slugNaUrl);
   useEffect(() => {
-    const slug = searchParams.get('slug');
-    if (slug && events.length > 0) {
-      const found = events.find(e => e.slug === slug || e.id === slug);
+    if (slugNaUrl && events.length > 0) {
+      const found = events.find(e => e.slug === slugNaUrl || e.id === slugNaUrl);
       if (found) setSelectedEventForDetail(found);
     }
-  }, [searchParams, events]);
+  }, [slugNaUrl, events]);
+
+  const fecharAviso = () => {
+    const params = new URLSearchParams(searchParams);
+    params.delete('slug');
+    setSearchParams(params, { replace: true });
+  };
 
   // O giro automático para com o mouse em cima, com foco dentro (quem navega
   // por teclado não perde o slide que estava lendo) e para quem pediu menos
@@ -445,6 +458,22 @@ export default function PublicEventsPage() {
       )}
 
       <main className="max-w-7xl mx-auto px-6 py-8">
+        {slugInvalido && (
+          <div
+            role="status"
+            className="mb-6 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3.5 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
+          >
+            <Info className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="flex-1">
+              <p className="font-semibold">Este evento não está mais disponível</p>
+              <p>Ele pode ter sido remarcado ou fechado ao público. Veja abaixo a programação atual.</p>
+              {equipe && <p className="mt-1 opacity-80">Se ele existe, está pendente, interno ou na lixeira.</p>}
+            </div>
+            <button type="button" onClick={fecharAviso} aria-label="Fechar aviso" className="rounded-md p-1 hover:bg-amber-100 dark:hover:bg-amber-900/50">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
         <div className="mb-8">
           <PageHeader
             title="Programação de Eventos"
@@ -639,13 +668,11 @@ export default function PublicEventsPage() {
                   <div className="space-y-2 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span>{format(new Date(event.start_datetime), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
+                      <span>{textoDaData(event)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span>
-                        {format(new Date(event.start_datetime), 'HH:mm')} às {format(new Date(event.end_datetime), 'HH:mm')}
-                      </span>
+                      <span>{textoDoHorario(event)}</span>
                     </div>
                     {event.location && (
                       <div className="flex items-center gap-2">

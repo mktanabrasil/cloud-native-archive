@@ -1,5 +1,3 @@
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { CalendarDays, MapPin, Clock, Share2, X, MessageCircle, Copy, Megaphone, CheckCircle2, Pencil, Eye, EyeOff } from 'lucide-react';
 import { AppEvent, UNIT_BG_COLORS } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,6 +12,7 @@ import { ROTULO_DA_COBERTURA, estadoDaCobertura } from '@/lib/events/cobertura';
 import { ResumoDeItens } from './events/ResumoDeItens';
 import { TituloDoEvento } from './events/TituloDoEvento';
 import { tituloEmTexto } from '@/lib/events/titulo';
+import { textoDaData, textoDoHorario } from '@/lib/events/periodo';
 
 interface Props {
   open: boolean;
@@ -100,7 +99,7 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Data</p>
-                    <p className="font-medium">{format(new Date(event.start_datetime), "dd 'de' MMMM", { locale: ptBR })}</p>
+                    <p className="font-medium">{textoDaData(event, { comAno: false })}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -109,9 +108,7 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Horário</p>
-                    <p className="font-medium">
-                      {format(new Date(event.start_datetime), 'HH:mm')} - {format(new Date(event.end_datetime), 'HH:mm')}
-                    </p>
+                    <p className="font-medium">{textoDoHorario(event, { separador: ' - ' })}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
