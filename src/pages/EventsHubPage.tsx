@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Globe, LayoutDashboard, Calendar } from 'lucide-react';
+import { Globe, LayoutDashboard, Calendar, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
 import { useEntryGateTransition } from '@/hooks/useIsEntryGate';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -8,17 +9,23 @@ import PublicEventsPage from '@/pages/PublicEventsPage';
 import HomePage from '@/pages/HomePage';
 import Dashboard from '@/pages/Dashboard';
 import CalendarPage from '@/pages/CalendarPage';
+import LixeiraPage from '@/pages/LixeiraPage';
 
 const tabs = [
   { value: 'programacoes', label: 'Programações', icon: Globe, Component: PublicEventsPage },
   { value: 'visao-geral', label: 'Visão Geral', icon: LayoutDashboard, Component: Dashboard },
   { value: 'calendario', label: 'Calendário', icon: Calendar, Component: CalendarPage },
+  /* A lixeira morava dentro das Programações, atrás de um botão. É a única
+     tela que apaga linha de verdade; aqui ela é uma aba, e só para admin. */
+  { value: 'lixeira', label: 'Lixeira', icon: Trash2, Component: LixeiraPage, apenasAdmin: true },
 ];
 
 export default function EventsHubPage() {
   const { isAuthenticated } = useAuth();
+  const { isAdmin } = useUserRole();
   const { isGate, leaving, entering } = useEntryGateTransition();
   const [activeTab, setActiveTab] = useState('programacoes');
+  const abas = tabs.filter(t => !t.apenasAdmin || isAdmin);
 
   // Sem sessão, a raiz é a porta de entrada — salvo em embed, onde a raiz
   // continua servindo as Programações para não quebrar iframes já publicados.
@@ -42,7 +49,7 @@ export default function EventsHubPage() {
         <div className="overflow-x-auto pb-2">
           {/* alvo de toque: 44px no mobile, os 32px de antes no desktop */}
           <TabsList className="h-[3.25rem] w-max md:h-10">
-            {tabs.map((tab) => (
+            {abas.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value} className="h-11 gap-1.5 md:h-8">
                 <tab.icon className="h-4 w-4" />
                 {tab.label}
@@ -51,7 +58,7 @@ export default function EventsHubPage() {
           </TabsList>
         </div>
 
-        {tabs.map((tab) => (
+        {abas.map((tab) => (
           <TabsContent key={tab.value} value={tab.value} className="mt-4">
             <tab.Component />
           </TabsContent>

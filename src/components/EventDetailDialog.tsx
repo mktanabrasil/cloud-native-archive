@@ -1,6 +1,6 @@
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarDays, MapPin, Clock, Share2, X, MessageCircle, Copy, Megaphone, CheckCircle2 } from 'lucide-react';
+import { CalendarDays, MapPin, Clock, Share2, X, MessageCircle, Copy, Megaphone, CheckCircle2, Pencil, Eye, EyeOff } from 'lucide-react';
 import { AppEvent, UNIT_BG_COLORS } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTestView } from '@/contexts/TestViewContext';
@@ -19,12 +19,21 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   event: AppEvent | null;
+  /**
+   * Quem está logado mas ligou "Ver como visitante" quer ver exatamente o
+   * que a família vê: sem logística, sem marketing, sem botões da equipe.
+   */
+  comoVisitante?: boolean;
+  /** Presente só para quem pode editar, no modo equipe: mostra "Editar evento". */
+  onEditar?: (evento: AppEvent) => void;
+  /** Presente só para admin, no modo equipe: liga e desliga o banner daqui. */
+  onAlternarBanner?: (evento: AppEvent) => void;
 }
 
-export function EventDetailDialog({ open, onOpenChange, event }: Props) {
+export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = false, onEditar, onAlternarBanner }: Props) {
   const { user } = useAuth();
   const { activePersona } = useTestView();
-  const isInternalView = activePersona ? activePersona.id !== 'test-nao-logado' : !!user;
+  const isInternalView = !comoVisitante && (activePersona ? activePersona.id !== 'test-nao-logado' : !!user);
   if (!event) return null;
 
   const eventUrl = linkPublicoDoEvento(event.slug || event.id);
@@ -286,6 +295,23 @@ export function EventDetailDialog({ open, onOpenChange, event }: Props) {
             </div>
 
             <div className="w-full md:w-72 space-y-6">
+              {/* O clique no card abre este detalhe para todo mundo; a edição,
+                  que antes vinha direto para o admin, fica aqui, explícita. */}
+              {(onEditar || onAlternarBanner) && (
+                <div className="bg-muted/50 rounded-2xl p-6 border border-border space-y-3">
+                  {onEditar && (
+                    <Button className="w-full gap-2" onClick={() => onEditar(event)}>
+                      <Pencil className="h-4 w-4" /> Editar evento
+                    </Button>
+                  )}
+                  {onAlternarBanner && (
+                    <Button variant="outline" className="w-full gap-2 border-border" onClick={() => onAlternarBanner(event)}>
+                      {event.show_in_banner ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      {event.show_in_banner ? 'Remover do banner' : 'Adicionar ao banner'}
+                    </Button>
+                  )}
+                </div>
+              )}
               <div className="bg-muted/50 rounded-2xl p-6 border border-border">
                 <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
                   <Share2 className="h-4 w-4" /> Compartilhar
