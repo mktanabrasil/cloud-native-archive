@@ -1,36 +1,34 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { AppEvent } from '@/types';
 
 /**
- * A lixeira das Programações.
+ * A página pública de eventos.
  *
- * O jeito de ela quebrar não foi dar erro: o título virava "Lixeira de Eventos"
- * e a grade continuava mostrando os eventos **ativos**, porque lia da lista da
- * vitrine, que ignora o `showTrash`. Quem clicasse concluiria que tinha
- * apagado tudo. Os testes abaixo fixam de qual lista a grade lê em cada modo.
+ * Ela é uma só para o visitante e para a equipe; o que muda é o que aparece
+ * por cima. Estes testes fixam o que cada modo mostra, o que o clique faz e
+ * a divisão entre Próximos e Já aconteceram.
  */
 
 const espiao = vi.hoisted(() => ({
   eventos: [] as unknown[],
-  restore: vi.fn(),
-  remove: vi.fn(),
+  editar: vi.fn(),
+  autenticado: true,
+  detalhe: null as unknown,
 }));
 
 vi.mock('@/contexts/AppContext', () => ({
   useApp: () => ({
     events: espiao.eventos,
     updateEvent: vi.fn(),
-    deleteEvent: espiao.remove,
-    restoreEvent: espiao.restore,
-    setSelectedEvent: vi.fn(),
+    setSelectedEvent: espiao.editar,
     selectedEvent: null,
   }),
 }));
 
 vi.mock('@/contexts/AuthContext', () => ({
-  useAuth: () => ({ isAuthenticated: true }),
+  useAuth: () => ({ isAuthenticated: espiao.autenticado }),
 }));
 
 vi.mock('@/hooks/useUserRole', () => ({
@@ -41,17 +39,17 @@ vi.mock('@/hooks/useViewConfigs', () => ({
   useViewConfigs: () => ({ configs: null }),
 }));
 
-vi.mock('@/hooks/useUIVersions', () => ({
-  useUIVersions: () => ({ showBetaUI: false }),
+/* O detalhe vira um marcador: o que importa aqui é se abriu, e com quais botões. */
+vi.mock('@/components/EventDetailDialog', () => ({
+  EventDetailDialog: (props: { open: boolean; event: AppEvent | null; onEditar?: unknown; comoVisitante?: boolean }) =>
+    props.open && props.event ? (
+      <div data-testid="detalhe" data-editar={props.onEditar ? 'sim' : 'nao'} data-visitante={props.comoVisitante ? 'sim' : 'nao'}>
+        detalhe de {props.event.title}
+      </div>
+    ) : null,
 }));
-
-/* Os diálogos entram fechados e trazem meia árvore junto; fora do caminho. */
-vi.mock('@/components/EventDetailDialog', () => ({ EventDetailDialog: () => null }));
 vi.mock('@/components/EventFormDialog', () => ({ default: () => null }));
 vi.mock('@/components/BannerMissingDialog', () => ({ BannerMissingDialog: () => null }));
-vi.mock('@/components/ConflictDialog', () => ({ default: () => null }));
-vi.mock('@/components/FilteredEventsDialog', () => ({ default: () => null }));
-vi.mock('@/components/EventDetailPanel', () => ({ default: () => null }));
 
 const { default: PublicEventsPage } = await import('./PublicEventsPage');
 
@@ -93,73 +91,46 @@ const naLixeira = evento({
   deleted_at: '2026-08-20T12:00:00.000Z',
 });
 
-const montar = () =>
+const montar = (url = '/eventos') =>
   render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[url]}>
       <PublicEventsPage />
     </MemoryRouter>,
   );
 
-const abrirLixeira = () => fireEvent.click(screen.getByRole('button', { name: /ver lixeira/i }));
-
 /**
- * Quantas vezes o título aparece na tela.
- *
- * Sem imagem de capa, o card escreve o título duas vezes — uma no bloco
- * colorido que substitui a capa, outra no cabeçalho. Contar evita casar com
- * a errada; o que importa aqui é se o evento está ou não na grade.
+ * Só a grade: o herói (h2) também escreve o título do evento, e para o admin
+ * ele mostra até os passados, com selo. O card usa h3.
  */
-const naTela = (titulo: string) => screen.queryAllByText(titulo).length;
-
-/** Nos testes de ação há um único card na lixeira, então a tela basta. */
-const esperarLixeira = (titulo: string) =>
-  waitFor(() => expect(naTela(titulo)).toBeGreaterThan(0));
+const noCard = (titulo: string) => screen.queryAllByRole('heading', { level: 3, name: titulo }).length;
 
 beforeEach(() => {
   espiao.eventos = [ativo, naLixeira];
-  espiao.restore.mockClear();
-  espiao.remove.mockClear();
+  espiao.autenticado = true;
+  espiao.editar.mockClear();
+  vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date(2026, 8, 8, 15) });
 });
+afterEach(() => vi.useRealTimers());
 
-describe('a grade lê da lista certa', () => {
-  it('nos eventos ativos, mostra a vitrine e não o que está na lixeira', () => {
+describe('a grade lê da vitrine', () => {
+  it('mostra o ativo e não o que está na lixeira', () => {
     montar();
 
-    expect(naTela('Festa da Primavera')).toBeGreaterThan(0);
-    expect(naTela('Reunião cancelada')).toBe(0);
+    expect(noCard('Festa da Primavera')).toBe(1);
+    expect(noCard('Reunião cancelada')).toBe(0);
   });
 
-  it('na lixeira, troca de lista em vez de repetir os ativos', async () => {
+  it('a lixeira e as pílulas não moram mais aqui', () => {
     montar();
-    abrirLixeira();
 
-    await waitFor(() => expect(naTela('Reunião cancelada')).toBeGreaterThan(0));
-    expect(naTela('Festa da Primavera')).toBe(0);
-  });
-
-  it('mostra na lixeira o evento interno, que a vitrine nunca mostraria', async () => {
-    // A lixeira guarda evento de qualquer visibilidade — por isso ela não pode
-    // sair da lista pública.
-    montar();
-    abrirLixeira();
-
-    await waitFor(() => expect(naTela('Reunião cancelada')).toBeGreaterThan(0));
-  });
-
-  it('avisa que está vazia em vez de mandar ajustar a busca', async () => {
-    espiao.eventos = [ativo];
-    montar();
-    abrirLixeira();
-
-    await waitFor(() => expect(screen.getByText(/a lixeira está vazia/i)).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: /ver lixeira/i })).toBeNull();
+    expect(screen.queryByText(/confirmados:/i)).toBeNull();
+    expect(screen.queryByText(/eventos:/i)).toBeNull();
   });
 });
 
 describe('o campo de busca', () => {
   it('não fixa a cor de fundo, para acompanhar o tema', () => {
-    // Ele já esteve com `bg-white`: no escuro ficava branco com o texto claro
-    // por cima, 1,06:1, e a pessoa digitava sem ver. O jsdom não calcula
-    // Tailwind, então o que dá para fixar aqui é a causa — a cor crua.
     montar();
 
     const busca = screen.getByPlaceholderText(/buscar por/i);
@@ -169,30 +140,75 @@ describe('o campo de busca', () => {
   });
 });
 
-describe('as duas saídas da lixeira', () => {
-  it('restaura pelo botão do card', async () => {
+describe('modo equipe', () => {
+  it('avisa o modo e mostra os botões da equipe no card', () => {
     montar();
-    abrirLixeira();
 
-    await esperarLixeira('Reunião cancelada');
-    fireEvent.click(screen.getByRole('button', { name: /restaurar/i }));
-
-    expect(espiao.restore).toHaveBeenCalledWith('lixo-1');
+    expect(screen.getByText('equipe', { selector: 'b' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /editar evento/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /adicionar ao banner|remover do banner/i })).toBeInTheDocument();
+    expect(screen.getByText('Confirmado')).toBeInTheDocument();
   });
 
-  it('não apaga de vez sem perguntar antes', async () => {
+  it('o clique no card abre o detalhe, com editar dentro, e não o formulário', () => {
     montar();
-    abrirLixeira();
 
-    await esperarLixeira('Reunião cancelada');
-    fireEvent.click(screen.getByRole('button', { name: /^excluir$/i }));
+    fireEvent.click(screen.getByRole('heading', { level: 3, name: 'Festa da Primavera' }));
 
-    // O clique abre a confirmação; quem apaga é o botão de dentro dela.
-    expect(espiao.remove).not.toHaveBeenCalled();
-    const dialogo = await screen.findByRole('alertdialog');
-    fireEvent.click(within(dialogo).getByRole('button', { name: /excluir definitivamente/i }));
+    const detalhe = screen.getByTestId('detalhe');
+    expect(detalhe).toHaveTextContent('detalhe de Festa da Primavera');
+    expect(detalhe.dataset.editar).toBe('sim');
+    expect(detalhe.dataset.visitante).toBe('nao');
+    expect(espiao.editar).not.toHaveBeenCalled();
+  });
 
-    expect(espiao.remove).toHaveBeenCalledWith('lixo-1');
+  it('o lápis edita direto', () => {
+    montar();
+
+    fireEvent.click(screen.getByRole('button', { name: /editar evento/i }));
+
+    expect(espiao.editar).toHaveBeenCalledWith(expect.objectContaining({ id: 'ativo-1' }));
+    expect(screen.queryByTestId('detalhe')).toBeNull();
+  });
+
+  it('o link com slug abre o detalhe, não a edição', () => {
+    montar('/eventos?slug=ativo-1');
+
+    expect(screen.getByTestId('detalhe')).toHaveTextContent('Festa da Primavera');
+    expect(espiao.editar).not.toHaveBeenCalled();
+  });
+});
+
+describe('ver como visitante', () => {
+  it('o interruptor esconde tudo que é da equipe', () => {
+    montar();
+
+    fireEvent.click(screen.getByRole('switch', { name: /ver como visitante/i }));
+
+    expect(screen.getByText('visitante', { selector: 'b' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /editar evento/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /adicionar ao banner|remover do banner/i })).toBeNull();
+    expect(screen.queryByText('Confirmado')).toBeNull();
+    expect(noCard('Festa da Primavera')).toBe(1);
+  });
+
+  it('o detalhe abre sem editar e como visitante', () => {
+    montar('/eventos?como=visitante');
+
+    fireEvent.click(screen.getByRole('heading', { level: 3, name: 'Festa da Primavera' }));
+
+    const detalhe = screen.getByTestId('detalhe');
+    expect(detalhe.dataset.editar).toBe('nao');
+    expect(detalhe.dataset.visitante).toBe('sim');
+  });
+
+  it('o visitante anônimo não vê a faixa nem o interruptor', () => {
+    espiao.autenticado = false;
+    montar();
+
+    expect(screen.queryByRole('switch')).toBeNull();
+    expect(screen.queryByText('equipe', { selector: 'b' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /editar evento/i })).toBeNull();
   });
 });
 
@@ -203,12 +219,6 @@ describe('as duas saídas da lixeira', () => {
  * abria a página. Agora quem terminou antes de hoje começar vai para a
  * segunda aba. Hoje, nestes testes, é 8 de setembro de 2026.
  */
-/**
- * Só a grade: o herói (h2) também escreve o título do evento, e para o admin
- * ele mostra até os passados, com selo. O card usa h3.
- */
-const noCard = (titulo: string) => screen.queryAllByRole('heading', { level: 3, name: titulo }).length;
-
 describe('as abas Próximos e Já aconteceram', () => {
   const passado = evento({
     id: 'passado-1',
@@ -222,11 +232,6 @@ describe('as abas Próximos e Já aconteceram', () => {
     start_datetime: new Date(2026, 9, 10, 8).toISOString(),
     end_datetime: new Date(2026, 9, 10, 16).toISOString(),
   });
-
-  beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date(2026, 8, 8, 15) });
-  });
-  afterEach(() => vi.useRealTimers());
 
   it('abre em Próximos e deixa o passado para a outra aba', () => {
     espiao.eventos = [passado, futuro];
@@ -273,18 +278,8 @@ describe('as abas Próximos e Já aconteceram', () => {
     fireEvent.change(screen.getByPlaceholderText(/buscar por/i), { target: { value: 'páscoa' } });
 
     expect(noCard('Festa de Páscoa')).toBe(0);
-    const aviso = screen.getByRole('button', { name: /1 resultado em já aconteceram/i });
-    fireEvent.click(aviso);
+    fireEvent.click(screen.getByRole('button', { name: /1 resultado em já aconteceram/i }));
     expect(noCard('Festa de Páscoa')).toBeGreaterThan(0);
-  });
-
-  it('a lixeira não separa por data', async () => {
-    espiao.eventos = [passado, futuro, naLixeira];
-    montar();
-    abrirLixeira();
-
-    await esperarLixeira('Reunião cancelada');
-    expect(screen.queryByRole('tablist')).toBeNull();
   });
 });
 

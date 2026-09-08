@@ -4,27 +4,17 @@ import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useApp } from '@/contexts/AppContext';
 import { AppEvent, UNIT_BG_COLORS } from '@/types';
-import { CalendarDays, MapPin, Clock, Search, ExternalLink, ChevronLeft, ChevronRight, LayoutPanelTop, Eye, EyeOff, Globe, CheckCircle2, AlertCircle, Camera, Handshake, Rocket, RotateCcw, Trash2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { CalendarDays, MapPin, Clock, Search, ChevronLeft, ChevronRight, LayoutPanelTop, Eye, EyeOff, Pencil, Users } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import PageHeader from '@/components/PageHeader';
 import logoImg from '@/assets/logo.png';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { EventDetailDialog } from '@/components/EventDetailDialog';
 import { TituloDoEvento } from '@/components/events/TituloDoEvento';
@@ -32,12 +22,23 @@ import { tituloEmTexto } from '@/lib/events/titulo';
 import { abaInicial, jaAconteceu, lerAba, separarPorData, type Aba } from '@/lib/events/proximosEPassados';
 import EventFormDialog from '@/components/EventFormDialog';
 import { BannerMissingDialog } from '@/components/BannerMissingDialog';
-import ConflictDialog from '@/components/ConflictDialog';
-import FilteredEventsDialog from '@/components/FilteredEventsDialog';
-import EventDetailPanel from '@/components/EventDetailPanel';
-import { useUserRole as _ur } from '@/hooks/useUserRole';
-import { useUIVersions } from '@/hooks/useUIVersions';
 
+/**
+ * A página pública de eventos — a vitrine que a família vê.
+ *
+ * Ela é a mesma tela para dois públicos. O visitante sem sessão recebe só a
+ * vitrine: herói, grade, detalhe, compartilhar. A equipe logada ganha por
+ * cima o **modo equipe**: eventos ocultos no herói com selo, botões de banner
+ * e de edição nos cards, selos de status, "Editar evento" dentro do detalhe.
+ *
+ * Até 08/09/2026 não havia como a equipe ver a página como o visitante sem
+ * sair da conta — e o clique no card abria o formulário de edição, não o
+ * detalhe. Agora há o interruptor "Ver como visitante" (`?como=visitante`,
+ * só na URL: recarregar volta para equipe), o clique abre o detalhe para
+ * todo mundo, e a edição é um botão explícito. As pílulas de estatística e a
+ * lixeira saíram daqui: as pílulas já existem na Visão Geral, uma aba ao
+ * lado; a lixeira virou aba do hub.
+ */
 export default function PublicEventsPage() {
   const { isAuthenticated } = useAuth();
   const [search, setSearch] = useState('');
@@ -46,60 +47,32 @@ export default function PublicEventsPage() {
   const [selectedEventForDetail, setSelectedEventForDetail] = useState<AppEvent | null>(null);
   const [showBannerMissingDialog, setShowBannerMissingDialog] = useState(false);
   const [eventToToggleBanner, setEventToToggleBanner] = useState<AppEvent | null>(null);
-  const [showConflicts, setShowConflicts] = useState(false);
-  const [showFiltered, setShowFiltered] = useState<'marketing' | 'partners' | 'confirmed' | 'pending' | null>(null);
-  const [detailEvent, setDetailEvent] = useState<AppEvent | null>(null);
-  const [showDetail, setShowDetail] = useState(false);
   const { isAdmin, canEdit } = useUserRole();
-  const { updateEvent, setSelectedEvent, selectedEvent, deleteEvent, restoreEvent } = useApp();
-  const { showBetaUI } = useUIVersions();
-  
-  const [showTrash, setShowTrash] = useState(false);
-  const [pendingPurge, setPendingPurge] = useState<AppEvent | null>(null);
+  const { updateEvent, setSelectedEvent, selectedEvent } = useApp();
 
-  /**
-   * Três listas, e cada uma responde a uma pergunta diferente.
-   *
-   * `events` é a vitrine: só confirmado e público, é o que a grade mostra e
-   * o que qualquer visitante vê. `allEvents` é a agenda de verdade, filtrada
-   * pelo papel de quem olha — alimenta as pílulas e os diálogos de conflito.
-   * `trashEvents` é a lixeira, e precisa ser a terceira: ela guarda evento
-   * interno também, então não pode sair da vitrine.
-   *
-   * Antes eram duas, e o `showTrash` mexia na segunda. A grade lia da
-   * primeira e nunca mudava: o título virava "Lixeira" com os mesmos eventos
-   * ativos embaixo, como se todos tivessem sido excluídos.
-   */
-  const allEvents = useFilteredEvents(false, false);
-  const trashEvents = useFilteredEvents(false, true);
+  const comoVisitante = searchParams.get('como') === 'visitante';
+  /** Logado e sem o interruptor ligado: vê e faz o que é da equipe. */
+  const equipe = isAuthenticated && !comoVisitante;
+  const alternarVisitante = (ligar: boolean) => {
+    const params = new URLSearchParams(searchParams);
+    if (ligar) params.set('como', 'visitante');
+    else params.delete('como');
+    setSearchParams(params, { replace: true });
+  };
+
+  /** A vitrine: só confirmado e público, o que qualquer visitante vê. */
   const events = useFilteredEvents(true, false);
 
-
-  const stats = useMemo(() => {
-    return allEvents.reduce((acc, e) => {
-      acc.total++;
-      if (e.status === 'confirmado') acc.confirmed++;
-      if (e.status === 'pendente') acc.pending++;
-      if (e.has_conflict) acc.conflict++;
-      if (e.marketing_request) acc.marketing++;
-      if (e.partner_involved) acc.partners++;
-      return acc;
-    }, { total: 0, confirmed: 0, pending: 0, conflict: 0, marketing: 0, partners: 0 });
-  }, [allEvents]);
-
-
-  /** A busca vale para as duas telas — inclusive para procurar na lixeira. */
   const filtered = useMemo(() => {
-    const base = showTrash ? trashEvents : events;
     const searchTerm = search.toLowerCase().trim();
-    if (!searchTerm) return base;
+    if (!searchTerm) return events;
 
-    return base.filter(e => 
-      e.title.toLowerCase().includes(searchTerm) || 
+    return events.filter(e =>
+      e.title.toLowerCase().includes(searchTerm) ||
       (e.location || '').toLowerCase().includes(searchTerm) ||
       (e.description || '').toLowerCase().includes(searchTerm)
     );
-  }, [events, trashEvents, showTrash, search]);
+  }, [events, search]);
 
   /**
    * "Próximos" e "Já aconteceram", em duas abas.
@@ -107,20 +80,14 @@ export default function PublicEventsPage() {
    * A grade ordenava tudo por data crescente e não olhava o dia: em setembro,
    * um evento de março abria a página, embaixo do texto que promete "os
    * próximos eventos". Agora quem já terminou antes de hoje começar vai para
-   * a segunda aba (regra em `proximosEPassados.ts`). A lixeira não separa:
-   * ali a data não diz nada sobre o evento.
+   * a segunda aba (regra em `proximosEPassados.ts`).
    *
    * A aba escolhida fica na URL (`?aba=passados`) para o link poder ser
    * compartilhado já aberto. Sem escolha, abre em "Próximos" — salvo quando só
    * há passados, porque aí "Próximos" seria uma grade vazia com a programação
    * inteira escondida ao lado.
    */
-  const { proximos, passados } = useMemo(
-    () => (showTrash
-      ? { proximos: [...filtered].sort((a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime()), passados: [] as AppEvent[] }
-      : separarPorData(filtered)),
-    [filtered, showTrash],
-  );
+  const { proximos, passados } = useMemo(() => separarPorData(filtered), [filtered]);
   // A aba padrão olha a vitrine inteira, não o resultado da busca: se
   // olhasse a busca, digitar "páscoa" pularia de aba sozinho e apagar o
   // termo pularia de volta. Quem avisa do resultado na outra aba é a linha
@@ -130,7 +97,7 @@ export default function PublicEventsPage() {
     return abaInicial(p.length, q.length);
   }, [events]);
   const abaEscolhida = lerAba(searchParams.get('aba'));
-  const aba: Aba = showTrash ? 'proximos' : abaEscolhida ?? padrao;
+  const aba: Aba = abaEscolhida ?? padrao;
   const trocarAba = (nova: Aba) => {
     const params = new URLSearchParams(searchParams);
     params.set('aba', nova);
@@ -141,62 +108,35 @@ export default function PublicEventsPage() {
   const naOutraAba = (aba === 'passados' ? proximos : passados).length;
 
   const bannerEvents = useMemo(() => {
-    // Show confirmed events that are in banner, sorted by start date
-    // For regular users, only show those with show_in_banner = true AND not yet passed
-    // For admins, show ALL but push disabled or passed ones to the end
-    const confirmedEvents = events;
-    const now = new Date();
-    // For the banner, hide events starting tomorrow (00:00 of the next day)
-    const endOfToday = new Date();
-    endOfToday.setHours(23, 59, 59, 999);
-    
-    if (isAdmin) {
-      return [...confirmedEvents].sort((a, b) => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    // Para o admin no modo equipe, o herói mostra todos da vitrine: os ativos
+    // e futuros primeiro, os ocultos ou passados depois, com selo. Assim ele
+    // vê o que está fora do ar sem sair da página.
+    if (equipe && isAdmin) {
+      return [...events].sort((a, b) => {
         const aStart = new Date(a.start_datetime);
         const bStart = new Date(b.start_datetime);
-        const aPassed = aStart > endOfToday; // Wait, requirement says "if today is 01, stay until 23:59 of 01"
-        // Correct logic: hide if start_datetime is on a previous day.
-        
-        // Let's use start of today for comparison
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
-        
-        const aIsPast = aStart < startOfToday;
-        const bIsPast = bStart < startOfToday;
-
-        // First priority: show_in_banner status AND not past
-        const aActive = a.show_in_banner && !aIsPast;
-        const bActive = b.show_in_banner && !bIsPast;
+        const aActive = a.show_in_banner && aStart >= startOfToday;
+        const bActive = b.show_in_banner && bStart >= startOfToday;
 
         if (aActive && !bActive) return -1;
         if (!aActive && bActive) return 1;
-        
-        // Second priority: start date
         return aStart.getTime() - bStart.getTime();
       });
     }
 
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-
-    // DEBUG: console.log("bannerEvents calc start", confirmedEvents.length);
-    const result = confirmedEvents
-      .filter(e => {
-        const isBanner = e.show_in_banner;
-        const eventDate = new Date(e.start_datetime);
-        const isNotPast = eventDate >= startOfToday;
-        // console.log(`Event ${e.title}: isBanner=${isBanner}, date=${e.start_datetime}, isNotPast=${isNotPast}`);
-        return isBanner && isNotPast;
-      })
+    // Para todo o resto: só o que está no banner e ainda não passou. Um
+    // evento de hoje fica até 23:59.
+    return events
+      .filter(e => e.show_in_banner && new Date(e.start_datetime) >= startOfToday)
       .sort((a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime());
-    
-    // console.log("Banner Events (Public) final:", result);
-    return result;
-  }, [events, isAdmin]);
+  }, [events, equipe, isAdmin]);
 
   const handleToggleBanner = (event: AppEvent) => {
-    // If we are ENABLING the banner and missing desktop image, show warning FIRST
-    // and DO NOT open the editor yet.
+    // Ligar o banner sem imagem 21:9 pede confirmação antes; o editor não
+    // abre ainda.
     if (!event.show_in_banner && !event.banner_image_desktop) {
       setEventToToggleBanner(event);
       setShowBannerMissingDialog(true);
@@ -226,24 +166,19 @@ export default function PublicEventsPage() {
     }
   };
 
+  // O link com `?slug=` abre o detalhe para todo mundo. Para o admin ele
+  // abria a edição: quem testava o link que ia enviar via outra coisa.
   useEffect(() => {
     const slug = searchParams.get('slug');
     if (slug && events.length > 0) {
       const found = events.find(e => e.slug === slug || e.id === slug);
-      if (found) {
-        if (isAuthenticated && isAdmin) {
-          setSelectedEvent(found);
-        } else {
-          setSelectedEventForDetail(found);
-        }
-      }
+      if (found) setSelectedEventForDetail(found);
     }
-  }, [searchParams, events, isAuthenticated, isAdmin, setSelectedEvent]);
+  }, [searchParams, events]);
 
   useEffect(() => {
     if (bannerEvents.length <= 1) return;
-    
-    // Use dynamic display time for current slide
+
     const currentEvent = bannerEvents[currentSlide];
     const displayTime = (currentEvent?.banner_display_time || 5) * 1000;
 
@@ -258,16 +193,16 @@ export default function PublicEventsPage() {
   const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + bannerEvents.length) % bannerEvents.length);
 
   const handleCardClick = (event: AppEvent) => {
-    if (showTrash) return; // Don't open detail for trash items, or we could add a restore action
-    if (isAuthenticated && isAdmin) {
-      setSelectedEvent(event);
-    } else {
-      setSelectedEventForDetail(event);
-      // Update URL without full refresh to support sharing the specific open state
-      const params = new URLSearchParams(searchParams);
-      params.set('slug', event.slug || event.id);
-      setSearchParams(params);
-    }
+    setSelectedEventForDetail(event);
+    // O slug vai para a URL para o estado aberto poder ser compartilhado.
+    const params = new URLSearchParams(searchParams);
+    params.set('slug', event.slug || event.id);
+    setSearchParams(params);
+  };
+
+  const editar = (event: AppEvent) => {
+    setSelectedEventForDetail(null);
+    setSelectedEvent(event);
   };
 
   const closeDetail = () => {
@@ -279,78 +214,100 @@ export default function PublicEventsPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* A faixa da equipe: diz o modo e traz o interruptor. Só para quem está
+          logado; o visitante anônimo nunca a vê. */}
+      {isAuthenticated && (
+        <div className="max-w-7xl mx-auto px-6 pt-6">
+          <div
+            className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border bg-card text-sm ${
+              comoVisitante ? 'px-4 py-2' : 'px-4 py-3'
+            }`}
+          >
+            <div className="flex items-center gap-2.5 text-muted-foreground">
+              {comoVisitante ? <Eye className="h-4 w-4 shrink-0" /> : <Users className="h-4 w-4 shrink-0" />}
+              {comoVisitante ? (
+                <span>Vendo como <b className="font-semibold text-foreground">visitante</b>. É isto que a família vê.</span>
+              ) : (
+                <span>
+                  Você está vendo a página como <b className="font-semibold text-foreground">equipe</b>: eventos ocultos, botões de banner e edição aparecem.
+                </span>
+              )}
+            </div>
+            <label className="flex items-center gap-2.5 font-medium text-foreground cursor-pointer shrink-0">
+              <Switch checked={comoVisitante} onCheckedChange={alternarVisitante} aria-label="Ver como visitante" />
+              Ver como visitante
+            </label>
+          </div>
+        </div>
+      )}
 
-
-      {/* Na lixeira o herói não tem o que fazer: ele mostra evento ativo. */}
-      {!showTrash && bannerEvents.length > 0 && (
-        <section className="relative w-full h-[400px] md:h-[500px] overflow-hidden bg-slate-900">
+      {bannerEvents.length > 0 && (
+        <section className={`relative w-full h-[400px] md:h-[500px] overflow-hidden bg-slate-900 ${isAuthenticated ? 'mt-6' : ''}`}>
           {bannerEvents.map((event, index) => (
-            <div 
+            <div
               key={event.id}
               className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100' : 'opacity-0'}`}
             >
               {/* Desktop Banner (21:9 preferencial, fallback para capa 16:9) */}
               {(event.banner_image_desktop || event.banner_url_desktop || event.banner_url_mobile) ? (
                 <>
-                  <img 
-                    src={event.banner_image_desktop || event.banner_url_desktop || event.banner_url_mobile} 
+                  <img
+                    src={event.banner_image_desktop || event.banner_url_desktop || event.banner_url_mobile}
                     alt={tituloEmTexto(event.title)}
                     className="hidden md:block w-full h-full object-cover opacity-60"
                   />
                   {/* Mobile Banner (9:16 preferencial, fallback para capa 4:3) */}
-                  <img 
-                    src={event.banner_image_mobile || event.banner_url_mobile || event.banner_url_desktop} 
+                  <img
+                    src={event.banner_image_mobile || event.banner_url_mobile || event.banner_url_desktop}
                     alt={tituloEmTexto(event.title)}
                     className="block md:hidden w-full h-full object-cover opacity-60"
                   />
                 </>
               ) : (
-                <div 
+                <div
                   className="w-full h-full flex items-center justify-center px-8 md:px-16"
                   style={{ backgroundColor: event.custom_color || '#1e293b' }}
                 >
-                  {/* Fallback content if no image */}
+                  {/* Sem imagem, fica a cor do evento */}
                 </div>
               )}
-              
+
               {event.show_banner_overlay !== false && (
                 <div className="absolute inset-0 bg-slate-900/40 z-[5]" />
               )}
-              
+
               {event.show_banner_fade !== false && (
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent z-[10]" />
               )}
-              
+
               <div className="absolute bottom-0 left-0 right-0 p-8 md:p-16 max-w-7xl mx-auto flex flex-col items-start justify-end h-full z-[20]">
                 <div className="flex flex-wrap gap-2 mb-4 shrink-0">
                   <Badge className={`${UNIT_BG_COLORS[event.unit]} text-white border-none shadow-lg`}>
                     {event.unit}
                   </Badge>
-                  {!event.show_in_banner && isAdmin && (
+                  {equipe && isAdmin && !event.show_in_banner && (
                     <Badge variant="outline" className="bg-slate-900/80 text-slate-200 border-slate-700 backdrop-blur-sm">
                       Oculto para o Público
                     </Badge>
                   )}
                 </div>
-                
+
                 {event.use_logo_as_title && event.event_logo_url ? (
                   <div className={`mb-6 animate-in slide-in-from-left duration-700 w-full flex items-center justify-start ${event.full_height_title ? 'h-1/2' : 'h-24 md:h-40'}`}>
-                    <img 
-                      src={event.event_logo_url} 
-                      alt={tituloEmTexto(event.title)} 
-                      className={`object-contain object-left h-full max-w-full filter drop-shadow-2xl`} 
+                    <img
+                      src={event.event_logo_url}
+                      alt={tituloEmTexto(event.title)}
+                      className={`object-contain object-left h-full max-w-full filter drop-shadow-2xl`}
                     />
                   </div>
                 ) : (
-                  <h2 
+                  <h2
                     className={`font-bold text-white mb-4 leading-tight drop-shadow-lg ${event.full_height_title ? 'text-4xl md:text-8xl lg:text-9xl max-w-5xl' : 'text-3xl md:text-6xl max-w-3xl'}`}
                   >
                     <TituloDoEvento texto={event.title} apenasNoDesktop />
                   </h2>
                 )}
                 <div className="flex flex-wrap gap-4 text-slate-200 text-sm md:text-base mb-6">
-
-
                   <div className="flex items-center gap-2">
                     <CalendarDays className="h-5 w-5" />
                     <span>{format(new Date(event.start_datetime), "dd 'de' MMMM", { locale: ptBR })}</span>
@@ -361,8 +318,8 @@ export default function PublicEventsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-4 mt-6">
-                  <Button 
-                    size="lg" 
+                  <Button
+                    size="lg"
                     className="rounded-full px-8 shadow-xl"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -371,9 +328,9 @@ export default function PublicEventsPage() {
                   >
                     Saber mais
                   </Button>
-                  {isAdmin && (
-                    <Button 
-                      variant="outline" 
+                  {equipe && isAdmin && (
+                    <Button
+                      variant="outline"
                       size="lg"
                       className={`rounded-full backdrop-blur-md border-white/30 ${event.show_in_banner ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-primary text-white hover:bg-primary/90'}`}
                       onClick={(e) => {
@@ -400,19 +357,21 @@ export default function PublicEventsPage() {
 
           {bannerEvents.length > 1 && (
             <>
-              <button 
+              <button
                 onClick={prevSlide}
+                aria-label="Slide anterior"
                 className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all z-20"
               >
                 <ChevronLeft className="h-6 w-6" />
               </button>
-              <button 
+              <button
                 onClick={nextSlide}
+                aria-label="Próximo slide"
                 className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all z-20"
               >
                 <ChevronRight className="h-6 w-6" />
               </button>
-              
+
               {/* Acima de oito slides os pontinhos deixam de funcionar como
                   navegação — viram uma fileira ilegível. Aí só o contador. */}
               {bannerEvents.length > 8 ? (
@@ -444,83 +403,13 @@ export default function PublicEventsPage() {
       )}
 
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* A 320px, cinco pílulas com flex-1 ficavam com 33px cada e o rótulo
-            sumia. Abaixo de sm viram faixa rolável com largura natural. */}
-        {(isAuthenticated && isAdmin && !showTrash) && (
-          <div className="w-full mb-8 -mx-6 px-6 flex items-center gap-2 overflow-x-auto pb-1 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible sm:pb-0">
-            <div className="shrink-0 sm:flex-1 sm:min-w-0 flex items-center gap-2 px-3 py-2 rounded-full bg-info text-info-foreground border border-info/20 text-[10px] sm:text-xs font-medium justify-center whitespace-nowrap">
-              <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">Eventos: <span className="font-bold">{stats.total}</span></span>
-            </div>
-            
-            <button 
-              onClick={() => setShowFiltered('confirmed')}
-              className="shrink-0 sm:flex-1 sm:min-w-0 flex items-center gap-2 px-3 py-2 rounded-full bg-success text-success-foreground border border-success/20 text-[10px] sm:text-xs font-medium hover:opacity-90 transition-opacity justify-center whitespace-nowrap"
-            >
-              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">Confirmados: <span className="font-bold">{stats.confirmed}</span></span>
-            </button>
-
-            <button 
-              onClick={() => setShowFiltered('pending')}
-              className="shrink-0 sm:flex-1 sm:min-w-0 flex items-center gap-2 px-3 py-2 rounded-full bg-warning text-warning-foreground border border-warning/20 text-[10px] sm:text-xs font-medium hover:opacity-90 transition-opacity justify-center whitespace-nowrap"
-            >
-              <Clock className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">Pendentes: <span className="font-bold">{stats.pending}</span></span>
-            </button>
-
-            <button 
-              onClick={() => setShowConflicts(true)}
-              className="shrink-0 sm:flex-1 sm:min-w-0 flex items-center gap-2 px-3 py-2 rounded-full bg-destructive text-destructive-foreground border border-destructive/20 text-[10px] sm:text-xs font-medium hover:opacity-90 transition-opacity justify-center whitespace-nowrap"
-            >
-              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">Conflitos: <span className="font-bold">{stats.conflict}</span></span>
-            </button>
-
-            <button 
-              onClick={() => setShowFiltered('marketing')}
-              className="shrink-0 sm:flex-1 sm:min-w-0 flex items-center gap-2 px-3 py-2 rounded-full bg-info text-info-foreground border border-info/20 text-[10px] sm:text-xs font-medium hover:opacity-90 transition-opacity justify-center whitespace-nowrap"
-            >
-              <Camera className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">Marketing: <span className="font-bold">{stats.marketing}</span></span>
-            </button>
-
-            <button 
-              onClick={() => setShowFiltered('partners')}
-              className="shrink-0 sm:flex-1 sm:min-w-0 flex items-center gap-2 px-3 py-2 rounded-full bg-info text-info-foreground border border-info/20 text-[10px] sm:text-xs font-medium hover:opacity-90 transition-opacity justify-center whitespace-nowrap"
-            >
-              <Handshake className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">Parceiros: <span className="font-bold">{stats.partners}</span></span>
-            </button>
-          </div>
-        )}
-
-
-
         <div className="mb-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="flex-1 min-w-0">
-              <PageHeader 
-                title={showTrash ? "Lixeira de Eventos" : "Programação de Eventos"} 
-                description={showTrash ? "Eventos excluídos que podem ser recuperados ou removidos permanentemente." : "Confira os próximos eventos confirmados em todas as nossas unidades."}
-                className="mb-0"
-              />
-            </div>
-            {isAuthenticated && isAdmin && (
-              <div className="flex items-center gap-2 shrink-0">
-                <Button
-                  variant={showTrash ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setShowTrash(!showTrash)}
-                  className="rounded-full gap-2"
-                >
-                  <Eye className="h-4 w-4" />
-                  {showTrash ? "Ver Eventos Ativos" : "Ver Lixeira"}
-                </Button>
-              </div>
-            )}
-          </div>
-          
+          <PageHeader
+            title="Programação de Eventos"
+            description="Confira os próximos eventos confirmados em todas as nossas unidades."
+            className="mb-0"
+          />
+
           <div className="mt-6 relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             {/* `bg-card`, e não `bg-white`: o campo precisa se destacar do fundo
@@ -528,8 +417,8 @@ export default function PublicEventsPage() {
                 continuava branco, com o texto claro por cima. Medido a 1,06:1:
                 a pessoa digitava sem ver. O token faz as duas coisas — quase
                 branco no claro, superfície escura no escuro. */}
-            <Input 
-              placeholder="Buscar por título, local ou descrição..." 
+            <Input
+              placeholder="Buscar por título, local ou descrição..."
               className="pl-10 h-12 shadow-sm border-border bg-card focus-visible:ring-primary"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -537,10 +426,7 @@ export default function PublicEventsPage() {
           </div>
         </div>
 
-
-
-
-        {!showTrash && (proximos.length > 0 || passados.length > 0) && (
+        {(proximos.length > 0 || passados.length > 0) && (
           <div className="mb-6 flex flex-wrap items-center gap-3">
             <div role="tablist" aria-label="Período" className="inline-flex h-10 items-center rounded-full bg-muted p-1 text-muted-foreground">
               {([
@@ -578,66 +464,49 @@ export default function PublicEventsPage() {
 
         {sortedEvents.length === 0 ? (
           <div className="text-center py-20 bg-card rounded-2xl border border-dashed border-border">
-            {showTrash ? (
+            <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            {!search && aba === 'proximos' && passados.length > 0 ? (
               <>
-                <Trash2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-foreground">
-                  {search ? 'Nada na lixeira com esse termo' : 'A lixeira está vazia'}
-                </h3>
+                <h3 className="text-lg font-medium text-foreground">Nenhum evento agendado no momento</h3>
                 <p className="text-muted-foreground">
-                  {search
-                    ? 'Tente outra busca, ou volte para os eventos ativos.'
-                    : 'Nenhum evento foi excluído.'}
+                  A próxima programação está sendo montada. Enquanto isso, veja{' '}
+                  <button type="button" onClick={() => trocarAba('passados')} className="font-medium text-foreground underline underline-offset-4">
+                    o que já aconteceu
+                  </button>.
                 </p>
               </>
             ) : (
               <>
-                <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                {!search && aba === 'proximos' && passados.length > 0 ? (
-                  <>
-                    <h3 className="text-lg font-medium text-foreground">Nenhum evento agendado no momento</h3>
-                    <p className="text-muted-foreground">
-                      A próxima programação está sendo montada. Enquanto isso, veja{' '}
-                      <button type="button" onClick={() => trocarAba('passados')} className="font-medium text-foreground underline underline-offset-4">
-                        o que já aconteceu
-                      </button>.
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <h3 className="text-lg font-medium text-foreground">Nenhum evento encontrado</h3>
-                    <p className="text-muted-foreground">Tente ajustar sua busca ou volte mais tarde.</p>
-                  </>
-                )}
+                <h3 className="text-lg font-medium text-foreground">Nenhum evento encontrado</h3>
+                <p className="text-muted-foreground">Tente ajustar sua busca ou volte mais tarde.</p>
               </>
             )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sortedEvents.map(event => (
-              <Card 
-                key={event.id} 
-                className={`overflow-hidden border-border hover:shadow-lg transition-shadow bg-card flex flex-col group ${showTrash ? '' : 'cursor-pointer'} ${
-                  !showTrash && aba === 'passados' ? 'opacity-75 [&_img]:saturate-50 [&_.capa-sem-imagem]:saturate-50' : ''
+              <Card
+                key={event.id}
+                className={`overflow-hidden border-border hover:shadow-lg transition-shadow bg-card flex flex-col group cursor-pointer ${
+                  aba === 'passados' ? 'opacity-75 [&_img]:saturate-50 [&_.capa-sem-imagem]:saturate-50' : ''
                 }`}
                 onClick={() => handleCardClick(event)}
               >
-
                 <div className="relative aspect-video overflow-hidden bg-muted">
                   {event.banner_url_desktop || event.banner_url_mobile ? (
-                    <img 
-                      src={event.banner_url_desktop || event.banner_url_mobile} 
+                    <img
+                      src={event.banner_url_desktop || event.banner_url_mobile}
                       alt={tituloEmTexto(event.title)}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : (
-                    <div 
+                    <div
                       className="capa-sem-imagem w-full h-full flex items-center justify-start p-6 text-left overflow-hidden"
                       style={{ backgroundColor: event.custom_color || '#94a3b8' }}
                     >
-                      <span 
+                      <span
                         className="font-bold text-white leading-[1.1] break-words uppercase select-none"
-                        style={{ 
+                        style={{
                           fontSize: event.title.length < 15 ? '2.5rem' : event.title.length < 30 ? '1.75rem' : event.title.length < 50 ? '1.25rem' : '1rem',
                         }}
                       >
@@ -649,40 +518,54 @@ export default function PublicEventsPage() {
                   <Badge className={`absolute top-3 left-3 ${UNIT_BG_COLORS[event.unit]} text-white border-none shadow-sm`}>
                     {event.unit}
                   </Badge>
-                  
-                  {/* Ligar banner de um evento excluído não faz sentido. */}
-                  {isAdmin && isAuthenticated && !showTrash && (
+
+                  {/* Os botões da equipe: o lápis edita direto (o clique no
+                      card abre o detalhe, como para o visitante); o olho liga e
+                      desliga o banner. */}
+                  {equipe && (canEdit || isAdmin) && (
                     <div className="absolute top-3 right-3 flex gap-2.5">
-                      <button 
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleToggleBanner(event);
-                        }}
-                        className={`p-2.5 sm:p-1.5 rounded-full shadow-lg backdrop-blur-md transition-colors ${event.show_in_banner ? 'bg-primary text-white' : 'bg-white/80 text-muted-foreground hover:bg-white'}`}
-                        title={event.show_in_banner ? "Remover do banner" : "Adicionar ao banner"}
-                      >
-                        {event.show_in_banner ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                      </button>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            editar(event);
+                          }}
+                          className="p-2.5 sm:p-1.5 rounded-full shadow-lg backdrop-blur-md transition-colors bg-white/80 text-muted-foreground hover:bg-white"
+                          title="Editar evento"
+                          aria-label="Editar evento"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleToggleBanner(event);
+                          }}
+                          className={`p-2.5 sm:p-1.5 rounded-full shadow-lg backdrop-blur-md transition-colors ${event.show_in_banner ? 'bg-primary text-white' : 'bg-white/80 text-muted-foreground hover:bg-white'}`}
+                          title={event.show_in_banner ? 'Remover do banner' : 'Adicionar ao banner'}
+                          aria-label={event.show_in_banner ? 'Remover do banner' : 'Adicionar ao banner'}
+                        >
+                          {event.show_in_banner ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
                 <CardHeader className="pb-3">
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex gap-2">
-                      {isAuthenticated && showTrash && (
-                        <Badge variant="outline" className="border-destructive/20 bg-destructive/10 font-medium text-[10px] text-destructive">
-                          {event.deleted_at
-                            ? `Excluído em ${format(new Date(event.deleted_at), "dd/MM/yyyy 'às' HH:mm")}`
-                            : 'Excluído'}
-                        </Badge>
-                      )}
-                      {!showTrash && jaAconteceu(event) && (
+                      {jaAconteceu(event) && (
                         <Badge variant="outline" className="bg-muted text-muted-foreground border-border font-medium text-[10px]">
                           Encerrado
                         </Badge>
                       )}
-                      {isAuthenticated && !showTrash && (
+                      {equipe && (
                         <>
                           <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-medium text-[10px]">
                             Confirmado
@@ -696,8 +579,6 @@ export default function PublicEventsPage() {
                       )}
                     </div>
                   </div>
-                  {/* O herói já usa o componente; sem ele, um título com
-                      `<br>` aparecia com o marcador escrito no card. */}
                   <CardTitle className="text-xl line-clamp-2 leading-tight group-hover:text-primary transition-colors text-foreground">
                     <TituloDoEvento texto={event.title} />
                   </CardTitle>
@@ -728,41 +609,14 @@ export default function PublicEventsPage() {
                     </p>
                   )}
                 </CardContent>
-
-                {/* As duas saídas da lixeira: voltar, ou acabar de vez. */}
-                {showTrash && isAuthenticated && isAdmin && (
-                  <div className="flex items-center gap-2 border-t border-border p-4">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1 gap-1.5"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        restoreEvent(event.id);
-                      }}
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" /> Restaurar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPendingPurge(event);
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" /> Excluir
-                    </Button>
-                  </div>
-                )}
               </Card>
             ))}
           </div>
         )}
       </main>
 
-      {!isAuthenticated && (
+      {/* O rodapé é do visitante — e de quem está vendo como visitante. */}
+      {!equipe && (
         <footer className="bg-card border-t border-border py-12 px-6 mt-12">
           <div className="max-w-7xl mx-auto text-center">
             <img src={logoImg} alt="anabrasil" className="h-8 w-8 rounded-lg mx-auto mb-4 opacity-50 grayscale" />
@@ -772,88 +626,28 @@ export default function PublicEventsPage() {
           </div>
         </footer>
       )}
-      <EventDetailDialog 
-        open={!!selectedEventForDetail} 
-        onOpenChange={(open) => !open && closeDetail()} 
-        event={selectedEventForDetail} 
+
+      <EventDetailDialog
+        open={!!selectedEventForDetail}
+        onOpenChange={(open) => !open && closeDetail()}
+        event={selectedEventForDetail}
+        comoVisitante={!equipe}
+        onEditar={equipe && canEdit ? editar : undefined}
+        onAlternarBanner={equipe && isAdmin ? handleToggleBanner : undefined}
       />
 
-      <EventFormDialog 
-        open={!!selectedEvent} 
-        onOpenChange={(open) => !open && setSelectedEvent(null)} 
-        event={selectedEvent} 
+      <EventFormDialog
+        open={!!selectedEvent}
+        onOpenChange={(open) => !open && setSelectedEvent(null)}
+        event={selectedEvent}
       />
 
-      <BannerMissingDialog 
+      <BannerMissingDialog
         open={showBannerMissingDialog}
         onOpenChange={setShowBannerMissingDialog}
         onConfirm={confirmBannerToggle}
         onAddImage={handleAddImage}
       />
-
-      <ConflictDialog
-        events={allEvents}
-        selectedMonth={new Date()}
-        open={showConflicts}
-        onOpenChange={setShowConflicts}
-        onEventClick={(e) => { setShowConflicts(false); setTimeout(() => { setDetailEvent(e); setShowDetail(true); }, 200); }}
-      />
-
-      {showFiltered && (
-        <FilteredEventsDialog
-          events={allEvents}
-          filterType={showFiltered}
-          selectedMonth={new Date()}
-          open={!!showFiltered}
-          onOpenChange={(v) => { if (!v) setShowFiltered(null); }}
-          onEventClick={(e) => { setShowFiltered(null); setTimeout(() => { setDetailEvent(e); setShowDetail(true); }, 200); }}
-        />
-      )}
-
-      {/* Aqui a linha some do banco. É a única tela do app que faz isso com
-          evento, e por isso ela pergunta, mostrando qual. */}
-      <AlertDialog open={!!pendingPurge} onOpenChange={(open) => !open && setPendingPurge(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir este evento definitivamente?</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-3">
-                <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
-                  <p className="font-medium text-foreground">{pendingPurge ? tituloEmTexto(pendingPurge.title) : ''}</p>
-                  <p className="mt-1 text-muted-foreground">
-                    {pendingPurge?.unit}
-                    {pendingPurge?.start_datetime
-                      ? ` · ${format(new Date(pendingPurge.start_datetime), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`
-                      : ''}
-                  </p>
-                </div>
-                <p>Ele sai do banco de vez. Não há como restaurá-lo depois.</p>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                if (pendingPurge) deleteEvent(pendingPurge.id);
-                setPendingPurge(null);
-              }}
-            >
-              Excluir definitivamente
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <EventDetailPanel
-        event={detailEvent}
-        open={showDetail}
-        onOpenChange={setShowDetail}
-        onEdit={canEdit ? (e) => { setShowDetail(false); setSelectedEvent(e); } : undefined}
-        onDelete={canEdit ? (id) => { deleteEvent(id); setShowDetail(false); } : undefined}
-      />
     </div>
   );
 }
-
