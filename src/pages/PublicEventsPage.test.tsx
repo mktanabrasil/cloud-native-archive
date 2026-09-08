@@ -334,3 +334,12 @@ describe('a vitrine vazia', () => {
     expect(screen.queryByRole('heading', { name: /a próxima programação/i })).toBeNull();
   });
 });
+
+describe('o convite do Instagram', () => {
+  it('aponta para o perfil da ANA', () => {
+    espiao.eventos = [];
+    montar();
+
+    expect(screen.getByRole('link', { name: /instagram/i })).toHaveAttribute('href', 'https://www.instagram.com/anabrasilorg');
+  });
+});
