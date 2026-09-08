@@ -573,9 +573,12 @@ export default function PublicEventsPage() {
                 onClick={() => handleCardClick(event)}
               >
                 <div className="relative aspect-video overflow-hidden bg-muted">
-                  {event.banner_url_desktop || event.banner_url_mobile ? (
+                  {/* Capa 16:9, depois 4:3, e por último o banner 21:9: um evento
+                      publicado só com a arte do banner ficava com card de cor sólida
+                      enquanto o herói mostrava a arte. */}
+                  {event.banner_url_desktop || event.banner_url_mobile || event.banner_image_desktop ? (
                     <img
-                      src={event.banner_url_desktop || event.banner_url_mobile}
+                      src={event.banner_url_desktop || event.banner_url_mobile || event.banner_image_desktop}
                       alt={tituloEmTexto(event.title)}
                       loading="lazy"
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"

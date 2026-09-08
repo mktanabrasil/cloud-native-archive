@@ -509,3 +509,23 @@ describe('link de evento que saiu da vitrine', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 });
+
+describe('a imagem do card', () => {
+  // Anônimo: sem herói de equipe, a única imagem na tela é a do card.
+  beforeEach(() => { espiao.autenticado = false; });
+
+  it('usa o banner 21:9 como última reserva', () => {
+    espiao.eventos = [evento({ id: 'so-banner', title: 'Só Banner', banner_image_desktop: 'https://exemplo/banner.jpg' })];
+    montar();
+
+    const img = screen.getByRole('img', { name: 'Só Banner' });
+    expect(img).toHaveAttribute('src', 'https://exemplo/banner.jpg');
+  });
+
+  it('prefere a capa 16:9 quando ela existe', () => {
+    espiao.eventos = [evento({ id: 'capa', title: 'Com Capa', banner_url_desktop: 'https://exemplo/capa.jpg', banner_image_desktop: 'https://exemplo/banner.jpg' })];
+    montar();
+
+    expect(screen.getByRole('img', { name: 'Com Capa' })).toHaveAttribute('src', 'https://exemplo/capa.jpg');
+  });
+});
