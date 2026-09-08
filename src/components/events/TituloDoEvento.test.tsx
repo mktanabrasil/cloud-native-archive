@@ -70,3 +70,12 @@ describe('a quebra de linha, que é o motivo de tudo isso', () => {
     expect(screen.getByText('Bazar Ana DIC')).toBeInTheDocument();
   });
 });
+
+describe('tituloEmTexto', () => {
+  it('troca o marcador por espaço, para alt, WhatsApp e confirmações', async () => {
+    const { tituloEmTexto } = await import('@/lib/events/titulo');
+    expect(tituloEmTexto('HOPE DAY<br>2026')).toBe('HOPE DAY 2026');
+    expect(tituloEmTexto('Festa <br/> da Primavera')).toBe('Festa da Primavera');
+    expect(tituloEmTexto('Sem quebra')).toBe('Sem quebra');
+  });
+});

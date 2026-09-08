@@ -1,4 +1,5 @@
 import { Fragment } from 'react';
+import { MARCADOR_DE_QUEBRA } from '@/lib/events/titulo';
 
 /**
  * O título do evento, com a quebra de linha que a pessoa escreve como `<br>`.
@@ -28,8 +29,6 @@ interface Props {
   apenasNoDesktop?: boolean;
 }
 
-/** `<br>`, `<br/>` e `<br />`, em qualquer caixa. */
-const MARCADOR_DE_QUEBRA = /<br\s*\/?>/i;
 
 export function TituloDoEvento({ texto, apenasNoDesktop = false }: Props) {
   const partes = texto.split(MARCADOR_DE_QUEBRA);

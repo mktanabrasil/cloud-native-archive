@@ -28,6 +28,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { EventDetailDialog } from '@/components/EventDetailDialog';
 import { TituloDoEvento } from '@/components/events/TituloDoEvento';
+import { tituloEmTexto } from '@/lib/events/titulo';
 import { abaInicial, jaAconteceu, lerAba, separarPorData, type Aba } from '@/lib/events/proximosEPassados';
 import EventFormDialog from '@/components/EventFormDialog';
 import { BannerMissingDialog } from '@/components/BannerMissingDialog';
@@ -293,13 +294,13 @@ export default function PublicEventsPage() {
                 <>
                   <img 
                     src={event.banner_image_desktop || event.banner_url_desktop || event.banner_url_mobile} 
-                    alt={event.title}
+                    alt={tituloEmTexto(event.title)}
                     className="hidden md:block w-full h-full object-cover opacity-60"
                   />
                   {/* Mobile Banner (9:16 preferencial, fallback para capa 4:3) */}
                   <img 
                     src={event.banner_image_mobile || event.banner_url_mobile || event.banner_url_desktop} 
-                    alt={event.title}
+                    alt={tituloEmTexto(event.title)}
                     className="block md:hidden w-full h-full object-cover opacity-60"
                   />
                 </>
@@ -336,7 +337,7 @@ export default function PublicEventsPage() {
                   <div className={`mb-6 animate-in slide-in-from-left duration-700 w-full flex items-center justify-start ${event.full_height_title ? 'h-1/2' : 'h-24 md:h-40'}`}>
                     <img 
                       src={event.event_logo_url} 
-                      alt={event.title} 
+                      alt={tituloEmTexto(event.title)} 
                       className={`object-contain object-left h-full max-w-full filter drop-shadow-2xl`} 
                     />
                   </div>
@@ -626,7 +627,7 @@ export default function PublicEventsPage() {
                   {event.banner_url_desktop || event.banner_url_mobile ? (
                     <img 
                       src={event.banner_url_desktop || event.banner_url_mobile} 
-                      alt={event.title}
+                      alt={tituloEmTexto(event.title)}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : (
@@ -640,7 +641,7 @@ export default function PublicEventsPage() {
                           fontSize: event.title.length < 15 ? '2.5rem' : event.title.length < 30 ? '1.75rem' : event.title.length < 50 ? '1.25rem' : '1rem',
                         }}
                       >
-                        {event.title}
+                        <TituloDoEvento texto={event.title} />
                       </span>
                     </div>
                   )}
@@ -695,8 +696,10 @@ export default function PublicEventsPage() {
                       )}
                     </div>
                   </div>
+                  {/* O herói já usa o componente; sem ele, um título com
+                      `<br>` aparecia com o marcador escrito no card. */}
                   <CardTitle className="text-xl line-clamp-2 leading-tight group-hover:text-primary transition-colors text-foreground">
-                    {event.title}
+                    <TituloDoEvento texto={event.title} />
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 flex-1">
@@ -816,7 +819,7 @@ export default function PublicEventsPage() {
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
-                  <p className="font-medium text-foreground">{pendingPurge?.title}</p>
+                  <p className="font-medium text-foreground">{pendingPurge ? tituloEmTexto(pendingPurge.title) : ''}</p>
                   <p className="mt-1 text-muted-foreground">
                     {pendingPurge?.unit}
                     {pendingPurge?.start_datetime

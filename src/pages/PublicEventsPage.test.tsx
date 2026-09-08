@@ -287,3 +287,14 @@ describe('as abas Próximos e Já aconteceram', () => {
     expect(screen.queryByRole('tablist')).toBeNull();
   });
 });
+
+describe('o título no card', () => {
+  it('quebra a linha em vez de escrever o marcador', () => {
+    espiao.eventos = [evento({ id: 'quebra', title: 'HOPE DAY<br>2026' })];
+    montar();
+
+    expect(screen.queryByText(/<br>/)).toBeNull();
+    const card = screen.getByRole('heading', { level: 3, name: 'HOPE DAY 2026' });
+    expect(card.querySelector('br')).not.toBeNull();
+  });
+});
