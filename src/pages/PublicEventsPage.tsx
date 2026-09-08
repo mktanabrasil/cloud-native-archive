@@ -28,6 +28,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { EventDetailDialog } from '@/components/EventDetailDialog';
 import { TituloDoEvento } from '@/components/events/TituloDoEvento';
+import { abaInicial, jaAconteceu, lerAba, separarPorData, type Aba } from '@/lib/events/proximosEPassados';
 import EventFormDialog from '@/components/EventFormDialog';
 import { BannerMissingDialog } from '@/components/BannerMissingDialog';
 import ConflictDialog from '@/components/ConflictDialog';
@@ -99,12 +100,44 @@ export default function PublicEventsPage() {
     );
   }, [events, trashEvents, showTrash, search]);
 
-  // Sort by date (nearest first)
-  const sortedEvents = useMemo(() => {
-    return [...filtered].sort((a, b) => 
-      new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime()
-    );
-  }, [filtered]);
+  /**
+   * "Próximos" e "Já aconteceram", em duas abas.
+   *
+   * A grade ordenava tudo por data crescente e não olhava o dia: em setembro,
+   * um evento de março abria a página, embaixo do texto que promete "os
+   * próximos eventos". Agora quem já terminou antes de hoje começar vai para
+   * a segunda aba (regra em `proximosEPassados.ts`). A lixeira não separa:
+   * ali a data não diz nada sobre o evento.
+   *
+   * A aba escolhida fica na URL (`?aba=passados`) para o link poder ser
+   * compartilhado já aberto. Sem escolha, abre em "Próximos" — salvo quando só
+   * há passados, porque aí "Próximos" seria uma grade vazia com a programação
+   * inteira escondida ao lado.
+   */
+  const { proximos, passados } = useMemo(
+    () => (showTrash
+      ? { proximos: [...filtered].sort((a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime()), passados: [] as AppEvent[] }
+      : separarPorData(filtered)),
+    [filtered, showTrash],
+  );
+  // A aba padrão olha a vitrine inteira, não o resultado da busca: se
+  // olhasse a busca, digitar "páscoa" pularia de aba sozinho e apagar o
+  // termo pularia de volta. Quem avisa do resultado na outra aba é a linha
+  // abaixo das abas.
+  const padrao = useMemo(() => {
+    const { proximos: p, passados: q } = separarPorData(events);
+    return abaInicial(p.length, q.length);
+  }, [events]);
+  const abaEscolhida = lerAba(searchParams.get('aba'));
+  const aba: Aba = showTrash ? 'proximos' : abaEscolhida ?? padrao;
+  const trocarAba = (nova: Aba) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('aba', nova);
+    setSearchParams(params, { replace: true });
+  };
+  const sortedEvents = aba === 'passados' ? passados : proximos;
+  const outraAba: Aba = aba === 'passados' ? 'proximos' : 'passados';
+  const naOutraAba = (aba === 'passados' ? proximos : passados).length;
 
   const bannerEvents = useMemo(() => {
     // Show confirmed events that are in banner, sorted by start date
@@ -230,7 +263,9 @@ export default function PublicEventsPage() {
     } else {
       setSelectedEventForDetail(event);
       // Update URL without full refresh to support sharing the specific open state
-      setSearchParams({ slug: event.slug || event.id });
+      const params = new URLSearchParams(searchParams);
+      params.set('slug', event.slug || event.id);
+      setSearchParams(params);
     }
   };
 
@@ -504,6 +539,42 @@ export default function PublicEventsPage() {
 
 
 
+        {!showTrash && (proximos.length > 0 || passados.length > 0) && (
+          <div className="mb-6 flex flex-wrap items-center gap-3">
+            <div role="tablist" aria-label="Período" className="inline-flex h-10 items-center rounded-full bg-muted p-1 text-muted-foreground">
+              {([
+                ['proximos', 'Próximos', proximos.length],
+                ['passados', 'Já aconteceram', passados.length],
+              ] as [Aba, string, number][]).map(([valor, rotulo, total]) => (
+                <button
+                  key={valor}
+                  type="button"
+                  role="tab"
+                  aria-selected={aba === valor}
+                  onClick={() => trocarAba(valor)}
+                  className={`inline-flex h-8 items-center gap-1.5 rounded-full px-4 text-sm font-medium transition-colors ${
+                    aba === valor ? 'bg-card text-foreground shadow-sm' : 'hover:text-foreground'
+                  }`}
+                >
+                  {rotulo}
+                  <span className={`text-xs tabular-nums ${aba === valor ? 'text-muted-foreground' : ''}`}>{total}</span>
+                </button>
+              ))}
+            </div>
+            {/* Quem busca "Páscoa" em setembro quer o evento de março, que está
+                na outra aba. Em vez de trocar de aba sozinho, avisa. */}
+            {search && sortedEvents.length === 0 && naOutraAba > 0 && (
+              <button
+                type="button"
+                onClick={() => trocarAba(outraAba)}
+                className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+              >
+                {naOutraAba === 1 ? '1 resultado' : `${naOutraAba} resultados`} em {outraAba === 'passados' ? 'Já aconteceram' : 'Próximos'}
+              </button>
+            )}
+          </div>
+        )}
+
         {sortedEvents.length === 0 ? (
           <div className="text-center py-20 bg-card rounded-2xl border border-dashed border-border">
             {showTrash ? (
@@ -521,8 +592,22 @@ export default function PublicEventsPage() {
             ) : (
               <>
                 <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-foreground">Nenhum evento encontrado</h3>
-                <p className="text-muted-foreground">Tente ajustar sua busca ou volte mais tarde.</p>
+                {!search && aba === 'proximos' && passados.length > 0 ? (
+                  <>
+                    <h3 className="text-lg font-medium text-foreground">Nenhum evento agendado no momento</h3>
+                    <p className="text-muted-foreground">
+                      A próxima programação está sendo montada. Enquanto isso, veja{' '}
+                      <button type="button" onClick={() => trocarAba('passados')} className="font-medium text-foreground underline underline-offset-4">
+                        o que já aconteceu
+                      </button>.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-medium text-foreground">Nenhum evento encontrado</h3>
+                    <p className="text-muted-foreground">Tente ajustar sua busca ou volte mais tarde.</p>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -531,7 +616,9 @@ export default function PublicEventsPage() {
             {sortedEvents.map(event => (
               <Card 
                 key={event.id} 
-                className={`overflow-hidden border-border hover:shadow-lg transition-shadow bg-card flex flex-col group ${showTrash ? '' : 'cursor-pointer'}`}
+                className={`overflow-hidden border-border hover:shadow-lg transition-shadow bg-card flex flex-col group ${showTrash ? '' : 'cursor-pointer'} ${
+                  !showTrash && aba === 'passados' ? 'opacity-75 [&_img]:saturate-50 [&_.capa-sem-imagem]:saturate-50' : ''
+                }`}
                 onClick={() => handleCardClick(event)}
               >
 
@@ -544,7 +631,7 @@ export default function PublicEventsPage() {
                     />
                   ) : (
                     <div 
-                      className="w-full h-full flex items-center justify-start p-6 text-left overflow-hidden"
+                      className="capa-sem-imagem w-full h-full flex items-center justify-start p-6 text-left overflow-hidden"
                       style={{ backgroundColor: event.custom_color || '#94a3b8' }}
                     >
                       <span 
@@ -587,6 +674,11 @@ export default function PublicEventsPage() {
                           {event.deleted_at
                             ? `Excluído em ${format(new Date(event.deleted_at), "dd/MM/yyyy 'às' HH:mm")}`
                             : 'Excluído'}
+                        </Badge>
+                      )}
+                      {!showTrash && jaAconteceu(event) && (
+                        <Badge variant="outline" className="bg-muted text-muted-foreground border-border font-medium text-[10px]">
+                          Encerrado
                         </Badge>
                       )}
                       {isAuthenticated && !showTrash && (

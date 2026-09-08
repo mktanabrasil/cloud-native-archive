@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { AppEvent } from '@/types';
@@ -193,5 +193,97 @@ describe('as duas saídas da lixeira', () => {
     fireEvent.click(within(dialogo).getByRole('button', { name: /excluir definitivamente/i }));
 
     expect(espiao.remove).toHaveBeenCalledWith('lixo-1');
+  });
+});
+
+/**
+ * "Próximos" e "Já aconteceram".
+ *
+ * A grade mostrava tudo por data crescente: em setembro, um evento de março
+ * abria a página. Agora quem terminou antes de hoje começar vai para a
+ * segunda aba. Hoje, nestes testes, é 8 de setembro de 2026.
+ */
+/**
+ * Só a grade: o herói (h2) também escreve o título do evento, e para o admin
+ * ele mostra até os passados, com selo. O card usa h3.
+ */
+const noCard = (titulo: string) => screen.queryAllByRole('heading', { level: 3, name: titulo }).length;
+
+describe('as abas Próximos e Já aconteceram', () => {
+  const passado = evento({
+    id: 'passado-1',
+    title: 'Festa de Páscoa',
+    start_datetime: new Date(2026, 2, 28, 14).toISOString(),
+    end_datetime: new Date(2026, 2, 28, 17).toISOString(),
+  });
+  const futuro = evento({
+    id: 'futuro-1',
+    title: 'Hope Day 2026',
+    start_datetime: new Date(2026, 9, 10, 8).toISOString(),
+    end_datetime: new Date(2026, 9, 10, 16).toISOString(),
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date(2026, 8, 8, 15) });
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('abre em Próximos e deixa o passado para a outra aba', () => {
+    espiao.eventos = [passado, futuro];
+    montar();
+
+    expect(noCard('Hope Day 2026')).toBeGreaterThan(0);
+    expect(noCard('Festa de Páscoa')).toBe(0);
+    expect(screen.getByRole('tab', { name: /próximos/i })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('mostra o passado ao trocar de aba, com o selo Encerrado', () => {
+    espiao.eventos = [passado, futuro];
+    montar();
+
+    fireEvent.click(screen.getByRole('tab', { name: /já aconteceram/i }));
+
+    expect(noCard('Festa de Páscoa')).toBeGreaterThan(0);
+    expect(noCard('Hope Day 2026')).toBe(0);
+    expect(screen.getByText('Encerrado')).toBeInTheDocument();
+  });
+
+  it('quando só há passados, já abre em Já aconteceram', () => {
+    espiao.eventos = [passado];
+    montar();
+
+    expect(screen.getByRole('tab', { name: /já aconteceram/i })).toHaveAttribute('aria-selected', 'true');
+    expect(noCard('Festa de Páscoa')).toBeGreaterThan(0);
+  });
+
+  it('evento de hoje continua em Próximos mesmo depois de acabar', () => {
+    espiao.eventos = [
+      evento({ id: 'hoje', title: 'Reunião da manhã', start_datetime: new Date(2026, 8, 8, 9).toISOString(), end_datetime: new Date(2026, 8, 8, 11).toISOString() }),
+    ];
+    montar();
+
+    expect(screen.getByRole('tab', { name: /próximos/i })).toHaveAttribute('aria-selected', 'true');
+    expect(noCard('Reunião da manhã')).toBeGreaterThan(0);
+  });
+
+  it('a busca que só acha na outra aba avisa, em vez de trocar sozinha', () => {
+    espiao.eventos = [passado, futuro];
+    montar();
+
+    fireEvent.change(screen.getByPlaceholderText(/buscar por/i), { target: { value: 'páscoa' } });
+
+    expect(noCard('Festa de Páscoa')).toBe(0);
+    const aviso = screen.getByRole('button', { name: /1 resultado em já aconteceram/i });
+    fireEvent.click(aviso);
+    expect(noCard('Festa de Páscoa')).toBeGreaterThan(0);
+  });
+
+  it('a lixeira não separa por data', async () => {
+    espiao.eventos = [passado, futuro, naLixeira];
+    montar();
+    abrirLixeira();
+
+    await esperarLixeira('Reunião cancelada');
+    expect(screen.queryByRole('tablist')).toBeNull();
   });
 });
