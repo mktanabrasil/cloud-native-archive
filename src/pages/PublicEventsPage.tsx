@@ -14,7 +14,6 @@ import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import PageHeader from '@/components/PageHeader';
-import logoImg from '@/assets/logo.png';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { EventDetailDialog } from '@/components/EventDetailDialog';
@@ -25,6 +24,7 @@ import { textoDaData, textoDoHorario } from '@/lib/events/periodo';
 import EventFormDialog from '@/components/EventFormDialog';
 import { BannerMissingDialog } from '@/components/BannerMissingDialog';
 import { VitrineVazia } from '@/components/events/VitrineVazia';
+import { RodapePublico } from '@/components/events/RodapePublico';
 
 /**
  * A página pública de eventos — a vitrine que a família vê.
@@ -698,16 +698,7 @@ export default function PublicEventsPage() {
       </main>
 
       {/* O rodapé é do visitante — e de quem está vendo como visitante. */}
-      {!equipe && (
-        <footer className="bg-card border-t border-border py-12 px-6 mt-12">
-          <div className="max-w-7xl mx-auto text-center">
-            <img src={logoImg} alt="anabrasil" className="h-8 w-8 rounded-lg mx-auto mb-4 opacity-50 grayscale" />
-            <p className="text-muted-foreground text-sm">
-              © {new Date().getFullYear()} anabrasil. Todos os direitos reservados.
-            </p>
-          </div>
-        </footer>
-      )}
+      {!equipe && <RodapePublico />}
 
       <EventDetailDialog
         open={!!selectedEventForDetail}
