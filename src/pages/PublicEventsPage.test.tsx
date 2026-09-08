@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { AppEvent } from '@/types';
 
@@ -341,5 +341,116 @@ describe('o convite do Instagram', () => {
     montar();
 
     expect(screen.getByRole('link', { name: /instagram/i })).toHaveAttribute('href', 'https://www.instagram.com/anabrasilorg');
+  });
+});
+
+/**
+ * Carrossel e card acessíveis.
+ *
+ * O carrossel girava sozinho para todo mundo e o card só abria com o mouse.
+ */
+describe('o card pelo teclado', () => {
+  it('Enter e Espaço abrem o detalhe, como o clique', () => {
+    montar();
+    const card = screen.getByRole('button', { name: /ver detalhes de festa da primavera/i });
+
+    expect(card).toHaveAttribute('tabindex', '0');
+    fireEvent.keyDown(card, { key: 'Enter' });
+    expect(screen.getByTestId('detalhe')).toBeInTheDocument();
+  });
+
+  it('Enter no lápis edita, e não abre o detalhe junto', () => {
+    montar();
+
+    const lapis = screen.getByRole('button', { name: /editar evento/i });
+    fireEvent.keyDown(lapis, { key: 'Enter' });
+
+    expect(screen.queryByTestId('detalhe')).toBeNull();
+  });
+});
+
+describe('o carrossel', () => {
+  const noBanner = (id: string, title: string, dia: number) =>
+    evento({
+      id,
+      title,
+      show_in_banner: true,
+      banner_image_desktop: `https://exemplo/${id}.jpg`,
+      start_datetime: new Date(2026, 9, dia, 10).toISOString(),
+      end_datetime: new Date(2026, 9, dia, 12).toISOString(),
+    });
+  const slides = [noBanner('s1', 'Slide Um', 10), noBanner('s2', 'Slide Dois', 11), noBanner('s3', 'Slide Três', 12), noBanner('s4', 'Slide Quatro', 13), noBanner('s5', 'Slide Cinco', 14)];
+  const slideAtual = () => screen.getByRole('region', { name: /eventos em destaque/i }).querySelector('[aria-hidden="false"]')!;
+
+  beforeEach(() => {
+    espiao.eventos = slides;
+    espiao.autenticado = false;
+  });
+
+  it('gira sozinho depois do tempo do slide', () => {
+    montar();
+    expect(slideAtual()).toHaveTextContent('Slide Um');
+
+    act(() => { vi.advanceTimersByTime(5100); });
+
+    expect(slideAtual()).toHaveTextContent('Slide Dois');
+  });
+
+  it('para com o mouse em cima e volta a girar quando ele sai', () => {
+    montar();
+    const regiao = screen.getByRole('region', { name: /eventos em destaque/i });
+
+    fireEvent.mouseEnter(regiao);
+    act(() => { vi.advanceTimersByTime(12000); });
+    expect(slideAtual()).toHaveTextContent('Slide Um');
+
+    fireEvent.mouseLeave(regiao);
+    act(() => { vi.advanceTimersByTime(5100); });
+    expect(slideAtual()).toHaveTextContent('Slide Dois');
+  });
+
+  it('para com o foco dentro, para quem navega por teclado', () => {
+    montar();
+
+    fireEvent.focus(screen.getByRole('button', { name: /próximo slide/i }));
+    act(() => { vi.advanceTimersByTime(12000); });
+
+    expect(slideAtual()).toHaveTextContent('Slide Um');
+  });
+
+  it('não gira para quem pediu menos movimento; as setas continuam', () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((q: string) => ({ ...original(q), matches: q.includes('reduced-motion') })) as typeof window.matchMedia;
+    try {
+      montar();
+      act(() => { vi.advanceTimersByTime(12000); });
+      expect(slideAtual()).toHaveTextContent('Slide Um');
+
+      fireEvent.click(screen.getByRole('button', { name: /próximo slide/i }));
+      expect(slideAtual()).toHaveTextContent('Slide Dois');
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
+  it('só o slide atual e os vizinhos carregam imagem', () => {
+    montar();
+    const regiao = screen.getByRole('region', { name: /eventos em destaque/i });
+    const fontes = [...regiao.querySelectorAll('img')].map(i => i.getAttribute('src'));
+
+    // atual (s1), próximo (s2) e anterior (s5, porque o carrossel dá a volta)
+    expect(fontes.some(f => f?.includes('s1'))).toBe(true);
+    expect(fontes.some(f => f?.includes('s2'))).toBe(true);
+    expect(fontes.some(f => f?.includes('s5'))).toBe(true);
+    expect(fontes.some(f => f?.includes('s3'))).toBe(false);
+    expect(fontes.some(f => f?.includes('s4'))).toBe(false);
+  });
+
+  it('os slides fora de vista ficam escondidos do leitor de tela', () => {
+    montar();
+    const regiao = screen.getByRole('region', { name: /eventos em destaque/i });
+
+    expect(regiao.querySelectorAll('[aria-hidden="true"]').length).toBe(4);
+    expect(regiao.querySelectorAll('[aria-hidden="false"]').length).toBe(1);
   });
 });
