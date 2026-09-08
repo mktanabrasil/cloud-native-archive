@@ -115,6 +115,8 @@ export type Database = {
           food_logistics: string | null
 
           food_details: string | null
+          food_items: Json
+          equipment_items: Json
           full_height_title: boolean | null
           has_conflict: boolean | null
           has_unit_collaboration: boolean | null
@@ -179,6 +181,8 @@ export type Database = {
           food_logistics?: string | null
 
           food_details?: string | null
+          food_items?: Json
+          equipment_items?: Json
           full_height_title?: boolean | null
           has_conflict?: boolean | null
           has_unit_collaboration?: boolean | null
@@ -243,6 +247,8 @@ export type Database = {
           food_logistics?: string | null
 
           food_details?: string | null
+          food_items?: Json
+          equipment_items?: Json
           full_height_title?: boolean | null
           has_conflict?: boolean | null
           has_unit_collaboration?: boolean | null

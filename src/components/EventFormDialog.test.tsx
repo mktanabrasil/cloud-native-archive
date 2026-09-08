@@ -448,6 +448,95 @@ describe('checklist de publicação', () => {
   });
 });
 
+describe('um detalhe por item na alimentação e nos equipamentos', () => {
+  it('ligar um item abre a caixa dele; o texto vai para food_items e a string continua', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    preencher(); // liga Lanche e Som
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Almoço' }));
+    fireEvent.change(screen.getByLabelText('Detalhes de Almoço'), { target: { value: '60 crianças + 8 educadores, 12h ' } });
+    fireEvent.change(screen.getByLabelText('Detalhes de Lanche'), { target: { value: '15h, bolo e suco' } });
+    fireEvent.change(screen.getByLabelText('Detalhes de Som'), { target: { value: 'caixa da unidade' } });
+    // "Nenhum" não tem caixa
+    expect(screen.queryByLabelText('Detalhes de Nenhum')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
+    const salvo = espiao.addEvent.mock.calls[0][0] as AppEvent;
+    expect(salvo.food_logistics).toBe('Lanche, Almoço');
+    expect(salvo.food_items).toEqual([
+      { item: 'Lanche', detalhes: '15h, bolo e suco' },
+      { item: 'Almoço', detalhes: '60 crianças + 8 educadores, 12h' },
+    ]);
+    expect(salvo.equipment_items).toEqual([{ item: 'Som', detalhes: 'caixa da unidade' }]);
+  });
+
+  it('o “Outro” ganha detalhe embaixo do nome, e o detalhe sobrevive enquanto o nome muda', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    preencher();
+    fireEvent.click(screen.getByRole('switch', { name: /outra logística/i }));
+    const nome = screen.getByPlaceholderText('Especifique a alimentação...');
+    fireEvent.change(nome, { target: { value: 'Café' } });
+    fireEvent.change(screen.getByLabelText('Detalhes de Café'), { target: { value: '7h30, 12 pessoas' } });
+    fireEvent.change(nome, { target: { value: 'Café dos voluntários' } });
+    expect((screen.getByLabelText('Detalhes de Café dos voluntários') as HTMLTextAreaElement).value).toBe('7h30, 12 pessoas');
+
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
+    const salvo = espiao.addEvent.mock.calls[0][0] as AppEvent;
+    expect(salvo.food_items).toContainEqual({ item: 'Café dos voluntários', detalhes: '7h30, 12 pessoas', outro: true });
+  });
+
+  it('desligar um item leva o detalhe junto; “Nenhum” zera a lista', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    preencher();
+    fireEvent.change(screen.getByLabelText('Detalhes de Lanche'), { target: { value: 'x' } });
+    // há um "Nenhum" em cada grupo: o da alimentação é o de id `comida-Nenhum`
+    fireEvent.click(document.getElementById('comida-Nenhum')!);
+
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
+    const salvo = espiao.addEvent.mock.calls[0][0] as AppEvent;
+    expect(salvo.food_items).toEqual([{ item: 'Nenhum', detalhes: '' }]);
+    expect(salvo.food_logistics).toBe('Nenhum');
+  });
+
+  it('o admin vê o quadro-resumo na coluna direita, atualizado enquanto digita', () => {
+    espiao.papel = { ...espiao.papel, isAdmin: true, isMarketing: true };
+    abrir();
+    preencher();
+    fireEvent.change(screen.getByLabelText('Detalhes de Lanche'), { target: { value: '15h, bolo e suco' } });
+
+    const coluna = screen.getByTestId('resumo-coluna-direita');
+    expect(coluna).toHaveTextContent('Alimentação · 1 item');
+    expect(coluna).toHaveTextContent('15h, bolo e suco');
+    expect(coluna).toHaveTextContent('Equipamentos · 1 item');
+    expect(coluna).toHaveTextContent('— sem detalhes ainda');
+    expect(screen.queryByRole('button', { name: /ver resumo/i })).not.toBeInTheDocument();
+  });
+
+  it('a gestora abre o mesmo quadro pelo botão “Ver resumo”', () => {
+    abrir();
+    preencher();
+
+    expect(screen.queryByTestId('resumo-coluna-direita')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /ver resumo/i }));
+
+    expect(screen.getByTestId('popover-resumo')).toHaveTextContent('Alimentação · 1 item');
+    expect(screen.getByTestId('popover-resumo')).toHaveTextContent('Lanche');
+  });
+
+  it('o campo geral virou “Observações gerais da alimentação”', () => {
+    abrir();
+    expect(screen.getByLabelText(/observações gerais da alimentação/i)).toBeInTheDocument();
+    expect(screen.queryByText(/mais detalhes da alimentação/i)).not.toBeInTheDocument();
+  });
+});
+
 describe('os combinados da cobertura', () => {
   it('ao pedir cobertura, a unidade lê os dois combinados', () => {
     abrir();
@@ -464,7 +553,9 @@ describe('os combinados da cobertura', () => {
     expect(screen.queryByRole('switch', { name: /marketing vai estar presente/i })).not.toBeInTheDocument();
   });
 
-  it('o admin responde, e a resposta vai gravada', async () => {
+  // 15 s: a revisão do admin renderiza o formulário inteiro no modo dividido
+  // (preview + quadros-resumo); sob a carga da suíte completa passa dos 5 s.
+  it('o admin responde, e a resposta vai gravada', { timeout: 15000 }, async () => {
     espiao.papel = { ...espiao.papel, userName: 'MKT ANA', isAdmin: true, isMarketing: true };
     const pedido = { ...eventoGravado(), status: 'pendente' as const, marketing_request: true, marketing_coverage: true, submitted_at: '2026-03-19T13:00:00.000Z' };
     render(<EventFormDialog open onOpenChange={fechou} event={pedido} revisao />);

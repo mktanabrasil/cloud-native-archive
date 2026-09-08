@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import type { ItemComDetalhe } from '@/types';
+import { LIMITE_DETALHE, OUTRO, detalheDe } from '@/lib/events/itens';
 
 /**
  * Um grupo de opções do formulário de evento: público-alvo, equipe de apoio,
@@ -54,6 +58,19 @@ export interface GrupoDeOpcoesProps {
   outroAberto: boolean;
   onOutroAberto: (aberto: boolean) => void;
   erro?: string;
+  /**
+   * Um detalhe por item (alimentação e equipamentos, desde 08/09/2026).
+   *
+   * Cada opção ligada — menos "Nenhum" — ganha uma caixa de texto embaixo:
+   * para quantos, a que hora, quem fornece. O "Outro" tem o nome curto na
+   * caixa de sempre e o detalhe logo abaixo. A caixa abre com o item já em
+   * foco: liga, já escreve. Quem não passa `detalhes` fica como antes.
+   */
+  detalhes?: {
+    itens: ItemComDetalhe[];
+    onDetalhe: (chave: string, texto: string) => void;
+    pista: string;
+  };
 }
 
 const separar = (valor: string): string[] =>
@@ -84,7 +101,10 @@ export function GrupoDeOpcoes({
   outroAberto,
   onOutroAberto,
   erro,
+  detalhes,
 }: GrupoDeOpcoesProps) {
+  /** O item que acabou de ser ligado: a caixa dele abre em foco. */
+  const [recemLigado, setRecemLigado] = useState<string | null>(null);
   // Sem aparar: `separar` apara, e isso comeria o espaço final enquanto
   // se digita. As opções fixas são comparadas aparadas, como antes.
   const partes = valor.split(', ').filter((v) => v.trim());
@@ -110,7 +130,33 @@ export function GrupoDeOpcoes({
       return;
     }
     const semNenhum = temNenhum ? escolhidos.filter((e) => e !== 'Nenhum') : escolhidos;
+    setRecemLigado(opcao);
     onChange(montar([...semNenhum, opcao], texto));
+  };
+
+  /** A caixa de detalhe de um item ligado, quando o grupo tem detalhes. */
+  const caixaDeDetalhe = (chave: string, rotulo: string) => {
+    if (!detalhes) return null;
+    const valorDetalhe = detalheDe(detalhes.itens, chave);
+    const usados = valorDetalhe.length;
+    return (
+      <div className="mt-2 animate-in fade-in slide-in-from-top-1 duration-150">
+        <Textarea
+          id={`${id}-${chave}-detalhe`}
+          aria-label={`Detalhes de ${rotulo}`}
+          rows={2}
+          maxLength={LIMITE_DETALHE}
+          autoFocus={recemLigado === chave}
+          value={valorDetalhe}
+          onChange={(e) => detalhes.onDetalhe(chave, e.target.value)}
+          placeholder={detalhes.pista}
+          className="min-h-[44px] text-sm bg-background"
+        />
+        <p className={`mt-1 text-right text-[11px] tabular-nums ${usados >= LIMITE_DETALHE ? 'text-destructive' : 'text-muted-foreground'}`}>
+          {usados}/{LIMITE_DETALHE}
+        </p>
+      </div>
+    );
   };
 
   const alternarOutro = () => {
@@ -129,24 +175,31 @@ export function GrupoDeOpcoes({
   /** O "Outro" também conta como opção escondida. */
   const ocultas = demais.length + 1;
 
-  const linha = (opcao: string) => (
-    <div
-      key={opcao}
-      className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card shadow-sm"
-    >
-      <Switch
-        id={`${id}-${opcao}`}
-        checked={escolhidos.includes(opcao)}
-        onCheckedChange={() => alternar(opcao)}
-      />
-      <Label htmlFor={`${id}-${opcao}`} className="text-sm cursor-pointer flex-1 font-medium">
-        {opcao}
-        {opcao === 'Nenhum' && nenhumLigado && significadoDoNenhum && (
-          <span className="ml-1.5 font-normal text-muted-foreground">— {significadoDoNenhum}</span>
-        )}
-      </Label>
-    </div>
-  );
+  const linha = (opcao: string) => {
+    const ligada = escolhidos.includes(opcao);
+    const comDetalhe = !!detalhes && ligada && opcao !== 'Nenhum';
+    return (
+      <div
+        key={opcao}
+        className={`p-3 rounded-lg border bg-card shadow-sm ${comDetalhe ? 'border-primary/50' : 'border-border'}`}
+      >
+        <div className="flex items-center gap-3">
+          <Switch
+            id={`${id}-${opcao}`}
+            checked={ligada}
+            onCheckedChange={() => alternar(opcao)}
+          />
+          <Label htmlFor={`${id}-${opcao}`} className="text-sm cursor-pointer flex-1 font-medium">
+            {opcao}
+            {opcao === 'Nenhum' && nenhumLigado && significadoDoNenhum && (
+              <span className="ml-1.5 font-normal text-muted-foreground">— {significadoDoNenhum}</span>
+            )}
+          </Label>
+        </div>
+        {comDetalhe && caixaDeDetalhe(opcao, opcao)}
+      </div>
+    );
+  };
 
   return (
     <div id={`campo-${id}`}>
@@ -211,6 +264,7 @@ export function GrupoDeOpcoes({
               {texto.trim() === '' && (
                 <p className="text-xs text-destructive">Escreva qual, ou desligue esta opção.</p>
               )}
+              {texto.trim() !== '' && caixaDeDetalhe(OUTRO, texto.trim())}
             </>
           )}
         </div>

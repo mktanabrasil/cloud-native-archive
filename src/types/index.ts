@@ -24,6 +24,16 @@ export type PermissionLevel = 'admin_geral' | 'gestor_unidade' | 'eventos_parcei
 
 export type PartnerType = 'padrinho' | 'doador' | 'empresa' | 'figura_publica' | 'outro' | '';
 
+/**
+ * Um item de alimentação ou equipamento com o seu detalhe.
+ * `outro` marca o texto livre do "Outro"; o nome dele é o que a pessoa escreveu.
+ */
+export interface ItemComDetalhe {
+  item: string;
+  detalhes: string;
+  outro?: boolean;
+}
+
 export interface Anexo {
   url: string;
   /** O nome que a pessoa deu ao arquivo — "oficio-secretaria.pdf", não "2rdksrr22q.png". */
@@ -82,9 +92,14 @@ export interface AppEvent {
   deleted_at?: string;
   target_audience?: string;
   support_team?: string;
+  /** Derivado de `food_items`: "Almoço, Lanche, Café dos voluntários". */
   food_logistics?: string;
-  /** Texto livre da alimentação: quantas pessoas, restrição, horário. */
+  /** Cada item de alimentação com o seu detalhe. Fonte da verdade desde 08/09/2026. */
+  food_items?: ItemComDetalhe[];
+  /** Observações gerais da alimentação — o que não é de um item só. */
   food_details?: string;
+  /** Cada equipamento com o seu detalhe ("Microfone — 2, sem fio"). */
+  equipment_items?: ItemComDetalhe[];
   /** Cartaz, folder, lista que já existem: link ou descrição. Editado no bloco de marketing. */
   printed_materials?: string;
   equipment_needed?: string;
