@@ -1231,6 +1231,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                         rotuloOutro="Outra logística"
                         pistaOutro="Especifique a alimentação..."
                         temNenhum
+                        significadoDoNenhum="não haverá alimentação neste evento"
                         outroAberto={!!outroAberto.comida}
                         onOutroAberto={a => setOutroAberto(prev => ({ ...prev, comida: a }))}
                         erro={errors.food_logistics}
@@ -1260,6 +1261,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       rotuloOutro="Outro equipamento"
                       pistaOutro="Especifique os equipamentos..."
                       temNenhum
+                      significadoDoNenhum="sem equipamentos"
                       outroAberto={!!outroAberto.equip}
                       onOutroAberto={a => setOutroAberto(prev => ({ ...prev, equip: a }))}
                       erro={errors.equipment_needed}

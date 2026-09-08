@@ -15,10 +15,12 @@ function Palco({
   opcoes,
   temNenhum = false,
   inicial = '',
+  significadoDoNenhum,
 }: {
   opcoes: string[];
   temNenhum?: boolean;
   inicial?: string;
+  significadoDoNenhum?: string;
 }) {
   const [valor, setValor] = useState(inicial);
   const [aberto, setAberto] = useState(false);
@@ -33,6 +35,7 @@ function Palco({
         rotuloOutro="Outra coisa"
         pistaOutro="Especifique..."
         temNenhum={temNenhum}
+        significadoDoNenhum={significadoDoNenhum}
         outroAberto={aberto}
         onOutroAberto={setAberto}
       />
@@ -44,6 +47,49 @@ function Palco({
 const COMIDA = ['Almoço', 'Coffee Break', 'Lanche', 'Jantar', 'Nenhum'];
 const valor = () => screen.getByTestId('valor').textContent;
 const chave = (nome: string | RegExp) => screen.getByRole('switch', { name: nome });
+
+describe('“Nenhum” em primeiro, e o resto some quando ele está ligado', () => {
+  const rotulos = () => screen.getAllByRole('switch').map(s => s.getAttribute('aria-label') || s.id.replace('teste-', ''));
+
+  it('vem primeiro; “Outra coisa” por último; sem “Nenhum” a ordem não muda', () => {
+    render(<Palco opcoes={COMIDA} temNenhum />);
+    expect(rotulos()).toEqual(['Nenhum', 'Almoço', 'Coffee Break', 'Lanche', 'Jantar', 'outro']);
+  });
+
+  it('ligado, só ele fica, com o significado e a contagem do que sumiu', () => {
+    render(<Palco opcoes={COMIDA} temNenhum significadoDoNenhum="não haverá alimentação neste evento" />);
+
+    fireEvent.click(chave('Nenhum'));
+
+    expect(screen.getAllByRole('switch')).toHaveLength(1);
+    expect(screen.getByText(/não haverá alimentação neste evento/)).toBeInTheDocument();
+    // 4 opções + "Outra coisa"
+    expect(screen.getByTestId('teste-ocultas')).toHaveTextContent('5 opções ocultas · desligue “Nenhum” para escolher');
+    expect(screen.queryByText(/pode marcar mais de um/)).not.toBeInTheDocument();
+    expect(valor()).toBe('Nenhum');
+  });
+
+  it('desligado, tudo volta na mesma ordem', () => {
+    render(<Palco opcoes={COMIDA} temNenhum inicial="Nenhum" />);
+    expect(screen.getAllByRole('switch')).toHaveLength(1);
+
+    fireEvent.click(chave('Nenhum'));
+
+    expect(rotulos()).toEqual(['Nenhum', 'Almoço', 'Coffee Break', 'Lanche', 'Jantar', 'outro']);
+    expect(valor()).toBe('');
+  });
+
+  it('um evento antigo gravado com opções abre expandido', () => {
+    render(<Palco opcoes={COMIDA} temNenhum inicial="Lanche, Jantar" />);
+    expect(screen.getAllByRole('switch')).toHaveLength(6);
+    expect(chave('Lanche')).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('sem `temNenhum`, nada disso acontece', () => {
+    render(<Palco opcoes={['Funcionários', 'Voluntários']} />);
+    expect(rotulos()).toEqual(['Funcionários', 'Voluntários', 'outro']);
+  });
+});
 
 describe('escrever com espaço no “Outro”', () => {
   it('o espaço sobrevive tecla a tecla — "Pais e mães" dá para escrever', () => {
@@ -130,21 +176,27 @@ describe('“Nenhum”', () => {
     expect(valor()).toBe('Nenhum');
   });
 
-  it('é desligado por qualquer outra opção', () => {
+  it('ligado, esconde as outras: para escolher uma, desliga-se o “Nenhum” primeiro', () => {
+    // Antes as opções ficavam visíveis com "Nenhum" ligado, e clicar em uma
+    // o desligava. Desde 08/09 elas somem; o caminho é desligar e escolher.
     render(<Palco opcoes={COMIDA} temNenhum inicial="Nenhum" />);
+    expect(screen.queryByRole('switch', { name: 'Lanche' })).not.toBeInTheDocument();
 
+    fireEvent.click(chave('Nenhum'));
     fireEvent.click(chave('Lanche'));
 
     expect(valor()).toBe('Lanche');
+    expect(chave('Nenhum')).not.toBeChecked();
   });
 
-  it('não convive com o texto livre', () => {
-    render(<Palco opcoes={COMIDA} temNenhum inicial="Nenhum" />);
+  it('ligar “Nenhum” com opções marcadas apaga as opções e o texto livre', () => {
+    render(<Palco opcoes={COMIDA} temNenhum inicial="Lanche, bolo" />);
+    expect(chave('Lanche')).toBeChecked();
 
-    fireEvent.click(chave('Outra coisa'));
+    fireEvent.click(chave('Nenhum'));
 
-    expect(valor()).toBe('');
-    expect(chave('Nenhum')).not.toBeChecked();
+    expect(valor()).toBe('Nenhum');
+    expect(screen.queryByRole('switch', { name: 'Outra coisa' })).not.toBeInTheDocument();
   });
 });
 
