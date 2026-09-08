@@ -76,3 +76,18 @@ describe('compartilhar', () => {
     expect(screen.getByRole('button', { name: /copiar link/i })).toBeInTheDocument();
   });
 });
+
+describe('evento de vários dias no detalhe', () => {
+  it('mostra o período e o começa/termina', () => {
+    render(
+      <EventDetailDialog
+        open
+        onOpenChange={() => {}}
+        event={{ ...evento, start_datetime: new Date(2026, 9, 10, 8).toISOString(), end_datetime: new Date(2026, 9, 12, 16).toISOString() }}
+      />,
+    );
+
+    expect(screen.getByText('10 a 12 de outubro')).toBeInTheDocument();
+    expect(screen.getByText('Começa às 08:00 · termina às 16:00')).toBeInTheDocument();
+  });
+});

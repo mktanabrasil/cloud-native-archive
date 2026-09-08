@@ -454,3 +454,58 @@ describe('o carrossel', () => {
     expect(regiao.querySelectorAll('[aria-hidden="false"]').length).toBe(1);
   });
 });
+
+describe('evento de vários dias', () => {
+  it('o card mostra quando termina', () => {
+    espiao.eventos = [
+      evento({ id: 'retiro', title: 'Retiro de Líderes', start_datetime: new Date(2026, 9, 10, 8).toISOString(), end_datetime: new Date(2026, 9, 12, 16).toISOString() }),
+    ];
+    montar();
+
+    expect(screen.getByText('10 a 12 de outubro de 2026')).toBeInTheDocument();
+    expect(screen.getByText('Começa às 08:00, termina às 16:00')).toBeInTheDocument();
+  });
+
+  it('evento de um dia continua como sempre foi', () => {
+    espiao.eventos = [
+      evento({ id: 'dia', title: 'Festa', start_datetime: new Date(2026, 9, 10, 8).toISOString(), end_datetime: new Date(2026, 9, 10, 16).toISOString() }),
+    ];
+    montar();
+
+    expect(screen.getByText('10 de outubro de 2026')).toBeInTheDocument();
+    expect(screen.getByText('08:00 às 16:00')).toBeInTheDocument();
+  });
+});
+
+describe('link de evento que saiu da vitrine', () => {
+  it('avisa em vez de abrir a página como se nada tivesse acontecido', () => {
+    montar('/eventos?slug=nao-existe');
+
+    const aviso = screen.getByRole('status');
+    expect(aviso).toHaveTextContent('Este evento não está mais disponível');
+    expect(aviso).toHaveTextContent('pendente, interno ou na lixeira'); // linha da equipe
+    expect(screen.queryByTestId('detalhe')).toBeNull();
+  });
+
+  it('o visitante não vê a linha da equipe', () => {
+    espiao.autenticado = false;
+    montar('/eventos?slug=nao-existe');
+
+    expect(screen.getByRole('status')).not.toHaveTextContent('lixeira');
+  });
+
+  it('fechar o aviso tira o slug da URL e o aviso some', () => {
+    montar('/eventos?slug=nao-existe');
+
+    fireEvent.click(screen.getByRole('button', { name: /fechar aviso/i }));
+
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('slug válido abre o detalhe, sem aviso', () => {
+    montar('/eventos?slug=ativo-1');
+
+    expect(screen.getByTestId('detalhe')).toBeInTheDocument();
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+});
