@@ -22,6 +22,7 @@ import { tituloEmTexto } from '@/lib/events/titulo';
 import { abaInicial, jaAconteceu, lerAba, separarPorData, type Aba } from '@/lib/events/proximosEPassados';
 import EventFormDialog from '@/components/EventFormDialog';
 import { BannerMissingDialog } from '@/components/BannerMissingDialog';
+import { VitrineVazia } from '@/components/events/VitrineVazia';
 
 /**
  * A página pública de eventos — a vitrine que a família vê.
@@ -47,6 +48,7 @@ export default function PublicEventsPage() {
   const [selectedEventForDetail, setSelectedEventForDetail] = useState<AppEvent | null>(null);
   const [showBannerMissingDialog, setShowBannerMissingDialog] = useState(false);
   const [eventToToggleBanner, setEventToToggleBanner] = useState<AppEvent | null>(null);
+  const [showNewEvent, setShowNewEvent] = useState(false);
   const { isAdmin, canEdit } = useUserRole();
   const { updateEvent, setSelectedEvent, selectedEvent } = useApp();
 
@@ -62,6 +64,8 @@ export default function PublicEventsPage() {
 
   /** A vitrine: só confirmado e público, o que qualquer visitante vê. */
   const events = useFilteredEvents(true, false);
+  /** Sem evento nenhum, a página muda de figura: sem busca, sem abas, um painel só. */
+  const vitrineVazia = events.length === 0;
 
   const filtered = useMemo(() => {
     const searchTerm = search.toLowerCase().trim();
@@ -410,6 +414,8 @@ export default function PublicEventsPage() {
             className="mb-0"
           />
 
+          {/* A busca só aparece quando há o que buscar. */}
+          {!vitrineVazia && (
           <div className="mt-6 relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             {/* `bg-card`, e não `bg-white`: o campo precisa se destacar do fundo
@@ -424,6 +430,7 @@ export default function PublicEventsPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          )}
         </div>
 
         {(proximos.length > 0 || passados.length > 0) && (
@@ -462,7 +469,9 @@ export default function PublicEventsPage() {
           </div>
         )}
 
-        {sortedEvents.length === 0 ? (
+        {vitrineVazia ? (
+          <VitrineVazia onCriar={equipe && canEdit ? () => setShowNewEvent(true) : undefined} />
+        ) : sortedEvents.length === 0 ? (
           <div className="text-center py-20 bg-card rounded-2xl border border-dashed border-border">
             <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             {!search && aba === 'proximos' && passados.length > 0 ? (
@@ -641,6 +650,8 @@ export default function PublicEventsPage() {
         onOpenChange={(open) => !open && setSelectedEvent(null)}
         event={selectedEvent}
       />
+      {/* Evento novo, a partir do painel de vitrine vazia. */}
+      <EventFormDialog open={showNewEvent} onOpenChange={setShowNewEvent} />
 
       <BannerMissingDialog
         open={showBannerMissingDialog}
