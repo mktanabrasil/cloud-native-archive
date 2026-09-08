@@ -1,4 +1,5 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, type KeyboardEvent } from 'react';
+import { useReduzMovimento } from '@/hooks/useReduzMovimento';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -49,6 +50,9 @@ export default function PublicEventsPage() {
   const [showBannerMissingDialog, setShowBannerMissingDialog] = useState(false);
   const [eventToToggleBanner, setEventToToggleBanner] = useState<AppEvent | null>(null);
   const [showNewEvent, setShowNewEvent] = useState(false);
+  /** Mouse em cima ou foco dentro do carrossel: ele para de girar. */
+  const [carrosselPausado, setCarrosselPausado] = useState(false);
+  const reduzMovimento = useReduzMovimento();
   const { isAdmin, canEdit } = useUserRole();
   const { updateEvent, setSelectedEvent, selectedEvent } = useApp();
 
@@ -180,8 +184,11 @@ export default function PublicEventsPage() {
     }
   }, [searchParams, events]);
 
+  // O giro automático para com o mouse em cima, com foco dentro (quem navega
+  // por teclado não perde o slide que estava lendo) e para quem pediu menos
+  // movimento ao sistema. As setas e os pontinhos continuam funcionando.
   useEffect(() => {
-    if (bannerEvents.length <= 1) return;
+    if (bannerEvents.length <= 1 || carrosselPausado || reduzMovimento) return;
 
     const currentEvent = bannerEvents[currentSlide];
     const displayTime = (currentEvent?.banner_display_time || 5) * 1000;
@@ -191,7 +198,28 @@ export default function PublicEventsPage() {
     }, displayTime);
 
     return () => clearTimeout(timeout);
-  }, [bannerEvents, currentSlide]);
+  }, [bannerEvents, currentSlide, carrosselPausado, reduzMovimento]);
+
+  /**
+   * Só o slide atual e os dois vizinhos carregam imagem. Antes todos os slides
+   * carregavam de uma vez, no primeiro segundo — e o balde aceita até 25 MB
+   * por arquivo.
+   */
+  const carregaImagem = (index: number) => {
+    const n = bannerEvents.length;
+    return n <= 3 || index === currentSlide || index === (currentSlide + 1) % n || index === (currentSlide - 1 + n) % n;
+  };
+
+  /** Enter ou Espaço no card abrem o detalhe, como o clique. */
+  const teclaNoCard = (e: KeyboardEvent<HTMLDivElement>, event: AppEvent) => {
+    // Só quando a tecla cai no card em si: nos botões de dentro (lápis, olho)
+    // o Enter já é o clique deles, e não deve abrir o detalhe também.
+    if (e.target !== e.currentTarget) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleCardClick(event);
+    }
+  };
 
   const nextSlide = () => setCurrentSlide((prev) => (prev + 1) % bannerEvents.length);
   const prevSlide = () => setCurrentSlide((prev) => (prev - 1 + bannerEvents.length) % bannerEvents.length);
@@ -246,14 +274,24 @@ export default function PublicEventsPage() {
       )}
 
       {bannerEvents.length > 0 && (
-        <section className={`relative w-full h-[400px] md:h-[500px] overflow-hidden bg-slate-900 ${isAuthenticated ? 'mt-6' : ''}`}>
+        <section
+          role="region"
+          aria-roledescription="carrossel"
+          aria-label="Eventos em destaque"
+          onMouseEnter={() => setCarrosselPausado(true)}
+          onMouseLeave={() => setCarrosselPausado(false)}
+          onFocus={() => setCarrosselPausado(true)}
+          onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setCarrosselPausado(false); }}
+          className={`relative w-full h-[400px] md:h-[500px] overflow-hidden bg-slate-900 ${isAuthenticated ? 'mt-6' : ''}`}
+        >
           {bannerEvents.map((event, index) => (
             <div
               key={event.id}
-              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100' : 'opacity-0'}`}
+              aria-hidden={index !== currentSlide}
+              className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             >
               {/* Desktop Banner (21:9 preferencial, fallback para capa 16:9) */}
-              {(event.banner_image_desktop || event.banner_url_desktop || event.banner_url_mobile) ? (
+              {(event.banner_image_desktop || event.banner_url_desktop || event.banner_url_mobile) && carregaImagem(index) ? (
                 <>
                   <img
                     src={event.banner_image_desktop || event.banner_url_desktop || event.banner_url_mobile}
@@ -496,7 +534,11 @@ export default function PublicEventsPage() {
             {sortedEvents.map(event => (
               <Card
                 key={event.id}
-                className={`overflow-hidden border-border hover:shadow-lg transition-shadow bg-card flex flex-col group cursor-pointer ${
+                role="button"
+                tabIndex={0}
+                aria-label={`Ver detalhes de ${tituloEmTexto(event.title)}`}
+                onKeyDown={(e) => teclaNoCard(e, event)}
+                className={`overflow-hidden border-border hover:shadow-lg transition-shadow bg-card flex flex-col group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
                   aba === 'passados' ? 'opacity-75 [&_img]:saturate-50 [&_.capa-sem-imagem]:saturate-50' : ''
                 }`}
                 onClick={() => handleCardClick(event)}
@@ -506,6 +548,7 @@ export default function PublicEventsPage() {
                     <img
                       src={event.banner_url_desktop || event.banner_url_mobile}
                       alt={tituloEmTexto(event.title)}
+                      loading="lazy"
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : (
