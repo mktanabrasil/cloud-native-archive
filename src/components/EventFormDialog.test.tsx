@@ -1087,3 +1087,17 @@ describe('o local do evento', () => {
     expect(screen.queryByPlaceholderText(/nome do lugar/i)).toBeNull();
   });
 });
+
+describe('o preview mostra o local', () => {
+  it('ao lado da data, como no herói público; vazio, um "Local" apagado', () => {
+    // a coluna de preview é da administração
+    espiao.papel = { ...espiao.papel, isAdmin: true, isMarketing: true };
+    abrir();
+    // evento novo já vem com o local sugerido pela unidade
+    expect(screen.getAllByText('Unidade DIC').length).toBeGreaterThan(0);
+
+    escolherLocal('Centro de Campinas');
+
+    expect(screen.getByText('Centro de Campinas', { selector: 'span' })).toBeInTheDocument();
+  });
+});
