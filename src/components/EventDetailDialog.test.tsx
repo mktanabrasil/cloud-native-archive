@@ -150,3 +150,19 @@ describe('evento que já passou', () => {
     expect(screen.queryByText('Encerrado')).toBeNull();
   });
 });
+
+describe('links na descrição', () => {
+  it('um endereço colado na descrição vira link em nova aba', () => {
+    render(
+      <EventDetailDialog
+        open
+        onOpenChange={() => {}}
+        event={{ ...evento, description: 'Inscrições em https://forms.gle/hope-day até sexta.' }}
+      />,
+    );
+
+    const link = screen.getByRole('link', { name: 'https://forms.gle/hope-day' });
+    expect(link).toHaveAttribute('href', 'https://forms.gle/hope-day');
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+});
