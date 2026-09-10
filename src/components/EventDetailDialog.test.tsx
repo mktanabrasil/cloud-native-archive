@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { AppEvent } from '@/types';
 
 /**
@@ -11,7 +11,7 @@ import type { AppEvent } from '@/types';
  */
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: null }) }));
 vi.mock('@/contexts/TestViewContext', () => ({ useTestView: () => ({ activePersona: null }) }));
-vi.mock('sonner', () => ({ toast: { success: vi.fn() } }));
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const { EventDetailDialog } = await import('./EventDetailDialog');
 
@@ -89,5 +89,41 @@ describe('evento de vários dias no detalhe', () => {
 
     expect(screen.getByText('10 a 12 de outubro')).toBeInTheDocument();
     expect(screen.getByText('Começa às 08:00 · termina às 16:00')).toBeInTheDocument();
+  });
+});
+
+describe('copiar link', () => {
+  it('quando a área de transferência aceita, avisa que copiou e não mostra o campo', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    montar();
+
+    fireEvent.click(screen.getByRole('button', { name: /copiar link/i }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(expect.stringContaining('hope-day')));
+    expect(screen.queryByRole('textbox', { name: /link do evento para copiar/i })).toBeNull();
+  });
+
+  it('quando ela recusa, não diz "copiado": mostra o link num campo para copiar à mão', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('NotAllowedError'));
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    const { toast } = await import('sonner');
+    montar();
+
+    fireEvent.click(screen.getByRole('button', { name: /copiar link/i }));
+
+    const campo = await screen.findByRole('textbox', { name: /link do evento para copiar/i });
+    expect((campo as HTMLInputElement).value).toContain('hope-day');
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalled();
+  });
+
+  it('sem área de transferência nenhuma (contexto inseguro), idem', async () => {
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+    montar();
+
+    fireEvent.click(screen.getByRole('button', { name: /copiar link/i }));
+
+    expect(await screen.findByRole('textbox', { name: /link do evento para copiar/i })).toBeInTheDocument();
   });
 });

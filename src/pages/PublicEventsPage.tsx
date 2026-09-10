@@ -239,9 +239,12 @@ export default function PublicEventsPage() {
   const handleCardClick = (event: AppEvent) => {
     setSelectedEventForDetail(event);
     // O slug vai para a URL para o estado aberto poder ser compartilhado.
+    // Substitui a entrada em vez de empilhar, como as abas: abrir e fechar
+    // três eventos deixava seis estados no histórico, e o botão de voltar
+    // do navegador reabria detalhes já fechados (10/09/2026).
     const params = new URLSearchParams(searchParams);
     params.set('slug', event.slug || event.id);
-    setSearchParams(params);
+    setSearchParams(params, { replace: true });
   };
 
   const editar = (event: AppEvent) => {
@@ -253,7 +256,7 @@ export default function PublicEventsPage() {
     setSelectedEventForDetail(null);
     const newParams = new URLSearchParams(searchParams);
     newParams.delete('slug');
-    setSearchParams(newParams);
+    setSearchParams(newParams, { replace: true });
   };
 
   return (
