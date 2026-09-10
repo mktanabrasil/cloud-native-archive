@@ -21,6 +21,12 @@ vi.mock('@/hooks/useUserRole', () => ({
   useUserRole: () => espiao.papel,
 }));
 
+/* A marca de "já vi" mora no banco, por conta; aqui ela já está posta, para o
+   tutorial não abrir em cima dos diálogos que estes testes exercitam. */
+vi.mock('@/hooks/useTutoriaisVistos', () => ({
+  useTutoriaisVistos: () => ({ carregado: true, jaViu: () => true, marcarVisto: vi.fn(), esquecer: vi.fn() }),
+}));
+
 vi.mock('@/hooks/useJournals', () => ({
   useJournals: () => ({
     journals: espiao.journals,

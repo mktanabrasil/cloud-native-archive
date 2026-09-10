@@ -83,7 +83,7 @@ import {
 } from '@/lib/journal/templates';
 import { rowSiblings } from '@/lib/journal/rows';
 import { JournalTutorial } from './JournalTutorial';
-import { jaViu } from '@/lib/journal/tutorial';
+import { useTutoriaisVistos } from '@/hooks/useTutoriaisVistos';
 import { avisoDeTransbordo, medirFolha, type Transbordo } from '@/lib/journal/transbordo';
 import { JournalElementLibrary } from './JournalElementLibrary';
 import { JournalDecorationProperties } from './JournalDecorationProperties';
@@ -201,11 +201,18 @@ export function JournalEditor({
   const [historyTick, setHistoryTick] = useState(0);
   /** Tutorial do editor: abre sozinho na primeira edição que ela abrir. */
   const [tutorial, setTutorial] = useState(false);
+  const tutoriais = useTutoriaisVistos();
   useEffect(() => {
     // Só para quem pode editar: em modo leitura, metade dos passos aponta
-    // para controles que nem estão na tela.
-    if (!somenteLeitura && !jaViu('editor')) setTutorial(true);
-  }, [somenteLeitura]);
+    // para controles que nem estão na tela. A marca vale por conta e chega do
+    // banco, por isso espera `carregado`; e marca já ao abrir sozinho.
+    if (somenteLeitura || !tutoriais.carregado) return;
+    if (!tutoriais.jaViu('editor')) {
+      setTutorial(true);
+      tutoriais.marcarVisto('editor');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só o primeiro carregamento decide
+  }, [somenteLeitura, tutoriais.carregado]);
 
   useEffect(() => {
     pagesRef.current = pages;
@@ -1442,6 +1449,7 @@ export function JournalEditor({
         percurso="editor"
         aberto={tutorial}
         onFechar={() => setTutorial(false)}
+        onVisto={tutoriais.marcarVisto}
       />
     </div>
   );

@@ -31,7 +31,7 @@ import { UnitBadge } from '@/components/journal/UnitBadge';
 import { JournalImportDialog } from '@/components/journal/JournalImportDialog';
 import { resumirImportacao } from '@/lib/journal/importar';
 import { JournalTutorial } from '@/components/journal/JournalTutorial';
-import { jaViu } from '@/lib/journal/tutorial';
+import { useTutoriaisVistos } from '@/hooks/useTutoriaisVistos';
 import {
   newsUnitName,
   newsUnitForProfileUnit,
@@ -132,6 +132,7 @@ export default function JournalPage() {
   const [importing, setImporting] = useState(false);
   /** Tutorial da listagem: abre sozinho no primeiro acesso, e pelo botão depois. */
   const [tutorial, setTutorial] = useState(false);
+  const tutoriais = useTutoriaisVistos();
   /** Edição aguardando confirmação de exclusão — nada é removido antes do "sim". */
   const [pendingDelete, setPendingDelete] = useState<JournalRecord | null>(null);
   const [search, setSearch] = useState('');
@@ -190,10 +191,18 @@ export default function JournalPage() {
    * responde falso enquanto o papel ainda está carregando, o que evitaria abrir
    * na tela vazia: por isso o efeito espera `roleLoading` terminar.
    */
+  //
+  // A marca vale por conta e chega do banco: o efeito também espera
+  // `tutoriais.carregado`. E marca já ao abrir sozinho, não só ao fechar —
+  // "primeiro acesso" é literalmente uma vez; se ela sair no meio, não reabre.
   useEffect(() => {
-    if (roleLoading || !canAccessJournal) return;
-    if (!jaViu('listagem')) setTutorial(true);
-  }, [roleLoading, canAccessJournal]);
+    if (roleLoading || !canAccessJournal || !tutoriais.carregado) return;
+    if (!tutoriais.jaViu('listagem')) {
+      setTutorial(true);
+      tutoriais.marcarVisto('listagem');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só o primeiro carregamento decide
+  }, [roleLoading, canAccessJournal, tutoriais.carregado]);
 
   if (roleLoading) return null;
 
@@ -648,6 +657,7 @@ export default function JournalPage() {
         percurso="listagem"
         aberto={tutorial}
         onFechar={() => setTutorial(false)}
+        onVisto={tutoriais.marcarVisto}
       />
 
       <JournalImportDialog
