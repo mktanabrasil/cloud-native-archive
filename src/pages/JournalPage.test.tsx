@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { createPage } from '@/lib/journal/templates';
 import type { JournalRecord } from '@/lib/journal/types';
 
@@ -42,6 +43,14 @@ vi.mock('@/hooks/useJournals', () => ({
 
 const { default: JournalPage } = await import('./JournalPage');
 
+/** A página lê a unidade da URL, então precisa de um roteador por baixo. */
+const montar = (url = '/jornal-institucional') =>
+  render(
+    <MemoryRouter initialEntries={[url]}>
+      <JournalPage />
+    </MemoryRouter>,
+  );
+
 const jornal = (): JournalRecord => ({
   id: 'jornal-1',
   name: 'Jornal ANA — Agosto',
@@ -80,7 +89,7 @@ beforeEach(() => {
  */
 describe('exclusão de jornal', () => {
   it('não exclui ao clicar em Excluir: só abre a confirmação', async () => {
-    render(<JournalPage />);
+    montar();
     clicarExcluir();
 
     expect(await dialogo()).toBeInTheDocument();
@@ -88,14 +97,14 @@ describe('exclusão de jornal', () => {
   });
 
   it('mostra qual edição será excluída', async () => {
-    render(<JournalPage />);
+    montar();
     clicarExcluir();
 
     expect(within(await dialogo()).getByText('Jornal ANA — Agosto')).toBeInTheDocument();
   });
 
   it('cancelar fecha a confirmação sem excluir', async () => {
-    render(<JournalPage />);
+    montar();
     clicarExcluir();
 
     fireEvent.click(within(await dialogo()).getByRole('button', { name: /cancelar/i }));
@@ -105,7 +114,7 @@ describe('exclusão de jornal', () => {
   });
 
   it('confirmar exclui a edição escolhida', async () => {
-    render(<JournalPage />);
+    montar();
     clicarExcluir();
 
     fireEvent.click(within(await dialogo()).getByRole('button', { name: /sim, excluir/i }));
@@ -125,14 +134,14 @@ describe('exclusão de jornal', () => {
  */
 describe('quem entra na página', () => {
   it('mostra o jornal para quem tem acesso', async () => {
-    render(<JournalPage />);
+    montar();
     expect(await screen.findByText(/jornal da unidade/i)).toBeInTheDocument();
   });
 
   it('barra quem não tem, sem mostrar edição alguma', async () => {
     espiao.papel = { ...espiao.papel, canAccessJournal: false };
 
-    render(<JournalPage />);
+    montar();
 
     expect(await screen.findByText(/área da comunicação/i)).toBeInTheDocument();
     expect(screen.queryByText(/jornal da unidade/i)).not.toBeInTheDocument();
@@ -165,7 +174,7 @@ describe('jornal de outra unidade', () => {
     espiao.papel = gestoraDeNilopolis;
     espiao.journals = [deOutraUnidade()];
 
-    render(<JournalPage />);
+    montar();
 
     expect(
       await screen.findByRole('button', { name: /duplicar para minha unidade/i }),
@@ -177,7 +186,7 @@ describe('jornal de outra unidade', () => {
     espiao.papel = gestoraDeNilopolis;
     espiao.journals = [deOutraUnidade()];
 
-    render(<JournalPage />);
+    montar();
     fireEvent.click(await screen.findByRole('button', { name: /duplicar para minha unidade/i }));
 
     await waitFor(() => expect(espiao.duplicate).toHaveBeenCalled());
@@ -191,11 +200,44 @@ describe('jornal de outra unidade', () => {
     espiao.papel = gestoraDeNilopolis;
     espiao.journals = [{ ...jornal(), unit_id: 'ana-nilopolis', profile_unit: 'Nilópolis' }];
 
-    render(<JournalPage />);
+    montar();
 
     expect(await screen.findByRole('button', { name: /^excluir$/i })).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /duplicar para minha unidade/i }),
     ).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * A unidade em exibição vive na URL: sobrevive ao F5 e vira link direto. Na
+ * memória da página, qualquer remontagem devolvia a pessoa para a unidade dela.
+ */
+describe('a unidade na URL', () => {
+  it('sem parâmetro, mostra a unidade do perfil', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: false, unit: 'Santana' };
+    montar();
+
+    expect(await screen.findByText('ANA Jardim Santana', { selector: 'p' })).toBeInTheDocument();
+  });
+
+  it('?unidade= abre direto na unidade pedida', async () => {
+    montar('/jornal-institucional?unidade=ana-dic');
+
+    expect(await screen.findByText('ANA DIC', { selector: 'p' })).toBeInTheDocument();
+  });
+
+  it('?unidade=geral abre na Institucional geral', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: false, unit: 'Santana' };
+    montar('/jornal-institucional?unidade=geral');
+
+    expect(await screen.findByText('Institucional geral', { selector: 'p' })).toBeInTheDocument();
+  });
+
+  it('id desconhecido é ignorado e vale a unidade do perfil', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: false, unit: 'Santana' };
+    montar('/jornal-institucional?unidade=nao-existe');
+
+    expect(await screen.findByText('ANA Jardim Santana', { selector: 'p' })).toBeInTheDocument();
   });
 });
