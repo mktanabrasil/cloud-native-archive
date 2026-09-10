@@ -587,6 +587,24 @@ export type Database = {
         }
         Relationships: []
       }
+      tutoriais_vistos: {
+        Row: {
+          percurso: string
+          user_id: string
+          visto_em: string
+        }
+        Insert: {
+          percurso: string
+          user_id: string
+          visto_em?: string
+        }
+        Update: {
+          percurso?: string
+          user_id?: string
+          visto_em?: string
+        }
+        Relationships: []
+      }
       view_configs: {
         Row: {
           created_at: string | null

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { PERCURSOS, esquecerTutoriais, jaViu, marcarVisto, type PercursoId } from './tutorial';
+import { PERCURSOS, type PercursoId } from './tutorial';
 
 /**
  * O tutorial só ensina se o holofote cair em cima de alguma coisa.
@@ -58,51 +58,5 @@ describe('os textos', () => {
       expect(passos.length).toBeGreaterThan(0);
       expect(passos.length).toBeLessThanOrEqual(12);
     }
-  });
-});
-
-describe('a marca de já visto', () => {
-  beforeEach(() => {
-    localStorage.clear();
-  });
-
-  it('começa sem marca nenhuma', () => {
-    expect(jaViu('listagem')).toBe(false);
-    expect(jaViu('editor')).toBe(false);
-  });
-
-  it('marca um percurso sem marcar o outro', () => {
-    marcarVisto('listagem');
-
-    expect(jaViu('listagem')).toBe(true);
-    expect(jaViu('editor')).toBe(false);
-  });
-
-  it('esquecer devolve os dois ao início', () => {
-    marcarVisto('listagem');
-    marcarVisto('editor');
-
-    esquecerTutoriais();
-
-    expect(jaViu('listagem')).toBe(false);
-    expect(jaViu('editor')).toBe(false);
-  });
-
-  it('navegador sem armazenamento não derruba a página', () => {
-    // Aba anônima com cookies bloqueados: o getItem/setItem lança.
-    const explodir = () => {
-      throw new Error('storage bloqueado');
-    };
-    const ler = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(explodir);
-    const gravar = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(explodir);
-    const apagar = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(explodir);
-
-    expect(() => marcarVisto('editor')).not.toThrow();
-    expect(() => esquecerTutoriais()).not.toThrow();
-    expect(jaViu('editor')).toBe(false);
-
-    ler.mockRestore();
-    gravar.mockRestore();
-    apagar.mockRestore();
   });
 });

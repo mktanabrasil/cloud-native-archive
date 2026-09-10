@@ -120,43 +120,9 @@ export const PERCURSOS: Record<PercursoId, PassoTutorial[]> = {
 };
 
 /**
- * O "já vi" mora no navegador.
+ * O "já vi" mora no banco, por conta: `useTutoriaisVistos`.
  *
- * É a escolha que não pede coluna nova nem migração — e `journals` já tem
- * bastante coisa. O preço: se ela trocar de computador, o tutorial abre de
- * novo. Para quem usa sempre a mesma máquina, isso nunca aparece; se as
- * diretoras passarem a alternar entre a escola e casa, vale mover para o
- * perfil.
- *
- * A mesma proteção de `pedidoEnviado`: navegador sem armazenamento não pode
- * derrubar a página. Sem a marca, o tutorial reabre — chato, não quebrado.
+ * Até 08/09/2026 ele morava no localStorage. Em outro computador, ou num
+ * navegador que não guarda dados do site, o tutorial abria de novo a cada
+ * visita. A tabela `tutoriais_vistos` guarda uma linha por (pessoa, percurso).
  */
-const CHAVE: Record<PercursoId, string> = {
-  listagem: 'ana_tutorial_jornal_listagem',
-  editor: 'ana_tutorial_jornal_editor',
-};
-
-export function jaViu(percurso: PercursoId): boolean {
-  try {
-    return localStorage.getItem(CHAVE[percurso]) === '1';
-  } catch {
-    return false;
-  }
-}
-
-export function marcarVisto(percurso: PercursoId): void {
-  try {
-    localStorage.setItem(CHAVE[percurso], '1');
-  } catch {
-    /* sem armazenamento: o tutorial reabre da próxima vez, e só */
-  }
-}
-
-/** Faz o tutorial voltar a abrir sozinho. Serve para demonstrar a alguém. */
-export function esquecerTutoriais(): void {
-  try {
-    (Object.keys(CHAVE) as PercursoId[]).forEach((p) => localStorage.removeItem(CHAVE[p]));
-  } catch {
-    /* idem */
-  }
-}

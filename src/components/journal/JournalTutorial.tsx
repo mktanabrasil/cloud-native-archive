@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
-import { PERCURSOS, marcarVisto, type PercursoId } from '@/lib/journal/tutorial';
+import { PERCURSOS, type PercursoId } from '@/lib/journal/tutorial';
 
 interface Props {
   percurso: PercursoId;
   aberto: boolean;
   onFechar: () => void;
+  /**
+   * Concluir, pular e Esc valem o mesmo: ela viu o que quis ver. Quem guarda
+   * a marca é quem abriu (o `useTutoriaisVistos` da página), por conta.
+   */
+  onVisto?: (percurso: PercursoId) => void;
 }
 
 /** Distância entre o holofote e a borda do elemento apontado. */
@@ -29,7 +34,7 @@ interface Caixa {
  * pode estar escondida —, o cartão aparece **centralizado, sem holofote**, em
  * vez de apontar para o nada. O passo continua sendo lido; só perde o dedo.
  */
-export function JournalTutorial({ percurso, aberto, onFechar }: Props) {
+export function JournalTutorial({ percurso, aberto, onFechar, onVisto }: Props) {
   const passos = PERCURSOS[percurso];
   const [indice, setIndice] = useState(0);
   const [caixa, setCaixa] = useState<Caixa | null>(null);
@@ -74,9 +79,9 @@ export function JournalTutorial({ percurso, aberto, onFechar }: Props) {
   const encerrar = useCallback(() => {
     // Concluir e pular valem o mesmo: ela viu o que quis ver. Reabrir sozinho
     // depois de ela ter dispensado seria insistência, não ajuda.
-    marcarVisto(percurso);
+    onVisto?.(percurso);
     onFechar();
-  }, [onFechar, percurso]);
+  }, [onFechar, onVisto, percurso]);
 
   const seguir = useCallback(() => {
     if (indice >= passos.length - 1) encerrar();
