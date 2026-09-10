@@ -91,7 +91,8 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="light" storageKey="anabrasil-theme">
+    {/* Padrão "system": quem nunca escolheu segue o aparelho; quem fixou, mantém. */}
+    <ThemeProvider defaultTheme="system" storageKey="anabrasil-theme">
       <TooltipProvider>
 
       <AuthProvider>
