@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { CalendarDays, MapPin, Clock, Share2, X, MessageCircle, Copy, Megaphone, CheckCircle2, Pencil, Eye, EyeOff } from 'lucide-react';
 import { AppEvent, UNIT_BG_COLORS } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,6 +34,15 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
   const { user } = useAuth();
   const { activePersona } = useTestView();
   const isInternalView = !comoVisitante && (activePersona ? activePersona.id !== 'test-nao-logado' : !!user);
+  /**
+   * Quando a área de transferência recusa (iframe do site, conexão sem HTTPS,
+   * permissão negada), o link aparece num campo para a pessoa copiar à mão.
+   * Antes o botão dizia "copiado" sem esperar a resposta — e não tinha copiado.
+   */
+  const [linkParaCopiar, setLinkParaCopiar] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open) setLinkParaCopiar(null);
+  }, [open, event?.id]);
   if (!event) return null;
 
   const eventUrl = linkPublicoDoEvento(event.slug || event.id);
@@ -42,9 +52,16 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  const copyLink = () => {
-    navigator.clipboard.writeText(eventUrl);
-    toast.success('Link copiado para a área de transferência!');
+  const copyLink = async () => {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('sem área de transferência');
+      await navigator.clipboard.writeText(eventUrl);
+      setLinkParaCopiar(null);
+      toast.success('Link copiado para a área de transferência!');
+    } catch {
+      setLinkParaCopiar(eventUrl);
+      toast.error('Não deu para copiar sozinho. Selecione o link abaixo e copie.');
+    }
   };
 
   return (
@@ -333,6 +350,16 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
                     <Copy className="h-4 w-4" />
                     <span className="text-xs">Copiar Link</span>
                   </Button>
+                  {linkParaCopiar && (
+                    <input
+                      readOnly
+                      aria-label="Link do evento para copiar"
+                      value={linkParaCopiar}
+                      onFocus={e => e.currentTarget.select()}
+                      onClick={e => e.currentTarget.select()}
+                      className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
+                    />
+                  )}
                 </div>
               </div>
 

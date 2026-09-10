@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation, useNavigationType } from 'react-router-dom';
 import type { AppEvent } from '@/types';
 
 /**
@@ -591,5 +591,33 @@ describe('o herói e a régua de "já passou"', () => {
     montar();
 
     expect(regiao()).not.toHaveTextContent('Já aconteceu');
+  });
+});
+
+/**
+ * Abrir o detalhe substitui a entrada do histórico em vez de empilhar (e o
+ * fechar também): voltar no navegador não reabre detalhes já fechados.
+ */
+describe('o histórico do navegador', () => {
+  /** Uma sonda ao lado da página: que ação de navegação aconteceu, e com que URL. */
+  const Sonda = () => {
+    const acao = useNavigationType();
+    const { search } = useLocation();
+    return <span data-testid="sonda" data-acao={acao} data-busca={search} />;
+  };
+
+  it('abrir o detalhe substitui a entrada, não empilha', () => {
+    render(
+      <MemoryRouter initialEntries={['/eventos']}>
+        <PublicEventsPage />
+        <Sonda />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('heading', { level: 3, name: 'Festa da Primavera' }));
+
+    const sonda = screen.getByTestId('sonda');
+    expect(sonda.dataset.busca).toContain('slug=ativo-1');
+    expect(sonda.dataset.acao).toBe('REPLACE');
   });
 });
