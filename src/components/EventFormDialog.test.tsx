@@ -124,6 +124,13 @@ function escolherTipo(valor: string) {
   fireEvent.change(select, { target: { value: valor } });
 }
 
+/** O local é uma lista; "Outro local" abre o texto. Escolhe e escreve. */
+function escolherLocal(texto: string) {
+  const select = document.querySelector('#campo-location select') as HTMLSelectElement;
+  fireEvent.change(select, { target: { value: '__outro__' } });
+  fireEvent.change(screen.getByPlaceholderText(/nome do lugar/i), { target: { value: texto } });
+}
+
 /** Deixa o formulário válido: título, tipo, datas, local e os quatro de logística. */
 function preencher() {
   const escrever = (rotulo: RegExp, valor: string) =>
@@ -135,7 +142,7 @@ function preencher() {
   const datas = document.querySelectorAll('input[type="datetime-local"]');
   fireEvent.change(datas[0], { target: { value: '2026-10-10T14:00' } });
   fireEvent.change(datas[1], { target: { value: '2026-10-10T18:00' } });
-  escrever(/local do evento/i, 'Quadra');
+  escolherLocal('Quadra');
 
   for (const nome of ['Os atendidos', 'Funcionários', 'Lanche', 'Som']) {
     fireEvent.click(screen.getByRole("switch", { name: nome }));
@@ -745,6 +752,8 @@ describe('limites de texto', () => {
     fireEvent.change(screen.getByPlaceholderText(/nome do evento/i), { target: { value: 'Encontro de Famílias' } });
 
     expect(screen.getByText('20/120')).toBeInTheDocument();
+    // o contador do local só aparece com "Outro local": os da lista não se escrevem
+    fireEvent.change(document.querySelector('#campo-location select')!, { target: { value: '__outro__' } });
     expect(screen.getByText('0/160')).toBeInTheDocument();
     expect(screen.getByText('0/1000')).toBeInTheDocument();
   });
@@ -753,7 +762,7 @@ describe('limites de texto', () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
     abrir();
     preencher();
-    fireEvent.change(screen.getByPlaceholderText(/local do evento/i), { target: { value: 'x'.repeat(174) } });
+    escolherLocal('x'.repeat(174));
 
     expect(screen.getByText('174/160 — encurte 14 caracteres')).toBeInTheDocument();
 
@@ -790,7 +799,7 @@ describe('fechar sem querer', () => {
   it('com algo digitado, pergunta — e “Continuar editando” mantém tudo', () => {
     abrir();
     fireEvent.change(screen.getByPlaceholderText(/nome do evento/i), { target: { value: 'Festa da Primavera' } });
-    fireEvent.change(screen.getByPlaceholderText(/local do evento/i), { target: { value: 'Quadra' } });
+    escolherLocal('Quadra');
 
     cancelar();
 
@@ -828,7 +837,7 @@ describe('fechar sem querer', () => {
   it('ao editar, a pergunta fala em alterações e o que fica é o evento como estava', () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
     render(<EventFormDialog open onOpenChange={fechou} event={eventoGravado()} />);
-    fireEvent.change(screen.getByPlaceholderText(/local do evento/i), { target: { value: 'Quadra' } });
+    escolherLocal('Quadra');
 
     cancelar();
 
@@ -1019,5 +1028,62 @@ describe('o slug vazio', () => {
 
     await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
     expect(espiao.addEvent.mock.calls[0][0].slug).toBe('festa-da-primavera');
+  });
+});
+
+/**
+ * O local é uma lista, não texto livre: a mesma unidade saía escrita de cinco
+ * jeitos no card público. Decisões de 10/09/2026.
+ */
+describe('o local do evento', () => {
+  const selectLocal = () => document.querySelector('#campo-location select') as HTMLSelectElement;
+
+  it('evento novo já vem com o local sugerido pela unidade, sem campo de texto', () => {
+    abrir();
+
+    expect(selectLocal().value).toBe('Unidade DIC');
+    expect(screen.queryByPlaceholderText(/nome do lugar/i)).toBeNull();
+  });
+
+  it('trocar a unidade troca a sugestão', () => {
+    abrir();
+
+    fireEvent.change(document.querySelector('#campo-unidade select, [id^="campo-unit"] select') ?? document.querySelectorAll('select')[0], { target: { value: 'Santana' } });
+
+    expect(selectLocal().value).toBe('Unidade Santana');
+  });
+
+  it('"Outro local" abre o texto e não é sobrescrito ao trocar a unidade', () => {
+    abrir();
+
+    escolherLocal('Quadra do bairro');
+    fireEvent.change(document.querySelectorAll('select')[0], { target: { value: 'Santana' } });
+
+    expect(selectLocal().value).toBe('__outro__');
+    expect((screen.getByPlaceholderText(/nome do lugar/i) as HTMLInputElement).value).toBe('Quadra do bairro');
+  });
+
+  it('"Outro local" vazio continua obrigatório', () => {
+    abrir();
+    preencher();
+    fireEvent.change(selectLocal(), { target: { value: '__outro__' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /criar programação|enviar para aprovação/i }));
+
+    expect(screen.getByText('Localização obrigatória')).toBeInTheDocument();
+  });
+
+  it('evento antigo com texto livre abre em "Outro local", com o texto', () => {
+    render(<EventFormDialog open onOpenChange={fechou} event={eventoGravado()} />);
+
+    expect(selectLocal().value).toBe('__outro__');
+    expect((screen.getByPlaceholderText(/nome do lugar/i) as HTMLInputElement).value).toBe('Pátio');
+  });
+
+  it('evento antigo cujo texto bate com a lista cai na opção, sem campo de texto', () => {
+    render(<EventFormDialog open onOpenChange={fechou} event={{ ...eventoGravado(), location: 'unidade santana' }} />);
+
+    expect(selectLocal().value).toBe('Unidade Santana');
+    expect(screen.queryByPlaceholderText(/nome do lugar/i)).toBeNull();
   });
 });

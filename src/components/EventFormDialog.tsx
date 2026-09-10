@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { AppEvent, UNITS, EVENT_TYPES, EVENT_STATUSES, PARTNER_TYPES, Unit, EventType, EventStatus, PartnerType, SYSTEM_COLORS, eventUnitLabel, TransportVehicle } from '@/types';
+import { AppEvent, UNITS, UNIT_BG_COLORS, EVENT_TYPES, EVENT_STATUSES, PARTNER_TYPES, Unit, EventType, EventStatus, PartnerType, SYSTEM_COLORS, eventUnitLabel, TransportVehicle } from '@/types';
 import { getStatusDotClass } from '@/lib/statusColors';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle2, Plus, X, Globe, Eye, Layout, CalendarDays, Lock, Share2, Info, EyeOff, Clock, Truck, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, Plus, X, Globe, Eye, Layout, CalendarDays, Lock, Share2, Info, EyeOff, Clock, Truck, AlertTriangle, MapPin } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FileUpload } from './FileUpload';
 import { EventDetailDialog } from './EventDetailDialog';
@@ -25,6 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { OPCOES_COMIDA, OPCOES_EQUIP, comDetalhe, itensDeTexto, limparItens, sincronizarItens } from '@/lib/events/itens';
 import { TituloDoEvento } from './events/TituloDoEvento';
 import { paraCampoDataHora, rotuloDoFuso } from '@/lib/events/horaLocal';
+import { LOCAIS_FIXOS, OUTRO_LOCAL, localAoTrocarUnidade, localDaUnidade, localFixo, opcaoDoLocal } from '@/lib/events/local';
 import { linkPublicoDoEvento, prefixoDoLinkPublico, proximoSlug } from '@/lib/events/linkPublico';
 import { descreverErroDeGravacao } from '@/lib/events/mensagemDeErro';
 import { contar, erroDeLimite, type CampoComLimite } from '@/lib/events/limites';
@@ -198,6 +199,12 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
    * formulário não grita antes da primeira tentativa.
    */
   const [tentou, setTentou] = useState(false);
+  /**
+   * "Outro local" escolhido na lista. Precisa ser estado, e não derivado do
+   * texto: no instante em que ela escolhe, o texto ainda está vazio — e vazio
+   * também é o que um evento novo tem antes de a unidade sugerir algo.
+   */
+  const [outroLocal, setOutroLocal] = useState(false);
   const [slugMode, setSlugMode] = useState<'auto' | 'custom'>('auto');
   const [showSlugPrompt, setShowSlugPrompt] = useState(false);
   const [autoSlugPreview, setAutoSlugPreview] = useState('');
@@ -310,10 +317,15 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       };
       setForm(aberto);
       inicialRef.current = JSON.stringify(aberto);
+      // Evento antigo com texto livre abre em "Outro local", com o texto.
+      setOutroLocal(!!event.location && !localFixo(event.location));
     } else {
-      const vazio = { ...emptyEvent(), unit: (unit as Unit) || 'DIC' };
+      const unidade = (unit as Unit) || 'DIC';
+      // O local já vem sugerido pela unidade; a pessoa só mexe se for fora.
+      const vazio = { ...emptyEvent(), unit: unidade, location: localDaUnidade(unidade) };
       setForm(vazio);
       inicialRef.current = JSON.stringify(vazio);
+      setOutroLocal(false);
     }
     setConfirmarSaida(false);
     // Ao editar um evento que já possui slug, preserva o valor existente.
@@ -329,7 +341,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     setObservacao('');
     ajusteRef.current = null;
     avisoRef.current = null;
-  }, [event, open]);
+  }, [event, open, unit]);
 
   /**
    * O que a pessoa mexeu, sem o que a tela derivou sozinha.
@@ -777,7 +789,15 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-sm font-semibold mb-1.5 block">Unidade *</Label>
-                    <Select value={form.unit} onValueChange={v => setForm({ ...form, unit: v as Unit })}>
+                    <Select
+                      value={form.unit}
+                      onValueChange={v => {
+                        // Trocar a unidade sugere o local dela — sem apagar um
+                        // local que a pessoa escreveu à mão.
+                        const location = outroLocal ? form.location : localAoTrocarUnidade(form.location, v);
+                        setForm({ ...form, unit: v as Unit, location });
+                      }}
+                    >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {UNITS.map(u => <SelectItem key={u} value={u}>{eventUnitLabel(u)}</SelectItem>)}
@@ -833,11 +853,59 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     Horários no fuso deste computador ({rotuloDoFuso()}).
                   </p>
                 </div>
+                {/* Uma lista em vez de texto livre: a mesma unidade saía escrita
+                    de cinco jeitos no card público. "Outro local" abre o texto só
+                    quando o evento é fora. Ver `lib/events/local.ts`. */}
                 <div id="campo-location">
-                  <Label className="text-sm font-semibold mb-1.5 block">Localização *</Label>
-                  <Input value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="Local do evento" />
+                  <Label className="text-sm font-semibold mb-1.5 block">Local *</Label>
+                  <Select
+                    value={outroLocal ? OUTRO_LOCAL : opcaoDoLocal(form.location)}
+                    onValueChange={v => {
+                      if (v === OUTRO_LOCAL) {
+                        setOutroLocal(true);
+                        // O que estava era um local da lista; começa em branco.
+                        setForm({ ...form, location: '' });
+                      } else {
+                        setOutroLocal(false);
+                        setForm({ ...form, location: v });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className={errors.location && !outroLocal ? 'border-destructive' : ''}>
+                      <SelectValue placeholder="Escolha o local" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LOCAIS_FIXOS.map(l => (
+                        <SelectItem key={l.valor} value={l.valor}>
+                          <span className="inline-flex items-center gap-2">
+                            <span className={`inline-block h-2 w-2 rounded-full ${UNIT_BG_COLORS[l.unidade]}`} />
+                            {l.valor}
+                          </span>
+                        </SelectItem>
+                      ))}
+                      <SelectItem value={OUTRO_LOCAL}>
+                        <span className="inline-flex items-center gap-2">
+                          <MapPin className="h-3.5 w-3.5 text-muted-foreground" /> Outro local…
+                        </span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {!outroLocal && localFixo(form.location) && (
+                    <p className="mt-1 text-xs text-muted-foreground">Sugerido pela unidade do evento. Troque se for em outro lugar.</p>
+                  )}
+                  {outroLocal && (
+                    <div className="mt-2">
+                      <Input
+                        autoFocus
+                        value={form.location}
+                        onChange={e => setForm({ ...form, location: e.target.value })}
+                        placeholder="Nome do lugar e, se ajudar, o endereço"
+                        className={errors.location ? 'border-destructive' : ''}
+                      />
+                      <Contador campo="location" valor={form.location} />
+                    </div>
+                  )}
                   {errors.location && <p className="mt-1 text-xs text-destructive">{errors.location}</p>}
-                  <Contador campo="location" valor={form.location} />
                 </div>
 
                 {/* `isMarketing` é "admin geral ou comunicação". Com `isAdmin`, quem
