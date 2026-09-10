@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Plus, Copy, Trash2, Pencil, Lock, Loader2, Newspaper, Search, Sparkles, GraduationCap,
 } from 'lucide-react';
@@ -38,6 +39,7 @@ import {
   profileUnitForNewsUnit,
   findNewsUnit,
 } from '@/lib/news/units';
+import { PARAMETRO_UNIDADE, escreverUnidadeNaUrl, lerUnidadeDaUrl } from '@/lib/news/unidadeNaUrl';
 import {
   JOURNAL_MODELS,
   findJournalModel,
@@ -108,8 +110,25 @@ export default function JournalPage() {
     () => newsUnitForProfileUnit(profileUnit)?.id ?? null,
     [profileUnit],
   );
-  const [activeUnitId, setActiveUnitId] = useState<string | null>(defaultUnitId);
-  useEffect(() => setActiveUnitId(defaultUnitId), [defaultUnitId]);
+  /**
+   * A unidade em exibição vive na URL (`?unidade=`), não na memória da página.
+   *
+   * Na memória, qualquer remontagem ou recarregamento devolvia a pessoa para a
+   * unidade dela — era a segunda brecha relatada em 08/09/2026. Na URL, a
+   * escolha sobrevive ao F5 e vira link direto. Sem parâmetro (ou com um id
+   * desconhecido), vale a unidade do perfil.
+   */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const unidadeNaUrl = lerUnidadeDaUrl(searchParams.get(PARAMETRO_UNIDADE));
+  const activeUnitId = unidadeNaUrl === undefined ? defaultUnitId : unidadeNaUrl;
+  const setActiveUnitId = useCallback(
+    (unitId: string | null) => {
+      const params = new URLSearchParams(searchParams);
+      params.set(PARAMETRO_UNIDADE, escreverUnidadeNaUrl(unitId));
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
 
   /**
    * De quem é o jornal. A comunicação edita todos; a gestão, só os da unidade
