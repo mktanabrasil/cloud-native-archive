@@ -14,6 +14,7 @@ import { ResumoDeItens } from './events/ResumoDeItens';
 import { TituloDoEvento } from './events/TituloDoEvento';
 import { tituloEmTexto } from '@/lib/events/titulo';
 import { textoDaData, textoDoHorario } from '@/lib/events/periodo';
+import { textoDoWhatsApp } from '@/lib/events/compartilhar';
 
 interface Props {
   open: boolean;
@@ -48,7 +49,8 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
   const eventUrl = linkPublicoDoEvento(event.slug || event.id);
 
   const shareOnWhatsApp = () => {
-    const text = `Confira este evento: ${tituloEmTexto(event.title)}\n${eventUrl}`;
+    // Título, data com horário, local e o link: a família decide sem clicar.
+    const text = textoDoWhatsApp(event, eventUrl);
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 

@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, type KeyboardEvent } from 'react';
 import { useReduzMovimento } from '@/hooks/useReduzMovimento';
+import { useIsEmbedded } from '@/hooks/useIsEmbedded';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -57,6 +58,12 @@ export default function PublicEventsPage() {
   const { isAdmin, canEdit } = useUserRole();
   const { updateEvent, setSelectedEvent, selectedEvent, loading } = useApp();
 
+  /**
+   * Embutida no site institucional (iframe, ou `?embed=true` como o layout
+   * já reconhece): sem rodapé e sem os convites para conhecer a ANA — a
+   * pessoa já está no site da ANA, e o rodapé do WordPress vem logo abaixo.
+   */
+  const embutida = useIsEmbedded() || searchParams.get('embed') === 'true';
   const comoVisitante = searchParams.get('como') === 'visitante';
   /** Logado e sem o interruptor ligado: vê e faz o que é da equipe. */
   const equipe = isAuthenticated && !comoVisitante;
@@ -547,7 +554,7 @@ export default function PublicEventsPage() {
         )}
 
         {vitrineVazia ? (
-          <VitrineVazia onCriar={equipe && canEdit ? () => setShowNewEvent(true) : undefined} />
+          <VitrineVazia onCriar={equipe && canEdit ? () => setShowNewEvent(true) : undefined} semConvites={embutida} />
         ) : sortedEvents.length === 0 ? (
           <div className="text-center py-20 bg-card rounded-2xl border border-dashed border-border">
             <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -708,7 +715,7 @@ export default function PublicEventsPage() {
       </main>
 
       {/* O rodapé é do visitante — e de quem está vendo como visitante. */}
-      {!equipe && <RodapePublico />}
+      {!equipe && !embutida && <RodapePublico />}
 
       <EventDetailDialog
         open={!!selectedEventForDetail}
