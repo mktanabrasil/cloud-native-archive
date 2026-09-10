@@ -14,6 +14,7 @@ import { ResumoDeItens } from './events/ResumoDeItens';
 import { TituloDoEvento } from './events/TituloDoEvento';
 import { tituloEmTexto } from '@/lib/events/titulo';
 import { textoDaData, textoDoHorario } from '@/lib/events/periodo';
+import { jaAconteceu } from '@/lib/events/proximosEPassados';
 import { textoDoWhatsApp } from '@/lib/events/compartilhar';
 
 interface Props {
@@ -101,9 +102,18 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
         </div>
 
         <div className="p-6 md:p-10 -mt-12 relative z-10">
-          <Badge className={`${UNIT_BG_COLORS[event.unit]} text-white border-none mb-4 shadow-lg text-sm px-4 py-1`}>
-            {event.unit}
-          </Badge>
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <Badge className={`${UNIT_BG_COLORS[event.unit]} text-white border-none shadow-lg text-sm px-4 py-1`}>
+              {event.unit}
+            </Badge>
+            {/* O card da aba "Já aconteceram" tem o selo; o detalhe que abre a
+                partir dele, ou de um link antigo, não tinha. */}
+            {jaAconteceu(event) && (
+              <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-sm px-3 py-1">
+                Encerrado
+              </Badge>
+            )}
+          </div>
           
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
             <div className="flex-1 space-y-4">

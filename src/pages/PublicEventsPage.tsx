@@ -266,8 +266,20 @@ export default function PublicEventsPage() {
     setSearchParams(newParams, { replace: true });
   };
 
+  /** Setas trocam de aba e levam o foco, como um leitor de tela espera de abas. */
+  const teclaNaAba = (e: KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    trocarAba(outraAba);
+    document.getElementById(`aba-${outraAba}`)?.focus();
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      {/* O h1 da página, só para leitor de tela: o herói vem antes com um h2
+          por slide, e o título visível "Programação de Eventos" é um h2. Assim
+          a ordem dos títulos faz sentido para quem navega por eles. */}
+      <h1 className="sr-only">Programação de Eventos</h1>
       {/* A faixa da equipe: diz o modo e traz o interruptor. Só para quem está
           logado; o visitante anônimo nunca a vê. */}
       {isAuthenticated && (
@@ -496,6 +508,7 @@ export default function PublicEventsPage() {
             title="Programação de Eventos"
             description="Confira os próximos eventos confirmados em todas as nossas unidades."
             className="mb-0"
+            nivel={2}
           />
 
           {/* A busca só aparece quando há o que buscar. */}
@@ -509,6 +522,8 @@ export default function PublicEventsPage() {
                 branco no claro, superfície escura no escuro. */}
             <Input
               placeholder="Buscar por título, local ou descrição..."
+              aria-label="Buscar eventos por título, local ou descrição"
+              type="search"
               className="pl-10 h-12 shadow-sm border-border bg-card focus-visible:ring-primary"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -526,9 +541,13 @@ export default function PublicEventsPage() {
               ] as [Aba, string, number][]).map(([valor, rotulo, total]) => (
                 <button
                   key={valor}
+                  id={`aba-${valor}`}
                   type="button"
                   role="tab"
                   aria-selected={aba === valor}
+                  aria-controls="painel-da-aba"
+                  tabIndex={aba === valor ? 0 : -1}
+                  onKeyDown={teclaNaAba}
                   onClick={() => trocarAba(valor)}
                   className={`inline-flex h-8 items-center gap-1.5 rounded-full px-4 text-sm font-medium transition-colors ${
                     aba === valor ? 'bg-card text-foreground shadow-sm' : 'hover:text-foreground'
@@ -553,6 +572,7 @@ export default function PublicEventsPage() {
           </div>
         )}
 
+        <div id="painel-da-aba" role={vitrineVazia ? undefined : 'tabpanel'} aria-labelledby={vitrineVazia ? undefined : `aba-${aba}`}>
         {vitrineVazia ? (
           <VitrineVazia onCriar={equipe && canEdit ? () => setShowNewEvent(true) : undefined} semConvites={embutida} />
         ) : sortedEvents.length === 0 ? (
@@ -712,6 +732,7 @@ export default function PublicEventsPage() {
             ))}
           </div>
         )}
+        </div>
       </main>
 
       {/* O rodapé é do visitante — e de quem está vendo como visitante. */}

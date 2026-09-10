@@ -651,3 +651,40 @@ describe('embutida no site', () => {
     expect(screen.getByRole('link', { name: /conhecer a ana/i })).toBeInTheDocument();
   });
 });
+
+/**
+ * Miudezas de acessibilidade: um h1 antes de qualquer h2, a busca com nome, e
+ * abas que se comportam como abas.
+ */
+describe('acessibilidade', () => {
+  it('tem um único h1, e ele vem antes de qualquer h2', () => {
+    montar();
+
+    const titulos = [...document.querySelectorAll('h1, h2')];
+    expect(titulos.filter(t => t.tagName === 'H1')).toHaveLength(1);
+    expect(titulos[0].tagName).toBe('H1');
+    expect(titulos[0]).toHaveTextContent('Programação de Eventos');
+  });
+
+  it('a busca tem nome, não só placeholder', () => {
+    montar();
+    expect(screen.getByRole('searchbox', { name: /buscar eventos/i })).toBeInTheDocument();
+  });
+
+  it('as abas apontam para o painel e andam com as setas', () => {
+    const passado = evento({ id: 'p', title: 'Passado', start_datetime: new Date(2026, 2, 1, 8).toISOString(), end_datetime: new Date(2026, 2, 1, 10).toISOString() });
+    espiao.eventos = [ativo, passado];
+    montar();
+
+    const proximos = screen.getByRole('tab', { name: /próximos/i });
+    const passados = screen.getByRole('tab', { name: /já aconteceram/i });
+    expect(proximos).toHaveAttribute('aria-controls', 'painel-da-aba');
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-labelledby', 'aba-proximos');
+    expect(passados).toHaveAttribute('tabindex', '-1');
+
+    fireEvent.keyDown(proximos, { key: 'ArrowRight' });
+
+    expect(passados).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-labelledby', 'aba-passados');
+  });
+});
