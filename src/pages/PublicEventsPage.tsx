@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useApp } from '@/contexts/AppContext';
-import { AppEvent, UNIT_BG_COLORS } from '@/types';
+import { AppEvent, UNIT_BG_COLORS, type Unit } from '@/types';
 import { CalendarDays, MapPin, Clock, Search, ChevronLeft, ChevronRight, LayoutPanelTop, Eye, EyeOff, Pencil, Users, Info, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +43,9 @@ import { RodapePublico } from '@/components/events/RodapePublico';
  * lixeira saíram daqui: as pílulas já existem na Visão Geral, uma aba ao
  * lado; a lixeira virou aba do hub.
  */
+/** As unidades que viram chip. A Administração fica de fora, de propósito. */
+const UNIDADES_DO_FILTRO: Unit[] = ['DIC', 'Nilópolis', 'Santana'];
+
 export default function PublicEventsPage() {
   const { isAuthenticated } = useAuth();
   const [search, setSearch] = useState('');
@@ -79,16 +82,32 @@ export default function PublicEventsPage() {
   /** Sem evento nenhum, a página muda de figura: sem busca, sem abas, um painel só. */
   const vitrineVazia = events.length === 0;
 
+  /**
+   * Filtro por unidade, uma por vez, na URL (`?unidade=Santana`). Uma mãe de
+   * Santana não precisa ler todos os cards para achar os da unidade dela.
+   * A Administração não vira chip: os eventos dela aparecem em "todas".
+   * Decisão de 10/09/2026.
+   */
+  const unidadeNaUrl = searchParams.get('unidade');
+  const unidadeFiltro: Unit | null = (UNIDADES_DO_FILTRO as string[]).includes(unidadeNaUrl ?? '') ? (unidadeNaUrl as Unit) : null;
+  const filtrarUnidade = (unidade: Unit | null) => {
+    const params = new URLSearchParams(searchParams);
+    if (unidade) params.set('unidade', unidade);
+    else params.delete('unidade');
+    setSearchParams(params, { replace: true });
+  };
+
   const filtered = useMemo(() => {
     const searchTerm = search.toLowerCase().trim();
-    if (!searchTerm) return events;
+    const daUnidade = unidadeFiltro ? events.filter(e => e.unit === unidadeFiltro) : events;
+    if (!searchTerm) return daUnidade;
 
-    return events.filter(e =>
+    return daUnidade.filter(e =>
       e.title.toLowerCase().includes(searchTerm) ||
       (e.location || '').toLowerCase().includes(searchTerm) ||
       (e.description || '').toLowerCase().includes(searchTerm)
     );
-  }, [events, search]);
+  }, [events, search, unidadeFiltro]);
 
   /**
    * "Próximos" e "Já aconteceram", em duas abas.
@@ -558,6 +577,27 @@ export default function PublicEventsPage() {
                 </button>
               ))}
             </div>
+            <div className="hidden sm:block h-6 w-px bg-border" aria-hidden />
+            <div role="group" aria-label="Filtrar por unidade" className="flex flex-wrap items-center gap-1.5">
+              {UNIDADES_DO_FILTRO.map(unidade => {
+                const ligado = unidadeFiltro === unidade;
+                return (
+                  <button
+                    key={unidade}
+                    type="button"
+                    aria-pressed={ligado}
+                    onClick={() => filtrarUnidade(ligado ? null : unidade)}
+                    className={`inline-flex h-8 items-center gap-2 rounded-full border px-3 text-[13px] font-medium transition-colors ${
+                      ligado ? 'border-foreground bg-foreground text-background' : 'border-border bg-card text-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <span className={`inline-block h-2 w-2 rounded-full ${UNIT_BG_COLORS[unidade]} ${ligado ? 'ring-2 ring-background' : ''}`} />
+                    {unidade}
+                    {ligado && <span aria-hidden className="opacity-70">×</span>}
+                  </button>
+                );
+              })}
+            </div>
             {/* Quem busca "Páscoa" em setembro quer o evento de março, que está
                 na outra aba. Em vez de trocar de aba sozinho, avisa. */}
             {search && sortedEvents.length === 0 && naOutraAba > 0 && (
@@ -578,7 +618,18 @@ export default function PublicEventsPage() {
         ) : sortedEvents.length === 0 ? (
           <div className="text-center py-20 bg-card rounded-2xl border border-dashed border-border">
             <CalendarDays className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            {!search && aba === 'proximos' && passados.length > 0 ? (
+            {!search && unidadeFiltro ? (
+              <>
+                <h3 className="text-lg font-medium text-foreground">
+                  Nenhum evento de {unidadeFiltro} {aba === 'passados' ? 'entre os que já aconteceram' : 'nos próximos'}
+                </h3>
+                <p className="text-muted-foreground">
+                  <button type="button" onClick={() => filtrarUnidade(null)} className="font-medium text-foreground underline underline-offset-4">
+                    Ver todas as unidades
+                  </button>
+                </p>
+              </>
+            ) : !search && aba === 'proximos' && passados.length > 0 ? (
               <>
                 <h3 className="text-lg font-medium text-foreground">Nenhum evento agendado no momento</h3>
                 <p className="text-muted-foreground">
@@ -686,11 +737,16 @@ export default function PublicEventsPage() {
                           Encerrado
                         </Badge>
                       )}
+                      {/* Na vitrine todo evento é confirmado: o selo não dizia nada.
+                          O tipo, que só a equipe recebe (não está na lista pública
+                          de colunas), diz. */}
                       {equipe && (
                         <>
-                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-medium text-[10px]">
-                            Confirmado
-                          </Badge>
+                          {event.event_type && (
+                            <Badge variant="outline" className="bg-muted text-muted-foreground border-border font-medium text-[10px] capitalize">
+                              {event.event_type}
+                            </Badge>
+                          )}
                           {event.show_in_banner && (
                             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 font-medium text-[10px] flex items-center gap-1">
                               <LayoutPanelTop className="h-2 w-2" /> Banner Ativo

@@ -147,7 +147,8 @@ describe('modo equipe', () => {
     expect(screen.getByText('equipe', { selector: 'b' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /editar evento/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /adicionar ao banner|remover do banner/i })).toBeInTheDocument();
-    expect(screen.getByText('Confirmado')).toBeInTheDocument();
+    // o selo da equipe passou a ser o tipo do evento, não "Confirmado"
+    expect(screen.getByText('reunião')).toBeInTheDocument();
   });
 
   it('o clique no card abre o detalhe, com editar dentro, e não o formulário', () => {
@@ -188,7 +189,7 @@ describe('ver como visitante', () => {
     expect(screen.getByText('visitante', { selector: 'b' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /editar evento/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /adicionar ao banner|remover do banner/i })).toBeNull();
-    expect(screen.queryByText('Confirmado')).toBeNull();
+    expect(screen.queryByText('reunião')).toBeNull();
     expect(noCard('Festa da Primavera')).toBe(1);
   });
 
@@ -686,5 +687,77 @@ describe('acessibilidade', () => {
 
     expect(passados).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-labelledby', 'aba-passados');
+  });
+});
+
+/**
+ * Filtro por unidade, uma por vez, na URL. A Administração não vira chip.
+ * E, para a equipe, o tipo do evento no lugar do selo "Confirmado".
+ */
+describe('o filtro por unidade', () => {
+  const deSantana = evento({ id: 's', title: 'Festa de Santana', unit: 'Santana' });
+  const doDic = evento({ id: 'd', title: 'Festa do DIC', unit: 'DIC' });
+  const daAdm = evento({ id: 'a', title: 'Reunião Geral', unit: 'Administração' });
+
+  beforeEach(() => { espiao.eventos = [deSantana, doDic, daAdm]; espiao.autenticado = false; });
+
+  it('três chips, sem Administração, todos desligados', () => {
+    montar();
+    const chips = screen.getAllByRole('button', { pressed: false }).filter(b => /^(DIC|Nilópolis|Santana)/.test(b.textContent ?? ''));
+    expect(chips.map(c => c.textContent?.trim())).toEqual(['DIC', 'Nilópolis', 'Santana']);
+    expect(screen.queryByRole('button', { name: /administração/i })).toBeNull();
+  });
+
+  it('ligar um chip filtra a grade e as contagens, e vai para a URL; ligar de novo desliga', () => {
+    montar();
+
+    fireEvent.click(screen.getByRole('button', { name: /^santana/i }));
+    expect(noCard('Festa de Santana')).toBe(1);
+    expect(noCard('Festa do DIC')).toBe(0);
+    expect(noCard('Reunião Geral')).toBe(0);
+    expect(screen.getByRole('tab', { name: /próximos/i })).toHaveTextContent('1');
+
+    fireEvent.click(screen.getByRole('button', { name: /^santana/i }));
+    expect(noCard('Festa do DIC')).toBe(1);
+    expect(noCard('Reunião Geral')).toBe(1);
+  });
+
+  it('?unidade= na URL já abre filtrado', () => {
+    montar('/eventos?unidade=DIC');
+    expect(noCard('Festa do DIC')).toBe(1);
+    expect(noCard('Festa de Santana')).toBe(0);
+    expect(screen.getByRole('button', { name: /^dic/i })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('sem evento da unidade, diz isso e oferece ver todas', () => {
+    montar('/eventos?unidade=Nilópolis');
+
+    expect(screen.getByText(/nenhum evento de nilópolis nos próximos/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /ver todas as unidades/i }));
+    expect(noCard('Festa de Santana')).toBe(1);
+  });
+
+  it('unidade desconhecida na URL é ignorada', () => {
+    montar('/eventos?unidade=Marte');
+    expect(noCard('Festa de Santana')).toBe(1);
+    expect(noCard('Festa do DIC')).toBe(1);
+  });
+});
+
+describe('o tipo do evento no card', () => {
+  it('a equipe vê o tipo no lugar de "Confirmado"', () => {
+    espiao.eventos = [ativo];
+    montar();
+
+    expect(screen.getByText('reunião')).toBeInTheDocument();
+    expect(screen.queryByText('Confirmado')).toBeNull();
+  });
+
+  it('o visitante não vê selo de tipo', () => {
+    espiao.eventos = [ativo];
+    espiao.autenticado = false;
+    montar();
+
+    expect(screen.queryByText('reunião')).toBeNull();
   });
 });
