@@ -28,3 +28,6 @@ dist-ssr
 
 # Resíduo do CLI do Supabase
 supabase/.temp/
+
+# macOS AppleDouble files on external volumes
+._*

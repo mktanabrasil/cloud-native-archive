@@ -137,14 +137,14 @@ var me_default = defineTool3({
 });
 
 // src/lib/mcp/index.ts
-var projectRef = "ihqogooddvhsvfhbwdez";
+var supabaseUrl = "https://supabase.anabrasil.org".replace(/\/+$/, "");
 var mcp_default = defineMcp({
   name: "ana-brasil-mcp",
   title: "ANA Brasil MCP",
   version: "0.1.0",
   instructions: "Tools for the ANA Brasil events platform. Use `me` to inspect the signed-in user, `list_events` to browse the calendar (with optional date/unit/status filters), and `get_event` to fetch a specific event by id. All calls run as the connected user and respect row-level security.",
   auth: auth.oauth.issuer({
-    issuer: `https://${projectRef}.supabase.co/auth/v1`,
+    issuer: `${supabaseUrl}/auth/v1`,
     acceptedAudiences: "authenticated"
   }),
   tools: [me_default, list_events_default, get_event_default]
