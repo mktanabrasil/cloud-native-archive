@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { PUBLIC_APP_ORIGIN } from '@/lib/utils';
 import { useSearchParams } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import { useUIVersions } from '@/hooks/useUIVersions';
@@ -454,7 +455,7 @@ export default function UsersPage() {
     // Se estiver no ambiente de preview do Lovable, sugerimos a URL de produção para os embeds
     // Isso evita que ao colar o embed em outro site, peça login no Lovable
     if (origin.includes('lovable.app') && (origin.includes('-preview--') || origin.includes('lovableproject.com'))) {
-      return 'https://r2-vault-craft.lovable.app';
+      return PUBLIC_APP_ORIGIN;
     }
     return origin;
   }, []);
@@ -1534,7 +1535,7 @@ export default function UsersPage() {
                   <AlertTitle className="text-primary text-xs font-semibold">Nota de Publicação</AlertTitle>
                   <AlertDescription className="text-muted-foreground text-[11px]">
                     Detectamos que você está no ambiente de visualização. Os links abaixo já foram 
-                    ajustados para usar o domínio público <strong>r2-vault-craft.lovable.app</strong> para que 
+                    ajustados para usar o domínio público <strong>app.anabrasil.org</strong> para que 
                     não peçam login do Lovable ao serem incorporados.
                   </AlertDescription>
                 </Alert>

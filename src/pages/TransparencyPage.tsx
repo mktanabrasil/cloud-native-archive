@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { PUBLIC_APP_ORIGIN } from '@/lib/utils';
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -358,7 +359,7 @@ const TransparencyPage = () => {
   };
 
   const copyEmbedCode = (id: string) => {
-    const publicOrigin = 'https://r2-vault-craft.lovable.app';
+    const publicOrigin = PUBLIC_APP_ORIGIN;
     const embedUrl = `${publicOrigin}/portal-transparencia-publico?id=${id}&embed=true`;
     const embedCode = `<iframe id="iframe-${id}" src="${embedUrl}" width="100%" frameborder="0" scrolling="no" style="overflow:hidden; transition: height 0.1s ease-out; border: none;" allow="fullscreen; clipboard-write"></iframe>
 <script>
@@ -403,7 +404,7 @@ const TransparencyPage = () => {
   };
 
   const copyEmbedCodeV2 = (id: string) => {
-    const publicOrigin = 'https://r2-vault-craft.lovable.app';
+    const publicOrigin = PUBLIC_APP_ORIGIN;
     const embedUrl = `${publicOrigin}/portal-transparencia-publico?id=${id}&embed=true&v=2`;
     const embedCode = `<iframe id="iframe-${id}" src="${embedUrl}" width="100%" frameborder="0" scrolling="no" style="overflow:hidden; transition: height 0.1s ease-out; border: none;" allow="fullscreen; clipboard-write"></iframe>
 <script>
@@ -626,7 +627,7 @@ const TransparencyPage = () => {
             </DialogDescription>
           </DialogHeader>
           {publicUrlConfig && (() => {
-            const publicOrigin = 'https://r2-vault-craft.lovable.app';
+            const publicOrigin = PUBLIC_APP_ORIGIN;
             const publicUrl = `${publicOrigin}/portal-transparencia-publico?id=${publicUrlConfig.id}&v=2`;
             const wpHtml = `<iframe src="${publicUrl}&embed=true" width="100%" style="border:0;min-height:600px" loading="lazy" title="${publicUrlConfig.label}"></iframe>`;
             const copy = (text: string, kind: 'url' | 'html') => {
@@ -662,7 +663,7 @@ const TransparencyPage = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => { setPublicUrlConfig(null); setPublicUrlCopied(null); }}>Fechar</Button>
             {publicUrlConfig && (
-              <Button onClick={() => window.open(`https://r2-vault-craft.lovable.app/portal-transparencia-publico?id=${publicUrlConfig.id}&v=2`, '_blank')} className="gap-1.5">
+              <Button onClick={() => window.open(`${PUBLIC_APP_ORIGIN}/portal-transparencia-publico?id=${publicUrlConfig.id}&v=2`, '_blank')} className="gap-1.5">
                 <ExternalLink className="h-4 w-4" /> Abrir Página Pública
               </Button>
             )}

@@ -1,11 +1,12 @@
 import { ArrowRight } from 'lucide-react';
+import { PUBLIC_APP_ORIGIN } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import bannerAsset from '@/assets/mercado-solidario-banner.svg.asset.json';
 
 const BANNER_URL = /^https?:\/\//.test(bannerAsset.url)
   ? bannerAsset.url
-  : `https://r2-vault-craft.lovable.app${bannerAsset.url}`;
+  : `${PUBLIC_APP_ORIGIN}${bannerAsset.url}`;
 
 interface MercadoHeroProps {
   onPartnerClick: () => void;

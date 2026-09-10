@@ -14,3 +14,6 @@ export function isLovableBuilder() {
     hostname.includes('127.0.0.1')
   );
 }
+
+/** Domínio público de produção do app, usado em links e embeds copiáveis. */
+export const PUBLIC_APP_ORIGIN = 'https://app.anabrasil.org';
