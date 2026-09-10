@@ -552,3 +552,44 @@ describe('o rodapé', () => {
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
   });
 });
+
+/**
+ * O herói usa a mesma régua de "já passou" da grade: pelo término. Hoje, nestes
+ * testes, é 8 de setembro de 2026, 15h.
+ */
+describe('o herói e a régua de "já passou"', () => {
+  const emCartaz = (id: string, title: string, ini: Date, fim: Date, extra: Partial<AppEvent> = {}) =>
+    evento({ id, title, show_in_banner: true, banner_image_desktop: `https://exemplo/${id}.jpg`, start_datetime: ini.toISOString(), end_datetime: fim.toISOString(), ...extra });
+  const retiroEmAndamento = emCartaz('retiro', 'Retiro em Andamento', new Date(2026, 8, 6, 8), new Date(2026, 8, 10, 12));
+  const jaPassou = emCartaz('passou', 'Festa que Passou', new Date(2026, 8, 1, 8), new Date(2026, 8, 1, 12));
+  const futuro = emCartaz('futuro', 'Hope Day', new Date(2026, 9, 10, 8), new Date(2026, 9, 10, 16));
+  const regiao = () => screen.getByRole('region', { name: /eventos em destaque/i });
+
+  it('para o visitante, um evento de vários dias em andamento continua no herói', () => {
+    espiao.autenticado = false;
+    espiao.eventos = [retiroEmAndamento, jaPassou, futuro];
+    montar();
+
+    expect(regiao()).toHaveTextContent('Retiro em Andamento');
+    expect(regiao()).toHaveTextContent('Hope Day');
+    expect(regiao()).not.toHaveTextContent('Festa que Passou');
+  });
+
+  it('para o admin em modo equipe, o passado fica no fim e ganha o selo "Já aconteceu"', () => {
+    espiao.eventos = [jaPassou, futuro];
+    montar();
+
+    const slides = [...regiao().querySelectorAll('[aria-hidden]')];
+    expect(slides[0]).toHaveTextContent('Hope Day');
+    expect(slides[1]).toHaveTextContent('Festa que Passou');
+    expect(slides[1]).toHaveTextContent('Já aconteceu');
+    expect(slides[0]).not.toHaveTextContent('Já aconteceu');
+  });
+
+  it('o evento em andamento não recebe o selo, nem no modo equipe', () => {
+    espiao.eventos = [retiroEmAndamento];
+    montar();
+
+    expect(regiao()).not.toHaveTextContent('Já aconteceu');
+  });
+});

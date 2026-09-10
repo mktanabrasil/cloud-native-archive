@@ -116,31 +116,30 @@ export default function PublicEventsPage() {
   const outraAba: Aba = aba === 'passados' ? 'proximos' : 'passados';
   const naOutraAba = (aba === 'passados' ? proximos : passados).length;
 
+  /**
+   * O herói usa a mesma régua de "já passou" da grade: `jaAconteceu`, pelo
+   * término. Até 10/09/2026 ele olhava o início — um retiro de sexta a
+   * domingo, no sábado, estava em "Próximos" na grade e tinha sumido do herói.
+   */
   const bannerEvents = useMemo(() => {
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
+    const porInicio = (a: AppEvent, b: AppEvent) =>
+      new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime();
 
     // Para o admin no modo equipe, o herói mostra todos da vitrine: os ativos
-    // e futuros primeiro, os ocultos ou passados depois, com selo. Assim ele
+    // e em cartaz primeiro, os ocultos ou passados depois, com selo. Assim ele
     // vê o que está fora do ar sem sair da página.
     if (equipe && isAdmin) {
+      const ativo = (e: AppEvent) => e.show_in_banner && !jaAconteceu(e);
       return [...events].sort((a, b) => {
-        const aStart = new Date(a.start_datetime);
-        const bStart = new Date(b.start_datetime);
-        const aActive = a.show_in_banner && aStart >= startOfToday;
-        const bActive = b.show_in_banner && bStart >= startOfToday;
-
-        if (aActive && !bActive) return -1;
-        if (!aActive && bActive) return 1;
-        return aStart.getTime() - bStart.getTime();
+        if (ativo(a) && !ativo(b)) return -1;
+        if (!ativo(a) && ativo(b)) return 1;
+        return porInicio(a, b);
       });
     }
 
-    // Para todo o resto: só o que está no banner e ainda não passou. Um
-    // evento de hoje fica até 23:59.
-    return events
-      .filter(e => e.show_in_banner && new Date(e.start_datetime) >= startOfToday)
-      .sort((a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime());
+    // Para todo o resto: só o que está no banner e ainda não terminou. Um
+    // evento de hoje fica até 23:59; um de vários dias, até o último dia.
+    return events.filter(e => e.show_in_banner && !jaAconteceu(e)).sort(porInicio);
   }, [events, equipe, isAdmin]);
 
   const handleToggleBanner = (event: AppEvent) => {
@@ -340,9 +339,17 @@ export default function PublicEventsPage() {
                   <Badge className={`${UNIT_BG_COLORS[event.unit]} text-white border-none shadow-lg`}>
                     {event.unit}
                   </Badge>
+                  {/* Os dois motivos de a família não ver este slide. Sem o
+                      segundo, um evento passado com banner ligado ficava no
+                      carrossel do admin como se estivesse no ar. */}
                   {equipe && isAdmin && !event.show_in_banner && (
                     <Badge variant="outline" className="bg-slate-900/80 text-slate-200 border-slate-700 backdrop-blur-sm">
                       Oculto para o Público
+                    </Badge>
+                  )}
+                  {equipe && isAdmin && jaAconteceu(event) && (
+                    <Badge variant="outline" className="bg-slate-900/80 text-slate-200 border-slate-700 backdrop-blur-sm">
+                      Já aconteceu
                     </Badge>
                   )}
                 </div>
