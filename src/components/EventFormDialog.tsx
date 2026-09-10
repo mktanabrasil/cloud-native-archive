@@ -322,7 +322,13 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     } else {
       const unidade = (unit as Unit) || 'DIC';
       // O local já vem sugerido pela unidade; a pessoa só mexe se for fora.
-      const vazio = { ...emptyEvent(), unit: unidade, location: localDaUnidade(unidade) };
+      //
+      // Status: a gestora cria pendente, porque o evento dela vai para
+      // aprovação. A administração e o marketing são quem aprova — um evento
+      // deles nascendo pendente ficava esperando uma aprovação que ninguém
+      // daria, e fora da vitrine (10/09/2026). Para eles, nasce confirmado;
+      // o campo continua no formulário para quem quiser outro status.
+      const vazio = { ...emptyEvent(), unit: unidade, location: localDaUnidade(unidade), status: (isMarketing ? 'confirmado' : 'pendente') as EventStatus };
       setForm(vazio);
       inicialRef.current = JSON.stringify(vazio);
       setOutroLocal(false);
@@ -341,7 +347,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     setObservacao('');
     ajusteRef.current = null;
     avisoRef.current = null;
-  }, [event, open, unit]);
+  }, [event, open, unit, isMarketing]);
 
   /**
    * O que a pessoa mexeu, sem o que a tela derivou sozinha.

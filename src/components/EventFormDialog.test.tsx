@@ -1101,3 +1101,44 @@ describe('o preview mostra o local', () => {
     expect(screen.getByText('Centro de Campinas', { selector: 'span' })).toBeInTheDocument();
   });
 });
+
+/**
+ * O status inicial depende de quem cria: a gestora envia para aprovação
+ * (pendente); a administração e o marketing são quem aprova, então o evento
+ * deles já nasce confirmado — antes ficava pendente e fora da vitrine.
+ */
+describe('o status inicial', () => {
+  const selectStatus = () =>
+    [...document.querySelectorAll('select')].find(s => [...s.options].some(o => o.value === 'confirmado')) as HTMLSelectElement;
+
+  it('para a administração e o marketing, nasce confirmado e vai confirmado ao criar', async () => {
+    espiao.papel = { ...espiao.papel, isAdmin: true, isMarketing: true };
+    abrir();
+
+    expect(selectStatus().value).toBe('confirmado');
+
+    preencher();
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
+    expect(espiao.addEvent.mock.calls[0][0].status).toBe('confirmado');
+  });
+
+  it('a administração ainda pode escolher outro status', () => {
+    espiao.papel = { ...espiao.papel, isAdmin: true, isMarketing: true };
+    abrir();
+
+    fireEvent.change(selectStatus(), { target: { value: 'pendente' } });
+
+    expect(selectStatus().value).toBe('pendente');
+  });
+
+  it('para a gestora, continua pendente: o evento vai para aprovação', async () => {
+    abrir();
+    preencher();
+    fireEvent.click(screen.getByRole('button', { name: /enviar para aprovação/i }));
+
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
+    expect(espiao.addEvent.mock.calls[0][0].status).toBe('pendente');
+  });
+});
