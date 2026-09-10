@@ -2000,9 +2000,17 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                           </h3>
                         )}
                         
-                        <div className="flex items-center gap-2 text-[10px] text-white/80 mt-2">
-                          <CalendarDays className="h-3 w-3" />
-                          <span>{form.start_datetime ? new Date(form.start_datetime).toLocaleDateString('pt-BR') : 'Data'}</span>
+                        {/* Data e local, como no herói público: o preview não mostrava
+                            o local, e a família o vê em três lugares. */}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-white/80 mt-2">
+                          <span className="inline-flex items-center gap-1">
+                            <CalendarDays className="h-3 w-3" />
+                            <span>{form.start_datetime ? new Date(form.start_datetime).toLocaleDateString('pt-BR') : 'Data'}</span>
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            <span className={form.location ? '' : 'text-white/50'}>{form.location || 'Local'}</span>
+                          </span>
                         </div>
                       </div>
                     </div>
