@@ -13,9 +13,14 @@ import { INSTAGRAM_DA_ANA, SITE_DA_ANA } from '@/lib/links';
 interface Props {
   /** Presente só para a equipe que pode criar: abre o formulário daqui. */
   onCriar?: () => void;
+  /**
+   * Dentro do iframe do site institucional, "Conhecer a ANA" e o Instagram
+   * são redundantes: a pessoa já está no site da ANA. Só o texto fica.
+   */
+  semConvites?: boolean;
 }
 
-export function VitrineVazia({ onCriar }: Props) {
+export function VitrineVazia({ onCriar, semConvites = false }: Props) {
   return (
     <section
       aria-labelledby="vitrine-vazia-titulo"
@@ -35,6 +40,7 @@ export function VitrineVazia({ onCriar }: Props) {
         <p className="mx-auto mt-2 max-w-[46ch] text-muted-foreground">
           Assim que houver eventos confirmados, eles aparecem aqui. Enquanto isso, conheça a ANA e acompanhe as novidades.
         </p>
+        {!semConvites && (
         <div className="mt-7 flex flex-wrap items-center justify-center gap-2.5">
           <Button asChild className="rounded-full gap-2">
             <a href={SITE_DA_ANA} target="_blank" rel="noopener noreferrer">
@@ -49,6 +55,7 @@ export function VitrineVazia({ onCriar }: Props) {
             </Button>
           )}
         </div>
+        )}
         {onCriar && (
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3 border-t border-border pt-5 text-sm text-muted-foreground">
             <span>Só a equipe vê esta linha.</span>

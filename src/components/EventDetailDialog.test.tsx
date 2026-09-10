@@ -62,7 +62,11 @@ describe('o título no detalhe', () => {
     fireEvent.click(screen.getByRole('button', { name: /whatsapp/i }));
 
     const url = decodeURIComponent(abrir.mock.calls[0][0] as string);
-    expect(url).toContain('Confira este evento: HOPE DAY 2026');
+    // título, data com horário, local e link, um por linha
+    // o horário depende do fuso da máquina de teste; a data e a ordem das linhas, não
+    expect(url).toContain(['HOPE DAY 2026', '10 de outubro de 2026 · '].join('\n'));
+    // o link é a última linha (no jsdom vem com a origem local, não com https://app…)
+    expect(url).toMatch(/\nUnidade Santana\n\S*eventos\?slug=hope-day$/);
     expect(url).not.toContain('<br>');
   });
 });

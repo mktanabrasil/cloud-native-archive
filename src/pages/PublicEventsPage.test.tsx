@@ -621,3 +621,33 @@ describe('o histórico do navegador', () => {
     expect(sonda.dataset.acao).toBe('REPLACE');
   });
 });
+
+/**
+ * Embutida no site institucional (?embed=true), a página não repete o rodapé
+ * do WordPress nem convida a "conhecer a ANA" dentro do site da ANA.
+ */
+describe('embutida no site', () => {
+  beforeEach(() => { espiao.autenticado = false; });
+
+  it('sem rodapé', () => {
+    montar('/eventos?embed=true');
+    expect(screen.queryByRole('contentinfo')).toBeNull();
+  });
+
+  it('a vitrine vazia fica sem os convites, mas com o texto', () => {
+    espiao.eventos = [];
+    montar('/eventos?embed=true');
+
+    expect(screen.getByRole('heading', { name: /a próxima programação está sendo montada/i })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /conhecer a ana/i })).toBeNull();
+    expect(screen.queryByRole('link', { name: /instagram/i })).toBeNull();
+  });
+
+  it('fora do embed, rodapé e convites continuam', () => {
+    espiao.eventos = [];
+    montar();
+
+    expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /conhecer a ana/i })).toBeInTheDocument();
+  });
+});
