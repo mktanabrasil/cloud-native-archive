@@ -131,3 +131,22 @@ describe('copiar link', () => {
     expect(await screen.findByRole('textbox', { name: /link do evento para copiar/i })).toBeInTheDocument();
   });
 });
+
+describe('evento que já passou', () => {
+  it('o detalhe mostra o selo Encerrado ao lado da unidade', () => {
+    render(
+      <EventDetailDialog
+        open
+        onOpenChange={() => {}}
+        event={{ ...evento, start_datetime: '2025-03-28T14:00:00.000Z', end_datetime: '2025-03-28T17:00:00.000Z' }}
+      />,
+    );
+
+    expect(screen.getByText('Encerrado')).toBeInTheDocument();
+  });
+
+  it('evento futuro não tem o selo', () => {
+    montar();
+    expect(screen.queryByText('Encerrado')).toBeNull();
+  });
+});
