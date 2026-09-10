@@ -11,6 +11,7 @@ import { linkPublicoDoEvento } from '@/lib/events/linkPublico';
 import { motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
 import { ROTULO_DA_COBERTURA, estadoDaCobertura } from '@/lib/events/cobertura';
 import { ResumoDeItens } from './events/ResumoDeItens';
+import { TextoComLinks } from './events/TextoComLinks';
 import { TituloDoEvento } from './events/TituloDoEvento';
 import { tituloEmTexto } from '@/lib/events/titulo';
 import { textoDaData, textoDoHorario } from '@/lib/events/periodo';
@@ -152,8 +153,10 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
               </div>
 
               <div className="prose prose-slate max-w-none pt-6 border-t border-border">
+                {/* Endereços de inscrição ou de mapa colados na descrição viram
+                    links; o resto continua texto. */}
                 <p className="text-muted-foreground text-lg leading-relaxed whitespace-pre-wrap">
-                  {event.description || 'Nenhuma descrição detalhada disponível para este evento.'}
+                  {event.description ? <TextoComLinks texto={event.description} /> : 'Nenhuma descrição detalhada disponível para este evento.'}
                 </p>
               </div>
 
