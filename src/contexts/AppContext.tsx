@@ -21,13 +21,22 @@ interface AppContextType {
   setSelectedUser: (user: AppUser | null) => void;
   setSelectedMonth: (date: Date) => void;
   addEvent: (event: Partial<AppEvent>) => Promise<void>;
-  updateEvent: (event: AppEvent) => Promise<void>;
-  deleteEvent: (id: string) => Promise<void>;
+  updateEvent: (event: AppEvent, opcoes?: OpcoesDeGravacao) => Promise<void>;
+  deleteEvent: (id: string, opcoes?: OpcoesDeGravacao) => Promise<void>;
   restoreEvent: (id: string) => Promise<void>;
   updateUser: (user: AppUser) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   detectConflicts: (event: AppEvent) => AppEvent[];
   refetchEvents: () => Promise<void>;
+}
+
+/**
+ * `emLote`: quem chama vai gravar vários e avisar uma vez só, com a conta
+ * (ver `lib/events/lote.ts`). Sem toast por item e sem refetch por item —
+ * cinco eventos eram cinco recarregamentos da lista.
+ */
+export interface OpcoesDeGravacao {
+  emLote?: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -121,22 +130,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await fetchEvents();
   };
 
-  const updateEvent = async (event: AppEvent) => {
+  const updateEvent = async (event: AppEvent, opcoes: OpcoesDeGravacao = {}) => {
     // `.select('id')` para saber se alguma linha mudou. Quando o RLS filtra a
     // linha (gestora editando um evento já confirmado), o UPDATE não dá erro:
     // afeta zero linhas e volta em silêncio — e a tela diria "salvo".
     // @ts-ignore
     const { data, error } = await supabase.from('events').update(event).eq('id', event.id).select('id');
     if (error) {
-      avisarFalha(error, 'atualizar', event);
+      if (!opcoes.emLote) avisarFalha(error, 'atualizar', event);
       throw error;
     }
     if (!data || data.length === 0) {
       const nada = Object.assign(new Error('permission denied: nenhuma linha foi alterada'), { code: '42501' });
-      avisarFalha(nada, 'atualizar', event);
+      if (!opcoes.emLote) avisarFalha(nada, 'atualizar', event);
       throw nada;
     }
-    await fetchEvents();
+    if (!opcoes.emLote) await fetchEvents();
   };
 
   /**
@@ -146,32 +155,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
    * evento continuava lá depois do refetch. Agora os três pedem `.select('id')`
    * e tratam zero linhas como permissão negada.
    */
-  const exigirLinha = (data: unknown[] | null, mensagem: string) => {
+  const exigirLinha = (data: unknown[] | null, mensagem: string, avisar = true) => {
     if (!data || data.length === 0) {
       const nada = Object.assign(new Error('permission denied: nenhuma linha foi alterada'), { code: '42501' });
-      toast.error(mensagem);
+      if (avisar) toast.error(mensagem);
       throw nada;
     }
   };
 
-  const deleteEvent = async (id: string) => {
+  const deleteEvent = async (id: string, opcoes: OpcoesDeGravacao = {}) => {
+    const avisar = !opcoes.emLote;
     const eventToDelete = events.find(e => e.id === id);
     
     // If already in trash, delete permanently
     if (eventToDelete?.deleted_at) {
       const { data, error } = await supabase.from('events').delete().eq('id', id).select('id');
       if (error) {
-        toast.error('Erro ao excluir permanentemente');
+        if (avisar) toast.error('Erro ao excluir permanentemente');
         throw error;
       }
-      exigirLinha(data, 'Sem permissão para excluir este evento');
+      exigirLinha(data, 'Sem permissão para excluir este evento', avisar);
       // A linha foi; os arquivos dela no balde iam ficar para sempre, públicos
       // e sem ninguém apontando para eles. Só não apaga o que outro evento
       // ainda usa (cópias de um mesmo banner, por exemplo).
       const emUsoPorOutros = new Set(events.filter(e => e.id !== id).flatMap(urlsDeArquivosDoEvento));
       const soDele = urlsDeArquivosDoEvento(eventToDelete).filter(u => !emUsoPorOutros.has(u));
       if (soDele.length > 0) await apagarDoBalde(soDele);
-      toast.success('Evento excluído permanentemente');
+      if (avisar) toast.success('Evento excluído permanentemente');
     } else {
       // Move to trash
       const { data, error } = await supabase.from('events').update({ 
@@ -179,13 +189,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }).eq('id', id).select('id');
       
       if (error) {
-        toast.error('Erro ao mover para a lixeira');
+        if (avisar) toast.error('Erro ao mover para a lixeira');
         throw error;
       }
-      exigirLinha(data, 'Sem permissão para mover este evento para a lixeira');
-      toast.success('Evento movido para a lixeira');
+      exigirLinha(data, 'Sem permissão para mover este evento para a lixeira', avisar);
+      if (avisar) toast.success('Evento movido para a lixeira');
     }
-    await fetchEvents();
+    if (avisar) await fetchEvents();
   };
 
   /**

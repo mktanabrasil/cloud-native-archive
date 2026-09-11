@@ -127,3 +127,27 @@ describe('excluir de vez', () => {
     expect(espiao.apagados).toEqual([]);
   });
 });
+
+describe('gravação em lote', () => {
+  it('emLote: sem toast por item e sem recarregar a lista; quem chama avisa e recarrega uma vez', async () => {
+    espiao.lista = [{ id: 'e1', unit: 'DIC', title: 'x', start_datetime: '2026-10-01T10:00:00Z', end_datetime: '2026-10-01T12:00:00Z', status: 'confirmado', visibility: 'interno', deleted_at: null, attachments: [] }];
+    espiao.linhas = [{ id: 'e1' }];
+    const { result } = montar();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    const buscasAntes = espiao.operacoes.length;
+
+    await act(() => result.current.deleteEvent('e1', { emLote: true }));
+
+    expect(espiao.toastOk).not.toHaveBeenCalled();
+    expect(espiao.operacoes.slice(buscasAntes)).toEqual(['update']);
+  });
+
+  it('emLote com zero linhas: lança sem toast, para o lote contar a recusa', async () => {
+    espiao.linhas = [];
+    const { result } = montar();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await expect(act(() => result.current.deleteEvent('e1', { emLote: true }))).rejects.toMatchObject({ code: '42501' });
+    expect(espiao.toastErro).not.toHaveBeenCalled();
+  });
+});
