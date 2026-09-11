@@ -13,10 +13,11 @@ import { ROTULO_DA_COBERTURA, estadoDaCobertura } from '@/lib/events/cobertura';
 import { ResumoDeItens } from './events/ResumoDeItens';
 
 const unitBadgeColors: Record<Unit, string> = {
-  'DIC': 'bg-unit-dic text-primary-foreground',
-  'Nilópolis': 'bg-unit-nilopolis text-primary-foreground',
-  'Santana': 'bg-unit-santana text-primary-foreground',
-  'Administração': 'bg-unit-geral text-primary-foreground',
+  // Texto escuro sobre a cor da unidade: a mesma regra da vitrine (11/09/2026).
+  'DIC': 'bg-unit-dic text-slate-900',
+  'Nilópolis': 'bg-unit-nilopolis text-slate-900',
+  'Santana': 'bg-unit-santana text-slate-900',
+  'Administração': 'bg-unit-geral text-slate-900',
 };
 
 interface Props {
@@ -267,6 +268,7 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
                 <Button
                   variant="destructive"
                   size="icon"
+                  aria-label="Mover para a lixeira"
                   onClick={() => {
                     onDelete(event.id);
                     onOpenChange(false);

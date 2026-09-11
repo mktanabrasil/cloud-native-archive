@@ -1,4 +1,18 @@
-import { useState, useMemo, useCallback, useEffect, DragEvent } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef, DragEvent } from 'react';
+import { toast } from 'sonner';
+import { diasDoEvento, eDiaDeFim, eDiaDeInicio, ocorreNoDia } from '@/lib/events/diasDoEvento';
+import { executarEmLote, textoDoLote, FRASES_LIXEIRA, frasesDeStatus } from '@/lib/events/lote';
+import { tituloEmTexto } from '@/lib/events/titulo';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { getStatusBadgeClass } from '@/lib/statusColors';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,14 +58,24 @@ const unitBorderColors: Record<Unit, string> = {
 type View = 'month' | 'week' | 'list';
 
 export default function CalendarPage() {
-  const { events: rawEvents, selectedMonth, setSelectedMonth, setSelectedEvent, deleteEvent, updateEvent, detectConflicts, loading } = useApp();
+  const { events: rawEvents, selectedMonth, setSelectedMonth, setSelectedEvent, deleteEvent, updateEvent, detectConflicts, loading, refetchEvents } = useApp();
   const events = useFilteredEvents();
   const { isAuthenticated } = useAuth();
   const { canEdit, canCreate, userName, unit } = useUserRole();
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const hideTitle = searchParams.get('hideTitle') === 'true';
-  const [view, setView] = useState<View>('month');
+  const [view, setViewState] = useState<View>('month');
+  /**
+   * No celular a grade do mês são sete colunas de 48 px com texto de 8 px.
+   * A Lista já existe e se lê: é a visão inicial abaixo de 768 px. Só até a
+   * pessoa escolher outra — a escolha dela prevalece na sessão.
+   */
+  const escolheuVisao = useRef(false);
+  const setView = (v: View) => { escolheuVisao.current = true; setViewState(v); };
+  useEffect(() => {
+    if (isMobile && !escolheuVisao.current) setViewState('list');
+  }, [isMobile]);
   const [filterUnit, setFilterUnit] = useState<string>('all');
 
   // Sync filter unit with user unit when it changes (useful for test mode)
@@ -94,20 +118,25 @@ export default function CalendarPage() {
   };
 
   const handleBulkDelete = () => {
-    selectedEvents.forEach(id => deleteEvent(id));
-    setSelectedEvents(new Set());
+    const alvos = events.filter(e => selectedEvents.has(e.id));
+    if (alvos.length > 0) setParaLixeira(alvos);
   };
 
-  const handleBulkStatusChange = (status: EventStatus) => {
-    events.filter(e => selectedEvents.has(e.id)).forEach(e => {
-      updateEvent({ 
-        ...e, 
-        status, 
-        updated_at: new Date().toISOString(),
-        updated_by: userName || 'Usuário'
-      });
+  /**
+   * As gravações rodam juntas e a lista recarrega uma vez. Antes eram N
+   * chamadas sem `await` nem `catch`: rejeições soltas no console, N
+   * refetches em paralelo, e a barra sumia como se tudo tivesse dado certo.
+   */
+  const handleBulkStatusChange = async (status: EventStatus) => {
+    const alvos = events.filter(e => selectedEvents.has(e.id));
+    const r = await executarEmLote(alvos.map(a => a.id), id => {
+      const e = alvos.find(a => a.id === id)!;
+      return updateEvent({ ...e, status, updated_at: new Date().toISOString(), updated_by: userName || 'Usuário' }, { emLote: true });
     });
-    setSelectedEvents(new Set());
+    const t = textoDoLote(r, frasesDeStatus(status));
+    (t.tudoRecusado ? toast.error : toast.success)(t.titulo, { description: t.descricao });
+    setSelectedEvents(new Set(r.recusados));
+    await refetchEvents();
   };
 
   const filtered = useMemo(() => {
@@ -153,9 +182,30 @@ export default function CalendarPage() {
     setShowForm(true);
   };
 
+  /**
+   * Excluir pergunta antes. A lixeira do painel de detalhe e o botão da barra
+   * de seleção agiam no primeiro clique; "excluir" aqui é mover para a
+   * lixeira, e o diálogo diz isso com as palavras certas.
+   */
+  const [paraLixeira, setParaLixeira] = useState<AppEvent[] | null>(null);
   const handleDelete = (id: string) => {
-    deleteEvent(id);
+    const alvo = events.find(e => e.id === id);
     setShowDetail(false);
+    if (alvo) setParaLixeira([alvo]);
+  };
+  const confirmarLixeira = async () => {
+    const alvos = paraLixeira || [];
+    setParaLixeira(null);
+    if (alvos.length === 1) {
+      try { await deleteEvent(alvos[0].id); } catch { /* o contexto já avisou */ }
+      return;
+    }
+    const r = await executarEmLote(alvos.map(a => a.id), id => deleteEvent(id, { emLote: true }));
+    const t = textoDoLote(r, FRASES_LIXEIRA);
+    (t.tudoRecusado ? toast.error : toast.success)(t.titulo, { description: t.descricao });
+    // o que o banco recusou fica selecionado, para a pessoa ver quais foram
+    setSelectedEvents(new Set(r.recusados));
+    await refetchEvents();
   };
 
   const handleDragStart = useCallback((e: DragEvent<HTMLElement>, event: AppEvent) => {
@@ -208,7 +258,8 @@ export default function CalendarPage() {
 
   const dayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
-  const getEventsForDay = (day: Date) => filtered.filter(e => isSameDay(new Date(e.start_datetime), day));
+  // Um evento de vários dias entra em cada dia que atravessa (ver diasDoEvento.ts).
+  const getEventsForDay = (day: Date) => filtered.filter(e => ocorreNoDia(e, day));
 
   // Uma grade em branco parecia um mês sem eventos. O esqueleto (todos os
   // hooks já rodaram acima) diz que ainda está carregando.
@@ -225,7 +276,7 @@ export default function CalendarPage() {
           <div className="flex flex-wrap items-center justify-start sm:justify-end gap-3 w-full">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 rounded-lg border border-border bg-background px-2 py-1.5 shadow-sm h-10">
-                <button onClick={prev} className="p-1 hover:bg-accent rounded transition-colors"><ChevronLeft className="h-4 w-4 text-muted-foreground" /></button>
+                <button onClick={prev} aria-label={view === 'week' ? 'Semana anterior' : 'Mês anterior'} className="p-1 hover:bg-accent rounded transition-colors"><ChevronLeft className="h-4 w-4 text-muted-foreground" /></button>
                 <Popover>
                   <PopoverTrigger asChild>
                     <button className="flex items-center justify-center gap-1.5 rounded px-2 py-0.5 hover:bg-accent transition-colors min-w-[120px] sm:min-w-[160px]">
@@ -248,7 +299,7 @@ export default function CalendarPage() {
                     />
                   </PopoverContent>
                 </Popover>
-                <button onClick={next} className="p-1 hover:bg-accent rounded transition-colors"><ChevronRight className="h-4 w-4 text-muted-foreground" /></button>
+                <button onClick={next} aria-label={view === 'week' ? 'Próxima semana' : 'Próximo mês'} className="p-1 hover:bg-accent rounded transition-colors"><ChevronRight className="h-4 w-4 text-muted-foreground" /></button>
               </div>
 
               <Button 
@@ -376,21 +427,30 @@ export default function CalendarPage() {
                       {format(day, 'd')}
                     </span>
                     <div className="flex flex-col gap-0.5">
-                      {dayEvents.slice(0, isMobile ? 2 : 3).map(e => (
+                      {dayEvents.slice(0, isMobile ? 2 : 3).map(e => {
+                        // Só o primeiro dia tem a borda colorida e aceita arrasto;
+                        // os do meio mostram o título mais claro e abrem o mesmo detalhe.
+                        const inicio = eDiaDeInicio(e, day);
+                        return (
                         <button
                           key={e.id}
-                          draggable
-                          onDragStart={(ev) => handleDragStart(ev, e)}
+                          draggable={inicio}
+                          data-continuacao={inicio ? undefined : 'sim'}
+                          aria-label={inicio ? undefined : `${tituloEmTexto(e.title)} (continua)`}
+                          onDragStart={inicio ? (ev) => handleDragStart(ev, e) : undefined}
                           onClick={() => handleEventClick(e)}
                           className={cn(
-                            "flex w-full items-center gap-1 rounded px-1 py-0.5 text-left text-[8px] sm:text-[10px] leading-tight cursor-grab active:cursor-grabbing hover:opacity-80 border-l-2",
+                            "flex w-full items-center gap-1 px-1 py-0.5 text-left text-[8px] sm:text-[10px] leading-tight hover:opacity-80 transition-opacity",
                             unitDotColors[e.unit], "bg-opacity-10",
-                            unitBorderColors[e.unit]
+                            inicio
+                              ? cn("rounded cursor-grab active:cursor-grabbing border-l-2", unitBorderColors[e.unit])
+                              : cn("cursor-pointer -mx-0.5 sm:-mx-1 pl-2 italic", eDiaDeFim(e, day) ? 'rounded-r' : 'rounded-none'),
                           )}
                         >
-                          <span className="truncate text-foreground flex-1">{e.title}</span>
+                          <span className={cn("truncate flex-1", inicio ? 'text-foreground' : 'text-muted-foreground')}>{e.title}</span>
                         </button>
-                      ))}
+                        );
+                      })}
                       {dayEvents.length > (isMobile ? 2 : 3) && (
                         <span className="block text-center text-[8px] font-medium text-muted-foreground sm:text-[10px]">
                           +{dayEvents.length - (isMobile ? 2 : 3)}
@@ -442,11 +502,12 @@ export default function CalendarPage() {
                       {dayEvents.length === 0 ? (
                         <p className="text-[10px] text-muted-foreground text-center py-2 sm:hidden">Sem eventos</p>
                       ) : (
-                        dayEvents.map(e => (
+                        dayEvents.map(e => { const inicio = eDiaDeInicio(e, day); return (
                           <button
                             key={e.id}
-                            draggable
-                            onDragStart={(ev) => handleDragStart(ev, e)}
+                            draggable={inicio}
+                            data-continuacao={inicio ? undefined : 'sim'}
+                            onDragStart={inicio ? (ev) => handleDragStart(ev, e) : undefined}
                             onClick={() => handleEventClick(e)}
                             className="w-full rounded-md border border-border p-2 text-left cursor-grab active:cursor-grabbing hover:bg-accent bg-card"
                           >
@@ -455,10 +516,12 @@ export default function CalendarPage() {
                               <span className="truncate text-[10px] font-medium text-foreground sm:text-xs">{e.title}</span>
                             </div>
                             <p className="text-[9px] text-muted-foreground sm:text-[10px]">
-                              {format(new Date(e.start_datetime), 'HH:mm')} - {format(new Date(e.end_datetime), 'HH:mm')}
+                              {inicio
+                                ? `${format(new Date(e.start_datetime), 'HH:mm')} - ${format(new Date(e.end_datetime), 'HH:mm')}`
+                                : `continua · até ${format(new Date(e.end_datetime), 'dd/MM')}`}
                             </p>
                           </button>
-                        ))
+                        ); })
                       )}
                     </div>
                   </div>
@@ -497,7 +560,11 @@ export default function CalendarPage() {
                     <p className="text-xs text-muted-foreground">{e.unit} · {e.location}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm text-foreground">{format(new Date(e.start_datetime), 'dd/MM/yyyy')}</p>
+                    <p className="text-sm text-foreground">
+                      {diasDoEvento(e).length > 1
+                        ? `${format(new Date(e.start_datetime), 'dd/MM')} a ${format(new Date(e.end_datetime), 'dd/MM/yyyy')}`
+                        : format(new Date(e.start_datetime), 'dd/MM/yyyy')}
+                    </p>
                     <p className="text-xs text-muted-foreground">{format(new Date(e.start_datetime), 'HH:mm')} - {format(new Date(e.end_datetime), 'HH:mm')}</p>
                   </div>
                   <Badge variant="outline" className={`capitalize shrink-0 ${getStatusBadgeClass(e.status)}`}>
@@ -511,6 +578,27 @@ export default function CalendarPage() {
       )}
 
       <EventDetailPanel event={detailEvent} open={showDetail} onOpenChange={setShowDetail} onEdit={canEdit ? handleEdit : undefined} onDelete={canEdit ? handleDelete : undefined} />
+
+      <AlertDialog open={!!paraLixeira} onOpenChange={(open) => !open && setParaLixeira(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {paraLixeira?.length === 1
+                ? `Mover "${tituloEmTexto(paraLixeira[0].title)}" para a lixeira?`
+                : `Mover ${paraLixeira?.length ?? 0} eventos para a lixeira?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {paraLixeira?.length === 1 ? 'Ele sai' : 'Eles saem'} da programação e do calendário. Dá para restaurar depois, na aba Lixeira.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmarLixeira} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {paraLixeira?.length === 1 ? 'Mover para a lixeira' : `Mover ${paraLixeira?.length ?? 0} para a lixeira`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <EventFormDialog open={showForm} onOpenChange={(v) => { setShowForm(v); if (!v) setEditingEvent(null); }} event={editingEvent} />
       <PageGuide activeTab={view} />
     </div>

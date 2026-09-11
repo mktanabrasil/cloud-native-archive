@@ -68,11 +68,17 @@ export default function BulkActionBar(props: BulkActionBarProps) {
 
         )}
 
-        <Button size="sm" variant="destructive" className="h-9 text-xs gap-1 sm:h-8" onClick={props.onDelete}>
-          <Trash2 className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Excluir</span>
+        <Button
+          size="sm"
+          variant="destructive"
+          className="h-9 text-xs gap-1 sm:h-8"
+          aria-label={props.type === 'events' ? 'Mover para a lixeira' : 'Excluir'}
+          onClick={props.onDelete}
+        >
+          <Trash2 className="h-3.5 w-3.5" /> <span className="hidden sm:inline">{props.type === 'events' ? 'Lixeira' : 'Excluir'}</span>
         </Button>
 
-        <Button size="sm" variant="ghost" className="h-9 w-9 p-0 sm:h-8 sm:w-8" onClick={props.onClearSelection}>
+        <Button size="sm" variant="ghost" className="h-9 w-9 p-0 sm:h-8 sm:w-8" aria-label="Limpar seleção" onClick={props.onClearSelection}>
           <X className="h-4 w-4" />
         </Button>
       </div>

@@ -819,7 +819,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   {errors.description && <p className="mt-1 text-xs text-destructive">{errors.description}</p>}
                   <Contador campo="description" valor={form.description} />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                {/* Uma coluna no celular: em 360 px cada campo ficava com ~140 px,
+                    e o horário do Início/Término sumia. Duas colunas a partir de 640. */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <Label className="text-sm font-semibold mb-1.5 block">Unidade *</Label>
                     <Select
@@ -855,7 +857,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     {errors.event_type && <p className="mt-1 text-xs text-destructive">{errors.event_type}</p>}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="relative group" id="campo-start_datetime">
                     <Label className="text-sm font-semibold mb-1.5 block">Início *</Label>
                     {/* O calendário abre por `showPicker()`, no clique do campo ou
@@ -1767,7 +1769,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   <div className={`space-y-2 rounded-lg border p-3 ${errors.partners ? 'border-destructive/60' : 'border-border'}`} id="campo-parceiros">
                     <Label className="text-sm font-medium">Parceiros</Label>
                     {(form.partners || []).map((partner, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
+                      <div key={idx} className="flex flex-wrap items-center gap-2">
                         <Select
                           value={partner.type || ''}
                           onValueChange={v => {
@@ -1789,7 +1791,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                             setForm({ ...form, partners: updated });
                           }}
                           placeholder="Nome do parceiro"
-                          className={`flex-1 ${errors.partners && !partner.name.trim() ? 'border-destructive' : ''}`}
+                          // No celular o nome vai para a linha de cima, inteiro; tipo e X ficam abaixo.
+                          className={`order-first basis-full sm:order-none sm:basis-0 sm:flex-1 ${errors.partners && !partner.name.trim() ? 'border-destructive' : ''}`}
                         />
                         <Button
                           type="button"
