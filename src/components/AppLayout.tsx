@@ -59,10 +59,6 @@ export default function AppLayout() {
   const NavContent = ({ onClick }: { onClick?: () => void }) => (
     <>
       {navItems.filter(item => {
-        const allowedEmails = ['alyson-viana@hotmail.com', 'mkt@anabrasil.org'];
-        const isSpecialAdmin = user?.email && allowedEmails.includes(user.email);
-        const isAdminEmail = isSpecialAdmin || user?.email === 'contato@anabrasil.org';
-        
         // Regra para páginas escondidas (não aparecem no menu, acessadas por outra página)
         if (item.hidden) return false;
         
@@ -70,9 +66,9 @@ export default function AppLayout() {
         // unidade entra nele sem entrar nas outras páginas da comunicação.
         if (item.journalOnly) return canAccessJournal;
         if (item.marketingOnly) return isMarketing;
-        if (item.adminOnly) return isAdmin || isAdminEmail;
-        if (item.managerOnly) return isAdmin || isManager || isAdminEmail;
-        if (item.mktOrAdminOnly) return isAdmin || isAdminEmail;
+        if (item.adminOnly) return isAdmin;
+        if (item.managerOnly) return isAdmin || isManager;
+        if (item.mktOrAdminOnly) return isAdmin;
         if (item.auditoriaOnly) return canViewAuditoria;
         if (item.requireAuth) return isAuthenticated;
         return true;

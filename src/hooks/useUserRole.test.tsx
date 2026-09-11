@@ -16,6 +16,8 @@ import { renderHook, waitFor } from '@testing-library/react';
 const espiao = vi.hoisted(() => ({
   user: null as null | { id: string; email: string; user_metadata?: Record<string, unknown> },
   consultas: 0,
+  papel: 'criador' as string | null,
+  nivel: 'gestor_unidade' as string,
 }));
 
 vi.mock('@/contexts/AuthContext', () => ({
@@ -34,9 +36,9 @@ vi.mock('@/integrations/supabase/client', () => {
     supabase: {
       from: (tabela: string) =>
         tabela === 'user_roles'
-          ? cadeia({ role: 'criador' })
+          ? cadeia(espiao.papel ? { role: espiao.papel } : null)
           : tabela === 'profiles'
-            ? cadeia({ permission_level: 'gestor_unidade', name: 'Gestora', is_active: true, unit: 'Santana', view_restrictions: null, delegated_units: [], is_beta_tester: false, bond_type: null })
+            ? cadeia({ permission_level: espiao.nivel, name: 'Gestora', is_active: true, unit: 'Santana', view_restrictions: null, delegated_units: [], is_beta_tester: false, bond_type: null })
             : cadeia(null),
     },
   };
@@ -46,6 +48,8 @@ const { useUserRole } = await import('./useUserRole');
 
 beforeEach(() => {
   espiao.consultas = 0;
+  espiao.papel = 'criador';
+  espiao.nivel = 'gestor_unidade';
   espiao.user = { id: 'u1', email: 'gestora@ana.org' };
 });
 
@@ -97,5 +101,37 @@ describe('useUserRole', () => {
 
     await waitFor(() => expect(result.current.role).toBeNull());
     expect(result.current.loading).toBe(false);
+  });
+});
+
+/**
+ * Até 11/09/2026 quatro e-mails eram admin por decreto do front. O RLS não
+ * conhecia a lista, então a conta que era só leitora no banco via a Lixeira
+ * vazia e Restaurar falhava. Agora o papel vem do banco, e só dele.
+ */
+describe('o papel vem do banco', () => {
+  it('um e-mail da antiga lista fixa, leitor no banco, não é admin', async () => {
+    espiao.user = { id: 'u9', email: 'transparencia@anabrasil.org' };
+    espiao.papel = 'viewer';
+    espiao.nivel = 'usuario_padrao';
+
+    const { result } = renderHook(() => useUserRole());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.isAdmin).toBe(false);
+    expect(result.current.isMarketing).toBe(false);
+    expect(result.current.role).toBeNull();
+  });
+
+  it('admin_geral no perfil basta, sem lista nenhuma', async () => {
+    espiao.user = { id: 'u2', email: 'qualquer@ana.org' };
+    espiao.papel = null;
+    espiao.nivel = 'admin_geral';
+
+    const { result } = renderHook(() => useUserRole());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.isAdmin).toBe(true);
+    expect(result.current.isMarketing).toBe(true);
   });
 });

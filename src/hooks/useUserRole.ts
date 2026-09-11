@@ -109,12 +109,13 @@ export function useUserRole() {
         setUserName(userEmail || 'Usuário');
       }
 
+      // Quem é admin, é admin no banco (`user_roles` ou `permission_level`).
+      // Até 11/09/2026 uma lista fixa de quatro e-mails forçava 'admin' aqui:
+      // três já eram admin no banco (a lista não fazia nada por eles) e a
+      // quarta era leitora — para ela a aba Lixeira aparecia vazia e Restaurar
+      // falhava, porque o RLS não conhece a lista. O front segue o banco.
       let effectiveRole = roleData?.role;
-      const isAdminEmail = userEmail === 'mkt@anabrasil.org' || userEmail === 'alyson-viana@hotmail.com' || userEmail === 'contato@anabrasil.org' || userEmail === 'transparencia@anabrasil.org';
-      
-      if (isAdminEmail) {
-        effectiveRole = 'admin';
-      } else if (!effectiveRole && profileData?.permission_level) {
+      if (!effectiveRole && profileData?.permission_level) {
         if (profileData.permission_level === 'admin_geral') effectiveRole = 'admin';
         else if (profileData.permission_level === 'gestor_unidade') effectiveRole = 'criador';
         else if (profileData.permission_level === 'eventos_parceiros') effectiveRole = 'criador';
@@ -144,16 +145,21 @@ export function useUserRole() {
     fetchRole();
   }, [userId, userEmail, userMetaName, isAuthenticated, activePersona]);
 
-  const isAdminEmail = user?.email === 'mkt@anabrasil.org' || user?.email === 'alyson-viana@hotmail.com' || user?.email === 'contato@anabrasil.org' || user?.email === 'transparencia@anabrasil.org';
-  const isAdmin = role === 'admin' || permissionLevel === 'admin_geral' || isAdminEmail;
+  const isAdmin = role === 'admin' || permissionLevel === 'admin_geral';
   const isCreator = role === 'criador' || isAdmin;
-  const isManager = role === 'editor' || isCreator || permissionLevel === 'gestor_unidade' || permissionLevel === 'eventos_parceiros' || permissionLevel === 'admin_geral' || isAdminEmail;
+  const isManager = role === 'editor' || isCreator || permissionLevel === 'gestor_unidade' || permissionLevel === 'eventos_parceiros' || permissionLevel === 'admin_geral';
   const hasDelegatedAccess = delegatedUnits && delegatedUnits.length > 0;
   const canEdit = isAdmin || isCreator || role === 'editor';
   const canCreate = isAdmin || isCreator;
   const canViewAuditoria = isAdmin || isManager || hasDelegatedAccess;
   const canView = true; // System is public
-  const isMarketing = isAdmin || bondType === 'marketing' || isAdminEmail;
+  /**
+   * Espelho de `is_marketing_user` no banco: admin, ou vínculo "marketing"
+   * ativo. Desde a migração de 11/09/2026 esse mesmo predicado dá à
+   * comunicação o poder do admin sobre eventos (criar confirmado, aprovar,
+   * publicar) — antes o front prometia e o RLS recusava.
+   */
+  const isMarketing = isAdmin || bondType === 'marketing';
 
   /**
    * Quem entra no Jornal: a comunicação e a gestão de uma unidade.
