@@ -16,6 +16,9 @@ const espiao = vi.hoisted(() => ({
   editar: vi.fn(),
   autenticado: true,
   detalhe: null as unknown,
+  carregando: false,
+  erro: false,
+  recarregar: vi.fn(),
 }));
 
 vi.mock('@/contexts/AppContext', () => ({
@@ -24,6 +27,9 @@ vi.mock('@/contexts/AppContext', () => ({
     updateEvent: vi.fn(),
     setSelectedEvent: espiao.editar,
     selectedEvent: null,
+    loading: espiao.carregando,
+    erroAoCarregar: espiao.erro,
+    refetchEvents: espiao.recarregar,
   }),
 }));
 
@@ -759,5 +765,46 @@ describe('o tipo do evento no card', () => {
     montar();
 
     expect(screen.queryByText('reunião')).toBeNull();
+  });
+});
+
+/**
+ * Enquanto a lista não chegou, a vitrine não pode dizer "não há eventos" —
+ * era o que piscava em toda visita antes da grade aparecer.
+ */
+describe('enquanto carrega', () => {
+  beforeEach(() => { espiao.carregando = true; espiao.erro = false; });
+  afterEach(() => { espiao.carregando = false; });
+
+  it('mostra o esqueleto e não a vitrine vazia', () => {
+    espiao.eventos = [];
+    montar();
+
+    expect(screen.getByTestId('esqueleto-da-vitrine')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Carregando a programação de eventos');
+    expect(screen.queryByText(/próxima programação está sendo montada/i)).toBeNull();
+    expect(screen.queryByRole('tablist', { name: 'Período' })).toBeNull();
+  });
+
+  it('a faixa da equipe continua, porque depende da sessão e não da lista', () => {
+    espiao.autenticado = true;
+    montar();
+    expect(screen.getByRole('switch', { name: 'Ver como visitante' })).toBeInTheDocument();
+  });
+});
+
+describe('quando a busca falhou', () => {
+  beforeEach(() => { espiao.erro = true; espiao.carregando = false; espiao.eventos = []; });
+  afterEach(() => { espiao.erro = false; espiao.recarregar.mockClear(); });
+
+  it('diz que foi um erro, não que está vazio, e deixa tentar de novo', () => {
+    montar();
+
+    const alerta = screen.getByRole('alert');
+    expect(alerta).toHaveTextContent('Não foi possível carregar a programação');
+    expect(screen.queryByText(/próxima programação está sendo montada/i)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }));
+    expect(espiao.recarregar).toHaveBeenCalledTimes(1);
   });
 });

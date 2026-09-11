@@ -13,6 +13,7 @@ const espiao = vi.hoisted(() => ({
   eventos: [] as unknown[],
   restore: vi.fn(),
   remove: vi.fn(),
+  carregando: false,
 }));
 
 vi.mock('@/contexts/AppContext', () => ({
@@ -20,6 +21,9 @@ vi.mock('@/contexts/AppContext', () => ({
     events: espiao.eventos,
     deleteEvent: espiao.remove,
     restoreEvent: espiao.restore,
+    loading: espiao.carregando,
+    erroAoCarregar: false,
+    refetchEvents: vi.fn(),
   }),
 }));
 vi.mock('@/hooks/useUserRole', () => ({
@@ -115,5 +119,18 @@ describe('as duas saídas', () => {
     fireEvent.click(within(dialogo).getByRole('button', { name: /excluir definitivamente/i }));
 
     expect(espiao.remove).toHaveBeenCalledWith('lixo-1');
+  });
+});
+
+describe('enquanto carrega', () => {
+  it('mostra o esqueleto em vez de "A lixeira está vazia"', () => {
+    espiao.carregando = true;
+    espiao.eventos = [];
+    render(<LixeiraPage />);
+
+    expect(screen.getByTestId('esqueleto-da-lixeira')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Carregando a lixeira');
+    expect(screen.queryByText('A lixeira está vazia')).toBeNull();
+    espiao.carregando = false;
   });
 });

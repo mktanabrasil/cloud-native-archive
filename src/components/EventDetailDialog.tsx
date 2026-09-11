@@ -70,7 +70,9 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl p-0 overflow-hidden bg-background border-none sm:rounded-2xl shadow-2xl">
+      {/* `semFechar`: o detalhe tem o próprio X, sobre a imagem. Com o padrão
+          por baixo eram dois X sobrepostos, um deles em inglês. */}
+      <DialogContent semFechar className="max-w-4xl p-0 overflow-hidden bg-background border-none sm:rounded-2xl shadow-2xl">
         <div className="relative aspect-[21/9] md:aspect-[3/1] bg-slate-900 overflow-hidden">
           {(event.banner_image_desktop || event.banner_url_desktop || event.banner_url_mobile) ? (
             <img 
@@ -95,7 +97,9 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
           <button 
+            type="button"
             onClick={() => onOpenChange(false)}
+            aria-label="Fechar"
             className="absolute top-4 right-4 p-2 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-md transition-all"
           >
             <X className="h-5 w-5" />
@@ -118,9 +122,13 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
           
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
             <div className="flex-1 space-y-4">
+              {/* O h2 é o nome do diálogo: `asChild` faz o DialogTitle do Radix
+                  usar este mesmo elemento, sem um segundo título. */}
+              <DialogTitle asChild>
               <h2 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight leading-tight">
                 <TituloDoEvento texto={event.title} />
               </h2>
+              </DialogTitle>
               
               <div className="flex flex-wrap gap-6 text-muted-foreground">
                 <div className="flex items-center gap-2">

@@ -11,6 +11,8 @@ interface AppContextType {
   events: AppEvent[];
   users: AppUser[];
   loading: boolean;
+  /** A última busca de eventos falhou. As telas mostram um erro, não um "vazio". */
+  erroAoCarregar: boolean;
   selectedEvent: AppEvent | null;
   selectedUser: AppUser | null;
   selectedMonth: Date;
@@ -34,6 +36,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [events, setEvents] = useState<AppEvent[]>([]);
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [erroAoCarregar, setErroAoCarregar] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<AppEvent | null>(null);
   const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
@@ -72,8 +75,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // A bandeira de conflito nasce aqui, das datas — o que veio na coluna
       // é ignorado. Ver `conflitos.ts`.
       setEvents(marcarConflitos(adaptedEvents));
+      setErroAoCarregar(false);
     } catch (error) {
+      // Antes só o console sabia; a tela dizia "não há eventos". Agora a tela
+      // diz que foi um erro (ver `ErroAoCarregar`) e o toast avisa quem está
+      // olhando outra aba.
       console.error('Error fetching events:', error);
+      setErroAoCarregar(true);
+      toast.error('Não foi possível carregar os eventos');
     } finally {
       setLoading(false);
     }
@@ -129,27 +138,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await fetchEvents();
   };
 
+  /**
+   * Um UPDATE ou DELETE que o RLS filtra não dá erro: afeta zero linhas e
+   * volta em silêncio. `updateEvent` já conferia isso; excluir e restaurar
+   * diziam "feito" para uma gestora tentando apagar um evento confirmado, e o
+   * evento continuava lá depois do refetch. Agora os três pedem `.select('id')`
+   * e tratam zero linhas como permissão negada.
+   */
+  const exigirLinha = (data: unknown[] | null, mensagem: string) => {
+    if (!data || data.length === 0) {
+      const nada = Object.assign(new Error('permission denied: nenhuma linha foi alterada'), { code: '42501' });
+      toast.error(mensagem);
+      throw nada;
+    }
+  };
+
   const deleteEvent = async (id: string) => {
     const eventToDelete = events.find(e => e.id === id);
     
     // If already in trash, delete permanently
     if (eventToDelete?.deleted_at) {
-      const { error } = await supabase.from('events').delete().eq('id', id);
+      const { data, error } = await supabase.from('events').delete().eq('id', id).select('id');
       if (error) {
         toast.error('Erro ao excluir permanentemente');
         throw error;
       }
+      exigirLinha(data, 'Sem permissão para excluir este evento');
       toast.success('Evento excluído permanentemente');
     } else {
       // Move to trash
-      const { error } = await supabase.from('events').update({ 
+      const { data, error } = await supabase.from('events').update({ 
         deleted_at: new Date().toISOString() 
-      }).eq('id', id);
+      }).eq('id', id).select('id');
       
       if (error) {
         toast.error('Erro ao mover para a lixeira');
         throw error;
       }
+      exigirLinha(data, 'Sem permissão para mover este evento para a lixeira');
       toast.success('Evento movido para a lixeira');
     }
     await fetchEvents();
@@ -163,11 +189,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
    * onde estava, com a mesma unidade, o mesmo status e o mesmo banner.
    */
   const restoreEvent = async (id: string) => {
-    const { error } = await supabase.from('events').update({ deleted_at: null }).eq('id', id);
+    const { data, error } = await supabase.from('events').update({ deleted_at: null }).eq('id', id).select('id');
     if (error) {
       toast.error('Erro ao restaurar o evento');
       throw error;
     }
+    exigirLinha(data, 'Sem permissão para restaurar este evento');
     toast.success('Evento restaurado');
     await fetchEvents();
   };
@@ -184,7 +211,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AppContext.Provider value={{
-      events, users, loading, selectedEvent, selectedUser, selectedMonth,
+      events, users, loading, erroAoCarregar, selectedEvent, selectedUser, selectedMonth,
       setSelectedEvent, setSelectedUser, setSelectedMonth,
       addEvent, updateEvent, deleteEvent, restoreEvent, updateUser, deleteUser, detectConflicts,
       refetchEvents: fetchEvents

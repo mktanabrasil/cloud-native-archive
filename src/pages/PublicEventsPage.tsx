@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import PageHeader from '@/components/PageHeader';
+import { EsqueletoDaVitrine, ErroAoCarregar } from '@/components/events/EsqueletoDeEventos';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { EventDetailDialog } from '@/components/EventDetailDialog';
@@ -59,7 +60,7 @@ export default function PublicEventsPage() {
   const [carrosselPausado, setCarrosselPausado] = useState(false);
   const reduzMovimento = useReduzMovimento();
   const { isAdmin, canEdit } = useUserRole();
-  const { updateEvent, setSelectedEvent, selectedEvent, loading } = useApp();
+  const { updateEvent, setSelectedEvent, selectedEvent, loading, erroAoCarregar, refetchEvents } = useApp();
 
   /**
    * Embutida no site institucional (iframe, ou `?embed=true` como o layout
@@ -79,8 +80,13 @@ export default function PublicEventsPage() {
 
   /** A vitrine: só confirmado e público, o que qualquer visitante vê. */
   const events = useFilteredEvents(true, false);
-  /** Sem evento nenhum, a página muda de figura: sem busca, sem abas, um painel só. */
-  const vitrineVazia = events.length === 0;
+  /**
+   * Sem evento nenhum, a página muda de figura: sem busca, sem abas, um painel só.
+   * Mas só depois de a lista chegar: enquanto `loading`, o esqueleto ocupa o
+   * lugar (ver `EsqueletoDaVitrine`) — antes, a mensagem "programação sendo
+   * montada" piscava em toda visita. E se a busca falhou, é erro, não vazio.
+   */
+  const vitrineVazia = !loading && !erroAoCarregar && events.length === 0;
 
   /**
    * Filtro por unidade, uma por vez, na URL (`?unidade=Santana`). Uma mãe de
@@ -326,6 +332,10 @@ export default function PublicEventsPage() {
         </div>
       )}
 
+      {loading ? (
+        <EsqueletoDaVitrine />
+      ) : (
+      <>
       {bannerEvents.length > 0 && (
         <section
           role="region"
@@ -613,7 +623,9 @@ export default function PublicEventsPage() {
         )}
 
         <div id="painel-da-aba" role={vitrineVazia ? undefined : 'tabpanel'} aria-labelledby={vitrineVazia ? undefined : `aba-${aba}`}>
-        {vitrineVazia ? (
+        {erroAoCarregar && events.length === 0 ? (
+          <ErroAoCarregar oQue="a programação" onTentar={refetchEvents} />
+        ) : vitrineVazia ? (
           <VitrineVazia onCriar={equipe && canEdit ? () => setShowNewEvent(true) : undefined} semConvites={embutida} />
         ) : sortedEvents.length === 0 ? (
           <div className="text-center py-20 bg-card rounded-2xl border border-dashed border-border">
@@ -793,6 +805,8 @@ export default function PublicEventsPage() {
 
       {/* O rodapé é do visitante — e de quem está vendo como visitante. */}
       {!equipe && !embutida && <RodapePublico />}
+      </>
+      )}
 
       <EventDetailDialog
         open={!!selectedEventForDetail}
