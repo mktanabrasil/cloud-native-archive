@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SELECT_PUBLICO } from '@/lib/events/camposPublicos';
 import { descreverErroDeGravacao } from '@/lib/events/mensagemDeErro';
 import { conflitosDe, marcarConflitos } from '@/lib/events/conflitos';
+import { apagarDoBalde, urlsDeArquivosDoEvento } from '@/lib/events/anexos';
 
 interface AppContextType {
   events: AppEvent[];
@@ -164,6 +165,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         throw error;
       }
       exigirLinha(data, 'Sem permissão para excluir este evento');
+      // A linha foi; os arquivos dela no balde iam ficar para sempre, públicos
+      // e sem ninguém apontando para eles. Só não apaga o que outro evento
+      // ainda usa (cópias de um mesmo banner, por exemplo).
+      const emUsoPorOutros = new Set(events.filter(e => e.id !== id).flatMap(urlsDeArquivosDoEvento));
+      const soDele = urlsDeArquivosDoEvento(eventToDelete).filter(u => !emUsoPorOutros.has(u));
+      if (soDele.length > 0) await apagarDoBalde(soDele);
       toast.success('Evento excluído permanentemente');
     } else {
       // Move to trash

@@ -1142,3 +1142,26 @@ describe('o status inicial', () => {
     expect(espiao.addEvent.mock.calls[0][0].status).toBe('pendente');
   });
 });
+
+describe('título que é só uma quebra de linha', () => {
+  it('"<br>" não conta como título', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    fireEvent.change(screen.getByPlaceholderText(/nome do evento/i), { target: { value: '<br> <br>' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+
+    expect(await screen.findByText('Título obrigatório')).toBeInTheDocument();
+    expect(espiao.addEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe('gestora diante de um evento concluído', () => {
+  it('abre travado, como o confirmado: salvar devolveria o evento à fila', () => {
+    const evento = { ...eventoGravado(), status: 'concluido' as const };
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+
+    expect(screen.getByText(/já concluído/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /salvar alterações/i })).toBeDisabled();
+  });
+});

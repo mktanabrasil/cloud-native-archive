@@ -16,6 +16,7 @@ vi.mock('@/integrations/supabase/client', () => ({
 
 const {
   apagarDoBalde, caminhoDoAnexo, caminhoNoBalde, categoriaDoAnexo, limparNome, motivoDeRecusa, normalizarAnexo, rotuloDoTamanho,
+  urlsDeArquivosDoEvento, urlsQueSairam,
 } = await import('./anexos');
 
 const URL_BASE = 'https://ihqogooddvhsvfhbwdez.supabase.co/storage/v1/object/public/event-attachments/';
@@ -90,5 +91,30 @@ describe('apagarDoBalde', () => {
     espiao.removidos = [];
     await apagarDoBalde(['https://drive.google.com/x']);
     expect(espiao.removidos).toEqual([]);
+  });
+});
+
+describe('os arquivos de um evento', () => {
+  const evento = {
+    attachments: [`${URL_BASE}anexos/a.pdf`, { url: `${URL_BASE}anexos/b.xlsx`, nome: 'b.xlsx', tamanho: 1, tipo: 'x' }],
+    banner_url_desktop: `${URL_BASE}capa.jpg`,
+    banner_url_mobile: '',
+    banner_image_desktop: `${URL_BASE}banner.jpg`,
+    banner_image_mobile: null as unknown as string,
+    event_logo_url: 'https://cdn.exemplo.org/logo.png',
+  } as unknown as Parameters<typeof urlsDeArquivosDoEvento>[0];
+
+  it('junta anexos e as cinco imagens, sem repetir e sem vazios', () => {
+    expect(urlsDeArquivosDoEvento(evento)).toEqual([
+      `${URL_BASE}anexos/a.pdf`, `${URL_BASE}anexos/b.xlsx`, `${URL_BASE}capa.jpg`, `${URL_BASE}banner.jpg`, 'https://cdn.exemplo.org/logo.png',
+    ]);
+    expect(urlsDeArquivosDoEvento(null)).toEqual([]);
+  });
+
+  it('o que saiu entre o salvo e o novo é candidato a órfão', () => {
+    const depois = { ...evento, attachments: [`${URL_BASE}anexos/a.pdf`], banner_image_desktop: `${URL_BASE}banner-novo.jpg` };
+    expect(urlsQueSairam(evento, depois)).toEqual([`${URL_BASE}anexos/b.xlsx`, `${URL_BASE}banner.jpg`]);
+    // descartar um evento novo: tudo o que está no formulário saiu em relação a "nada"
+    expect(urlsQueSairam(depois, null)).toHaveLength(4);
   });
 });
