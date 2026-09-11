@@ -108,7 +108,7 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
 
         <div className="p-6 md:p-10 -mt-12 relative z-10">
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <Badge className={`${UNIT_BG_COLORS[event.unit]} text-white border-none shadow-lg text-sm px-4 py-1`}>
+            <Badge className={`${UNIT_BG_COLORS[event.unit]} text-slate-900 border-none shadow-lg text-sm px-4 py-1`}>
               {event.unit}
             </Badge>
             {/* O card da aba "Já aconteceram" tem o selo; o detalhe que abre a

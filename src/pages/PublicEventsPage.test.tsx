@@ -808,3 +808,44 @@ describe('quando a busca falhou', () => {
     expect(espiao.recarregar).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('o título da aba do navegador', () => {
+  it('é a página, e vira o evento quando o detalhe abre; ao sair, volta ao que era', () => {
+    document.title = 'ANA Brasil';
+    espiao.eventos = [evento({ id: 't1', title: 'HOPE DAY<br>2026', slug: 'hope-day' })];
+    const { unmount } = montar('/eventos?slug=hope-day');
+
+    expect(screen.getByTestId('detalhe')).toHaveTextContent('HOPE DAY');
+    expect(document.title).toBe('HOPE DAY 2026 · ANA Brasil');
+
+    unmount();
+    expect(document.title).toBe('ANA Brasil');
+  });
+});
+
+describe('o herói no celular', () => {
+  it('cada slide tem uma imagem só, com a versão de desktop num <source> para telas largas', () => {
+    espiao.eventos = [evento({ id: 'b1', title: 'Com banner', show_in_banner: true, banner_image_desktop: 'https://exemplo/b1.jpg', start_datetime: new Date(2026, 9, 10, 10).toISOString(), end_datetime: new Date(2026, 9, 10, 12).toISOString() })];
+    espiao.autenticado = false;
+    montar();
+    const regiao = screen.getByRole('region', { name: /eventos em destaque/i });
+    const slide = regiao.querySelector('[aria-hidden="false"]')!;
+
+    expect(slide.querySelectorAll('img')).toHaveLength(1);
+    const source = slide.querySelector('picture > source')!;
+    expect(source.getAttribute('media')).toBe('(min-width: 768px)');
+    expect(source.getAttribute('srcset')).toBeTruthy();
+  });
+});
+
+describe('o selo da unidade', () => {
+  it('tem texto escuro sobre a cor da unidade, em todas as unidades', () => {
+    montar();
+    const selos = screen.getAllByText(/^(DIC|Nilópolis|Santana|Administração)$/).filter(el => el.className.includes('bg-unit-'));
+    expect(selos.length).toBeGreaterThan(0);
+    for (const s of selos) {
+      expect(s.className).toContain('text-slate-900');
+      expect(s.className).not.toContain('text-white');
+    }
+  });
+});

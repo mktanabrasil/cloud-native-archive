@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect, type KeyboardEvent } from 'react';
 import { useReduzMovimento } from '@/hooks/useReduzMovimento';
+import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import { useIsEmbedded } from '@/hooks/useIsEmbedded';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
@@ -61,6 +62,9 @@ export default function PublicEventsPage() {
   const reduzMovimento = useReduzMovimento();
   const { isAdmin, canEdit } = useUserRole();
   const { updateEvent, setSelectedEvent, selectedEvent, loading, erroAoCarregar, refetchEvents } = useApp();
+  // A aba do navegador dizia "ANA Brasil" em toda a aplicação: duas abas com
+  // eventos diferentes eram indistinguíveis. Com o detalhe aberto, é o evento.
+  useTituloDaAba(selectedEventForDetail ? `${tituloEmTexto(selectedEventForDetail.title)} · ANA Brasil` : 'Programação de Eventos · ANA Brasil');
 
   /**
    * Embutida no site institucional (iframe, ou `?embed=true` como o layout
@@ -355,19 +359,22 @@ export default function PublicEventsPage() {
             >
               {/* Desktop Banner (21:9 preferencial, fallback para capa 16:9) */}
               {(event.banner_image_desktop || event.banner_url_desktop || event.banner_url_mobile) && carregaImagem(index) ? (
-                <>
-                  <img
-                    src={event.banner_image_desktop || event.banner_url_desktop || event.banner_url_mobile}
-                    alt={tituloEmTexto(event.title)}
-                    className="hidden md:block w-full h-full object-cover opacity-60"
+                /* Uma <img> só. Antes eram duas alternadas por classe (hidden
+                   md:block / md:hidden), e display:none não impede o download:
+                   o celular baixava as 21:9 de desktop que nunca veria. O
+                   <source> deixa o navegador escolher antes de baixar.
+                   Celular: 9:16, depois capa 4:3, 16:9 e por fim o 21:9. */
+                <picture>
+                  <source
+                    media="(min-width: 768px)"
+                    srcSet={event.banner_image_desktop || event.banner_url_desktop || event.banner_url_mobile || event.banner_image_mobile}
                   />
-                  {/* Mobile Banner (9:16 preferencial, fallback para capa 4:3) */}
                   <img
-                    src={event.banner_image_mobile || event.banner_url_mobile || event.banner_url_desktop}
+                    src={event.banner_image_mobile || event.banner_url_mobile || event.banner_url_desktop || event.banner_image_desktop}
                     alt={tituloEmTexto(event.title)}
-                    className="block md:hidden w-full h-full object-cover opacity-60"
+                    className="w-full h-full object-cover opacity-60"
                   />
-                </>
+                </picture>
               ) : (
                 <div
                   className="w-full h-full flex items-center justify-center px-8 md:px-16"
@@ -387,7 +394,7 @@ export default function PublicEventsPage() {
 
               <div className="absolute bottom-0 left-0 right-0 p-8 md:p-16 max-w-7xl mx-auto flex flex-col items-start justify-end h-full z-[20]">
                 <div className="flex flex-wrap gap-2 mb-4 shrink-0">
-                  <Badge className={`${UNIT_BG_COLORS[event.unit]} text-white border-none shadow-lg`}>
+                  <Badge className={`${UNIT_BG_COLORS[event.unit]} text-slate-900 border-none shadow-lg`}>
                     {event.unit}
                   </Badge>
                   {/* Os dois motivos de a família não ver este slide. Sem o
@@ -563,7 +570,9 @@ export default function PublicEventsPage() {
 
         {(proximos.length > 0 || passados.length > 0) && (
           <div className="mb-6 flex flex-wrap items-center gap-3">
-            <div role="tablist" aria-label="Período" className="inline-flex h-10 items-center rounded-full bg-muted p-1 text-muted-foreground">
+            {/* 44 px de altura (h-11 / h-9 por dentro): no celular o dedo errava a aba
+                e acertava o chip ao lado. Mesma fonte, mais espaço interno. */}
+            <div role="tablist" aria-label="Período" className="inline-flex h-11 items-center rounded-full bg-muted p-1 text-muted-foreground">
               {([
                 ['proximos', 'Próximos', proximos.length],
                 ['passados', 'Já aconteceram', passados.length],
@@ -578,7 +587,7 @@ export default function PublicEventsPage() {
                   tabIndex={aba === valor ? 0 : -1}
                   onKeyDown={teclaNaAba}
                   onClick={() => trocarAba(valor)}
-                  className={`inline-flex h-8 items-center gap-1.5 rounded-full px-4 text-sm font-medium transition-colors ${
+                  className={`inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-sm font-medium transition-colors ${
                     aba === valor ? 'bg-card text-foreground shadow-sm' : 'hover:text-foreground'
                   }`}
                 >
@@ -597,7 +606,7 @@ export default function PublicEventsPage() {
                     type="button"
                     aria-pressed={ligado}
                     onClick={() => filtrarUnidade(ligado ? null : unidade)}
-                    className={`inline-flex h-8 items-center gap-2 rounded-full border px-3 text-[13px] font-medium transition-colors ${
+                    className={`inline-flex h-11 items-center gap-2 rounded-full border px-3.5 text-[13px] font-medium transition-colors ${
                       ligado ? 'border-foreground bg-foreground text-background' : 'border-border bg-card text-foreground hover:bg-muted'
                     }`}
                   >
@@ -699,7 +708,7 @@ export default function PublicEventsPage() {
                     </div>
                   )}
                   <div className={`absolute top-0 left-0 h-1 w-full ${UNIT_BG_COLORS[event.unit]}`} />
-                  <Badge className={`absolute top-3 left-3 ${UNIT_BG_COLORS[event.unit]} text-white border-none shadow-sm`}>
+                  <Badge className={`absolute top-3 left-3 ${UNIT_BG_COLORS[event.unit]} text-slate-900 border-none shadow-sm`}>
                     {event.unit}
                   </Badge>
 
