@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import type { Anexo } from '@/types';
+import type { Anexo, AppEvent } from '@/types';
 
 /**
  * Os anexos de um evento: o que aceitamos, como guardamos, como apagamos.
@@ -126,4 +126,35 @@ export async function apagarDoBalde(urls: string[]): Promise<void> {
   } catch {
     // silêncio: o evento já foi salvo; um órfão não é motivo para alarme
   }
+}
+
+/** As cinco imagens do evento que também moram no balde. */
+export const CAMPOS_DE_IMAGEM = [
+  'banner_url_desktop',
+  'banner_url_mobile',
+  'banner_image_desktop',
+  'banner_image_mobile',
+  'event_logo_url',
+] as const;
+
+type ComArquivos = Partial<Pick<AppEvent, 'attachments' | (typeof CAMPOS_DE_IMAGEM)[number]>>;
+
+/**
+ * Toda URL de arquivo que um evento referencia: anexos e as cinco imagens.
+ *
+ * É a lista que precisa ser apagada do balde quando o evento sai de vez, e
+ * a base para saber o que virou órfão quando ele é editado ou descartado.
+ * URLs de fora do balde passam por aqui e são ignoradas em `apagarDoBalde`.
+ */
+export function urlsDeArquivosDoEvento(e: ComArquivos | null | undefined): string[] {
+  if (!e) return [];
+  const anexos = (e.attachments || []).map(a => urlDoAnexo(a as string | Anexo));
+  const imagens = CAMPOS_DE_IMAGEM.map(c => e[c]).filter((u): u is string => !!u);
+  return Array.from(new Set([...anexos, ...imagens]));
+}
+
+/** O que estava em `antes` e não está mais em `depois`: candidatos a órfão. */
+export function urlsQueSairam(antes: ComArquivos | null | undefined, depois: ComArquivos | null | undefined): string[] {
+  const ficaram = new Set(urlsDeArquivosDoEvento(depois));
+  return urlsDeArquivosDoEvento(antes).filter(u => !ficaram.has(u));
 }

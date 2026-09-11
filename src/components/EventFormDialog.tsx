@@ -29,7 +29,8 @@ import { LOCAIS_FIXOS, OUTRO_LOCAL, localAoTrocarUnidade, localDaUnidade, localF
 import { linkPublicoDoEvento, prefixoDoLinkPublico, proximoSlug } from '@/lib/events/linkPublico';
 import { descreverErroDeGravacao } from '@/lib/events/mensagemDeErro';
 import { contar, erroDeLimite, type CampoComLimite } from '@/lib/events/limites';
-import { apagarDoBalde, urlDoAnexo } from '@/lib/events/anexos';
+import { apagarDoBalde, urlsDeArquivosDoEvento, urlsQueSairam, CAMPOS_DE_IMAGEM } from '@/lib/events/anexos';
+import { tituloEmTexto } from '@/lib/events/titulo';
 import { FROTA, TETO_DA_FROTA, apoiosPossiveis, errosDeTransporte, motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
 import { estadoDaCobertura } from '@/lib/events/cobertura';
 import { errosDasListas, limparListas } from '@/lib/events/listas';
@@ -251,13 +252,18 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
    * interno — é só isso que o banco aceita (`events_gestor_insert`).
    */
   const enviaParaAprovacao = !isMarketing;
+  /** Os únicos status que a gestora grava; qualquer outro é da administração. */
+  const statusDaGestora: EventStatus[] = ['pendente', 'cancelado'];
   /**
-   * Já confirmado pela administração: ela não altera mais. O banco também
-   * recusa (`events_gestor_update`), mas recusa em silêncio — zero linhas —,
-   * então a trava precisa estar aqui, com explicação.
+   * Já confirmado (ou concluído) pela administração: ela não altera mais.
+   * O banco recusa o confirmado (`events_gestor_update`), em silêncio — zero
+   * linhas —, então a trava precisa estar aqui, com explicação. O concluído o
+   * banco até deixaria passar, mas o formulário só sabe gravar pendente ou
+   * cancelado: salvar uma observação devolvia o evento de agosto à fila de
+   * aprovação. Travado também (achado 06, 11/09/2026).
    */
-  const travadoParaEla = enviaParaAprovacao && isEditing && event?.status === 'confirmado';
-  const statusDisponiveis: EventStatus[] = enviaParaAprovacao ? ['pendente', 'cancelado'] : EVENT_STATUSES;
+  const travadoParaEla = enviaParaAprovacao && isEditing && !!event?.status && !statusDaGestora.includes(event.status);
+  const statusDisponiveis: EventStatus[] = enviaParaAprovacao ? statusDaGestora : EVENT_STATUSES;
   const acaoDoBotao = isEditing ? 'salvar as alterações' : enviaParaAprovacao ? 'enviar a programação' : 'criar a programação';
 
   /** Quantos campos o botão ainda espera. Zero antes da primeira tentativa. */
@@ -388,15 +394,37 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     onOpenChange(false);
   };
 
+  /**
+   * Descartar: o que subiu para o balde nesta sessão e não foi gravado é
+   * órfão agora — um PDF de 9 MB anexado e abandonado ficava público para
+   * sempre. Tudo o que está no formulário e não estava no evento salvo vai.
+   */
   const descartar = () => {
     setConfirmarSaida(false);
+    const novos = urlsQueSairam(form, event);
+    if (novos.length > 0) void apagarDoBalde(novos);
     onOpenChange(false);
+  };
+
+  /**
+   * Trocar ou limpar uma das cinco imagens. Se a anterior subiu nesta sessão
+   * (não está no evento salvo), já é órfã e vai agora; se está salva, só vai
+   * depois do UPDATE gravar — descartar precisa poder desfazer a troca.
+   */
+  const trocarImagem = (campo: (typeof CAMPOS_DE_IMAGEM)[number], url: string) => {
+    const anterior = form[campo];
+    setForm({ ...form, [campo]: url });
+    if (anterior && anterior !== url && !urlsDeArquivosDoEvento(event).includes(anterior)) {
+      void apagarDoBalde([anterior]);
+    }
   };
 
   /** Tudo o que está errado agora. Puro: não mexe no estado. */
   const calcularErros = (): Record<string, string> => {
     const errs: Record<string, string> = {};
-    if (!form.title?.trim()) errs.title = 'Título obrigatório';
+    // `<br>` é quebra de linha, não título: "<br>" sozinho passava e o evento
+    // nascia com o nome invisível no banner, no card e na lista.
+    if (!tituloEmTexto(form.title || '').trim()) errs.title = 'Título obrigatório';
     if (!form.event_type || !(EVENT_TYPES as string[]).includes(form.event_type)) errs.event_type = 'Escolha o tipo do evento';
     if (!form.start_datetime) errs.start_datetime = 'Data/hora início obrigatória';
     if (!form.end_datetime) errs.end_datetime = 'Data/hora término obrigatória';
@@ -605,12 +633,11 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       }
     }
 
-    // Anexos que estavam no evento e saíram da lista: agora que o evento
+    // Anexos e imagens que estavam no evento e saíram: agora que o evento
     // gravou sem eles, o arquivo pode ir. (Os que subiram e saíram antes de
-    // salvar o próprio FileUpload já apagou.)
+    // salvar já foram apagados na hora, pelo FileUpload ou por `trocarImagem`.)
     if (event) {
-      const ficaram = new Set((gravado.attachments || []).map(urlDoAnexo));
-      const removidos = (event.attachments || []).map(urlDoAnexo).filter(u => !ficaram.has(u));
+      const removidos = urlsQueSairam(event, gravado);
       if (removidos.length > 0) await apagarDoBalde(removidos);
     }
 
@@ -764,8 +791,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
                     <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                     <p className="text-xs text-amber-900">
-                      <strong>Já confirmado pela administração geral.</strong> Para alterar, peça à administração —
-                      ela pode devolver o evento para pendente.
+                      <strong>{event?.status === 'concluido' ? 'Já concluído.' : 'Já confirmado pela administração geral.'}</strong> Para
+                      alterar, peça à administração — ela pode devolver o evento para pendente.
                     </p>
                   </div>
                 )}
@@ -1214,7 +1241,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                           label="Logo/ID Visual do Evento"
                           mode="single"
                           url={form.event_logo_url}
-                          onChange={(url) => setForm({ ...form, event_logo_url: url })}
+                          onChange={(url) => trocarImagem('event_logo_url', url)}
                         />
                         <p className="text-[10px] text-muted-foreground mt-1 italic text-center">Recomendado: PNG com fundo transparente.</p>
                       </div>
@@ -1227,7 +1254,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                             label="Capa Desktop (16:9)"
                             mode="single"
                             url={form.banner_url_desktop}
-                            onChange={(url) => setForm({ ...form, banner_url_desktop: url })}
+                            onChange={(url) => trocarImagem('banner_url_desktop', url)}
                           />
                         </div>
                         <div>
@@ -1235,7 +1262,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                             label="Capa Mobile (4:3)"
                             mode="single"
                             url={form.banner_url_mobile}
-                            onChange={(url) => setForm({ ...form, banner_url_mobile: url })}
+                            onChange={(url) => trocarImagem('banner_url_mobile', url)}
                           />
                         </div>
                       </div>
@@ -1245,7 +1272,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                             label="Banner Desktop (21:9)"
                             mode="single"
                             url={form.banner_image_desktop}
-                            onChange={(url) => setForm({ ...form, banner_image_desktop: url })}
+                            onChange={(url) => trocarImagem('banner_image_desktop', url)}
                           />
                         </div>
                         <div>
@@ -1253,7 +1280,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                             label="Banner Mobile (9:16)"
                             mode="single"
                             url={form.banner_image_mobile}
-                            onChange={(url) => setForm({ ...form, banner_image_mobile: url })}
+                            onChange={(url) => trocarImagem('banner_image_mobile', url)}
                           />
                         </div>
                       </div>

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
 /**
@@ -11,12 +11,18 @@ import type { ReactNode } from 'react';
  */
 const espiao = vi.hoisted(() => ({
   linhas: [] as unknown[],
+  lista: [] as unknown[],
   operacoes: [] as string[],
+  apagados: [] as string[][],
   toastOk: vi.fn(),
   toastErro: vi.fn(),
 }));
 
 vi.mock('sonner', () => ({ toast: { success: espiao.toastOk, error: espiao.toastErro } }));
+vi.mock('@/lib/events/anexos', async (original) => ({
+  ...(await original<typeof import('@/lib/events/anexos')>()),
+  apagarDoBalde: async (urls: string[]) => { espiao.apagados.push(urls); },
+}));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ isAuthenticated: true, loading: false }) }));
 vi.mock('@/integrations/supabase/client', () => {
   const resposta = () => Promise.resolve({ data: espiao.linhas, error: null });
@@ -28,7 +34,7 @@ vi.mock('@/integrations/supabase/client', () => {
     supabase: {
       from: () => ({
         // a busca da lista, na montagem e depois de cada gravação
-        select: () => Promise.resolve({ data: [], error: null }),
+        select: () => Promise.resolve({ data: espiao.lista, error: null }),
         update: () => cadeia('update'),
         delete: () => cadeia('delete'),
       }),
@@ -43,7 +49,9 @@ const montar = () =>
 
 beforeEach(() => {
   espiao.linhas = [];
+  espiao.lista = [];
   espiao.operacoes = [];
+  espiao.apagados = [];
   espiao.toastOk.mockClear();
   espiao.toastErro.mockClear();
 });
@@ -80,5 +88,42 @@ describe('restaurar', () => {
 
     expect(espiao.toastOk).not.toHaveBeenCalled();
     expect(espiao.toastErro).toHaveBeenCalledWith('Sem permissão para restaurar este evento');
+  });
+});
+
+/**
+ * Excluir de vez apagava a linha e deixava anexos e banners no balde, públicos
+ * e sem ninguém apontando para eles. Agora eles vão junto — menos o que outro
+ * evento ainda usa.
+ */
+describe('excluir de vez', () => {
+  const B = 'https://supabase.anabrasil.org/storage/v1/object/public/event-attachments/';
+  const base = { unit: 'DIC', title: 'x', start_datetime: '2026-10-01T10:00:00Z', end_datetime: '2026-10-01T12:00:00Z', status: 'confirmado', visibility: 'interno' };
+
+  it('leva os arquivos do evento, e poupa o que outro evento compartilha', async () => {
+    espiao.lista = [
+      { ...base, id: 'e1', deleted_at: '2026-09-01T00:00:00Z', attachments: [`${B}anexos/a.pdf`], banner_image_desktop: `${B}banner.jpg`, event_logo_url: `${B}logo.png` },
+      { ...base, id: 'e2', deleted_at: null, attachments: [], banner_image_desktop: `${B}banner.jpg` },
+    ];
+    espiao.linhas = [{ id: 'e1' }];
+    const { result } = montar();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(() => result.current.deleteEvent('e1'));
+
+    expect(espiao.operacoes).toContain('delete');
+    expect(espiao.apagados).toEqual([[`${B}anexos/a.pdf`, `${B}logo.png`]]);
+    expect(espiao.toastOk).toHaveBeenCalledWith('Evento excluído permanentemente');
+  });
+
+  it('sem arquivos, não chama o balde', async () => {
+    espiao.lista = [{ ...base, id: 'e1', deleted_at: '2026-09-01T00:00:00Z', attachments: [] }];
+    espiao.linhas = [{ id: 'e1' }];
+    const { result } = montar();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(() => result.current.deleteEvent('e1'));
+
+    expect(espiao.apagados).toEqual([]);
   });
 });
