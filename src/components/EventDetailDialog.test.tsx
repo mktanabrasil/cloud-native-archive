@@ -166,3 +166,20 @@ describe('links na descrição', () => {
     expect(link).toHaveAttribute('target', '_blank');
   });
 });
+
+/**
+ * O diálogo abria sem nome (o DialogTitle era importado e não usado) e com
+ * dois X: o próprio, sem rótulo, e o padrão do componente, em inglês.
+ */
+describe('acessibilidade do diálogo', () => {
+  it('o título do evento é o nome do diálogo', () => {
+    montar();
+    expect(screen.getByRole('dialog', { name: /HOPE DAY/ })).toBeInTheDocument();
+  });
+
+  it('há um só botão de fechar, em português', () => {
+    montar();
+    expect(screen.getAllByRole('button', { name: 'Fechar' })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
+  });
+});

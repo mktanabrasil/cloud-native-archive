@@ -24,6 +24,7 @@ import EventFormDialog from '@/components/EventFormDialog';
 import EventDetailPanel from '@/components/EventDetailPanel';
 import BulkActionBar from '@/components/BulkActionBar';
 import PageHeader from '@/components/PageHeader';
+import { EsqueletoDoCalendario } from '@/components/events/EsqueletoDeEventos';
 import PageGuide from '@/components/PageGuide';
 
 const unitDotColors: Record<Unit, string> = {
@@ -43,7 +44,7 @@ const unitBorderColors: Record<Unit, string> = {
 type View = 'month' | 'week' | 'list';
 
 export default function CalendarPage() {
-  const { events: rawEvents, selectedMonth, setSelectedMonth, setSelectedEvent, deleteEvent, updateEvent, detectConflicts } = useApp();
+  const { events: rawEvents, selectedMonth, setSelectedMonth, setSelectedEvent, deleteEvent, updateEvent, detectConflicts, loading } = useApp();
   const events = useFilteredEvents();
   const { isAuthenticated } = useAuth();
   const { canEdit, canCreate, userName, unit } = useUserRole();
@@ -208,6 +209,10 @@ export default function CalendarPage() {
   const dayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
 
   const getEventsForDay = (day: Date) => filtered.filter(e => isSameDay(new Date(e.start_datetime), day));
+
+  // Uma grade em branco parecia um mês sem eventos. O esqueleto (todos os
+  // hooks já rodaram acima) diz que ainda está carregando.
+  if (loading) return <EsqueletoDoCalendario />;
 
   return (
     <div className="animate-fade-in space-y-6">

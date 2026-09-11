@@ -22,6 +22,7 @@ import {
 import PageHeader from '@/components/PageHeader';
 import { TituloDoEvento } from '@/components/events/TituloDoEvento';
 import { tituloEmTexto } from '@/lib/events/titulo';
+import { EsqueletoDaLixeira, ErroAoCarregar } from '@/components/events/EsqueletoDeEventos';
 
 /**
  * A lixeira dos eventos.
@@ -35,7 +36,7 @@ import { tituloEmTexto } from '@/lib/events/titulo';
  * evento. A ordem é a de início, crescente.
  */
 export default function LixeiraPage() {
-  const { deleteEvent, restoreEvent } = useApp();
+  const { deleteEvent, restoreEvent, loading, erroAoCarregar, refetchEvents } = useApp();
   const trashEvents = useFilteredEvents(false, true);
   const [search, setSearch] = useState('');
   const [pendingPurge, setPendingPurge] = useState<AppEvent | null>(null);
@@ -72,7 +73,11 @@ export default function LixeiraPage() {
           </div>
         </div>
 
-        {eventos.length === 0 ? (
+        {loading ? (
+          <EsqueletoDaLixeira />
+        ) : erroAoCarregar && trashEvents.length === 0 ? (
+          <ErroAoCarregar oQue="a lixeira" onTentar={refetchEvents} />
+        ) : eventos.length === 0 ? (
           <div className="text-center py-20 bg-card rounded-2xl border border-dashed border-border">
             <Trash2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium text-foreground">
