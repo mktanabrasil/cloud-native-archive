@@ -11,6 +11,7 @@ import { Pencil, Trash2, Megaphone, Users, Paperclip, Globe, Lock, Truck, AlertT
 import { motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
 import { ROTULO_DA_COBERTURA, estadoDaCobertura } from '@/lib/events/cobertura';
 import { ResumoDeItens } from './events/ResumoDeItens';
+import { AvisosDoEvento } from './events/AvisosDoEvento';
 
 const unitBadgeColors: Record<Unit, string> = {
   // Texto escuro sobre a cor da unidade: a mesma regra da vitrine (11/09/2026).
@@ -255,6 +256,9 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
               </div>
             )}
 
+            {/* O e-mail que saiu (ou falhou) quando este evento foi confirmado,
+                cancelado ou mudou de data. Só a equipe vê este painel. */}
+            <AvisosDoEvento eventId={event.id} />
           </div>
 
           {(onEdit || onDelete) && (

@@ -587,6 +587,48 @@ export type Database = {
         }
         Relationships: []
       }
+      avisos_de_evento: {
+        Row: {
+          antes: Json | null
+          criado_em: string
+          destinatarios: string[]
+          enviado_em: string | null
+          erro: string | null
+          event_id: string
+          evento: Json
+          id: string
+          status: string
+          tentativas: number
+          tipo: string
+        }
+        Insert: {
+          antes?: Json | null
+          criado_em?: string
+          destinatarios?: string[]
+          enviado_em?: string | null
+          erro?: string | null
+          event_id: string
+          evento: Json
+          id?: string
+          status?: string
+          tentativas?: number
+          tipo: string
+        }
+        Update: {
+          antes?: Json | null
+          criado_em?: string
+          destinatarios?: string[]
+          enviado_em?: string | null
+          erro?: string | null
+          event_id?: string
+          evento?: Json
+          id?: string
+          status?: string
+          tentativas?: number
+          tipo?: string
+        }
+        Relationships: []
+      }
       tutoriais_vistos: {
         Row: {
           percurso: string
