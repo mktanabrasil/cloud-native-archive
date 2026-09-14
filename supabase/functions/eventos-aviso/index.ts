@@ -1,5 +1,15 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
-import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts';
+// nodemailer, e não denomailer: em 14/09/2026 o denomailer tropeçou na
+// negociação da porta 587 ("invalid cmd") e o erro escapou por uma promessa
+// solta, derrubou o worker inteiro e o aviso nunca virou "falhou". O
+// nodemailer negocia 587 (STARTTLS) e 465 (TLS direto) sem drama, e o erro
+// volta pela promessa que a gente espera.
+import nodemailer from 'npm:nodemailer@6.9.16';
+
+// Rede de segurança: nada que escape de uma biblioteca pode derrubar o worker.
+// O aviso fica na fila e o painel mostra "Reenviar".
+addEventListener('unhandledrejection', (e) => { console.error('[eventos-aviso] promessa solta:', e.reason); e.preventDefault(); });
+addEventListener('error', (e) => { console.error('[eventos-aviso] erro solto:', e.error); e.preventDefault(); });
 
 /**
  * Envia os avisos por e-mail que o banco enfileirou em `avisos_de_evento`.
@@ -188,11 +198,19 @@ Deno.serve(async (req) => {
 
   const { data: perfis } = await admin.from('profiles').select('email, name, unit, is_active, permission_level');
 
+  // 465 = TLS direto; 587 = STARTTLS. SMTP_TLS só força, quando existir.
+  const porta = Number(Deno.env.get('SMTP_PORT') || 587);
+  const tlsEnv = Deno.env.get('SMTP_TLS');
+  const tlsDireto = tlsEnv ? tlsEnv !== 'false' : porta === 465;
   const smtp = {
-    hostname: Deno.env.get('SMTP_HOST') || '',
-    port: Number(Deno.env.get('SMTP_PORT') || 465),
-    tls: (Deno.env.get('SMTP_TLS') || 'true') !== 'false',
-    auth: { username: Deno.env.get('SMTP_USER') || '', password: Deno.env.get('SMTP_PASS') || '' },
+    host: Deno.env.get('SMTP_HOST') || '',
+    port: porta,
+    secure: tlsDireto,
+    requireTLS: !tlsDireto,
+    auth: { user: Deno.env.get('SMTP_USER') || '', pass: Deno.env.get('SMTP_PASS') || '' },
+    connectionTimeout: 15_000,
+    greetingTimeout: 15_000,
+    socketTimeout: 30_000,
   };
   const remetente = Deno.env.get('AVISOS_REMETENTE') || 'ANA Brasil · Eventos <eventos@anabrasil.org>';
 
@@ -200,19 +218,19 @@ Deno.serve(async (req) => {
   for (const a of fila) {
     const para = destinatarios(a.evento, (perfis as Perfil[]) || []);
     try {
-      if (!smtp.hostname || !smtp.auth.username) throw new Error('SMTP não configurado (SMTP_HOST/SMTP_USER/SMTP_PASS)');
-      const cliente = new SMTPClient({ connection: smtp });
+      if (!smtp.host || !smtp.auth.user) throw new Error('SMTP não configurado (SMTP_HOST/SMTP_USER/SMTP_PASS)');
+      const transporte = nodemailer.createTransport(smtp);
       try {
-        await cliente.send({
+        await transporte.sendMail({
           from: remetente,
           to: para,
           subject: assunto(a),
-          content: corpoTexto(a, SITE),
+          text: corpoTexto(a, SITE),
           html: corpoHtml(a, SITE),
-          attachments: [{ filename: 'evento.ics', contentType: 'text/calendar; method=' + (a.tipo === 'cancelado' ? 'CANCEL' : 'PUBLISH'), content: ics(a, SITE), encoding: 'text' }],
+          attachments: [{ filename: 'evento.ics', contentType: 'text/calendar; charset=utf-8; method=' + (a.tipo === 'cancelado' ? 'CANCEL' : 'PUBLISH'), content: ics(a, SITE) }],
         });
       } finally {
-        await cliente.close();
+        transporte.close();
       }
       await admin.from('avisos_de_evento').update({ status: 'enviado', destinatarios: para, erro: null, tentativas: a.tentativas + 1, enviado_em: new Date().toISOString() }).eq('id', a.id);
       resultado[a.id] = 'enviado';
