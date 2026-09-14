@@ -16,9 +16,11 @@ const espiao = vi.hoisted(() => ({
   apagados: [] as string[][],
   toastOk: vi.fn(),
   toastErro: vi.fn(),
+  cutucadas: 0,
 }));
 
 vi.mock('sonner', () => ({ toast: { success: espiao.toastOk, error: espiao.toastErro } }));
+vi.mock('@/hooks/useAvisosDoEvento', () => ({ processarAvisosPendentes: () => { espiao.cutucadas++; return Promise.resolve(); } }));
 vi.mock('@/lib/events/anexos', async (original) => ({
   ...(await original<typeof import('@/lib/events/anexos')>()),
   apagarDoBalde: async (urls: string[]) => { espiao.apagados.push(urls); },
@@ -52,6 +54,7 @@ beforeEach(() => {
   espiao.lista = [];
   espiao.operacoes = [];
   espiao.apagados = [];
+  espiao.cutucadas = 0;
   espiao.toastOk.mockClear();
   espiao.toastErro.mockClear();
 });
@@ -149,5 +152,33 @@ describe('gravação em lote', () => {
 
     await expect(act(() => result.current.deleteEvent('e1', { emLote: true }))).rejects.toMatchObject({ code: '42501' });
     expect(espiao.toastErro).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * O gatilho enfileira o aviso de cancelamento ao mover para a lixeira, mas
+ * só a função entrega. Excluir e restaurar precisam cutucá-la, como salvar
+ * já fazia — no primeiro teste real o cancelamento ficou "pendente".
+ */
+describe('avisos por e-mail: quem cutuca a função', () => {
+  it('mover para a lixeira cutuca; em lote, não (quem chama cutuca uma vez)', async () => {
+    espiao.linhas = [{ id: 'e1' }];
+    const { result } = montar();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(() => result.current.deleteEvent('e1'));
+    expect(espiao.cutucadas).toBe(1);
+
+    await act(() => result.current.deleteEvent('e1', { emLote: true }));
+    expect(espiao.cutucadas).toBe(1);
+  });
+
+  it('restaurar cutuca', async () => {
+    espiao.linhas = [{ id: 'e1' }];
+    const { result } = montar();
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    await act(() => result.current.restoreEvent('e1'));
+    expect(espiao.cutucadas).toBe(1);
   });
 });

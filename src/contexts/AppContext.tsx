@@ -204,7 +204,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       exigirLinha(data, 'Sem permissão para mover este evento para a lixeira', avisar);
       if (avisar) toast.success('Evento movido para a lixeira');
     }
-    if (avisar) await fetchEvents();
+    // Mover um confirmado para a lixeira enfileira o aviso de cancelamento;
+    // sem esta chamada ele só saía no próximo salvamento de alguém (14/09).
+    if (avisar) {
+      void processarAvisosPendentes();
+      await fetchEvents();
+    }
   };
 
   /**
@@ -222,6 +227,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     exigirLinha(data, 'Sem permissão para restaurar este evento');
     toast.success('Evento restaurado');
+    // Restaurar um confirmado o reanuncia: para quem recebeu o cancelamento,
+    // é a notícia de que voltou.
+    void processarAvisosPendentes();
     await fetchEvents();
   };
 
