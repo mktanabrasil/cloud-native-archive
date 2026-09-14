@@ -109,7 +109,7 @@ function ResumoDePendencias({ erros, acao }: { erros: Record<string, string>; ac
   if (pendentes.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3">
+    <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3">
       <p className="text-sm font-semibold text-destructive">
         {pendentes.length === 1
           ? `Falta 1 campo para ${acao}`
@@ -289,6 +289,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
   // Se estiver personalizado, aguarda 5s sem digitação antes de abrir o pop-up
   // (debounce) para o usuário decidir entre usar o automático ou manter o atual.
   useEffect(() => {
+    // A gestora não vê o campo de link (é da administração): sem pop-up sobre
+    // um "link" que ela nunca viu, e sem gravar slug por ela (achado 21).
+    if (!isMarketing) return;
     const auto = generateUniqueSlug(form.title || '');
     if (slugMode === 'auto') {
       if (auto !== (form.slug || '')) {
@@ -552,7 +555,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       // `null`, e não `''`: `events_slug_key` é única. Já existe uma linha com
       // slug vazio, e a segunda quebrava com "duplicate key" — mensagem que não
       // diz nada a quem só queria salvar um evento. `null` nunca colide.
-      slug: form.slug?.trim() ? form.slug.trim() : null,
+      slug: isMarketing && form.slug?.trim() ? form.slug.trim() : null,
       use_logo_as_title: form.use_logo_as_title || false,
       event_logo_url: form.event_logo_url || '',
       show_banner_fade: form.show_banner_fade !== undefined ? form.show_banner_fade : true,
@@ -649,13 +652,13 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       toast.success(aviso.titulo, { description: aviso.descricao });
     } else if (enviaParaAprovacao && !isEditing) {
       toast.success('Enviado para aprovação', {
-        description: `“${gravado.title}”, ${quando} · ${eventUnitLabel(gravado.unit)}, está como pendente. A administração geral vai revisar.${
+        description: `“${tituloEmTexto(gravado.title)}”, ${quando} · ${eventUnitLabel(gravado.unit)}, está como pendente. A administração geral vai revisar.${
           gravado.marketing_request && gravado.marketing_coverage ? ' A presença do marketing será confirmada na resposta.' : ''
         }`,
       });
     } else {
       toast.success(isEditing ? 'Alterações salvas' : 'Programação criada', {
-        description: `“${gravado.title}”, ${quando} · ${eventUnitLabel(gravado.unit)}.${linkAjustado}`,
+        description: `“${tituloEmTexto(gravado.title)}”, ${quando} · ${eventUnitLabel(gravado.unit)}.${linkAjustado}`,
       });
     }
 
@@ -808,14 +811,21 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 )}
 
                 <div id="campo-title">
-                  <Label className="text-sm font-semibold mb-1.5 block">Título *</Label>
-                  <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Nome do evento" />
-                  {errors.title && <p className="mt-1 text-xs text-destructive">{errors.title}</p>}
+                  <Label htmlFor="evento-titulo" className="text-sm font-semibold mb-1.5 block">Título *</Label>
+                  <Input
+                    id="evento-titulo"
+                    value={form.title}
+                    onChange={e => setForm({ ...form, title: e.target.value })}
+                    placeholder="Nome do evento"
+                    aria-invalid={!!errors.title || undefined}
+                    aria-describedby={errors.title ? 'erro-titulo' : undefined}
+                  />
+                  {errors.title && <p id="erro-titulo" className="mt-1 text-xs text-destructive">{errors.title}</p>}
                   <Contador campo="title" valor={form.title} />
                 </div>
                 <div id="campo-description">
-                  <Label className="text-sm font-semibold mb-1.5 block">Descrição</Label>
-                  <Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Descrição do evento" rows={2} />
+                  <Label htmlFor="evento-descricao" className="text-sm font-semibold mb-1.5 block">Descrição</Label>
+                  <Textarea id="evento-descricao" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Descrição do evento" rows={2} />
                   {errors.description && <p className="mt-1 text-xs text-destructive">{errors.description}</p>}
                   <Contador campo="description" valor={form.description} />
                 </div>
@@ -840,21 +850,21 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     </Select>
                   </div>
                   <div id="campo-tipo">
-                    <Label className="text-sm font-semibold mb-1.5 block">Tipo *</Label>
+                    <Label htmlFor="evento-tipo" className="text-sm font-semibold mb-1.5 block">Tipo *</Label>
                     <Select value={form.event_type || ''} onValueChange={v => setForm({ ...form, event_type: v as EventType })}>
                       {/* `capitalize` nos dois: sem ele no gatilho, a lista mostrava
                           "Evento Institucional" e o campo, depois de escolhido,
                           "evento institucional". O valor guardado é minúsculo nos dois. */}
                       {/* `capitalize` só com valor: no placeholder ele fazia
                           "Selecione O Tipo". */}
-                      <SelectTrigger className={`${form.event_type ? 'capitalize' : ''} ${errors.event_type ? 'border-destructive' : ''}`}>
+                      <SelectTrigger id="evento-tipo" aria-invalid={!!errors.event_type || undefined} aria-describedby={errors.event_type ? 'erro-tipo' : undefined} className={`${form.event_type ? 'capitalize' : ''} ${errors.event_type ? 'border-destructive' : ''}`}>
                         <SelectValue placeholder="Selecione o tipo" />
                       </SelectTrigger>
                       <SelectContent>
                         {EVENT_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    {errors.event_type && <p className="mt-1 text-xs text-destructive">{errors.event_type}</p>}
+                    {errors.event_type && <p id="erro-tipo" className="mt-1 text-xs text-destructive">{errors.event_type}</p>}
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -869,7 +879,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       onChange={v => setForm({ ...form, start_datetime: v })}
                       erro={!!errors.start_datetime}
                     />
-                    {errors.start_datetime && <p className="mt-1 text-xs text-destructive">{errors.start_datetime}</p>}
+                    {errors.start_datetime && <p role="alert" className="mt-1 text-xs text-destructive">{errors.start_datetime}</p>}
                   </div>
                   <div className="relative group" id="campo-end_datetime">
                     <Label className="text-sm font-semibold mb-1.5 block">Término *</Label>
@@ -880,7 +890,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       onChange={v => setForm({ ...form, end_datetime: v })}
                       erro={!!errors.end_datetime}
                     />
-                    {errors.end_datetime && <p className="mt-1 text-xs text-destructive">{errors.end_datetime}</p>}
+                    {errors.end_datetime && <p role="alert" className="mt-1 text-xs text-destructive">{errors.end_datetime}</p>}
                   </div>
                   {/* Quem edita de outro estado precisa saber em que relógio o
                       horário está. O fuso é o do computador de quem preenche. */}
@@ -940,7 +950,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       <Contador campo="location" valor={form.location} />
                     </div>
                   )}
-                  {errors.location && <p className="mt-1 text-xs text-destructive">{errors.location}</p>}
+                  {errors.location && <p role="alert" className="mt-1 text-xs text-destructive">{errors.location}</p>}
                 </div>
 
                 {/* `isMarketing` é "admin geral ou comunicação". Com `isAdmin`, quem
@@ -1007,9 +1017,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 )}
 
                 <div>
-                  <Label className="text-sm font-semibold mb-1.5 block">Status</Label>
+                  <Label htmlFor="evento-status" className="text-sm font-semibold mb-1.5 block">Status</Label>
                   <Select value={form.status} onValueChange={v => setForm({ ...form, status: v as EventStatus })}>
-                    <SelectTrigger className="capitalize"><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="evento-status" className="capitalize"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {statusDisponiveis.map(s => (
                         <SelectItem key={s} value={s} className="capitalize">
@@ -1084,7 +1094,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   {/* A página pública mostra só evento confirmado. Sem este aviso, a
                       pessoa marca "Visível para todos", cumpre o checklist inteiro e o
                       evento nunca aparece — sem nada explicando por quê. */}
-                  {form.visibility === 'publico' && form.status !== 'confirmado' && (
+                  {form.visibility === 'publico' && form.status !== 'confirmado' && !emRevisao && (
                     <div className="mt-3 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
                       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
                       <div className="space-y-2">
@@ -1295,6 +1305,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                           <button
                             key={color}
                             type="button"
+                            aria-label={`Cor ${color}`}
+                            aria-pressed={form.custom_color === color}
                             className={`h-6 w-6 rounded-full border border-white/20 transition-transform ${form.custom_color === color ? 'scale-125 ring-2 ring-primary ring-offset-2 ring-offset-background' : 'hover:scale-110'}`}
                             style={{ backgroundColor: color }}
                             onClick={() => setForm({ ...form, custom_color: color })}
@@ -1752,8 +1764,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   })()}
                 </div>
                 <div className="space-y-4 pt-4 border-t">
-                  <Label className="text-sm font-semibold mb-1.5 block">Observações internas</Label>
-                  <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Notas internas gerais..." rows={2} />
+                  <Label htmlFor="evento-notas" className="text-sm font-semibold mb-1.5 block">Observações internas</Label>
+                  <Textarea id="evento-notas" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Notas internas gerais..." rows={2} />
                 </div>
 
                 <div className="flex items-center gap-3 rounded-lg border border-border p-3">

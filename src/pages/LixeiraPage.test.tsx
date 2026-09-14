@@ -111,7 +111,7 @@ describe('as duas saídas', () => {
   it('não apaga de vez sem perguntar antes', async () => {
     render(<LixeiraPage />);
 
-    fireEvent.click(screen.getByRole('button', { name: /^excluir$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /excluir de vez/i }));
 
     expect(espiao.remove).not.toHaveBeenCalled();
     const dialogo = await screen.findByRole('alertdialog');

@@ -84,7 +84,7 @@ export default function LixeiraPage() {
               {search ? 'Nada na lixeira com esse termo' : 'A lixeira está vazia'}
             </h3>
             <p className="text-muted-foreground">
-              {search ? 'Tente outra busca.' : 'Nenhum evento foi excluído.'}
+              {search ? 'Tente outra busca.' : 'Nada aguardando restauração.'}
             </p>
           </div>
         ) : (
@@ -162,7 +162,7 @@ export default function LixeiraPage() {
                     className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
                     onClick={() => setPendingPurge(event)}
                   >
-                    <Trash2 className="h-3.5 w-3.5" /> Excluir
+                    <Trash2 className="h-3.5 w-3.5" /> Excluir de vez
                   </Button>
                 </div>
               </Card>

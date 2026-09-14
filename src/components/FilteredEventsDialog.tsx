@@ -70,7 +70,8 @@ export default function FilteredEventsDialog({ events, filterType, selectedMonth
 
   const handleOpenFullCalendar = () => {
     onOpenChange(false);
-    navigate('/calendario');
+    // A equipe usa o Calendário como aba do hub; a rota solta perdia as abas.
+    navigate('/?tela=calendario');
   };
 
   return (

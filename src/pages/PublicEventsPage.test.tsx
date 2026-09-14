@@ -849,3 +849,31 @@ describe('o selo da unidade', () => {
     }
   });
 });
+
+describe('menores da varredura (11/09)', () => {
+  it('a busca ignora acento: "pascoa" acha "Páscoa"', () => {
+    espiao.eventos = [evento({ id: 'p1', title: 'Páscoa Solidária' }), evento({ id: 'p2', title: 'Recital' })];
+    montar();
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'pascoa' } });
+
+    expect(noCard('Páscoa Solidária')).toBe(1);
+    expect(noCard('Recital')).toBe(0);
+  });
+
+  it('o slug na URL vale em qualquer caixa: ?slug=Hope-Day abre o detalhe', () => {
+    espiao.eventos = [evento({ id: 'h1', title: 'Hope Day', slug: 'hope-day' })];
+    montar('/eventos?slug=Hope-Day');
+
+    expect(screen.getByTestId('detalhe')).toHaveTextContent('Hope Day');
+    expect(screen.queryByText(/não está mais disponível/i)).toBeNull();
+  });
+
+  it('o herói mostra o período de um evento de vários dias, como o card', () => {
+    espiao.eventos = [evento({ id: 'r1', title: 'Retiro', show_in_banner: true, banner_image_desktop: 'https://exemplo/r1.jpg', start_datetime: new Date(2026, 9, 10, 8).toISOString(), end_datetime: new Date(2026, 9, 12, 16).toISOString() })];
+    espiao.autenticado = false;
+    montar();
+
+    const regiao = screen.getByRole('region', { name: /eventos em destaque/i });
+    expect(regiao).toHaveTextContent('10 a 12 de outubro');
+  });
+});

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Globe, LayoutDashboard, Calendar, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -24,8 +24,21 @@ export default function EventsHubPage() {
   const { isAuthenticated } = useAuth();
   const { isAdmin } = useUserRole();
   const { isGate, leaving, entering } = useEntryGateTransition();
-  const [activeTab, setActiveTab] = useState('programacoes');
   const abas = tabs.filter(t => !t.apenasAdmin || isAdmin);
+  /**
+   * A aba vive na URL (`?tela=calendario`): F5 e "voltar" respeitam onde a
+   * pessoa estava, e o link da aba pode ser guardado. `tela`, e não `aba`,
+   * porque as Programações já usam `?aba=` para Próximos/Já aconteceram.
+   */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const pedida = searchParams.get('tela');
+  const activeTab = abas.some(t => t.value === pedida) ? (pedida as string) : 'programacoes';
+  const setActiveTab = (v: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (v === 'programacoes') params.delete('tela');
+    else params.set('tela', v);
+    setSearchParams(params, { replace: true });
+  };
 
   // Sem sessão, a raiz é a porta de entrada — salvo em embed, onde a raiz
   // continua servindo as Programações para não quebrar iframes já publicados.
