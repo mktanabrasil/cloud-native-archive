@@ -7,6 +7,7 @@ import { SELECT_PUBLICO } from '@/lib/events/camposPublicos';
 import { descreverErroDeGravacao } from '@/lib/events/mensagemDeErro';
 import { conflitosDe, marcarConflitos } from '@/lib/events/conflitos';
 import { apagarDoBalde, urlsDeArquivosDoEvento } from '@/lib/events/anexos';
+import { processarAvisosPendentes } from '@/hooks/useAvisosDoEvento';
 
 interface AppContextType {
   events: AppEvent[];
@@ -127,6 +128,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       avisarFalha(error, 'criar', event);
       throw error;
     }
+    // Se nasceu confirmado, o gatilho enfileirou um aviso; entrega agora.
+    if (event.status === 'confirmado') void processarAvisosPendentes();
     await fetchEvents();
   };
 
@@ -145,7 +148,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!opcoes.emLote) avisarFalha(nada, 'atualizar', event);
       throw nada;
     }
-    if (!opcoes.emLote) await fetchEvents();
+    // Confirmou, cancelou ou mudou a data de um confirmado: o gatilho pode ter
+    // enfileirado um aviso. Cutuca a função (sem esperar) — no lote, quem chama
+    // cutuca uma vez só.
+    if (!opcoes.emLote) {
+      void processarAvisosPendentes();
+      await fetchEvents();
+    }
   };
 
   /**
