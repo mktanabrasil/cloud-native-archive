@@ -1165,3 +1165,31 @@ describe('gestora diante de um evento concluído', () => {
     expect(screen.getByRole('button', { name: /salvar alterações/i })).toBeDisabled();
   });
 });
+
+describe('rótulos e erros para leitor de tela', () => {
+  it('o Título tem rótulo associado, e o erro fica ligado ao campo', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    const titulo = screen.getByLabelText('Título *');
+    expect(titulo).toHaveAttribute('placeholder', 'Nome do evento');
+
+    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+
+    await screen.findByText('Título obrigatório');
+    expect(titulo).toHaveAttribute('aria-invalid', 'true');
+    expect(titulo).toHaveAccessibleDescription('Título obrigatório');
+    expect(screen.getAllByRole('alert').length).toBeGreaterThan(0);
+  });
+
+});
+
+describe('o link é da administração', () => {
+  it('a gestora não grava slug, mesmo com título', async () => {
+    abrir();
+    preencher();
+    fireEvent.click(screen.getByRole('button', { name: /enviar para aprovação/i }));
+
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
+    expect(espiao.addEvent.mock.calls[0][0].slug).toBeNull();
+  });
+});

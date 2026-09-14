@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { diasDoEvento, eDiaDeFim, eDiaDeInicio, ocorreNoDia } from '@/lib/events/diasDoEvento';
 import { executarEmLote, textoDoLote, FRASES_LIXEIRA, frasesDeStatus } from '@/lib/events/lote';
 import { tituloEmTexto } from '@/lib/events/titulo';
+import { semAcento } from '@/lib/events/local';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -147,7 +148,10 @@ export default function CalendarPage() {
       if (filterStatus !== 'all' && e.status !== filterStatus) return false;
       if (filterType !== 'all' && e.event_type !== filterType) return false;
       if (conflictOnly && !e.has_conflict) return false;
-      if (search && !e.title.toLowerCase().includes(search.toLowerCase()) && !e.location.toLowerCase().includes(search.toLowerCase())) return false;
+      // Sem acento e cobrindo a descrição: o mesmo termo dava resultados
+      // diferentes aqui e na Visão Geral (achado 16).
+      const termo = semAcento(search);
+      if (termo && !semAcento(e.title).includes(termo) && !semAcento(e.location || '').includes(termo) && !semAcento(e.description || '').includes(termo)) return false;
       return true;
     });
   }, [events, filterUnit, filterStatus, filterType, conflictOnly, search]);

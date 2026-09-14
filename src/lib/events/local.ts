@@ -30,8 +30,10 @@ export const LOCAIS_FIXOS: LocalFixo[] = [
 /** O valor da opção "Outro local" na lista. Nunca vai para o banco. */
 export const OUTRO_LOCAL = '__outro__';
 
-const normalizar = (s: string) =>
+/** Minúsculo e sem acento: "Páscoa" e "pascoa" são a mesma coisa para a busca. */
+export const semAcento = (s: string) =>
   s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const normalizar = semAcento;
 
 /** O local que a unidade do evento sugere. */
 export const localDaUnidade = (unidade: Unit | string | null | undefined): string =>

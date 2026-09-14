@@ -185,7 +185,7 @@ export default function Dashboard() {
       {/* Header */}
       <PageHeader
         title={hideTitle ? "" : "Visão Geral"}
-        description={hideTitle ? "" : "Programação institucional de todas as unidades"}
+        description={hideTitle ? "" : unit && unit !== 'Administração' ? `Programação da unidade ${unit}` : "Programação institucional de todas as unidades"}
         hidden={hideTitle}
         className="mb-4"
         actions={
@@ -396,7 +396,7 @@ export default function Dashboard() {
       <ConflictDialog events={monthEvents} selectedMonth={selectedMonth} open={showConflicts} onOpenChange={setShowConflicts} onEventClick={handleConflictEventClick} />
       {showFiltered && (
         <FilteredEventsDialog
-          events={showFiltered === 'marketing' || showFiltered === 'partners' ? activeEvents : monthEvents}
+          events={monthEvents}
           filterType={showFiltered}
           selectedMonth={selectedMonth}
           open={!!showFiltered}

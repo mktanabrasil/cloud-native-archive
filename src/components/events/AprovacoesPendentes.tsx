@@ -3,6 +3,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Clock } from 'lucide-react';
 import { AppEvent, eventUnitLabel } from '@/types';
+import { tituloEmTexto } from '@/lib/events/titulo';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -50,7 +51,7 @@ export function AprovacoesPendentes({ eventos, onRevisar }: Props) {
               className="flex items-center gap-3 rounded-lg border border-border border-l-4 border-l-warning bg-card p-2.5 sm:p-3"
             >
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold text-foreground sm:text-sm">{e.title}</p>
+                <p className="truncate text-xs font-semibold text-foreground sm:text-sm">{tituloEmTexto(e.title)}</p>
                 <p className="text-[11px] text-muted-foreground sm:text-xs">
                   {eventUnitLabel(e.unit)} · {format(new Date(e.start_datetime), "d MMM, HH:mm", { locale: ptBR })} · enviado por{' '}
                   {e.created_by || 'a unidade'}{' '}

@@ -24,6 +24,7 @@ import { TituloDoEvento } from '@/components/events/TituloDoEvento';
 import { tituloEmTexto } from '@/lib/events/titulo';
 import { abaInicial, jaAconteceu, lerAba, separarPorData, type Aba } from '@/lib/events/proximosEPassados';
 import { textoDaData, textoDoHorario } from '@/lib/events/periodo';
+import { semAcento } from '@/lib/events/local';
 import EventFormDialog from '@/components/EventFormDialog';
 import { BannerMissingDialog } from '@/components/BannerMissingDialog';
 import { VitrineVazia } from '@/components/events/VitrineVazia';
@@ -108,14 +109,15 @@ export default function PublicEventsPage() {
   };
 
   const filtered = useMemo(() => {
-    const searchTerm = search.toLowerCase().trim();
+    // "pascoa" acha "Páscoa": termo e campos sem acento (achado 16, 11/09/2026).
+    const searchTerm = semAcento(search);
     const daUnidade = unidadeFiltro ? events.filter(e => e.unit === unidadeFiltro) : events;
     if (!searchTerm) return daUnidade;
 
     return daUnidade.filter(e =>
-      e.title.toLowerCase().includes(searchTerm) ||
-      (e.location || '').toLowerCase().includes(searchTerm) ||
-      (e.description || '').toLowerCase().includes(searchTerm)
+      semAcento(e.title).includes(searchTerm) ||
+      semAcento(e.location || '').includes(searchTerm) ||
+      semAcento(e.description || '').includes(searchTerm)
     );
   }, [events, search, unidadeFiltro]);
 
@@ -217,7 +219,10 @@ export default function PublicEventsPage() {
   // interno, foi para a lixeira, ou o endereço veio errado), a página avisa
   // em vez de abrir como se nada tivesse acontecido. Só depois que a lista
   // carregou: antes disso, a vitrine vazia não diz nada.
-  const slugNaUrl = searchParams.get('slug');
+  // O slug é gravado em minúsculas; a URL pode chegar capitalizada pelo
+  // WhatsApp ou digitada. Compara em minúsculas, para não dizer "não está
+  // mais disponível" a um evento que existe (achado 17).
+  const slugNaUrl = searchParams.get('slug')?.toLowerCase() ?? null;
   const slugInvalido = !!slugNaUrl && !loading && !events.some(e => e.slug === slugNaUrl || e.id === slugNaUrl);
   useEffect(() => {
     if (slugNaUrl && events.length > 0) {
@@ -430,7 +435,7 @@ export default function PublicEventsPage() {
                 <div className="flex flex-wrap gap-4 text-slate-200 text-sm md:text-base mb-6">
                   <div className="flex items-center gap-2">
                     <CalendarDays className="h-5 w-5" />
-                    <span>{format(new Date(event.start_datetime), "dd 'de' MMMM", { locale: ptBR })}</span>
+                    <span>{textoDaData(event, { comAno: false })}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <MapPin className="h-5 w-5" />

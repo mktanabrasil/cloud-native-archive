@@ -42,3 +42,11 @@ describe('sugestão ao trocar a unidade', () => {
     expect(localAoTrocarUnidade('Quadra do bairro', 'Santana')).toBe('Quadra do bairro');
   });
 });
+
+describe('semAcento', () => {
+  it('minúsculo, sem acento, sem espaços nas pontas', async () => {
+    const { semAcento } = await import('./local');
+    expect(semAcento('  Páscoa ')).toBe('pascoa');
+    expect(semAcento('NILÓPOLIS')).toBe('nilopolis');
+  });
+});
