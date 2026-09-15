@@ -25,13 +25,17 @@ addEventListener('error', (e) => { console.error('[eventos-aviso] erro solto:', 
  * eventos@anabrasil.org; os perfis ativos da unidade do evento; quem criou.
  *
  * Segundo passo (15/09/2026): a Agenda do Google. O robô (conta de serviço,
- * GOOGLE_SA_KEY) é dono de duas agendas — "ANA · Eventos" para a equipe e
- * "Programação ANA" pública — que ele cria na primeira execução e guarda em
- * `agendas_google`. Cada aviso vira criar/atualizar/remover o evento nelas;
- * o id fica em `events.google_event_id` / `google_public_event_id`. As
- * agendas são compartilhadas como leitura com as caixas fixas e com a gestão
+ * GOOGLE_SA_KEY) é dono de UMA agenda — "ANA · Eventos", só da equipe — que
+ * ele cria na primeira execução e guarda em `agendas_google`. Cada aviso vira
+ * criar/atualizar/remover o evento nela; o id fica em `events.google_event_id`.
+ * A agenda é compartilhada como leitura com as caixas fixas e com a gestão
  * cadastrada por unidade (mesma regra do e-mail). O tipo "atualizado"
  * (título/descrição/visibilidade/unidade) só mexe na agenda, sem e-mail.
+ *
+ * A agenda pública "Programação ANA" existiu por algumas horas em 15/09 e foi
+ * descartada (decisão do mesmo dia): o que é público vai para o site, não
+ * para uma agenda paralela. Se a linha `publica` ainda existir, o robô apaga
+ * a agenda no Google e limpa os rastros (ver `garantirAgendas`).
  *
  * Segredos (Coolify): SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS,
  * AVISOS_REMETENTE, AVISOS_SEGREDO, SITE_URL (padrão https://app.anabrasil.org),
@@ -283,7 +287,7 @@ function ics(a: Aviso, site: string): string {
 interface ChaveDoRobo { client_email: string; private_key: string; token_uri?: string }
 const ESCOPO_AGENDA = 'https://www.googleapis.com/auth/calendar';
 const API_AGENDA = 'https://www.googleapis.com/calendar/v3';
-const NOMES_DAS_AGENDAS: Record<'equipe' | 'publica', string> = { equipe: 'ANA · Eventos', publica: 'Programação ANA' };
+const NOME_DA_AGENDA = 'ANA · Eventos';
 /** Paleta do Google (colorId 1–11), a mais próxima da cor de cada unidade. */
 const COR_GOOGLE_DA_UNIDADE: Record<string, string> = { 'DIC': '7', 'Nilópolis': '2', 'Santana': '5', 'Administração': '6' };
 const SEMPRE_LEEM = SEMPRE_RECEBEM;
@@ -344,20 +348,31 @@ function leitoresDasAgendas(perfis: Perfil[]): string[] {
  * (saiu da lista, ou a chave de lançamento está ligada) perde o acesso.
  * Idempotente: roda a cada chamada, mas só fala com o Google quando falta algo.
  */
-async function garantirAgendas(admin: any, token: string, perfis: Perfil[]): Promise<Record<'equipe' | 'publica', string>> {
+async function garantirAgendas(admin: any, token: string, perfis: Perfil[]): Promise<{ equipe: string }> {
   const { data: linhas } = await admin.from('agendas_google').select('chave, calendar_id, compartilhada_com');
   const atuais = new Map<string, { calendar_id: string; compartilhada_com: string[] }>((linhas || []).map((l: any) => [l.chave, l]));
-  const ids = {} as Record<'equipe' | 'publica', string>;
+  const ids = {} as { equipe: string };
 
-  for (const chave of ['equipe', 'publica'] as const) {
+  // Sobra de 15/09: a agenda pública. Apagar a agenda no Google leva junto os
+  // eventos que estavam nela; aqui só limpamos a linha e os ids nos eventos.
+  const publica = atuais.get('publica');
+  if (publica) {
+    try {
+      await google(token, 'DELETE', `/calendars/${encodeURIComponent(publica.calendar_id)}`);
+    } catch (e) {
+      if ((e as { status?: number }).status !== 404 && (e as { status?: number }).status !== 410) throw e;
+    }
+    await admin.from('events').update({ google_public_event_id: null, google_public_event_link: null }).not('google_public_event_id', 'is', null);
+    await admin.from('agendas_google').delete().eq('chave', 'publica');
+    console.log('[agenda] agenda pública "Programação ANA" apagada no Google');
+  }
+
+  for (const chave of ['equipe'] as const) {
     let linha = atuais.get(chave);
     if (!linha) {
-      const criada = await google(token, 'POST', '/calendars', { summary: NOMES_DAS_AGENDAS[chave], timeZone: FUSO, description: chave === 'publica' ? 'Programação pública da ANA Brasil. Gerada pelo app.' : 'Eventos confirmados no app da ANA Brasil. Edite no app, não aqui.' });
-      if (chave === 'publica') {
-        await google(token, 'POST', `/calendars/${encodeURIComponent(criada.id)}/acl`, { role: 'reader', scope: { type: 'default' } });
-      }
+      const criada = await google(token, 'POST', '/calendars', { summary: NOME_DA_AGENDA, timeZone: FUSO, description: 'Eventos confirmados no app da ANA Brasil. Edite no app, não aqui.' });
       linha = { calendar_id: criada.id, compartilhada_com: [] };
-      await admin.from('agendas_google').insert({ chave, calendar_id: criada.id, nome: NOMES_DAS_AGENDAS[chave], compartilhada_com: [] });
+      await admin.from('agendas_google').insert({ chave, calendar_id: criada.id, nome: NOME_DA_AGENDA, compartilhada_com: [] });
     }
     ids[chave] = linha.calendar_id;
 
@@ -427,31 +442,21 @@ async function removerDaAgenda(token: string, calendarId: string, id: string | n
 }
 
 /** O passo "agenda" de um aviso. Devolve o link da agenda da equipe, quando houver. */
-async function sincronizarAgenda(admin: any, token: string, ids: Record<'equipe' | 'publica', string>, a: Aviso, site: string): Promise<string | null> {
+async function sincronizarAgenda(admin: any, token: string, ids: { equipe: string }, a: Aviso, site: string): Promise<string | null> {
   // o evento como está AGORA no banco (o aviso guarda uma foto; os ids do Google vivem na linha)
-  const { data: atual } = await admin.from('events').select('id, title, description, unit, location, start_datetime, end_datetime, status, visibility, deleted_at, slug, created_by, updated_by, updated_at, reviewed_by, reviewed_at, google_event_id, google_public_event_id').eq('id', a.event_id).maybeSingle();
+  const { data: atual } = await admin.from('events').select('id, title, description, unit, location, start_datetime, end_datetime, status, visibility, deleted_at, slug, created_by, updated_by, updated_at, reviewed_by, reviewed_at, google_event_id').eq('id', a.event_id).maybeSingle();
   const e: Evento = atual || a.evento;
   const confirmado = e.status === 'confirmado' && !e.deleted_at;
 
   if (a.tipo === 'cancelado' || !confirmado) {
     await removerDaAgenda(token, ids.equipe, e.google_event_id);
-    await removerDaAgenda(token, ids.publica, e.google_public_event_id);
-    await admin.from('events').update({ google_event_id: null, google_event_link: null, google_public_event_id: null, google_public_event_link: null }).eq('id', a.event_id);
+    await admin.from('events').update({ google_event_id: null, google_event_link: null }).eq('id', a.event_id);
     return null;
   }
 
   const corpo = corpoDoEventoGoogle(e, site);
   const equipe = await gravarNaAgenda(token, ids.equipe, e.google_event_id, corpo);
-  let publica: { id: string; link: string } | null = null;
-  if (e.visibility === 'publico') {
-    publica = await gravarNaAgenda(token, ids.publica, e.google_public_event_id, corpo);
-  } else {
-    await removerDaAgenda(token, ids.publica, e.google_public_event_id);
-  }
-  await admin.from('events').update({
-    google_event_id: equipe.id, google_event_link: equipe.link,
-    google_public_event_id: publica?.id ?? null, google_public_event_link: publica?.link ?? null,
-  }).eq('id', a.event_id);
+  await admin.from('events').update({ google_event_id: equipe.id, google_event_link: equipe.link }).eq('id', a.event_id);
   return equipe.link;
 }
 
@@ -520,7 +525,7 @@ Deno.serve(async (req) => {
 
   // Agenda do Google: só com a chave do robô. Sem ela, o passo é "ignorado" e
   // o painel não mostra nada de agenda — o e-mail segue normal.
-  let agenda: { token: string; ids: Record<'equipe' | 'publica', string> } | null = null;
+  let agenda: { token: string; ids: { equipe: string } } | null = null;
   let erroDaAgenda: string | null = null;
   const chaveBruta = Deno.env.get('GOOGLE_SA_KEY');
   if (chaveBruta) {
