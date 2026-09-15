@@ -9,8 +9,9 @@ import type { AppEvent } from '@/types';
  * acontecer e os testes fixarem a decisão de 14/09/2026.
  */
 
-export type TipoDeAviso = 'confirmado' | 'cancelado' | 'alterado';
-export type StatusDoAviso = 'pendente' | 'enviado' | 'falhou';
+/** "atualizado" = título/descrição/visibilidade/unidade de um confirmado mudou: só agenda, sem e-mail. */
+export type TipoDeAviso = 'confirmado' | 'cancelado' | 'alterado' | 'atualizado';
+export type StatusDoAviso = 'pendente' | 'enviado' | 'falhou' | 'ignorado';
 
 export interface AvisoDeEvento {
   id: string;
@@ -22,6 +23,11 @@ export interface AvisoDeEvento {
   tentativas: number;
   criado_em: string;
   enviado_em: string | null;
+  /** O passo "agenda do Google", independente do e-mail (15/09/2026). */
+  agenda_status?: StatusDoAviso;
+  agenda_erro?: string | null;
+  agenda_em?: string | null;
+  agenda_link?: string | null;
 }
 
 /** As caixas da ANA que recebem sempre, seja quem for que preencheu. */
@@ -68,10 +74,10 @@ export function destinatariosDoAviso(
  * cancelado ou lixeira; alterado quando um confirmado muda data, horário ou
  * local. Qualquer outra mudança: nenhum aviso.
  */
-export function tipoDoAviso(
-  antes: Pick<AppEvent, 'status' | 'deleted_at' | 'start_datetime' | 'end_datetime' | 'location'> | null,
-  depois: Pick<AppEvent, 'status' | 'deleted_at' | 'start_datetime' | 'end_datetime' | 'location'>,
-): TipoDeAviso | null {
+type CamposDoGatilho = Pick<AppEvent, 'status' | 'deleted_at' | 'start_datetime' | 'end_datetime' | 'location'> &
+  Partial<Pick<AppEvent, 'title' | 'description' | 'visibility' | 'unit'>>;
+
+export function tipoDoAviso(antes: CamposDoGatilho | null, depois: CamposDoGatilho): TipoDeAviso | null {
   const confirmado = (e: typeof depois) => e.status === 'confirmado' && !e.deleted_at;
   const esta = confirmado(depois);
   if (!antes) return esta ? 'confirmado' : null;
@@ -83,6 +89,12 @@ export function tipoDoAviso(
     antes.end_datetime !== depois.end_datetime ||
     (antes.location || '') !== (depois.location || '')
   )) return 'alterado';
+  if (era && esta && (
+    (antes.title ?? '') !== (depois.title ?? '') ||
+    (antes.description ?? '') !== (depois.description ?? '') ||
+    (antes.visibility ?? '') !== (depois.visibility ?? '') ||
+    (antes.unit ?? '') !== (depois.unit ?? '')
+  )) return 'atualizado';
   return null;
 }
 
@@ -90,6 +102,7 @@ export const ROTULO_DO_TIPO: Record<TipoDeAviso, string> = {
   confirmado: 'Evento confirmado',
   cancelado: 'Evento cancelado',
   alterado: 'Data alterada',
+  atualizado: 'Detalhes atualizados',
 };
 
 /** "Aviso enviado a 7 endereços" / "a 1 endereço". */

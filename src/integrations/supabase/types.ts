@@ -118,6 +118,10 @@ export type Database = {
           food_items: Json
           equipment_items: Json
           full_height_title: boolean | null
+          google_event_id: string | null
+          google_event_link: string | null
+          google_public_event_id: string | null
+          google_public_event_link: string | null
           has_conflict: boolean | null
           has_unit_collaboration: boolean | null
           id: string
@@ -184,6 +188,10 @@ export type Database = {
           food_items?: Json
           equipment_items?: Json
           full_height_title?: boolean | null
+          google_event_id?: string | null
+          google_event_link?: string | null
+          google_public_event_id?: string | null
+          google_public_event_link?: string | null
           has_conflict?: boolean | null
           has_unit_collaboration?: boolean | null
           id?: string
@@ -250,6 +258,10 @@ export type Database = {
           food_items?: Json
           equipment_items?: Json
           full_height_title?: boolean | null
+          google_event_id?: string | null
+          google_event_link?: string | null
+          google_public_event_id?: string | null
+          google_public_event_link?: string | null
           has_conflict?: boolean | null
           has_unit_collaboration?: boolean | null
           id?: string
@@ -587,8 +599,36 @@ export type Database = {
         }
         Relationships: []
       }
+      agendas_google: {
+        Row: {
+          calendar_id: string
+          chave: string
+          compartilhada_com: string[]
+          criado_em: string
+          nome: string
+        }
+        Insert: {
+          calendar_id: string
+          chave: string
+          compartilhada_com?: string[]
+          criado_em?: string
+          nome: string
+        }
+        Update: {
+          calendar_id?: string
+          chave?: string
+          compartilhada_com?: string[]
+          criado_em?: string
+          nome?: string
+        }
+        Relationships: []
+      }
       avisos_de_evento: {
         Row: {
+          agenda_em: string | null
+          agenda_erro: string | null
+          agenda_link: string | null
+          agenda_status: string
           antes: Json | null
           criado_em: string
           destinatarios: string[]
@@ -602,6 +642,10 @@ export type Database = {
           tipo: string
         }
         Insert: {
+          agenda_em?: string | null
+          agenda_erro?: string | null
+          agenda_link?: string | null
+          agenda_status?: string
           antes?: Json | null
           criado_em?: string
           destinatarios?: string[]
@@ -615,6 +659,10 @@ export type Database = {
           tipo: string
         }
         Update: {
+          agenda_em?: string | null
+          agenda_erro?: string | null
+          agenda_link?: string | null
+          agenda_status?: string
           antes?: Json | null
           criado_em?: string
           destinatarios?: string[]
