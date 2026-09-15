@@ -288,8 +288,14 @@ interface ChaveDoRobo { client_email: string; private_key: string; token_uri?: s
 const ESCOPO_AGENDA = 'https://www.googleapis.com/auth/calendar';
 const API_AGENDA = 'https://www.googleapis.com/calendar/v3';
 const NOME_DA_AGENDA = 'ANA · Eventos';
-/** Paleta do Google (colorId 1–11), a mais próxima da cor de cada unidade. */
-const COR_GOOGLE_DA_UNIDADE: Record<string, string> = { 'DIC': '7', 'Nilópolis': '2', 'Santana': '5', 'Administração': '6' };
+/**
+ * Um evento no Google só aceita uma das 11 cores fixas da paleta dele (colorId).
+ * Aqui vai a mais próxima da cor de cada unidade no app (src/index.css):
+ * DIC azul-céu → 7 Pavão; Nilópolis verde-água → 2 Sálvia; Santana amarelo →
+ * 5 Banana; Administração coral → 4 Flamingo (não Tangerina: o coral da ANA
+ * está a ~22 de distância do Flamingo e a ~80 da Tangerina, em RGB).
+ */
+const COR_GOOGLE_DA_UNIDADE: Record<string, string> = { 'DIC': '7', 'Nilópolis': '2', 'Santana': '5', 'Administração': '4' };
 const SEMPRE_LEEM = SEMPRE_RECEBEM;
 
 const b64url = (dados: ArrayBuffer | string) => {
@@ -482,7 +488,7 @@ Deno.serve(async (req) => {
     pedidoPor = data.user.email || data.user.id;
   }
 
-  let corpo: { aviso_id?: string; estado?: boolean; carga?: boolean } = {};
+  let corpo: { aviso_id?: string; estado?: boolean; carga?: boolean; reaplicar?: boolean } = {};
   try { corpo = await req.json(); } catch { /* sem corpo: processa os pendentes */ }
 
   const admin = createClient(SUPABASE_URL, SERVICE);
@@ -507,11 +513,24 @@ Deno.serve(async (req) => {
     console.log(`[agenda] carga inicial pedida por ${pedidoPor}: ${linhas.length} evento(s) enfileirado(s)`);
   }
 
+  // { reaplicar: true }: regrava no Google todo confirmado que já está lá
+  // (cor, texto, local), sem e-mail — para quando a regra de montagem muda.
+  if (corpo.reaplicar) {
+    if (pedidoPor === 'banco') return json({ error: 'Reaplicar é pedido por uma pessoa logada.' }, 403);
+    const { data: presentes } = await admin.from('events').select('*').eq('status', 'confirmado').is('deleted_at', null).not('google_event_id', 'is', null);
+    const linhas = (presentes || []).map((e: any) => ({ event_id: e.id, tipo: 'atualizado', evento: e, antes: null, status: 'ignorado', erro: 'reaplicar na agenda: sem e-mail', agenda_status: 'pendente' }));
+    if (linhas.length > 0) {
+      const { error } = await admin.from('avisos_de_evento').insert(linhas);
+      if (error) return json({ error: error.message }, 500);
+    }
+    console.log(`[agenda] reaplicar pedido por ${pedidoPor}: ${linhas.length} evento(s) enfileirado(s)`);
+  }
+
   // Os pendentes, mais o aviso pedido (Reenviar), mesmo que já tenha falhado.
   const COLUNAS = 'id, event_id, tipo, evento, antes, tentativas, status, agenda_status';
   const { data: pendentes, error: erroFila } = await admin
     .from('avisos_de_evento').select(COLUNAS)
-    .or('status.eq.pendente,agenda_status.eq.pendente').order('criado_em', { ascending: true }).limit(corpo.carga ? 200 : 20);
+    .or('status.eq.pendente,agenda_status.eq.pendente').order('criado_em', { ascending: true }).limit(corpo.carga || corpo.reaplicar ? 200 : 20);
   if (erroFila) return json({ error: erroFila.message }, 500);
   const fila: Aviso[] = [...(pendentes as Aviso[] || [])];
   // Reenviar: o aviso pedido entra mesmo que já tenha falhado, nos dois passos.
