@@ -8,15 +8,15 @@ import { useApp } from '@/contexts/AppContext';
 import { contagemDaAgenda, textoDaCarga } from '@/lib/events/agenda';
 import { toast } from 'sonner';
 
-interface AgendaGoogle { chave: 'equipe' | 'publica'; calendar_id: string; nome: string; compartilhada_com: string[] }
+interface AgendaGoogle { chave: 'equipe'; calendar_id: string; nome: string; compartilhada_com: string[] }
 interface Estado { so_equipe: boolean; chave_configurada: boolean; agendas: AgendaGoogle[] }
 
-const linkDaAgenda = (id: string) => `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(id)}&ctz=America/Sao_Paulo`;
+const linkDaAgenda = (id: string) => `https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(id)}`;
 const linkDeInscricao = (id: string) => `https://calendar.google.com/calendar/u/0?cid=${encodeURIComponent(id)}`;
 
 /**
- * Card "Agenda do Google" do Painel (só admin geral): as duas agendas que o
- * robô criou, quem lê hoje, a contagem do que está e do que falta, e o botão
+ * Card "Agenda do Google" do Painel (só admin geral): a agenda que o robô
+ * criou (só "ANA · Eventos": a pública foi descartada em 15/09), quem lê hoje, a contagem do que está e do que falta, e o botão
  * da carga inicial — que enfileira todo confirmado ainda fora do Google, sem
  * mandar e-mail de novo. Mockup aprovado em 15/09/2026.
  */
@@ -35,7 +35,7 @@ export function AgendaDoGoogle() {
     // Função de versão anterior responde sem `agendas`: avisa em vez de quebrar.
     if (!Array.isArray(resposta.agendas)) { setErroDeLeitura('a função publicada ainda não conhece a consulta de estado'); return; }
     setErroDeLeitura(null);
-    setEstado({ so_equipe: !!resposta.so_equipe, chave_configurada: !!resposta.chave_configurada, agendas: resposta.agendas });
+    setEstado({ so_equipe: !!resposta.so_equipe, chave_configurada: !!resposta.chave_configurada, agendas: resposta.agendas.filter(a => a.chave === 'equipe') });
     const { count } = await supabase.from('avisos_de_evento').select('id', { count: 'exact', head: true }).eq('agenda_status', 'falhou');
     setComErro(count || 0);
   }, []);
@@ -70,7 +70,7 @@ export function AgendaDoGoogle() {
           <CardTitle className="flex items-center gap-2 text-lg">
             <CalendarCheck className="h-5 w-5 text-primary" /> Agenda do Google
           </CardTitle>
-          <p className="max-w-[56ch] text-sm text-muted-foreground">Eventos confirmados entram sozinhos nas agendas abaixo. Edite sempre no app: o Google é só leitura para a equipe.</p>
+          <p className="max-w-[56ch] text-sm text-muted-foreground">Eventos confirmados entram sozinhos na agenda abaixo, só da equipe. Edite sempre no app: o Google é só leitura.</p>
         </div>
         <Button className="gap-2" disabled={carregando || contagem.faltam === 0 || !estado?.chave_configurada} onClick={carregar}>
           {carregando ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
@@ -96,23 +96,21 @@ export function AgendaDoGoogle() {
         )}
 
         {estado && estado.agendas.length > 0 && (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3">
             {estado.agendas.map(a => (
               <div key={a.chave} className="space-y-1.5 rounded-lg border border-border p-3">
                 <p className="flex items-center gap-2 text-sm font-semibold">
-                  <span className={`h-2.5 w-2.5 rounded-full ${a.chave === 'publica' ? 'bg-warning' : 'bg-primary'}`} />
+                  <span className="h-2.5 w-2.5 rounded-full bg-primary" />
                   {a.nome}
-                  <Badge variant="secondary" className="ml-auto text-[10px]">{a.chave === 'publica' ? 'pública' : 'equipe'}</Badge>
+                  <Badge variant="secondary" className="ml-auto text-[10px]">equipe</Badge>
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  {a.chave === 'publica'
-                    ? 'Qualquer pessoa com o link. Só eventos com visibilidade pública.'
-                    : `Lida por ${a.compartilhada_com.length} ${a.compartilhada_com.length === 1 ? 'endereço' : 'endereços'}: ${a.compartilhada_com.map(e => e.replace(/@anabrasil\.org$/, '@')).join(', ')}`}
+                  {`Lida por ${a.compartilhada_com.length} ${a.compartilhada_com.length === 1 ? 'endereço' : 'endereços'}: ${a.compartilhada_com.map(e => e.replace(/@anabrasil\.org$/, '@')).join(', ')}`}
                 </p>
                 <p className="flex flex-wrap gap-3 text-xs">
                   <a href={linkDaAgenda(a.calendar_id)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-primary underline underline-offset-2"><ExternalLink className="h-3 w-3" /> Abrir no Google</a>
-                  <button type="button" className="inline-flex items-center gap-1 font-medium text-primary underline underline-offset-2" onClick={() => copiar(a.chave === 'publica' ? linkDaAgenda(a.calendar_id) : linkDeInscricao(a.calendar_id), a.chave)}>
-                    {copiado === a.chave ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} {a.chave === 'publica' ? 'Copiar link público' : 'Copiar link de inscrição'}
+                  <button type="button" className="inline-flex items-center gap-1 font-medium text-primary underline underline-offset-2" onClick={() => copiar(linkDeInscricao(a.calendar_id), a.chave)}>
+                    {copiado === a.chave ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} Copiar link de inscrição
                   </button>
                 </p>
               </div>
@@ -121,7 +119,7 @@ export function AgendaDoGoogle() {
         )}
 
         {estado && estado.agendas.length === 0 && estado.chave_configurada && (
-          <p className="text-xs text-muted-foreground">As agendas ainda não foram criadas: elas nascem na primeira vez que um evento confirmado passa pela função.</p>
+          <p className="text-xs text-muted-foreground">A agenda ainda não foi criada: ela nasce na primeira vez que um evento confirmado passa pela função.</p>
         )}
 
         <dl className="flex flex-wrap gap-6 tabular-nums" data-testid="contagem-da-agenda">

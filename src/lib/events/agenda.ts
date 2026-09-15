@@ -14,15 +14,13 @@ export type EstadoDaAgenda = 'sincronizado' | 'aguardando' | 'falhou' | 'removid
 
 export interface LeituraDaAgenda {
   estado: EstadoDaAgenda;
-  /** Também está na agenda pública "Programação ANA". */
-  publico: boolean;
   link: string | null;
   erro: string | null;
   /** ISO do momento que a tela mostra (quando sincronizou, ou quando entrou na fila). */
   quando: string;
 }
 
-type EventoParaAgenda = Pick<AppEvent, 'status' | 'deleted_at' | 'google_event_id' | 'google_event_link' | 'google_public_event_id'>;
+type EventoParaAgenda = Pick<AppEvent, 'status' | 'deleted_at' | 'google_event_id' | 'google_event_link'>;
 type AvisoParaAgenda = Pick<AvisoDeEvento, 'agenda_status' | 'agenda_erro' | 'agenda_em' | 'agenda_link' | 'criado_em'>;
 
 /**
@@ -35,15 +33,15 @@ export function leituraDaAgenda(evento: EventoParaAgenda, ultimo: AvisoParaAgend
 
   if (!confirmado) {
     // Cancelado ou na lixeira: só vale a pena dizer algo se ele já esteve lá.
-    if (ultimo?.agenda_status === 'enviado' && !noGoogle) return { estado: 'removido', publico: false, link: null, erro: null, quando: ultimo.agenda_em || ultimo.criado_em };
-    if (ultimo?.agenda_status === 'falhou') return { estado: 'falhou', publico: false, link: null, erro: ultimo.agenda_erro || null, quando: ultimo.criado_em };
-    if (ultimo?.agenda_status === 'pendente') return { estado: 'aguardando', publico: false, link: null, erro: null, quando: ultimo.criado_em };
+    if (ultimo?.agenda_status === 'enviado' && !noGoogle) return { estado: 'removido', link: null, erro: null, quando: ultimo.agenda_em || ultimo.criado_em };
+    if (ultimo?.agenda_status === 'falhou') return { estado: 'falhou', link: null, erro: ultimo.agenda_erro || null, quando: ultimo.criado_em };
+    if (ultimo?.agenda_status === 'pendente') return { estado: 'aguardando', link: null, erro: null, quando: ultimo.criado_em };
     return null;
   }
 
-  if (ultimo?.agenda_status === 'falhou') return { estado: 'falhou', publico: false, link: evento.google_event_link || null, erro: ultimo.agenda_erro || null, quando: ultimo.criado_em };
-  if (ultimo?.agenda_status === 'pendente') return { estado: 'aguardando', publico: false, link: evento.google_event_link || null, erro: null, quando: ultimo.criado_em };
-  if (noGoogle) return { estado: 'sincronizado', publico: !!evento.google_public_event_id, link: evento.google_event_link || null, erro: null, quando: ultimo?.agenda_em || ultimo?.criado_em || '' };
+  if (ultimo?.agenda_status === 'falhou') return { estado: 'falhou', link: evento.google_event_link || null, erro: ultimo.agenda_erro || null, quando: ultimo.criado_em };
+  if (ultimo?.agenda_status === 'pendente') return { estado: 'aguardando', link: evento.google_event_link || null, erro: null, quando: ultimo.criado_em };
+  if (noGoogle) return { estado: 'sincronizado', link: evento.google_event_link || null, erro: null, quando: ultimo?.agenda_em || ultimo?.criado_em || '' };
   return null;
 }
 

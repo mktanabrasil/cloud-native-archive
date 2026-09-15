@@ -93,8 +93,6 @@ export interface AppEvent {
   /** O que o robô criou no Google Calendar (15/09/2026). Vazio = não está lá. */
   google_event_id?: string | null;
   google_event_link?: string | null;
-  google_public_event_id?: string | null;
-  google_public_event_link?: string | null;
   target_audience?: string;
   support_team?: string;
   /** Derivado de `food_items`: "Almoço, Lanche, Café dos voluntários". */
