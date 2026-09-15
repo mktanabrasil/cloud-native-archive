@@ -19,7 +19,7 @@ export function useAvisosDoEvento(eventId: string | null | undefined) {
     setCarregando(true);
     const { data, error } = await supabase
       .from('avisos_de_evento')
-      .select('id, event_id, tipo, status, destinatarios, erro, tentativas, criado_em, enviado_em')
+      .select('id, event_id, tipo, status, destinatarios, erro, tentativas, criado_em, enviado_em, agenda_status, agenda_erro, agenda_em, agenda_link')
       .eq('event_id', eventId)
       .order('criado_em', { ascending: false })
       .limit(5);

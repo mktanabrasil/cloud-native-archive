@@ -3,6 +3,8 @@ import { Mail, AlertTriangle, Clock, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAvisosDoEvento } from '@/hooks/useAvisosDoEvento';
 import { ROTULO_DO_TIPO, textoDeEnviado } from '@/lib/events/avisos';
+import type { AppEvent } from '@/types';
+import { AgendaDoEvento } from './AgendaDoEvento';
 
 /**
  * O último aviso por e-mail de um evento, no painel de detalhe da equipe.
@@ -11,11 +13,25 @@ import { ROTULO_DO_TIPO, textoDeEnviado } from '@/lib/events/avisos';
  * com "Reenviar". Sem isso, um envio que falhou some em silêncio e todo
  * mundo confia numa agenda que não recebeu nada. Um evento pendente, que
  * nunca gerou aviso, não mostra nada.
+ *
+ * Com `event`, mostra abaixo o bloco "Agenda do Google" (mesmo hook, mesma
+ * fila): o aviso de e-mail "ignorado" (só agenda, ou carga inicial) não
+ * aparece como e-mail, mas conta para a agenda.
  */
-export function AvisosDoEvento({ eventId }: { eventId: string }) {
+export function AvisosDoEvento({ eventId, event }: { eventId: string; event?: AppEvent }) {
   const { ultimo, reenviando, reenviar } = useAvisosDoEvento(eventId);
-  if (!ultimo) return null;
+  const agenda = event ? <AgendaDoEvento event={event} ultimo={ultimo} reenviando={reenviando} reenviar={reenviar} /> : null;
+  if (!ultimo || ultimo.status === 'ignorado') return agenda;
 
+  return (
+    <>
+      <BlocoDoEmail ultimo={ultimo} reenviando={reenviando} reenviar={reenviar} />
+      {agenda}
+    </>
+  );
+}
+
+function BlocoDoEmail({ ultimo, reenviando, reenviar }: { ultimo: NonNullable<ReturnType<typeof useAvisosDoEvento>['ultimo']>; reenviando: boolean; reenviar: (id: string) => void }) {
   const quando = format(new Date(ultimo.enviado_em || ultimo.criado_em), "dd/MM 'às' HH:mm");
 
   if (ultimo.status === 'enviado') {
