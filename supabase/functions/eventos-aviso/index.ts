@@ -162,7 +162,7 @@ function capa(e: Evento, cor: string): string {
   </div>`;
 }
 
-function corpoHtml(a: Aviso, site: string): string {
+function corpoHtml(a: Aviso, site: string, linkAgenda?: string | null): string {
   const e = a.evento;
   const cor = CORES_DA_UNIDADE[e.unit] || '#f37964';
   const st = ESTILO_DO_STATUS[a.tipo];
@@ -215,6 +215,7 @@ function corpoHtml(a: Aviso, site: string): string {
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:14px;border-collapse:collapse">${linhas}</table>
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:18px 0 4px"><tr>
           <td><a href="${link}" style="display:block;text-align:center;background:#81e2cf;color:#191b1a;text-decoration:none;font-weight:600;font-size:15px;padding:13px 18px;border-radius:8px;font-family:${FONTE}">Ver o evento</a></td>
+          ${linkAgenda && a.tipo !== 'cancelado' ? `<td style="width:10px"></td><td style="width:44%"><a href="${linkAgenda}" style="display:block;text-align:center;background:#fefdfb;color:#191b1a;border:1px solid #d9d4cc;text-decoration:none;font-weight:600;font-size:15px;padding:12px 16px;border-radius:8px;font-family:${FONTE}">Abrir na agenda</a></td>` : ''}
         </tr></table>
         <p style="margin:10px 0 0;font-size:13px;text-align:center;color:#474747">
           <span style="color:#191b1a;font-weight:600">📎 ${acaoIcs}</span> <span style="color:#8a8f8b">(anexo evento.ics)</span>
@@ -235,7 +236,7 @@ function corpoHtml(a: Aviso, site: string): string {
 </body></html>`;
 }
 
-function corpoTexto(a: Aviso, site: string): string {
+function corpoTexto(a: Aviso, site: string, linkAgenda?: string | null): string {
   const e = a.evento;
   const selo = a.tipo === 'confirmado' ? 'EVENTO CONFIRMADO' : a.tipo === 'cancelado' ? 'EVENTO CANCELADO' : 'DATA ALTERADA';
   const l: string[] = [previa(a), ``, `ANA Brasil · Programação de eventos`, ``, selo, tituloEmTexto(e.title), `Unidade ${e.unit} · ${diaSemana(e.start_datetime)}`, ``];
@@ -244,7 +245,9 @@ function corpoTexto(a: Aviso, site: string): string {
   l.push(`Onde: ${e.location || e.unit}`);
   if (a.tipo === 'cancelado' && e.review_note) l.push(`Motivo: ${e.review_note}`);
   if (a.tipo === 'confirmado' && e.description) l.push(``, e.description);
-  l.push(``, `Ver o evento: ${linkDoEvento(e, site)}`, `Calendário da equipe: ${site}/?tela=calendario`, ``, `Aviso automático do sistema de eventos da ANA Brasil.`);
+  l.push(``, `Ver o evento: ${linkDoEvento(e, site)}`);
+  if (linkAgenda && a.tipo !== 'cancelado') l.push(`Abrir na agenda do Google: ${linkAgenda}`);
+  l.push(`Calendário da equipe: ${site}/?tela=calendario`, ``, `Aviso automático do sistema de eventos da ANA Brasil.`);
   return l.join('\n');
 }
 
@@ -474,16 +477,36 @@ Deno.serve(async (req) => {
     pedidoPor = data.user.email || data.user.id;
   }
 
-  let corpo: { aviso_id?: string } = {};
+  let corpo: { aviso_id?: string; estado?: boolean; carga?: boolean } = {};
   try { corpo = await req.json(); } catch { /* sem corpo: processa os pendentes */ }
 
   const admin = createClient(SUPABASE_URL, SERVICE);
+
+  // { estado: true }: o card do Painel pergunta como está a agenda. Só leitura.
+  if (corpo.estado) {
+    const { data: agendas } = await admin.from('agendas_google').select('chave, calendar_id, nome, compartilhada_com');
+    return json({ so_equipe: SO_EQUIPE, chave_configurada: !!Deno.env.get('GOOGLE_SA_KEY'), agendas: agendas || [] });
+  }
+
+  // { carga: true }: carga inicial — todo confirmado que ainda não está no
+  // Google vira um aviso "confirmado" com e-mail já ignorado (ninguém recebe
+  // e-mail de novo) e agenda pendente; a fila abaixo faz o resto.
+  if (corpo.carga) {
+    if (pedidoPor === 'banco') return json({ error: 'A carga inicial é pedida por uma pessoa logada.' }, 403);
+    const { data: faltam } = await admin.from('events').select('*').eq('status', 'confirmado').is('deleted_at', null).is('google_event_id', null);
+    const linhas = (faltam || []).map((e: any) => ({ event_id: e.id, tipo: 'confirmado', evento: e, antes: null, status: 'ignorado', erro: 'carga inicial: sem e-mail', agenda_status: 'pendente' }));
+    if (linhas.length > 0) {
+      const { error } = await admin.from('avisos_de_evento').insert(linhas);
+      if (error) return json({ error: error.message }, 500);
+    }
+    console.log(`[agenda] carga inicial pedida por ${pedidoPor}: ${linhas.length} evento(s) enfileirado(s)`);
+  }
 
   // Os pendentes, mais o aviso pedido (Reenviar), mesmo que já tenha falhado.
   const COLUNAS = 'id, event_id, tipo, evento, antes, tentativas, status, agenda_status';
   const { data: pendentes, error: erroFila } = await admin
     .from('avisos_de_evento').select(COLUNAS)
-    .or('status.eq.pendente,agenda_status.eq.pendente').order('criado_em', { ascending: true }).limit(20);
+    .or('status.eq.pendente,agenda_status.eq.pendente').order('criado_em', { ascending: true }).limit(corpo.carga ? 200 : 20);
   if (erroFila) return json({ error: erroFila.message }, 500);
   const fila: Aviso[] = [...(pendentes as Aviso[] || [])];
   // Reenviar: o aviso pedido entra mesmo que já tenha falhado, nos dois passos.
@@ -535,6 +558,7 @@ Deno.serve(async (req) => {
     const para = destinatarios(a.evento, (perfis as Perfil[]) || []);
     const precisaEmail = a.status === 'pendente' || (forcado === a.id && a.status === 'falhou');
     const precisaAgenda = a.agenda_status === 'pendente' || (forcado === a.id && a.agenda_status === 'falhou');
+    let linkAgenda: string | null = a.evento.google_event_link || null;
 
     // ----- passo 2: agenda -----
     if (precisaAgenda) {
@@ -544,6 +568,7 @@ Deno.serve(async (req) => {
       } else {
         try {
           const link = await sincronizarAgenda(admin, agenda.token, agenda.ids, a, SITE);
+          linkAgenda = link;
           await admin.from('avisos_de_evento').update({ agenda_status: 'enviado', agenda_erro: null, agenda_em: new Date().toISOString(), agenda_link: link }).eq('id', a.id);
           resultado[a.id + ':agenda'] = 'enviado';
         } catch (e) {
@@ -564,8 +589,8 @@ Deno.serve(async (req) => {
           from: remetente,
           to: para,
           subject: assunto(a),
-          text: corpoTexto(a, SITE),
-          html: corpoHtml(a, SITE),
+          text: corpoTexto(a, SITE, linkAgenda),
+          html: corpoHtml(a, SITE, linkAgenda),
           attachments: [{ filename: 'evento.ics', contentType: 'text/calendar; charset=utf-8; method=' + (a.tipo === 'cancelado' ? 'CANCEL' : 'PUBLISH'), content: ics(a, SITE) }],
         });
       } finally {

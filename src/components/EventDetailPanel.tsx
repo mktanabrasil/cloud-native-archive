@@ -258,7 +258,7 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
 
             {/* O e-mail que saiu (ou falhou) quando este evento foi confirmado,
                 cancelado ou mudou de data. Só a equipe vê este painel. */}
-            <AvisosDoEvento eventId={event.id} />
+            <AvisosDoEvento eventId={event.id} event={event} />
           </div>
 
           {(onEdit || onDelete) && (

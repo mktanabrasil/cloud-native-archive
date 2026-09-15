@@ -8,6 +8,7 @@ import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AppEvent, EventStatus, UNITS, EVENT_STATUSES, EVENT_TYPES, Unit } from '@/types';
 import { CalendarDays, CheckCircle2, Clock, AlertCircle, Plus, ChevronLeft, ChevronRight, ChevronDown, AlertTriangle, Camera, Handshake, Search, LayoutGrid, List, Calendar as CalendarIcon, Globe, Lock } from 'lucide-react';
+import { MarcaDaAgenda } from '@/components/events/AgendaDoEvento';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -367,6 +368,7 @@ export default function Dashboard() {
                         <Lock className="h-3 w-3 text-muted-foreground shrink-0" />
                       )}
                       <span className="flex-1 text-xs font-medium text-foreground line-clamp-1 sm:text-sm">{e.title}</span>
+                      <MarcaDaAgenda event={e} />
                     </div>
                     <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-3">
                       <span className="text-[10px] text-muted-foreground whitespace-nowrap sm:text-xs">

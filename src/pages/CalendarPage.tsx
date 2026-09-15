@@ -34,6 +34,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, List, LayoutGrid, Search, Plus } from 'lucide-react';
+import { MarcaDaAgenda } from '@/components/events/AgendaDoEvento';
 import { Checkbox } from '@/components/ui/checkbox';
 import EventFormDialog from '@/components/EventFormDialog';
 import EventDetailPanel from '@/components/EventDetailPanel';
@@ -561,7 +562,7 @@ export default function CalendarPage() {
                   <span className={`h-3 w-3 rounded-full ${unitDotColors[e.unit]}`} />
                   <div className="flex-1 min-w-0 text-left">
                     <p className="font-medium text-foreground truncate">{e.title}</p>
-                    <p className="text-xs text-muted-foreground">{e.unit} · {e.location}</p>
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="truncate">{e.unit} · {e.location}</span><MarcaDaAgenda event={e} /></p>
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-sm text-foreground">
