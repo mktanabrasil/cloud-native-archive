@@ -46,6 +46,12 @@ const json = (corpo: unknown, status = 200) =>
   new Response(JSON.stringify(corpo), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
 const SEMPRE_RECEBEM = ['mkt@anabrasil.org', 'contato@anabrasil.org', 'parceiros@anabrasil.org', 'eventos@anabrasil.org'];
+/**
+ * Chave de lançamento (15/09/2026): enquanto AVISOS_SO_EQUIPE=true no Coolify,
+ * e-mail e agenda ficam SÓ com as quatro caixas fixas — a gestão das unidades e
+ * quem criou entram quando a ferramenta for lançada (basta remover a variável).
+ */
+const SO_EQUIPE = (Deno.env.get('AVISOS_SO_EQUIPE') || '').trim().toLowerCase() === 'true';
 const FUSO = 'America/Sao_Paulo';
 
 type Evento = Record<string, any>;
@@ -72,6 +78,7 @@ function quando(e: Evento): string {
 
 function destinatarios(evento: Evento, perfis: Perfil[]): string[] {
   const lista = new Set<string>(SEMPRE_RECEBEM);
+  if (SO_EQUIPE) return Array.from(lista);
   for (const p of perfis) {
     if (!p.email || p.is_active === false) continue;
     const daUnidade = !!p.unit && p.unit === evento.unit && p.unit !== 'Administração' && p.permission_level !== 'usuario_padrao';
@@ -319,6 +326,7 @@ async function google(token: string, metodo: string, caminho: string, corpo?: un
 /** Quem lê as agendas: as caixas fixas e a gestão ativa de alguma unidade (mesma regra do e-mail). */
 function leitoresDasAgendas(perfis: Perfil[]): string[] {
   const lista = new Set<string>(SEMPRE_LEEM);
+  if (SO_EQUIPE) return Array.from(lista);
   for (const p of perfis) {
     if (!p.email || p.is_active === false) continue;
     const gere = p.permission_level && p.permission_level !== 'usuario_padrao';
@@ -329,8 +337,9 @@ function leitoresDasAgendas(perfis: Perfil[]): string[] {
 
 /**
  * Garante que as duas agendas existem (cria na primeira vez) e que todo mundo
- * que deve ler já recebeu o compartilhamento. Idempotente: roda a cada chamada,
- * mas só fala com o Google quando falta algo.
+ * que deve ler já recebeu o compartilhamento — e que quem NÃO deve mais ler
+ * (saiu da lista, ou a chave de lançamento está ligada) perde o acesso.
+ * Idempotente: roda a cada chamada, mas só fala com o Google quando falta algo.
  */
 async function garantirAgendas(admin: any, token: string, perfis: Perfil[]): Promise<Record<'equipe' | 'publica', string>> {
   const { data: linhas } = await admin.from('agendas_google').select('chave, calendar_id, compartilhada_com');
@@ -349,17 +358,29 @@ async function garantirAgendas(admin: any, token: string, perfis: Perfil[]): Pro
     }
     ids[chave] = linha.calendar_id;
 
-    const faltam = leitoresDasAgendas(perfis).filter(e => !linha!.compartilhada_com.includes(e));
-    if (faltam.length > 0) {
-      const ok: string[] = [];
-      for (const email of faltam) {
-        try {
-          await google(token, 'POST', `/calendars/${encodeURIComponent(linha.calendar_id)}/acl?sendNotifications=true`, { role: 'reader', scope: { type: 'user', value: email } });
-          ok.push(email);
-        } catch (e) { console.warn(`[agenda] não consegui compartilhar ${chave} com ${email}:`, e instanceof Error ? e.message : e); }
-      }
-      if (ok.length > 0) await admin.from('agendas_google').update({ compartilhada_com: [...linha.compartilhada_com, ...ok] }).eq('chave', chave);
+    const leitores = leitoresDasAgendas(perfis);
+    const faltam = leitores.filter(e => !linha!.compartilhada_com.includes(e));
+    const sobram = linha.compartilhada_com.filter(e => !leitores.includes(e));
+    if (faltam.length === 0 && sobram.length === 0) continue;
+
+    let lista = [...linha.compartilhada_com];
+    for (const email of faltam) {
+      try {
+        await google(token, 'POST', `/calendars/${encodeURIComponent(linha.calendar_id)}/acl?sendNotifications=true`, { role: 'reader', scope: { type: 'user', value: email } });
+        lista.push(email);
+      } catch (e) { console.warn(`[agenda] não consegui compartilhar ${chave} com ${email}:`, e instanceof Error ? e.message : e); }
     }
+    for (const email of sobram) {
+      // A regra de acesso de uma pessoa tem id fixo "user:<e-mail>". 404 = já não tinha.
+      try {
+        await google(token, 'DELETE', `/calendars/${encodeURIComponent(linha.calendar_id)}/acl/${encodeURIComponent('user:' + email)}`);
+        lista = lista.filter(e => e !== email);
+      } catch (e) {
+        if ((e as { status?: number }).status === 404) lista = lista.filter(x => x !== email);
+        else console.warn(`[agenda] não consegui revogar ${chave} de ${email}:`, e instanceof Error ? e.message : e);
+      }
+    }
+    await admin.from('agendas_google').update({ compartilhada_com: lista }).eq('chave', chave);
   }
   return ids;
 }
