@@ -66,3 +66,21 @@ describe('textoDeEnviado', () => {
     expect(textoDeEnviado(7)).toBe('Aviso enviado a 7 endereços');
   });
 });
+
+describe('tipoDoAviso: "atualizado" (só agenda)', () => {
+  const conf = { status: 'confirmado', deleted_at: null, start_datetime: '2026-10-10T18:00:00Z', end_datetime: '2026-10-10T20:00:00Z', location: 'Unidade DIC', title: 'Chá', description: 'a', visibility: 'publico', unit: 'DIC' } as const;
+
+  it('mudar título, descrição, visibilidade ou unidade de um confirmado é "atualizado"', () => {
+    expect(tipoDoAviso(conf, { ...conf, title: 'Chá da tarde' })).toBe('atualizado');
+    expect(tipoDoAviso(conf, { ...conf, description: 'b' })).toBe('atualizado');
+    expect(tipoDoAviso(conf, { ...conf, visibility: 'interno' })).toBe('atualizado');
+  });
+
+  it('data ou local ganham de conteúdo: continua "alterado"', () => {
+    expect(tipoDoAviso(conf, { ...conf, title: 'x', location: 'Quadra' })).toBe('alterado');
+  });
+
+  it('mesmo conteúdo, nada', () => {
+    expect(tipoDoAviso(conf, { ...conf })).toBeNull();
+  });
+});

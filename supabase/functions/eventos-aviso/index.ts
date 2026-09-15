@@ -24,9 +24,18 @@ addEventListener('error', (e) => { console.error('[eventos-aviso] erro solto:', 
  * Destinatários (decisão de 14/09/2026): sempre mkt@, contato@, parceiros@ e
  * eventos@anabrasil.org; os perfis ativos da unidade do evento; quem criou.
  *
+ * Segundo passo (15/09/2026): a Agenda do Google. O robô (conta de serviço,
+ * GOOGLE_SA_KEY) é dono de duas agendas — "ANA · Eventos" para a equipe e
+ * "Programação ANA" pública — que ele cria na primeira execução e guarda em
+ * `agendas_google`. Cada aviso vira criar/atualizar/remover o evento nelas;
+ * o id fica em `events.google_event_id` / `google_public_event_id`. As
+ * agendas são compartilhadas como leitura com as caixas fixas e com a gestão
+ * cadastrada por unidade (mesma regra do e-mail). O tipo "atualizado"
+ * (título/descrição/visibilidade/unidade) só mexe na agenda, sem e-mail.
+ *
  * Segredos (Coolify): SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS,
- * AVISOS_REMETENTE (ex.: "ANA Brasil · Eventos <eventos@anabrasil.org>"),
- * AVISOS_SEGREDO, SITE_URL (padrão https://app.anabrasil.org).
+ * AVISOS_REMETENTE, AVISOS_SEGREDO, SITE_URL (padrão https://app.anabrasil.org),
+ * GOOGLE_SA_KEY (JSON inteiro da conta de serviço; sem ela a agenda é ignorada).
  */
 
 const cors = {
@@ -40,7 +49,8 @@ const SEMPRE_RECEBEM = ['mkt@anabrasil.org', 'contato@anabrasil.org', 'parceiros
 const FUSO = 'America/Sao_Paulo';
 
 type Evento = Record<string, any>;
-interface Aviso { id: string; event_id: string; tipo: 'confirmado' | 'cancelado' | 'alterado'; evento: Evento; antes: Evento | null; tentativas: number }
+type TipoDeAviso = 'confirmado' | 'cancelado' | 'alterado' | 'atualizado';
+interface Aviso { id: string; event_id: string; tipo: TipoDeAviso; evento: Evento; antes: Evento | null; tentativas: number; status: string; agenda_status: string }
 interface Perfil { email: string | null; name: string | null; unit: string | null; is_active: boolean | null; permission_level: string | null }
 
 // ---------- texto ----------
@@ -254,6 +264,173 @@ function ics(a: Aviso, site: string): string {
   ].join('\r\n');
 }
 
+// ---------- Agenda do Google ----------
+//
+// Sem biblioteca: um JWT RS256 assinado com a chave da conta de serviço vira
+// um access token, e a API REST do Calendar faz o resto. Menos dependência,
+// menos surpresa no runtime.
+
+interface ChaveDoRobo { client_email: string; private_key: string; token_uri?: string }
+const ESCOPO_AGENDA = 'https://www.googleapis.com/auth/calendar';
+const API_AGENDA = 'https://www.googleapis.com/calendar/v3';
+const NOMES_DAS_AGENDAS: Record<'equipe' | 'publica', string> = { equipe: 'ANA · Eventos', publica: 'Programação ANA' };
+/** Paleta do Google (colorId 1–11), a mais próxima da cor de cada unidade. */
+const COR_GOOGLE_DA_UNIDADE: Record<string, string> = { 'DIC': '7', 'Nilópolis': '2', 'Santana': '5', 'Administração': '6' };
+const SEMPRE_LEEM = SEMPRE_RECEBEM;
+
+const b64url = (dados: ArrayBuffer | string) => {
+  const bin = typeof dados === 'string' ? new TextEncoder().encode(dados) : new Uint8Array(dados);
+  let str = ''; bin.forEach(b => { str += String.fromCharCode(b); });
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+};
+
+async function tokenDoRobo(chave: ChaveDoRobo): Promise<string> {
+  const agora = Math.floor(Date.now() / 1000);
+  const cabecalho = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const corpo = b64url(JSON.stringify({ iss: chave.client_email, scope: ESCOPO_AGENDA, aud: chave.token_uri || 'https://oauth2.googleapis.com/token', iat: agora, exp: agora + 3600 }));
+  const pem = chave.private_key.replace(/-----[A-Z ]+-----/g, '').replace(/\s+/g, '');
+  const der = Uint8Array.from(atob(pem), c => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+  const assinatura = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(`${cabecalho}.${corpo}`));
+  const jwt = `${cabecalho}.${corpo}.${b64url(assinatura)}`;
+  const r = await fetch(chave.token_uri || 'https://oauth2.googleapis.com/token', {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwt }),
+  });
+  if (!r.ok) throw new Error(`Google não deu token ao robô: ${r.status} ${(await r.text()).slice(0, 200)}`);
+  return (await r.json()).access_token as string;
+}
+
+async function google(token: string, metodo: string, caminho: string, corpo?: unknown): Promise<any> {
+  const r = await fetch(`${API_AGENDA}${caminho}`, {
+    method: metodo,
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: corpo === undefined ? undefined : JSON.stringify(corpo),
+  });
+  if (r.status === 204) return null;
+  const texto = await r.text();
+  if (!r.ok) {
+    const e = new Error(`Google ${r.status} em ${metodo} ${caminho}: ${texto.slice(0, 300)}`) as Error & { status: number };
+    e.status = r.status; throw e;
+  }
+  return texto ? JSON.parse(texto) : null;
+}
+
+/** Quem lê as agendas: as caixas fixas e a gestão ativa de alguma unidade (mesma regra do e-mail). */
+function leitoresDasAgendas(perfis: Perfil[]): string[] {
+  const lista = new Set<string>(SEMPRE_LEEM);
+  for (const p of perfis) {
+    if (!p.email || p.is_active === false) continue;
+    const gere = p.permission_level && p.permission_level !== 'usuario_padrao';
+    if (gere) lista.add(p.email.trim().toLowerCase());
+  }
+  return Array.from(lista);
+}
+
+/**
+ * Garante que as duas agendas existem (cria na primeira vez) e que todo mundo
+ * que deve ler já recebeu o compartilhamento. Idempotente: roda a cada chamada,
+ * mas só fala com o Google quando falta algo.
+ */
+async function garantirAgendas(admin: any, token: string, perfis: Perfil[]): Promise<Record<'equipe' | 'publica', string>> {
+  const { data: linhas } = await admin.from('agendas_google').select('chave, calendar_id, compartilhada_com');
+  const atuais = new Map<string, { calendar_id: string; compartilhada_com: string[] }>((linhas || []).map((l: any) => [l.chave, l]));
+  const ids = {} as Record<'equipe' | 'publica', string>;
+
+  for (const chave of ['equipe', 'publica'] as const) {
+    let linha = atuais.get(chave);
+    if (!linha) {
+      const criada = await google(token, 'POST', '/calendars', { summary: NOMES_DAS_AGENDAS[chave], timeZone: FUSO, description: chave === 'publica' ? 'Programação pública da ANA Brasil. Gerada pelo app.' : 'Eventos confirmados no app da ANA Brasil. Edite no app, não aqui.' });
+      if (chave === 'publica') {
+        await google(token, 'POST', `/calendars/${encodeURIComponent(criada.id)}/acl`, { role: 'reader', scope: { type: 'default' } });
+      }
+      linha = { calendar_id: criada.id, compartilhada_com: [] };
+      await admin.from('agendas_google').insert({ chave, calendar_id: criada.id, nome: NOMES_DAS_AGENDAS[chave], compartilhada_com: [] });
+    }
+    ids[chave] = linha.calendar_id;
+
+    const faltam = leitoresDasAgendas(perfis).filter(e => !linha!.compartilhada_com.includes(e));
+    if (faltam.length > 0) {
+      const ok: string[] = [];
+      for (const email of faltam) {
+        try {
+          await google(token, 'POST', `/calendars/${encodeURIComponent(linha.calendar_id)}/acl?sendNotifications=true`, { role: 'reader', scope: { type: 'user', value: email } });
+          ok.push(email);
+        } catch (e) { console.warn(`[agenda] não consegui compartilhar ${chave} com ${email}:`, e instanceof Error ? e.message : e); }
+      }
+      if (ok.length > 0) await admin.from('agendas_google').update({ compartilhada_com: [...linha.compartilhada_com, ...ok] }).eq('chave', chave);
+    }
+  }
+  return ids;
+}
+
+function corpoDoEventoGoogle(e: Evento, site: string) {
+  const quem = e.reviewed_by || e.updated_by || e.created_by || '';
+  const quando = e.reviewed_at || e.updated_at;
+  const rodape = [quem ? `Confirmado por ${quem}${quando ? ' em ' + dataLonga(quando) : ''}.` : '', `Ver no app da ANA: ${linkDoEvento(e, site)}`].filter(Boolean).join('\n');
+  return {
+    summary: tituloEmTexto(e.title),
+    description: [e.description || '', '', rodape].join('\n').trim(),
+    location: e.location || (e.unit ? `Unidade ${e.unit}` : undefined),
+    start: { dateTime: new Date(e.start_datetime).toISOString(), timeZone: FUSO },
+    end: { dateTime: new Date(e.end_datetime || e.start_datetime).toISOString(), timeZone: FUSO },
+    colorId: COR_GOOGLE_DA_UNIDADE[e.unit] || '8',
+    source: { title: 'App ANA Brasil', url: linkDoEvento(e, site) },
+    extendedProperties: { private: { anaEventId: e.id, anaUnit: e.unit || '' } },
+    transparency: 'transparent',
+    guestsCanInviteOthers: false,
+    guestsCanModify: false,
+  };
+}
+
+/** Cria ou atualiza numa agenda; devolve id e link. Se o id guardado sumiu no Google, recria. */
+async function gravarNaAgenda(token: string, calendarId: string, idAtual: string | null, corpo: unknown): Promise<{ id: string; link: string }> {
+  const base = `/calendars/${encodeURIComponent(calendarId)}/events`;
+  if (idAtual) {
+    try {
+      const r = await google(token, 'PATCH', `${base}/${encodeURIComponent(idAtual)}`, corpo);
+      if (r?.status !== 'cancelled') return { id: r.id, link: r.htmlLink };
+    } catch (e) { if ((e as any).status !== 404 && (e as any).status !== 410) throw e; }
+  }
+  const r = await google(token, 'POST', base, corpo);
+  return { id: r.id, link: r.htmlLink };
+}
+
+async function removerDaAgenda(token: string, calendarId: string, id: string | null) {
+  if (!id) return;
+  try { await google(token, 'DELETE', `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(id)}`); }
+  catch (e) { if ((e as any).status !== 404 && (e as any).status !== 410) throw e; }
+}
+
+/** O passo "agenda" de um aviso. Devolve o link da agenda da equipe, quando houver. */
+async function sincronizarAgenda(admin: any, token: string, ids: Record<'equipe' | 'publica', string>, a: Aviso, site: string): Promise<string | null> {
+  // o evento como está AGORA no banco (o aviso guarda uma foto; os ids do Google vivem na linha)
+  const { data: atual } = await admin.from('events').select('id, title, description, unit, location, start_datetime, end_datetime, status, visibility, deleted_at, slug, created_by, updated_by, updated_at, reviewed_by, reviewed_at, google_event_id, google_public_event_id').eq('id', a.event_id).maybeSingle();
+  const e: Evento = atual || a.evento;
+  const confirmado = e.status === 'confirmado' && !e.deleted_at;
+
+  if (a.tipo === 'cancelado' || !confirmado) {
+    await removerDaAgenda(token, ids.equipe, e.google_event_id);
+    await removerDaAgenda(token, ids.publica, e.google_public_event_id);
+    await admin.from('events').update({ google_event_id: null, google_event_link: null, google_public_event_id: null, google_public_event_link: null }).eq('id', a.event_id);
+    return null;
+  }
+
+  const corpo = corpoDoEventoGoogle(e, site);
+  const equipe = await gravarNaAgenda(token, ids.equipe, e.google_event_id, corpo);
+  let publica: { id: string; link: string } | null = null;
+  if (e.visibility === 'publico') {
+    publica = await gravarNaAgenda(token, ids.publica, e.google_public_event_id, corpo);
+  } else {
+    await removerDaAgenda(token, ids.publica, e.google_public_event_id);
+  }
+  await admin.from('events').update({
+    google_event_id: equipe.id, google_event_link: equipe.link,
+    google_public_event_id: publica?.id ?? null, google_public_event_link: publica?.link ?? null,
+  }).eq('id', a.event_id);
+  return equipe.link;
+}
+
 // ---------- entrada ----------
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
@@ -282,18 +459,39 @@ Deno.serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SERVICE);
 
   // Os pendentes, mais o aviso pedido (Reenviar), mesmo que já tenha falhado.
+  const COLUNAS = 'id, event_id, tipo, evento, antes, tentativas, status, agenda_status';
   const { data: pendentes, error: erroFila } = await admin
-    .from('avisos_de_evento').select('id, event_id, tipo, evento, antes, tentativas')
-    .eq('status', 'pendente').order('criado_em', { ascending: true }).limit(20);
+    .from('avisos_de_evento').select(COLUNAS)
+    .or('status.eq.pendente,agenda_status.eq.pendente').order('criado_em', { ascending: true }).limit(20);
   if (erroFila) return json({ error: erroFila.message }, 500);
   const fila: Aviso[] = [...(pendentes as Aviso[] || [])];
+  // Reenviar: o aviso pedido entra mesmo que já tenha falhado, nos dois passos.
+  let forcado: string | null = null;
   if (corpo.aviso_id && !fila.some(a => a.id === corpo.aviso_id)) {
-    const { data: um } = await admin.from('avisos_de_evento').select('id, event_id, tipo, evento, antes, tentativas').eq('id', corpo.aviso_id).maybeSingle();
-    if (um) fila.push(um as Aviso);
+    const { data: um } = await admin.from('avisos_de_evento').select(COLUNAS).eq('id', corpo.aviso_id).maybeSingle();
+    if (um) { fila.push(um as Aviso); forcado = um.id; }
   }
-  if (fila.length === 0) return json({ processados: 0 });
 
   const { data: perfis } = await admin.from('profiles').select('email, name, unit, is_active, permission_level');
+
+  // Agenda do Google: só com a chave do robô. Sem ela, o passo é "ignorado" e
+  // o painel não mostra nada de agenda — o e-mail segue normal.
+  let agenda: { token: string; ids: Record<'equipe' | 'publica', string> } | null = null;
+  let erroDaAgenda: string | null = null;
+  const chaveBruta = Deno.env.get('GOOGLE_SA_KEY');
+  if (chaveBruta) {
+    try {
+      const chave = JSON.parse(chaveBruta) as ChaveDoRobo;
+      const token = await tokenDoRobo(chave);
+      const ids = await garantirAgendas(admin, token, (perfis as Perfil[]) || []);
+      agenda = { token, ids };
+    } catch (e) {
+      erroDaAgenda = e instanceof Error ? e.message : String(e);
+      console.error('[agenda] indisponível nesta chamada:', erroDaAgenda);
+    }
+  }
+
+  if (fila.length === 0) return json({ processados: 0, agenda: agenda ? 'ok' : (erroDaAgenda || 'sem chave') });
 
   // 465 = TLS direto; 587 = STARTTLS. SMTP_TLS só força, quando existir.
   const porta = Number(Deno.env.get('SMTP_PORT') || 587);
@@ -314,6 +512,29 @@ Deno.serve(async (req) => {
   const resultado: Record<string, string> = {};
   for (const a of fila) {
     const para = destinatarios(a.evento, (perfis as Perfil[]) || []);
+    const precisaEmail = a.status === 'pendente' || (forcado === a.id && a.status === 'falhou');
+    const precisaAgenda = a.agenda_status === 'pendente' || (forcado === a.id && a.agenda_status === 'falhou');
+
+    // ----- passo 2: agenda -----
+    if (precisaAgenda) {
+      if (!agenda) {
+        if (!chaveBruta) await admin.from('avisos_de_evento').update({ agenda_status: 'ignorado', agenda_erro: 'agenda não configurada (GOOGLE_SA_KEY)' }).eq('id', a.id);
+        else await admin.from('avisos_de_evento').update({ agenda_status: 'falhou', agenda_erro: (erroDaAgenda || 'agenda indisponível').slice(0, 500) }).eq('id', a.id);
+      } else {
+        try {
+          const link = await sincronizarAgenda(admin, agenda.token, agenda.ids, a, SITE);
+          await admin.from('avisos_de_evento').update({ agenda_status: 'enviado', agenda_erro: null, agenda_em: new Date().toISOString(), agenda_link: link }).eq('id', a.id);
+          resultado[a.id + ':agenda'] = 'enviado';
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          await admin.from('avisos_de_evento').update({ agenda_status: 'falhou', agenda_erro: msg.slice(0, 500) }).eq('id', a.id);
+          resultado[a.id + ':agenda'] = `falhou: ${msg}`;
+        }
+      }
+    }
+
+    // ----- passo 1: e-mail -----
+    if (!precisaEmail) continue;
     try {
       if (!smtp.host || !smtp.auth.user) throw new Error('SMTP não configurado (SMTP_HOST/SMTP_USER/SMTP_PASS)');
       const transporte = nodemailer.createTransport(smtp);
