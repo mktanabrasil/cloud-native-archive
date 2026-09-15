@@ -81,50 +81,147 @@ function linkDoEvento(e: Evento, site: string): string {
   return e.visibility === 'publico' && e.slug ? `${site}/eventos?slug=${encodeURIComponent(e.slug)}` : `${site}/?tela=calendario`;
 }
 
+// ---------- HTML na identidade do app (mockup aprovado em 15/09/2026) ----------
+//
+// Peça por peça do app: cabeçalho com o logo e "anabrasil"; o card da vitrine
+// como capa (banner 16:9 quando houver, senão a cor da unidade com o título em
+// caixa alta); o bloco de data da visão Lista do calendário; selo de status
+// verde-suave/coral/âmbar; botão menta com texto escuro; rodapé público.
+// Uma coluna de 600 px, cores fixas (o Gmail escuro inverte e-mails que seguem
+// o tema), fontes com fallback, tabelas para o Outlook.
+
+const CORES_DA_UNIDADE: Record<string, string> = {
+  'DIC': '#01adff',
+  'Nilópolis': '#81e2cf',
+  'Santana': '#fbce00',
+  'Administração': '#f37964',
+};
+const ESTILO_DO_STATUS = {
+  confirmado: { rotulo: 'Confirmado', bg: '#e4f4ec', fg: '#1e7a4a', borda: '#a9dcc0' },
+  cancelado: { rotulo: 'Cancelado', bg: '#fdeae6', fg: '#b3261e', borda: '#f3b8ad' },
+  alterado: { rotulo: 'Data alterada', bg: '#fdf3d6', fg: '#8a5a00', borda: '#f1d98a' },
+} as const;
+const FONTE = "Poppins, Arial, Helvetica, sans-serif";
+const FRASE_DA_ANA = 'Construindo oportunidades para transformar vidas e inspirar voos mais altos.';
+
+const mesCurto = (iso: string) => fmt(iso, { month: 'short' }).replace('.', '');
+const diaDoMes = (iso: string) => fmt(iso, { day: '2-digit' });
+const semanaCurta = (iso: string) => fmt(iso, { weekday: 'short' }).replace('.', '');
+const semanaLonga = (iso: string) => { const t = fmt(iso, { weekday: 'long', day: 'numeric', month: 'long' }); return t.charAt(0).toUpperCase() + t.slice(1); };
+const horaCurta = (iso: string) => hora(iso).replace(':00', 'h').replace(':', 'h');
+
+/** O trecho que o Gmail mostra ao lado do assunto. */
+function previa(a: Aviso): string {
+  const e = a.evento;
+  const quandoCurto = `${dataCurta(e.start_datetime)}, das ${horaCurta(e.start_datetime)} às ${horaCurta(e.end_datetime || e.start_datetime)}`;
+  if (a.tipo === 'cancelado') return `Estava marcado para ${dataCurta(e.start_datetime)} · ${e.location || 'Unidade ' + e.unit}`;
+  if (a.tipo === 'alterado') return `Agora é ${quandoCurto} · ${e.location || 'Unidade ' + e.unit}`;
+  return `${quandoCurto} · ${e.location || 'Unidade ' + e.unit}`;
+}
+
+function blocoDeData(e: Evento, cancelado: boolean): string {
+  const i = e.start_datetime;
+  return `<td style="width:64px;vertical-align:top;padding-right:14px">
+    <div style="border:1px solid #e6e1d9;border-radius:10px;text-align:center;overflow:hidden;background:#fefdfb${cancelado ? ';opacity:.55' : ''}">
+      <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;color:#fefdfb;background:#191b1a;padding:3px 0">${escape(mesCurto(i))}</div>
+      <div style="font-size:26px;font-weight:800;line-height:1.1;padding:6px 0 2px;color:#191b1a${cancelado ? ';text-decoration:line-through' : ''}">${diaDoMes(i)}</div>
+      <div style="font-size:10px;color:#474747;padding-bottom:6px">${escape(semanaCurta(i))}</div>
+    </div></td>`;
+}
+
+function capa(e: Evento, cor: string): string {
+  const banner = e.banner_url_desktop || e.banner_image_desktop || e.banner_url_mobile || e.banner_image_mobile;
+  const selo = (fundo: string, texto: string) => `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:${fundo};color:${texto};font-size:12px;font-weight:600">${escape(e.unit || '')}</span>`;
+  if (banner) {
+    return `<div style="border-bottom:4px solid ${cor};background:#e6e1d9">
+      <img src="${escape(banner)}" width="600" alt="" style="display:block;width:100%;height:auto;max-height:340px;object-fit:cover">
+    </div>
+    <div style="padding:14px 24px 0">${selo(cor, '#191b1a')}</div>`;
+  }
+  const tamanho = tituloEmTexto(e.title).length < 30 ? '30px' : '24px';
+  return `<div style="background:${cor};padding:20px 22px 22px">
+    <div style="margin-bottom:26px">${selo('rgba(25,27,26,.85)', '#fefdfb')}</div>
+    <div style="font-size:${tamanho};font-weight:800;line-height:1.05;text-transform:uppercase;color:#191b1a;letter-spacing:-.01em;word-break:break-word;font-family:${FONTE}">${escape(tituloEmTexto(e.title))}</div>
+  </div>`;
+}
+
 function corpoHtml(a: Aviso, site: string): string {
   const e = a.evento;
-  const cor = a.tipo === 'confirmado' ? '#0f6e63' : a.tipo === 'cancelado' ? '#b3261e' : '#9a5b00';
-  const seloBg = a.tipo === 'confirmado' ? '#e3f3ea' : a.tipo === 'cancelado' ? '#fbe9e7' : '#fff1dc';
-  const selo = a.tipo === 'confirmado' ? 'Evento confirmado' : a.tipo === 'cancelado' ? 'Evento cancelado' : 'Data alterada';
+  const cor = CORES_DA_UNIDADE[e.unit] || '#f37964';
+  const st = ESTILO_DO_STATUS[a.tipo];
+  const comBanner = !!(e.banner_url_desktop || e.banner_image_desktop || e.banner_url_mobile || e.banner_image_mobile);
   const quem = e.reviewed_by || e.updated_by || 'a administração';
   const quandoQuem = e.reviewed_at || e.updated_at ? `${quem}, em ${dataLonga(e.reviewed_at || e.updated_at)} às ${hora(e.reviewed_at || e.updated_at)}` : quem;
-  const linha = (k: string, v: string) => `<tr><td style="padding:9px 0;border-top:1px solid #eee;color:#6b6f6c;width:110px;vertical-align:top">${k}</td><td style="padding:9px 0;border-top:1px solid #eee;vertical-align:top">${v}</td></tr>`;
+  const linha = (k: string, v: string) => `<tr><td style="width:120px;padding:9px 0;border-top:1px solid #efece6;color:#474747;vertical-align:top;font-size:14px">${k}</td><td style="padding:9px 0;border-top:1px solid #efece6;vertical-align:top;font-size:14px;color:#191b1a">${v}</td></tr>`;
 
   let linhas = '';
   if (a.tipo === 'alterado' && a.antes) {
-    linhas += linha('Antes', `<s>${escape(quando(a.antes))}${a.antes.location !== e.location ? ` · ${escape(a.antes.location || '')}` : ''}</s>`);
+    linhas += linha('Antes', `<s style="color:#474747">${escape(quando(a.antes))}${a.antes.location !== e.location ? ' · ' + escape(a.antes.location || '') : ''}</s>`);
     linhas += linha('Agora', `<b>${escape(quando(e))}</b>`);
   } else {
     linhas += linha(a.tipo === 'cancelado' ? 'Estava marcado' : 'Quando', `<b>${escape(quando(e))}</b>`);
   }
-  linhas += linha('Onde', escape(e.location || e.unit || ''));
+  linhas += linha('Onde', escape(e.location || 'Unidade ' + (e.unit || '')));
   if (a.tipo === 'confirmado') linhas += linha('Visibilidade', e.visibility === 'publico' ? 'Público · aparece no site' : 'Interno · só a equipe');
   linhas += linha(a.tipo === 'confirmado' ? 'Confirmado por' : a.tipo === 'cancelado' ? 'Cancelado por' : 'Alterado por', escape(quandoQuem));
   if (a.tipo === 'cancelado' && e.review_note) linhas += linha('Motivo', escape(e.review_note));
   if (a.tipo === 'confirmado' && e.description) linhas += linha('Descrição', escape(e.description).replace(/\n/g, '<br>'));
 
-  const ics = a.tipo === 'cancelado' ? 'remove o evento da sua agenda, se você o adicionou.' : a.tipo === 'alterado' ? 'atualiza a data na sua agenda.' : 'adiciona à sua agenda (Google, Outlook, iPhone) com um toque.';
+  const acaoIcs = a.tipo === 'cancelado' ? 'Remover da minha agenda' : a.tipo === 'alterado' ? 'Atualizar na minha agenda' : 'Adicionar à minha agenda';
+  const link = linkDoEvento(e, site);
 
-  return `<!doctype html><html lang="pt-BR"><body style="margin:0;background:#f4f4f2;font-family:Arial,Helvetica,sans-serif;color:#1b1b1b">
-<div style="padding:24px 12px"><div style="max-width:560px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #e6e3dd">
-<div style="height:6px;background:${cor}"></div>
-<div style="padding:18px 24px 0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#6b6f6c;font-weight:700">ANA Brasil · Programação de eventos</div>
-<span style="display:inline-block;margin:14px 24px 0;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;background:${seloBg};color:${cor}">${selo}</span>
-<h1 style="font-size:22px;line-height:1.25;margin:10px 24px 4px">${escape(tituloEmTexto(e.title))}</h1>
-<p style="margin:0 24px 16px;color:#6b6f6c;font-size:14px">Unidade ${escape(e.unit || '')} · ${escape(diaSemana(e.start_datetime))}</p>
-<table style="width:calc(100% - 48px);margin:0 24px;border-collapse:collapse;font-size:14px">${linhas}</table>
-<p style="margin:18px 24px 4px"><a href="${linkDoEvento(e, site)}" style="display:inline-block;padding:11px 18px;border-radius:8px;background:${cor};color:#fff;font-weight:700;text-decoration:none;font-size:14px">Ver o evento</a>
-${a.tipo !== 'cancelado' ? `<a href="${site}/?tela=calendario" style="display:inline-block;margin-left:8px;padding:11px 18px;border-radius:8px;background:#fff;color:#0f6e63;border:1px solid #0f6e63;font-weight:700;text-decoration:none;font-size:14px">Abrir no calendário da equipe</a>` : ''}</p>
-<p style="font-size:12px;color:#6b6f6c;margin:8px 24px 0">Em anexo: <b>evento.ics</b> — ${ics}</p>
-<p style="margin:14px 24px 0;font-size:13px;color:#6b6f6c">Você recebe este e-mail porque é da equipe da ANA, da gestão da unidade ${escape(e.unit || '')}, ou criou o evento.</p>
-<div style="margin:20px 0 0;padding:14px 24px;background:#faf9f6;font-size:12px;color:#8a8f8b;line-height:1.5">ANA Brasil · anabrasil.org · Aviso automático do sistema de eventos. Se algo estiver errado, edite o evento no app, e um novo aviso será enviado.</div>
-</div></div></body></html>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escape(assunto(a))}</title></head>
+<body style="margin:0;padding:0;background:#f8f6f3;font-family:${FONTE};color:#191b1a">
+<div style="display:none;font-size:1px;line-height:1px;max-height:0;overflow:hidden;color:#f8f6f3">${escape(previa(a))}</div>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8f6f3"><tr><td align="center" style="padding:22px 12px 28px">
+<table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;width:100%">
+  <tr><td style="padding:0 2px 14px">
+    <table role="presentation" cellspacing="0" cellpadding="0"><tr>
+      <td style="vertical-align:middle;padding-right:10px"><img src="${site}/logo.png" width="36" height="36" alt="anabrasil" style="display:block;border-radius:10px"></td>
+      <td style="vertical-align:middle;font-size:20px;font-weight:700;letter-spacing:-.02em;color:#191b1a;font-family:${FONTE}">anabrasil</td>
+      <td style="vertical-align:middle;padding-left:10px;font-size:12px;color:#474747">Programação de eventos</td>
+    </tr></table>
+  </td></tr>
+  <tr><td>
+    <div style="background:#fefdfb;border:1px solid #e6e1d9;border-radius:12px;overflow:hidden">
+      ${capa(e, cor)}
+      <div style="padding:20px 24px 8px">
+        <span style="display:inline-block;padding:3px 10px;border-radius:999px;background:${st.bg};color:${st.fg};border:1px solid ${st.borda};font-size:12px;font-weight:600;margin-bottom:12px">${st.rotulo}</span>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr>
+          ${blocoDeData(e, a.tipo === 'cancelado')}
+          <td style="vertical-align:top">
+            ${comBanner ? `<div style="font-size:21px;font-weight:700;line-height:1.2;color:#191b1a;letter-spacing:-.01em;margin:2px 0 4px">${escape(tituloEmTexto(e.title))}</div>` : ''}
+            <div style="font-size:16px;font-weight:600;color:#191b1a;line-height:1.3">${escape(semanaLonga(e.start_datetime))}</div>
+            <div style="font-size:14px;color:#474747;margin-top:2px">das ${hora(e.start_datetime)} às ${hora(e.end_datetime || e.start_datetime)} · ${escape(e.location || 'Unidade ' + (e.unit || ''))}</div>
+          </td>
+        </tr></table>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:14px;border-collapse:collapse">${linhas}</table>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:18px 0 4px"><tr>
+          <td><a href="${link}" style="display:block;text-align:center;background:#81e2cf;color:#191b1a;text-decoration:none;font-weight:600;font-size:15px;padding:13px 18px;border-radius:8px;font-family:${FONTE}">Ver o evento</a></td>
+        </tr></table>
+        <p style="margin:10px 0 0;font-size:13px;text-align:center;color:#474747">
+          <span style="color:#191b1a;font-weight:600">📎 ${acaoIcs}</span> <span style="color:#8a8f8b">(anexo evento.ics)</span>
+          ${a.tipo !== 'cancelado' ? `&nbsp;&nbsp;·&nbsp;&nbsp;<a href="${site}/?tela=calendario" style="color:#191b1a;font-weight:600;text-decoration:underline">Calendário da equipe</a>` : ''}
+        </p>
+      </div>
+      <div style="padding:12px 24px 16px;font-size:12px;color:#474747;border-top:1px solid #efece6;margin-top:14px;line-height:1.5">Você recebe este e-mail porque é da equipe da ANA, da gestão da unidade ${escape(e.unit || '')}, ou criou o evento.</div>
+    </div>
+  </td></tr>
+  <tr><td style="padding:20px 8px 0;text-align:center;font-size:12px;color:#474747;line-height:1.6">
+    <b style="color:#191b1a;font-size:13px">ANA Brasil</b><br>
+    ${FRASE_DA_ANA}<br>
+    <a href="https://anabrasil.org" style="color:#191b1a;text-decoration:none">anabrasil.org</a> &nbsp;·&nbsp; <a href="https://www.instagram.com/anabrasilorg" style="color:#191b1a;text-decoration:none">@anabrasilorg</a><br>
+    <span style="color:#8a8f8b">Aviso automático do sistema de eventos. Se algo estiver errado, edite o evento no app e um novo aviso será enviado.</span>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
 }
 
 function corpoTexto(a: Aviso, site: string): string {
   const e = a.evento;
   const selo = a.tipo === 'confirmado' ? 'EVENTO CONFIRMADO' : a.tipo === 'cancelado' ? 'EVENTO CANCELADO' : 'DATA ALTERADA';
-  const l: string[] = [`ANA Brasil · Programação de eventos`, ``, selo, tituloEmTexto(e.title), `Unidade ${e.unit} · ${diaSemana(e.start_datetime)}`, ``];
+  const l: string[] = [previa(a), ``, `ANA Brasil · Programação de eventos`, ``, selo, tituloEmTexto(e.title), `Unidade ${e.unit} · ${diaSemana(e.start_datetime)}`, ``];
   if (a.tipo === 'alterado' && a.antes) { l.push(`Antes: ${quando(a.antes)}`); l.push(`Agora: ${quando(e)}`); }
   else l.push(`${a.tipo === 'cancelado' ? 'Estava marcado' : 'Quando'}: ${quando(e)}`);
   l.push(`Onde: ${e.location || e.unit}`);
