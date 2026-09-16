@@ -1378,7 +1378,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       valor={form.support_team || ''}
                       onChange={v => setForm({ ...form, support_team: v })}
                       rotuloOutro="Outra equipe"
-                      pistaOutro="Especifique a equipe..."
+                      pistaOutro="Qual equipe?"
                       outroAberto={!!outroAberto.apoio}
                       onOutroAberto={a => setOutroAberto(prev => ({ ...prev, apoio: a }))}
                       erro={errors.support_team}
@@ -1397,7 +1397,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                           pista: 'Para quantos, a que hora, cardápio, quem fornece…',
                         }}
                         rotuloOutro="Outra comida"
-                        pistaOutro="Especifique a alimentação..."
+                        pistaOutro="Qual comida?"
                         temNenhum
                         significadoDoNenhum="não haverá alimentação neste evento"
                         outroAberto={!!outroAberto.comida}
@@ -1434,7 +1434,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                         pista: 'Quantos, modelo, quem traz, onde liga…',
                       }}
                       rotuloOutro="Outro equipamento"
-                      pistaOutro="Especifique os equipamentos..."
+                      pistaOutro="Quais equipamentos?"
                       temNenhum
                       significadoDoNenhum="sem equipamentos"
                       outroAberto={!!outroAberto.equip}
@@ -1567,7 +1567,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                     updated[originalIdx] = { ...updated[originalIdx], description: e.target.value };
                                     setForm({ ...form, marketing_items: updated });
                                   }} 
-                                  placeholder="Detalhes: formato, arte, impressão..." 
+                                  placeholder="Tamanho, texto, prazo…" 
                                   rows={2}
                                   className="bg-muted/50 border-blue-100 focus-visible:ring-blue-500 text-xs"
                                 />
@@ -1581,7 +1581,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                     marketing_items: [...(form.marketing_items || []), { type: 'demanda_grafica', item: '', description: '' }] 
                                   })}
                                 >
-                                  <Plus className="h-3 w-3" /> Adicionar mais um item gráfico
+                                  <Plus className="h-3 w-3" /> Adicionar outro material
                                 </Button>
                               </div>
                             );
@@ -1747,7 +1747,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                             onCheckedChange={v => setForm({ ...form, transport_extra_equipment: !!v })}
                           />
                           <Label htmlFor="transport_extra_equipment" className="cursor-pointer flex-1 text-sm font-medium">
-                            Leva equipamentos/materiais volumosos
+                            Leva coisas grandes (equipamentos, caixas, materiais)
                           </Label>
                         </div>
 
@@ -1802,8 +1802,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 </div>
                 <CabecalhoDeSecao n={4} titulo="Parcerias, observações e anexos" />
                 <div className="space-y-4">
-                  <Label htmlFor="evento-notas" className="text-sm font-semibold mb-1.5 block">Observações internas</Label>
-                  <Textarea id="evento-notas" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Notas internas gerais..." rows={2} />
+                  <Label htmlFor="evento-notas" className="text-sm font-semibold mb-1.5 block">Algo mais que a administração precisa saber? <span className="font-normal text-muted-foreground">(só a equipe vê)</span></Label>
+                  <Textarea id="evento-notas" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Combinados, pedidos especiais, contexto…" rows={2} />
                 </div>
 
                 <div className="flex items-center gap-3 rounded-lg border border-border p-3">
@@ -1866,7 +1866,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       onClick={() => setForm({ ...form, partners: [...(form.partners || []), { type: '' as PartnerType, name: '' }] })}
                     >
                       <Plus className="h-3.5 w-3.5" />
-                      Adicionar Parceiro
+                      Adicionar parceiro
                     </Button>
                     {errors.partners && <p className="text-xs text-destructive">{errors.partners}</p>}
                   </div>
@@ -1949,7 +1949,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                 }
                                 setForm({ ...form, external_collaborators: updated });
                               }}
-                              placeholder="Tipo de parceria / Detalhes..."
+                              placeholder="O que a instituição faz no evento?"
                               className="h-8 text-xs bg-background/50"
                             />
                           </div>
@@ -1965,7 +1965,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                           })}
                         >
                           <Plus className="h-3.5 w-3.5" />
-                          Adicionar Instituição
+                          Adicionar instituição
                         </Button>
                       </div>
                     </div>

@@ -17,7 +17,7 @@ import type { ItemComDetalhe } from '@/types';
 export const OUTRO = '__outro__';
 export const LIMITE_DETALHE = 300;
 
-export const OPCOES_COMIDA = ['Almoço', 'Coffee Break', 'Lanche', 'Jantar', 'Nenhum'];
+export const OPCOES_COMIDA = ['Almoço', 'Café da manhã / da tarde', 'Lanche', 'Jantar', 'Nenhum'];
 export const OPCOES_EQUIP = ['Som', 'Microfone', 'Projetor', 'Televisão', 'Notebook', 'Nenhum'];
 
 const separar = (valor: string | null | undefined): string[] =>
