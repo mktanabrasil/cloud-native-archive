@@ -36,6 +36,7 @@ import { estadoDaCobertura } from '@/lib/events/cobertura';
 import { errosDasListas, limparListas } from '@/lib/events/listas';
 import { toast } from 'sonner';
 import { format as formatarData } from 'date-fns';
+import { rotuloDoStatus } from '@/lib/events/status';
 import { ptBR } from 'date-fns/locale';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -264,7 +265,23 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
    */
   const travadoParaEla = enviaParaAprovacao && isEditing && !!event?.status && !statusDaGestora.includes(event.status);
   const statusDisponiveis: EventStatus[] = enviaParaAprovacao ? statusDaGestora : EVENT_STATUSES;
-  const acaoDoBotao = isEditing ? 'salvar as alterações' : enviaParaAprovacao ? 'enviar a programação' : 'criar a programação';
+  const acaoDoBotao = isEditing ? 'salvar as alterações' : enviaParaAprovacao ? 'enviar o evento' : 'criar o evento';
+  /** A gestora, editando um evento que ainda aguarda: pode cancelar o próprio pedido. */
+  const podeCancelarOPedido = enviaParaAprovacao && isEditing && event?.status === 'pendente' && form.status !== 'cancelado';
+  const [confirmandoCancelamento, setConfirmandoCancelamento] = useState(false);
+  const cancelarOPedido = async () => {
+    if (!event) return;
+    setConfirmandoCancelamento(false);
+    setSalvando(true);
+    try {
+      await updateEvent({ ...event, status: 'cancelado' });
+      toast.success('Evento cancelado', { description: `“${tituloEmTexto(event.title)}” saiu da fila de aprovação. Dá para reabrir depois, editando o evento.` });
+      setSelectedEvent(null);
+      onOpenChange(false);
+    } catch (e) {
+      toast.error('Não foi possível cancelar', { description: e instanceof Error ? e.message : String(e) });
+    } finally { setSalvando(false); }
+  };
 
   /** Quantos campos o botão ainda espera. Zero antes da primeira tentativa. */
   const pendencias = Object.keys(errors).length;
@@ -810,6 +827,26 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   </div>
                 )}
 
+                {enviaParaAprovacao && isEditing && event?.status === 'pendente' && !event.review_note && (
+                  <div className="flex items-start gap-3 rounded-lg border border-yellow-300 bg-yellow-500/10 p-3" data-testid="onde-esta">
+                    <Clock className="mt-0.5 h-4 w-4 shrink-0 text-yellow-700" />
+                    <p className="text-xs text-foreground">
+                      <strong>Aguardando aprovação.</strong> Enviado{event.created_by ? ` por ${event.created_by}` : ''}{event.submitted_at ? ` em ${formatarData(new Date(event.submitted_at), "dd/MM 'às' HH:mm", { locale: ptBR })}` : ''}. Você ainda pode alterar; a administração vê a versão mais recente.
+                    </p>
+                  </div>
+                )}
+                {enviaParaAprovacao && isEditing && event?.status === 'cancelado' && (
+                  <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/40 p-3" data-testid="onde-esta">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <p className="text-xs text-foreground">
+                      {form.status === 'cancelado'
+                        ? <><strong>Cancelado.</strong> Para voltar à fila de aprovação, use “Reabrir e enviar de novo” e salve.</>
+                        : <><strong>Reaberto.</strong> Revise o que precisar e salve: o evento volta para a fila de aprovação.</>}
+                    </p>
+                  </div>
+                )}
+
+                <CabecalhoDeSecao n={1} titulo="O evento" sub="título, unidade, quando e onde" />
                 <div id="campo-title">
                   <Label htmlFor="evento-titulo" className="text-sm font-semibold mb-1.5 block">Título *</Label>
                   <Input
@@ -1016,16 +1053,20 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   </div>
                 )}
 
+                {/* A gestora não escolhe status: o evento dela nasce aguardando e só a
+                    administração confirma. Em vez do seletor, ela lê onde o evento
+                    está (mockup de 16/09/2026). Cancelar e reabrir ficam no rodapé. */}
+                {!enviaParaAprovacao && (
                 <div>
                   <Label htmlFor="evento-status" className="text-sm font-semibold mb-1.5 block">Status</Label>
                   <Select value={form.status} onValueChange={v => setForm({ ...form, status: v as EventStatus })}>
-                    <SelectTrigger id="evento-status" className="capitalize"><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="evento-status"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {statusDisponiveis.map(s => (
-                        <SelectItem key={s} value={s} className="capitalize">
+                        <SelectItem key={s} value={s}>
                           <span className="flex items-center gap-2">
                             <span className={`h-2.5 w-2.5 rounded-full ${getStatusDotClass(s)}`} />
-                            {s}
+                            {rotuloDoStatus(s)}
                           </span>
                         </SelectItem>
                       ))}
@@ -1036,12 +1077,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       Este evento será mantido no histórico como concluído.
                     </p>
                   )}
-                  {enviaParaAprovacao && (
-                    <p className="text-[11px] text-muted-foreground mt-1">
-                      A administração geral confirma ao aprovar.
-                    </p>
-                  )}
                 </div>
+                )}
                 {/* Publicar no site é decisão da administração geral e da comunicação.
                     Para os demais o bloco não aparece, e o evento fica interno — que
                     já é o padrão de um evento novo. */}
@@ -1318,7 +1355,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 )}
                 
                 <div className="space-y-6 pt-4 border-t">
-                  <Label className="text-sm font-semibold mb-1.5 block">Detalhes logísticos e público-alvo</Label>
+                  <CabecalhoDeSecao n={2} titulo="Logística" sub="para quem, quem ajuda, comida e equipamentos" />
                   
                   <div className="space-y-4">
                     <GrupoDeOpcoes
@@ -1423,6 +1460,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   </div>
                 </div>
 
+                <CabecalhoDeSecao n={3} titulo="Pedidos" sub="marketing e transporte" />
                 <div className="space-y-3">
                   <div className="flex items-center gap-3 rounded-lg border border-border p-3" id="campo-marketing">
                     <Switch
@@ -1762,7 +1800,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     );
                   })()}
                 </div>
-                <div className="space-y-4 pt-4 border-t">
+                <CabecalhoDeSecao n={4} titulo="Parcerias, observações e anexos" />
+                <div className="space-y-4">
                   <Label htmlFor="evento-notas" className="text-sm font-semibold mb-1.5 block">Observações internas</Label>
                   <Textarea id="evento-notas" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Notas internas gerais..." rows={2} />
                 </div>
@@ -1968,20 +2007,34 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
             )}
 
             {!showConflictAlert && !emRevisao && (
-              <DialogFooter className="sticky bottom-0 bg-background pt-4 pb-2">
-                <Button variant="outline" onClick={() => pedirParaFechar(false)}>Cancelar</Button>
+              <DialogFooter className="sticky bottom-0 bg-background pt-4 pb-2 sm:justify-between">
+                <div className="flex gap-2">
+                  {podeCancelarOPedido && (
+                    <Button variant="ghost" className="text-destructive hover:text-destructive" disabled={salvando} onClick={() => setConfirmandoCancelamento(true)}>
+                      <X className="mr-1.5 h-4 w-4" /> Cancelar este evento
+                    </Button>
+                  )}
+                  {enviaParaAprovacao && isEditing && event?.status === 'cancelado' && form.status === 'cancelado' && (
+                    <Button variant="ghost" disabled={salvando} onClick={() => setForm(prev => ({ ...prev, status: 'pendente' }))}>
+                      Reabrir e enviar de novo
+                    </Button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                <Button variant="outline" onClick={() => pedirParaFechar(false)}>{enviaParaAprovacao && isEditing ? 'Fechar' : 'Cancelar'}</Button>
                 {/* A contagem no botão é o que responde "por que não salvou?"
                     sem obrigar a pessoa a caçar campo pela tela. */}
                 <Button onClick={() => handleSubmit()} disabled={salvando || travadoParaEla}>
                   {salvando
                     ? 'Salvando…'
                     : isEditing
-                      ? 'Salvar Alterações'
+                      ? (enviaParaAprovacao && event?.status === 'cancelado' && form.status !== 'cancelado' ? 'Salvar e enviar de novo' : 'Salvar alterações')
                       : enviaParaAprovacao
                         ? 'Enviar para aprovação'
                         : 'Criar evento'}
                   {pendencias > 0 && ` (${pendencias} ${pendencias === 1 ? 'pendência' : 'pendências'})`}
                 </Button>
+                </div>
               </DialogFooter>
             )}
           </div>
@@ -2134,6 +2187,21 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={confirmandoCancelamento} onOpenChange={setConfirmandoCancelamento}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancelar “{tituloEmTexto(form.title || event?.title || '')}”?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Ele sai da fila de aprovação e fica marcado como cancelado. Dá para reabrir depois, editando o evento.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction onClick={cancelarOPedido} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Cancelar o evento</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={showSlugPrompt} onOpenChange={setShowSlugPrompt}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -2168,5 +2236,21 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       </AlertDialog>
 
     </Dialog>
+  );
+}
+
+/**
+ * O mapa do formulário (varredura de 16/09/2026): quatro cabeçalhos numerados
+ * sobre os mesmos campos, na mesma ordem, para a pessoa saber onde está e
+ * quanto falta. Não é uma sequência de passos: tudo continua numa rolagem só.
+ */
+function CabecalhoDeSecao({ n, titulo, sub }: { n: number; titulo: string; sub?: string }) {
+  return (
+    <div className="flex items-center gap-2.5 pt-2" data-testid="secao-do-formulario">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">{n}</span>
+      <span className="text-sm font-semibold">{titulo}</span>
+      {sub && <span className="text-[11px] text-muted-foreground">{sub}</span>}
+      <span className="h-px flex-1 bg-border" aria-hidden="true" />
+    </div>
   );
 }

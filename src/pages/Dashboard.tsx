@@ -9,6 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { AppEvent, EventStatus, UNITS, EVENT_STATUSES, EVENT_TYPES, Unit } from '@/types';
 import { CalendarDays, CheckCircle2, Clock, AlertCircle, Plus, ChevronLeft, ChevronRight, ChevronDown, AlertTriangle, Camera, Handshake, Search, LayoutGrid, List, Calendar as CalendarIcon, Globe, Lock } from 'lucide-react';
 import { MarcaDaAgenda } from '@/components/events/AgendaDoEvento';
+import { rotuloDoStatus } from '@/lib/events/status';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -240,7 +241,7 @@ export default function Dashboard() {
                 <SelectTrigger className="h-10 w-[110px] shadow-sm bg-background"><SelectValue placeholder="Status" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os Status</SelectItem>
-                  {EVENT_STATUSES.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+                  {EVENT_STATUSES.map(s => <SelectItem key={s} value={s}>{rotuloDoStatus(s)}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={filterType} onValueChange={setFilterType}>
@@ -374,8 +375,8 @@ export default function Dashboard() {
                       <span className="text-[10px] text-muted-foreground whitespace-nowrap sm:text-xs">
                         {format(new Date(e.start_datetime), 'dd/MM HH:mm')}
                       </span>
-                      <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 capitalize sm:text-xs sm:px-2.5 sm:py-0.5", getStatusBadgeClass(e.status))}>
-                        {e.status}
+                      <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 sm:text-xs sm:px-2.5 sm:py-0.5", getStatusBadgeClass(e.status))}>
+                        {rotuloDoStatus(e.status)}
                       </Badge>
                     </div>
                   </button>

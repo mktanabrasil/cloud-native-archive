@@ -35,6 +35,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, List, LayoutGrid, Search, Plus } from 'lucide-react';
 import { MarcaDaAgenda } from '@/components/events/AgendaDoEvento';
+import { rotuloDoStatus } from '@/lib/events/status';
 import { Checkbox } from '@/components/ui/checkbox';
 import EventFormDialog from '@/components/EventFormDialog';
 import EventDetailPanel from '@/components/EventDetailPanel';
@@ -63,7 +64,7 @@ export default function CalendarPage() {
   const { events: rawEvents, selectedMonth, setSelectedMonth, setSelectedEvent, deleteEvent, updateEvent, detectConflicts, loading, refetchEvents } = useApp();
   const events = useFilteredEvents();
   const { isAuthenticated } = useAuth();
-  const { canEdit, canCreate, userName, unit } = useUserRole();
+  const { canEdit, canCreate, userName, unit, isAdmin } = useUserRole();
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const hideTitle = searchParams.get('hideTitle') === 'true';
@@ -344,7 +345,7 @@ export default function CalendarPage() {
                   <SelectTrigger className="h-10 w-[110px] shadow-sm bg-background"><SelectValue placeholder="Status" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos os Status</SelectItem>
-                    {EVENT_STATUSES.map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+                    {EVENT_STATUSES.map(s => <SelectItem key={s} value={s}>{rotuloDoStatus(s)}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 {/* O estado `filterType` existia e filtrava, mas não tinha controle
@@ -572,8 +573,8 @@ export default function CalendarPage() {
                     </p>
                     <p className="text-xs text-muted-foreground">{format(new Date(e.start_datetime), 'HH:mm')} - {format(new Date(e.end_datetime), 'HH:mm')}</p>
                   </div>
-                  <Badge variant="outline" className={`capitalize shrink-0 ${getStatusBadgeClass(e.status)}`}>
-                    {e.status}
+                  <Badge variant="outline" className={`shrink-0 ${getStatusBadgeClass(e.status)}`}>
+                    {rotuloDoStatus(e.status)}
                   </Badge>
                 </button>
               </CardContent>
@@ -593,7 +594,7 @@ export default function CalendarPage() {
                 : `Mover ${paraLixeira?.length ?? 0} eventos para a lixeira?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {paraLixeira?.length === 1 ? 'Ele sai' : 'Eles saem'} da programação e do calendário. Dá para restaurar depois, na aba Lixeira.
+              {paraLixeira?.length === 1 ? 'Ele sai' : 'Eles saem'} da programação e do calendário. {isAdmin ? 'Dá para restaurar depois, na aba Lixeira.' : 'Se precisar de volta, peça à administração geral, que pode restaurar.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { getStatusBadgeClass } from '@/lib/statusColors';
+import { rotuloDoStatus } from '@/lib/events/status';
 import { AppEvent, Unit } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -58,7 +59,7 @@ export default function UnitEventsDialog({ unit, events, open, onOpenChange, onE
                     <p className="font-medium text-foreground truncate">{e.title}</p>
                     <div className="flex items-center gap-1.5 shrink-0">
                       
-                      <Badge variant="outline" className={`capitalize text-xs ${statusClass}`}>{e.status}</Badge>
+                      <Badge variant="outline" className={`text-xs ${statusClass}`}>{rotuloDoStatus(e.status)}</Badge>
                     </div>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">

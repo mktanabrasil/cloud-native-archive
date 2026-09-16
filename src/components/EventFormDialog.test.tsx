@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, cleanup } from '@testing-library/react';
 import type { AppEvent } from '@/types';
 
 /**
@@ -177,15 +177,15 @@ describe('publicar no site', () => {
 });
 
 describe('Tipo e Status', () => {
-  it('Status mostra o escolhido com a mesma letra da lista', () => {
-    // A lista tinha `capitalize` e o gatilho não: escolhido, "Evento
-    // Institucional" virava "evento institucional".
+  it('a gestora não vê seletor de status; a administração vê, com o nome legível', () => {
     abrir();
+    expect(screen.queryByLabelText('Status')).not.toBeInTheDocument();
 
-    // "pendente" aparece no gatilho e na lista de opções; o gatilho é o botão.
-    const gatilho = screen.getAllByText('pendente').map(e => e.closest('button')).find(Boolean);
-
-    expect(gatilho?.className).toMatch(/capitalize/);
+    cleanup();
+    espiao.papel = { ...espiao.papel, isAdmin: true, isMarketing: true };
+    abrir();
+    // nasce confirmado para a administração; o gatilho mostra o rótulo, não o valor cru
+    expect(screen.getAllByText('Confirmado').length).toBeGreaterThan(0);
   });
 
   it('Tipo abre vazio, é obrigatório e não oferece “cobertura”', async () => {
@@ -218,7 +218,7 @@ describe('as pendências', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
-    expect(screen.getByText(/faltam \d+ campos para criar a programação/i)).toBeInTheDocument();
+    expect(screen.getByText(/faltam \d+ campos para criar o evento/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /criar evento \(\d+ pendências\)/i })).toBeInTheDocument();
     expect(espiao.addEvent).not.toHaveBeenCalled();
   });
@@ -313,9 +313,40 @@ describe('a gestora envia para aprovação', () => {
   it('não consegue mandar como confirmado, mesmo que o estado tente', async () => {
     abrir();
     preencher();
-    // não há opção "confirmado" no select dela; se houvesse, o banco negaria
-    expect(screen.queryByRole('option', { name: 'confirmado' })).not.toBeInTheDocument();
-    expect(screen.getByText(/a administração geral confirma ao aprovar/i)).toBeInTheDocument();
+    // não há seletor de status para ela; se houvesse, o banco negaria "confirmado"
+    expect(screen.queryByRole('option', { name: /confirmado/i })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Status')).not.toBeInTheDocument();
+    expect(screen.getAllByTestId('secao-do-formulario')).toHaveLength(4);
+  });
+
+  it('editando um evento que aguarda: lê "Aguardando aprovação" e pode cancelar o pedido, com confirmação', async () => {
+    const evento = { ...eventoGravado(), status: 'pendente' as const, submitted_at: '2026-09-16T13:12:00.000Z', created_by: 'Juliana Sampaio' };
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+
+    expect(screen.getByTestId('onde-esta')).toHaveTextContent(/aguardando aprovação/i);
+    expect(screen.getByTestId('onde-esta')).toHaveTextContent(/juliana sampaio/i);
+    expect(screen.queryByLabelText('Status')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /cancelar este evento/i }));
+    expect(screen.getByRole('alertdialog')).toHaveTextContent(/sai da fila de aprovação/i);
+    fireEvent.click(screen.getByRole('button', { name: /^cancelar o evento$/i }));
+
+    await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalled());
+    expect(espiao.updateEvent.mock.calls[0][0].status).toBe('cancelado');
+    expect(fechou).toHaveBeenCalledWith(false);
+  });
+
+  it('um evento cancelado: "Reabrir e enviar de novo" volta para a fila ao salvar', async () => {
+    const evento = { ...eventoGravado(), status: 'cancelado' as const };
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+
+    expect(screen.getByTestId('onde-esta')).toHaveTextContent(/cancelado/i);
+    fireEvent.click(screen.getByRole('button', { name: /reabrir e enviar de novo/i }));
+    expect(screen.getByTestId('onde-esta')).toHaveTextContent(/reaberto/i);
+
+    fireEvent.click(screen.getByRole('button', { name: /salvar e enviar de novo/i }));
+    await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalled());
+    expect(espiao.updateEvent.mock.calls[0][0].status).toBe('pendente');
   });
 
   it('um evento já confirmado abre travado para ela', () => {

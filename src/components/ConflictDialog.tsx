@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { getStatusBadgeClass } from '@/lib/statusColors';
+import { rotuloDoStatus } from '@/lib/events/status';
 import { useNavigate } from 'react-router-dom';
 import { AppEvent, Unit } from '@/types';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, startOfWeek, endOfWeek } from 'date-fns';
@@ -93,7 +94,7 @@ export default function ConflictDialog({ events, selectedMonth, open, onOpenChan
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
-                          <Badge variant="outline" className={`capitalize text-xs ${statusClass}`}>{e.status}</Badge>
+                          <Badge variant="outline" className={`text-xs ${statusClass}`}>{rotuloDoStatus(e.status)}</Badge>
                         </div>
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">
