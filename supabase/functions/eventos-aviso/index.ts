@@ -438,9 +438,15 @@ async function lerConexao(admin: any): Promise<Conexao | null> {
   return v && typeof v === 'object' && v.user_id ? (v as Conexao) : null;
 }
 
-async function gravarConexao(admin: any, c: Conexao | null, por: string) {
-  if (!c) { await admin.from('system_configs').delete().eq('key', CHAVE_DA_CONEXAO); return; }
-  await admin.from('system_configs').upsert({ key: CHAVE_DA_CONEXAO, value: c, updated_at: new Date().toISOString(), updated_by: por }, { onConflict: 'key' });
+/** `por` é o id (uuid) de quem mexeu, ou null quando é o sistema: a coluna updated_by referencia auth.users. */
+async function gravarConexao(admin: any, c: Conexao | null, por: string | null) {
+  if (!c) {
+    const { error } = await admin.from('system_configs').delete().eq('key', CHAVE_DA_CONEXAO);
+    if (error) throw new Error(`não consegui apagar a conexão: ${error.message}`);
+    return;
+  }
+  const { error } = await admin.from('system_configs').upsert({ key: CHAVE_DA_CONEXAO, value: c, updated_at: new Date().toISOString(), updated_by: por }, { onConflict: 'key' });
+  if (error) throw new Error(`não consegui gravar a conexão: ${error.message}`);
 }
 
 /** Troca a chave de renovação por um token de acesso. invalid_grant = o Google desconectou (senha trocada, acesso revogado). */
@@ -454,10 +460,10 @@ async function tokenDaConexao(admin: any, c: Conexao): Promise<string> {
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j.access_token) {
     const motivo = j.error === 'invalid_grant' ? 'o Google desconectou a conta: reconecte no Painel' : `Google não renovou o acesso: ${r.status} ${JSON.stringify(j).slice(0, 200)}`;
-    if (!c.erro) await gravarConexao(admin, { ...c, erro: motivo }, 'sistema');
+    if (!c.erro) await gravarConexao(admin, { ...c, erro: motivo }, null);
     throw new Error(motivo);
   }
-  if (c.erro) await gravarConexao(admin, { ...c, erro: null }, 'sistema');
+  if (c.erro) await gravarConexao(admin, { ...c, erro: null }, null);
   return j.access_token as string;
 }
 
@@ -572,7 +578,7 @@ Deno.serve(async (req) => {
 
   // ----- conexão em nome da eventos@: só admin, só pessoa logada -----
   const pedeConexao = corpo.oauth_url || corpo.oauth_code || corpo.listar_agendas || corpo.escolher_agenda || corpo.desconectar;
-  if (pedeConexao) {
+  if (pedeConexao) try {
     if (!usuarioId) return json({ error: 'Conectar a agenda é ação de uma pessoa logada.' }, 403);
     if (!(await ehAdmin(admin, usuarioId))) return json({ error: 'Só a administração geral conecta a agenda.' }, 403);
     if (!OAUTH_CLIENT_ID || !OAUTH_CLIENT_SECRET) return json({ error: 'GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET não estão no servidor.' }, 500);
@@ -598,9 +604,10 @@ Deno.serve(async (req) => {
       if (!r.ok || !j.refresh_token) return json({ error: `O Google não devolveu a chave de renovação: ${j.error_description || j.error || r.status}. Comece de novo em "Conectar".` }, 400);
       const primaria = await google(j.access_token, 'GET', '/calendars/primary');
       const anterior = await lerConexao(admin);
-      await admin.from('user_google_tokens').upsert({ user_id: usuarioId, refresh_token: j.refresh_token, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      const { error: erroToken } = await admin.from('user_google_tokens').upsert({ user_id: usuarioId, refresh_token: j.refresh_token, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      if (erroToken) return json({ error: `não consegui guardar a chave de renovação: ${erroToken.message}` }, 500);
       const conexao: Conexao = { user_id: usuarioId, google_email: primaria.id, calendar_id: anterior?.calendar_id ?? null, calendar_nome: anterior?.calendar_nome ?? null, conectado_por: pedidoPor, conectado_em: new Date().toISOString(), erro: null };
-      await gravarConexao(admin, conexao, pedidoPor);
+      await gravarConexao(admin, conexao, usuarioId);
       console.log(`[agenda] ${pedidoPor} conectou o Google como ${primaria.id}`);
       return json({ conexao: semSegredo(conexao) });
     }
@@ -608,7 +615,7 @@ Deno.serve(async (req) => {
     const conexao = await lerConexao(admin);
     if (corpo.desconectar) {
       if (conexao) await admin.from('user_google_tokens').delete().eq('user_id', conexao.user_id);
-      await gravarConexao(admin, null, pedidoPor);
+      await gravarConexao(admin, null, usuarioId);
       console.log(`[agenda] ${pedidoPor} desconectou o Google`);
       return json({ conexao: null });
     }
@@ -636,10 +643,14 @@ Deno.serve(async (req) => {
       }
       await admin.from('agendas_google').delete().eq('chave', 'equipe');
       await admin.from('events').update({ google_event_id: null, google_event_link: null }).not('google_event_id', 'is', null);
-      await gravarConexao(admin, { ...conexao, calendar_id, calendar_nome: nome, erro: null }, pedidoPor);
+      await gravarConexao(admin, { ...conexao, calendar_id, calendar_nome: nome, erro: null }, usuarioId);
       console.log(`[agenda] ${pedidoPor} escolheu a agenda "${nome}" (${calendar_id})`);
       corpo.carga = true; // segue para a carga inicial, abaixo
     }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('[agenda] conexão:', msg);
+    return json({ error: msg }, 500);
   }
 
   // { carga: true }: carga inicial — todo confirmado que ainda não está no
