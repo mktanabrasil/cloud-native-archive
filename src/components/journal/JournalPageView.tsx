@@ -236,7 +236,7 @@ export function JournalBlockView({
         onSelect?.(block.id);
       }}
       onClick={(event) => event.stopPropagation()}
-      title="Arraste para reordenar o bloco"
+      title="Arraste para reordenar a peça"
       className={cn(
         'absolute -left-2 top-0 bottom-0 z-30 flex w-4 cursor-grab items-center justify-center active:cursor-grabbing',
         'opacity-0 transition-opacity group-hover/block:opacity-100',

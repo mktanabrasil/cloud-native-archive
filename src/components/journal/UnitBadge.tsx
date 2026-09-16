@@ -62,7 +62,7 @@ export function UnitBadge({
 }: UnitBadgeProps) {
   const [pending, setPending] = useState<string | null>(null);
   const currentName = newsUnitName(unitId) || 'Institucional geral';
-  const shortName = findNewsUnit(unitId)?.short ?? 'Institucional';
+  const shortName = findNewsUnit(unitId)?.short ?? 'Institucional geral';
 
   const confirm = () => {
     if (pending) onChangeUnit?.(pending);

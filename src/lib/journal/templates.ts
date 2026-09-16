@@ -34,7 +34,7 @@ export function agendaBlock(): JournalBlock {
   };
 }
 
-export function statBlock(value = '0', label = 'Indicador', span: BlockSpan = 2): JournalBlock {
+export function statBlock(value = '0', label = 'Descreva o número', span: BlockSpan = 2): JournalBlock {
   return { id: uid(), kind: 'stat', value, label, span };
 }
 

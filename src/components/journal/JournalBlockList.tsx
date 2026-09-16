@@ -46,7 +46,7 @@ function blockKindLabel(block: JournalBlock): string {
     case 'image':
       return 'Imagem';
     case 'stat':
-      return 'Número';
+      return 'Número em destaque';
     case 'agenda':
       return 'Agenda';
     default:
@@ -93,14 +93,14 @@ export function JournalBlockList({
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between">
         <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Blocos da página
+          Peças da página
         </Label>
         <span className="text-[10px] text-muted-foreground">{blocks.length}</span>
       </div>
 
       {!blocks.length && !decorations.length ? (
         <p className="rounded-lg border border-dashed border-border px-2.5 py-4 text-center text-xs text-muted-foreground">
-          Nenhum bloco nesta página ainda.
+          Nenhuma peça nesta página ainda.
         </p>
       ) : (
         <ul className="space-y-1">

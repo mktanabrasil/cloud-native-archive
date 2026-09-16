@@ -93,7 +93,7 @@ export const journalColor = (key?: JournalColorKey): string =>
 export type JournalPaperKey = 'off_white' | 'branco';
 
 export const JOURNAL_PAPER_LABELS: Record<JournalPaperKey, string> = {
-  off_white: 'Off-white institucional',
+  off_white: 'Bege claro (padrão ANA)',
   branco: 'Branco',
 };
 

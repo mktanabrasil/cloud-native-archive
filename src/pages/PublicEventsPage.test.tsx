@@ -317,19 +317,19 @@ describe('a vitrine vazia', () => {
     expect(screen.queryByRole('tablist')).toBeNull();
   });
 
-  it('a equipe ganha "Criar programação"; como visitante e anônimo, não', () => {
+  it('a equipe ganha "Criar evento"; como visitante e anônimo, não', () => {
     espiao.eventos = [];
     const { unmount } = montar();
-    expect(screen.getByRole('button', { name: /criar programação/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /criar evento/i })).toBeInTheDocument();
     unmount();
 
     const comoVisitante = montar('/eventos?como=visitante');
-    expect(screen.queryByRole('button', { name: /criar programação/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /criar evento/i })).toBeNull();
     comoVisitante.unmount();
 
     espiao.autenticado = false;
     montar();
-    expect(screen.queryByRole('button', { name: /criar programação/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /criar evento/i })).toBeNull();
   });
 
   it('com eventos, a busca sem resultado continua como antes', () => {

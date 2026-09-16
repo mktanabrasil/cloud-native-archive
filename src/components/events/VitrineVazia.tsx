@@ -60,7 +60,7 @@ export function VitrineVazia({ onCriar, semConvites = false }: Props) {
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3 border-t border-border pt-5 text-sm text-muted-foreground">
             <span>Só a equipe vê esta linha.</span>
             <Button size="sm" variant="outline" className="rounded-full gap-1.5 border-border" onClick={onCriar}>
-              <Plus className="h-3.5 w-3.5" /> Criar programação
+              <Plus className="h-3.5 w-3.5" /> Criar evento
             </Button>
           </div>
         )}

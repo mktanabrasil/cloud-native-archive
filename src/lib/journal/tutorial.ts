@@ -40,13 +40,13 @@ export const PERCURSOS: Record<PercursoId, PassoTutorial[]> = {
       alvo: 'criar',
       titulo: 'Comece por aqui',
       texto:
-        'Dê um nome à edição e escolha um modelo: Padrão, Pedagógico, Eventos ou Em branco. Ele já vem com as páginas montadas.',
+        'Dê um nome ao jornal e escolha um modelo: Padrão, Pedagógico, Eventos ou Em branco. Ele já vem com as páginas montadas.',
     },
     {
       alvo: 'lista',
-      titulo: 'Suas edições ficam nesta lista',
+      titulo: 'Seus jornais ficam nesta lista',
       texto:
-        'Abrir para continuar de onde parou, duplicar para aproveitar o mês passado, excluir se não for mais usar.',
+        'Abrir para continuar de onde parou, duplicar para aproveitar o mês passado, excluir se não for mais usar. Jornal de outra unidade abre só para leitura, com “Duplicar para minha unidade”.',
     },
     {
       alvo: 'ajuda',
@@ -66,7 +66,7 @@ export const PERCURSOS: Record<PercursoId, PassoTutorial[]> = {
       alvo: 'paginas',
       titulo: 'As páginas ficam aqui',
       texto:
-        'Clique numa miniatura para trabalhar nela. O selo diz se a página está completa ou se ainda falta preencher alguma peça.',
+        'Clique numa miniatura para trabalhar nela. O selo diz se a página está completa ou se ainda falta preencher alguma peça. No celular, as páginas ficam numa tira acima da folha.',
     },
     {
       alvo: 'painel',
@@ -78,7 +78,7 @@ export const PERCURSOS: Record<PercursoId, PassoTutorial[]> = {
       alvo: 'painel',
       titulo: 'Colocar uma foto',
       texto:
-        'Clique no quadro da foto e use “Enviar imagem”. A legenda é opcional e aparece logo abaixo dela.',
+        'Clique no quadro da foto e use “Enviar foto” (ou “Colar link”, se ela já estiver na internet). A legenda é opcional e aparece logo abaixo dela.',
     },
     {
       alvo: 'folha',
@@ -90,31 +90,31 @@ export const PERCURSOS: Record<PercursoId, PassoTutorial[]> = {
       alvo: 'formato',
       titulo: 'O formato vem protegido',
       texto:
-        'Assim você troca textos e fotos sem bagunçar o desenho. Para mover as peças de lugar, libere o formato aqui.',
+        'Assim você troca textos e fotos sem bagunçar o desenho. Para mover as peças de lugar, abra “Opções da folha” e, em Formato, escolha “Formato liberado”.',
     },
     {
       alvo: 'paginas',
       titulo: 'Precisa de mais espaço?',
       texto:
-        'Adicione uma página e escolha o modelo dela: capa, matéria, galeria de fotos, agenda ou resultados.',
+        'Use “Adicionar página” e escolha o tipo: capa, duas notícias lado a lado, uma matéria inteira, galeria de fotos, agenda de atividades, resultados em números, encerramento ou página vazia.',
     },
     {
       alvo: 'salvo',
       titulo: 'Salva sozinho',
       texto:
-        'Não existe botão de salvar. Este aviso confirma que está tudo guardado — pode fechar quando quiser.',
+        'Não existe botão de salvar. Este selo confirma que está tudo guardado. Se ficar vermelho, “Não salvou”, é sem conexão: a tela guarda o que você fez e tenta de novo sozinha.',
     },
     {
       alvo: 'status',
       titulo: 'Quando terminar',
       texto:
-        'Marque como finalizado. É só uma etiqueta: dá para reabrir como rascunho depois, se precisar corrigir.',
+        'Clique em “Finalizar edição”. É só uma etiqueta, e dá para desfazer na hora ou reabrir como rascunho depois, se precisar corrigir.',
     },
     {
       alvo: 'pdf',
       titulo: 'Gerar o PDF',
       texto:
-        'Digital para enviar por mensagem, impressão para imprimir de verdade. Pronto — você fez um jornal.',
+        '“Baixar PDF” gera a versão para imprimir. No menu “⋯” ao lado há a versão leve, “Para enviar por WhatsApp”. Se alguma página tiver conteúdo que não cabe, o app avisa antes. Pronto — você fez um jornal.',
     },
   ],
 };
