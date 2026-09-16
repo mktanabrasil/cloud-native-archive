@@ -3,6 +3,7 @@ import { categoriaDoAnexo, normalizarAnexo, rotuloDoTamanho } from '@/lib/events
 import { useUserRole } from '@/hooks/useUserRole';
 import { getStatusBadgeClass } from '@/lib/statusColors';
 import { rotuloDoStatus } from '@/lib/events/status';
+import { rotuloDoTipo } from '@/lib/events/tipo';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -87,7 +88,7 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
           {/* Details */}
           <div className="space-y-3">
             <DetailRow label="Título" value={event.title} />
-            <DetailRow label="Tipo" value={event.event_type} capitalize />
+            <DetailRow label="Tipo" value={rotuloDoTipo(event.event_type)} />
             {canEdit && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -176,7 +177,7 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
                   <span className="text-sm font-medium text-foreground">Pedido ao marketing</span>
                 </div>
                 {event.marketing_coverage && (
-                  <p className="text-xs text-blue-900 flex flex-wrap items-center gap-2">
+                  <div className="text-xs text-blue-900 flex flex-wrap items-center gap-2">
                     Cobertura solicitada
                     {(() => {
                       const estado = estadoDaCobertura(event);
@@ -188,7 +189,7 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
                           : 'bg-muted text-muted-foreground border-border';
                       return <Badge variant="outline" className={`text-[10px] font-medium ${classe}`}>{ROTULO_DA_COBERTURA[estado]}</Badge>;
                     })()}
-                  </p>
+                  </div>
                 )}
                 {event.marketing_items && event.marketing_items.length > 0 && (
                   <div className="space-y-2">

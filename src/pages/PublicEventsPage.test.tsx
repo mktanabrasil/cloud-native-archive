@@ -154,7 +154,7 @@ describe('modo equipe', () => {
     expect(screen.getByRole('button', { name: /editar evento/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /adicionar ao banner|remover do banner/i })).toBeInTheDocument();
     // o selo da equipe passou a ser o tipo do evento, não "Confirmado"
-    expect(screen.getByText('reunião')).toBeInTheDocument();
+    expect(screen.getByText('Reunião')).toBeInTheDocument();
   });
 
   it('o clique no card abre o detalhe, com editar dentro, e não o formulário', () => {
@@ -195,7 +195,7 @@ describe('ver como visitante', () => {
     expect(screen.getByText('visitante', { selector: 'b' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /editar evento/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /adicionar ao banner|remover do banner/i })).toBeNull();
-    expect(screen.queryByText('reunião')).toBeNull();
+    expect(screen.queryByText('Reunião')).toBeNull();
     expect(noCard('Festa da Primavera')).toBe(1);
   });
 
@@ -755,7 +755,7 @@ describe('o tipo do evento no card', () => {
     espiao.eventos = [ativo];
     montar();
 
-    expect(screen.getByText('reunião')).toBeInTheDocument();
+    expect(screen.getByText('Reunião')).toBeInTheDocument();
     expect(screen.queryByText('Confirmado')).toBeNull();
   });
 
@@ -764,7 +764,7 @@ describe('o tipo do evento no card', () => {
     espiao.autenticado = false;
     montar();
 
-    expect(screen.queryByText('reunião')).toBeNull();
+    expect(screen.queryByText('Reunião')).toBeNull();
   });
 });
 

@@ -7,6 +7,7 @@ import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useApp } from '@/contexts/AppContext';
 import { AppEvent, UNIT_BG_COLORS, type Unit } from '@/types';
+import { rotuloDoTipo } from '@/lib/events/tipo';
 import { CalendarDays, MapPin, Clock, Search, ChevronLeft, ChevronRight, LayoutPanelTop, Eye, EyeOff, Pencil, Users, Info, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -769,8 +770,8 @@ export default function PublicEventsPage() {
                       {equipe && (
                         <>
                           {event.event_type && (
-                            <Badge variant="outline" className="bg-muted text-muted-foreground border-border font-medium text-[10px] capitalize">
-                              {event.event_type}
+                            <Badge variant="outline" className="bg-muted text-muted-foreground border-border font-medium text-[10px]">
+                              {rotuloDoTipo(event.event_type)}
                             </Badge>
                           )}
                           {event.show_in_banner && (
