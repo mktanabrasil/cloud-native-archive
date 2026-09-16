@@ -22,6 +22,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Edit2, Code2, Copy, Check, UserCheck, UserPlus, UserX, Clock, ShieldCheck, Shield, Eye, RefreshCw, KeyRound, UserCog, AlertTriangle, Trash2, ChevronDown, History, Rocket, ArrowLeft, FlaskConical, Building2, CalendarCheck } from 'lucide-react';
 import { AgendaDoGoogle } from '@/components/events/AgendaDoGoogle';
+import { ConfigDosAvisos } from '@/components/events/ConfigDosAvisos';
 import { useToast } from '@/hooks/use-toast';
 import BulkActionBar from '@/components/BulkActionBar';
 import PageHeader from '@/components/PageHeader';
@@ -1181,6 +1182,7 @@ export default function UsersPage() {
         {isAdmin && (
           <TabsContent value="agenda" className="mt-4 space-y-6">
             <AgendaDoGoogle />
+            <ConfigDosAvisos />
           </TabsContent>
         )}
 

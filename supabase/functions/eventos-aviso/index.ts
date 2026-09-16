@@ -51,11 +51,27 @@ const json = (corpo: unknown, status = 200) =>
 
 const SEMPRE_RECEBEM = ['mkt@anabrasil.org', 'contato@anabrasil.org', 'parceiros@anabrasil.org', 'eventos@anabrasil.org'];
 /**
- * Chave de lançamento (15/09/2026): enquanto AVISOS_SO_EQUIPE=true no Coolify,
- * e-mail e agenda ficam SÓ com as quatro caixas fixas — a gestão das unidades e
- * quem criou entram quando a ferramenta for lançada (basta remover a variável).
+ * Configuração dos avisos (PR 3, 16/09/2026), editada pelo Painel e guardada em
+ * system_configs (chave 'avisos'). Espelho de src/lib/events/avisosConfig.ts.
+ * - pre_lancamento: ligado = só as quatro caixas fixas recebem e-mail (e, no
+ *   modo robô, leem a agenda).
+ * - extras: e-mails avulsos que recebem tudo quando lançado.
+ * - excluidos: pessoas da regra que não recebem, mesmo lançado.
+ * Sem linha no banco, vale a variável AVISOS_SO_EQUIPE do Coolify (transição).
  */
-const SO_EQUIPE = (Deno.env.get('AVISOS_SO_EQUIPE') || '').trim().toLowerCase() === 'true';
+interface ConfigDeAvisos { pre_lancamento: boolean; extras: string[]; excluidos: string[]; atualizado_por?: string | null; atualizado_em?: string | null }
+const CHAVE_DA_CONFIG = 'avisos';
+const CONFIG_DA_VARIAVEL: ConfigDeAvisos = { pre_lancamento: (Deno.env.get('AVISOS_SO_EQUIPE') || '').trim().toLowerCase() === 'true', extras: [], excluidos: [] };
+const normEmail = (e: string) => e.trim().toLowerCase();
+
+async function lerConfig(admin: any): Promise<{ config: ConfigDeAvisos; origem: 'painel' | 'variavel' }> {
+  const { data } = await admin.from('system_configs').select('value').eq('key', CHAVE_DA_CONFIG).maybeSingle();
+  const v = data?.value;
+  if (v && typeof v === 'object' && typeof v.pre_lancamento === 'boolean') {
+    return { config: { pre_lancamento: v.pre_lancamento, extras: Array.isArray(v.extras) ? v.extras.map(normEmail) : [], excluidos: Array.isArray(v.excluidos) ? v.excluidos.map(normEmail) : [], atualizado_por: v.atualizado_por ?? null, atualizado_em: v.atualizado_em ?? null }, origem: 'painel' };
+  }
+  return { config: CONFIG_DA_VARIAVEL, origem: 'variavel' };
+}
 const FUSO = 'America/Sao_Paulo';
 
 type Evento = Record<string, any>;
@@ -80,15 +96,18 @@ function quando(e: Evento): string {
   return `de ${dataLonga(i)} às ${hora(i)} a ${dataLonga(f)} às ${hora(f)}`;
 }
 
-function destinatarios(evento: Evento, perfis: Perfil[]): string[] {
+function destinatarios(evento: Evento, perfis: Perfil[], config: ConfigDeAvisos): string[] {
   const lista = new Set<string>(SEMPRE_RECEBEM);
-  if (SO_EQUIPE) return Array.from(lista);
+  if (config.pre_lancamento) return Array.from(lista);
+  const excluidos = new Set(config.excluidos);
   for (const p of perfis) {
     if (!p.email || p.is_active === false) continue;
     const daUnidade = !!p.unit && p.unit === evento.unit && p.unit !== 'Administração' && p.permission_level !== 'usuario_padrao';
     const criou = !!p.name && !!evento.created_by && p.name.trim().toLowerCase() === String(evento.created_by).trim().toLowerCase();
-    if (daUnidade || criou) lista.add(p.email.trim().toLowerCase());
+    const email = normEmail(p.email);
+    if ((daUnidade || criou) && !excluidos.has(email)) lista.add(email);
   }
+  for (const e of config.extras) if (e && !excluidos.has(e)) lista.add(e);
   return Array.from(lista);
 }
 
@@ -337,13 +356,14 @@ async function google(token: string, metodo: string, caminho: string, corpo?: un
 }
 
 /** Quem lê as agendas: as caixas fixas e a gestão ativa de alguma unidade (mesma regra do e-mail). */
-function leitoresDasAgendas(perfis: Perfil[]): string[] {
+function leitoresDasAgendas(perfis: Perfil[], config: ConfigDeAvisos): string[] {
   const lista = new Set<string>(SEMPRE_LEEM);
-  if (SO_EQUIPE) return Array.from(lista);
+  if (config.pre_lancamento) return Array.from(lista);
+  const excluidos = new Set(config.excluidos);
   for (const p of perfis) {
     if (!p.email || p.is_active === false) continue;
     const gere = p.permission_level && p.permission_level !== 'usuario_padrao';
-    if (gere) lista.add(p.email.trim().toLowerCase());
+    if (gere && !excluidos.has(normEmail(p.email))) lista.add(normEmail(p.email));
   }
   return Array.from(lista);
 }
@@ -354,7 +374,7 @@ function leitoresDasAgendas(perfis: Perfil[]): string[] {
  * (saiu da lista, ou a chave de lançamento está ligada) perde o acesso.
  * Idempotente: roda a cada chamada, mas só fala com o Google quando falta algo.
  */
-async function garantirAgendas(admin: any, token: string, perfis: Perfil[]): Promise<{ equipe: string }> {
+async function garantirAgendas(admin: any, token: string, perfis: Perfil[], config: ConfigDeAvisos): Promise<{ equipe: string }> {
   const { data: linhas } = await admin.from('agendas_google').select('chave, calendar_id, compartilhada_com');
   const atuais = new Map<string, { calendar_id: string; compartilhada_com: string[] }>((linhas || []).map((l: any) => [l.chave, l]));
   const ids = {} as { equipe: string };
@@ -382,7 +402,7 @@ async function garantirAgendas(admin: any, token: string, perfis: Perfil[]): Pro
     }
     ids[chave] = linha.calendar_id;
 
-    const leitores = leitoresDasAgendas(perfis);
+    const leitores = leitoresDasAgendas(perfis, config);
     const faltam = leitores.filter(e => !linha!.compartilhada_com.includes(e));
     const sobram = linha.compartilhada_com.filter(e => !leitores.includes(e));
     if (faltam.length === 0 && sobram.length === 0) continue;
@@ -562,18 +582,37 @@ Deno.serve(async (req) => {
     aviso_id?: string; estado?: boolean; carga?: boolean; reaplicar?: boolean;
     oauth_url?: boolean; oauth_code?: string; state?: string; listar_agendas?: boolean;
     escolher_agenda?: { calendar_id: string; nome: string }; desconectar?: boolean;
+    config?: boolean; salvar_config?: { pre_lancamento: boolean; extras: string[]; excluidos: string[] };
   } = {};
   try { corpo = await req.json(); } catch { /* sem corpo: processa os pendentes */ }
 
   const admin = createClient(SUPABASE_URL, SERVICE);
   const chaveBruta = Deno.env.get('GOOGLE_SA_KEY');
+  const { config, origem: origemDaConfig } = await lerConfig(admin);
 
   // { estado: true }: o card do Painel pergunta como está a agenda. Só leitura.
   if (corpo.estado) {
     const { data: agendas } = await admin.from('agendas_google').select('chave, calendar_id, nome, compartilhada_com');
     const conexao = await lerConexao(admin);
     const modo = conexao?.calendar_id ? 'conexao' : chaveBruta ? 'robo' : 'nenhum';
-    return json({ so_equipe: SO_EQUIPE, chave_configurada: !!chaveBruta, oauth_configurado: !!OAUTH_CLIENT_ID && !!OAUTH_CLIENT_SECRET, modo, conexao: semSegredo(conexao), agendas: agendas || [] });
+    return json({ so_equipe: config.pre_lancamento, chave_configurada: !!chaveBruta, oauth_configurado: !!OAUTH_CLIENT_ID && !!OAUTH_CLIENT_SECRET, modo, conexao: semSegredo(conexao), agendas: agendas || [] });
+  }
+
+  // ----- configuração dos avisos (Painel): só admin, só pessoa logada -----
+  if (corpo.config || corpo.salvar_config) {
+    if (!usuarioId) return json({ error: 'A configuração dos avisos é ação de uma pessoa logada.' }, 403);
+    if (!(await ehAdmin(admin, usuarioId))) return json({ error: 'Só a administração geral muda quem recebe os avisos.' }, 403);
+    let atual = config;
+    if (corpo.salvar_config) {
+      const s = corpo.salvar_config;
+      const limpa = (xs: unknown) => Array.isArray(xs) ? Array.from(new Set(xs.map(x => normEmail(String(x))).filter(x => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x)))) : [];
+      atual = { pre_lancamento: !!s.pre_lancamento, extras: limpa(s.extras).filter(e => !SEMPRE_RECEBEM.includes(e)), excluidos: limpa(s.excluidos).filter(e => !SEMPRE_RECEBEM.includes(e)), atualizado_por: pedidoPor, atualizado_em: new Date().toISOString() };
+      const { error } = await admin.from('system_configs').upsert({ key: CHAVE_DA_CONFIG, value: atual, updated_at: atual.atualizado_em, updated_by: usuarioId }, { onConflict: 'key' });
+      if (error) return json({ error: `não consegui gravar a configuração: ${error.message}` }, 500);
+      console.log(`[avisos] ${pedidoPor} salvou a configuração: pre_lancamento=${atual.pre_lancamento}, extras=${atual.extras.length}, excluidos=${atual.excluidos.length}`);
+    }
+    const { data: perfis } = await admin.from('profiles').select('email, name, unit, is_active, permission_level');
+    return json({ config: atual, origem: corpo.salvar_config ? 'painel' : origemDaConfig, perfis: perfis || [] });
   }
 
   // ----- conexão em nome da eventos@: só admin, só pessoa logada -----
@@ -713,7 +752,7 @@ Deno.serve(async (req) => {
     try {
       const chave = JSON.parse(chaveBruta) as ChaveDoRobo;
       const token = await tokenDoRobo(chave);
-      const ids = await garantirAgendas(admin, token, (perfis as Perfil[]) || []);
+      const ids = await garantirAgendas(admin, token, (perfis as Perfil[]) || [], config);
       agenda = { token, ids };
     } catch (e) {
       erroDaAgenda = e instanceof Error ? e.message : String(e);
@@ -741,7 +780,7 @@ Deno.serve(async (req) => {
 
   const resultado: Record<string, string> = {};
   for (const a of fila) {
-    const para = destinatarios(a.evento, (perfis as Perfil[]) || []);
+    const para = destinatarios(a.evento, (perfis as Perfil[]) || [], config);
     const precisaEmail = a.status === 'pendente' || (forcado === a.id && a.status === 'falhou');
     const precisaAgenda = a.agenda_status === 'pendente' || (forcado === a.id && a.agenda_status === 'falhou');
     let linkAgenda: string | null = a.evento.google_event_link || null;
