@@ -15,6 +15,7 @@ import {
 import { NEWS_UNIT_GROUPS } from '@/lib/news/units';
 import { cn } from '@/lib/utils';
 import { marcarPedidoEnviado, pedidoFoiEnviado } from '@/lib/pedidoEnviado';
+import { consumirAvisoDeLogin } from '@/lib/sessao';
 
 type Mode = 'login' | 'signup' | 'request_sent' | 'forgot';
 
@@ -53,6 +54,8 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
       ? { className: 'ana-enter-item', style: { '--ana-i': i } as React.CSSProperties }
       : {};
   const [mode, setMode] = useState<Mode>(() => (pedidoFoiEnviado() ? 'request_sent' : 'login'));
+  // "Sua sessão expirou": deixado por lib/sessao ao deslogar uma sessão morta; aparece uma vez.
+  const [avisoDeSessao] = useState<string | null>(() => consumirAvisoDeLogin());
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -220,6 +223,11 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {avisoDeSessao && mode === 'login' && (
+            <p role="status" className="mb-4 flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3 text-sm text-foreground" data-testid="aviso-de-sessao">
+              <Clock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /> {avisoDeSessao}
+            </p>
+          )}
           <form onSubmit={mode === 'signup' ? handleSignUp : mode === 'forgot' ? handleResetPassword : handleLogin} className="space-y-4">
             {mode === 'signup' && (
               <div>
