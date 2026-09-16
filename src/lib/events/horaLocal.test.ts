@@ -37,3 +37,12 @@ describe('rotuloDoFuso', () => {
     expect(rotulo).toMatch(/^GMT([+−]\d{1,2}(:\d{2})?)?$/);
   });
 });
+
+describe('fraseDoFuso', () => {
+  it('em Brasília diz "Horário de Brasília."; em outro fuso, mostra o deslocamento', async () => {
+    const { fraseDoFuso, rotuloDoFuso } = await import('./horaLocal');
+    const agora = new Date();
+    const esperado = rotuloDoFuso(agora) === 'GMT−3' ? 'Horário de Brasília.' : `Horários no fuso deste computador (${rotuloDoFuso(agora)}).`;
+    expect(fraseDoFuso(agora)).toBe(esperado);
+  });
+});

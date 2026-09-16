@@ -318,7 +318,7 @@ export default function Dashboard() {
                   </button>
                   <button
                     className="flex items-center gap-1 hover:opacity-70 transition-opacity"
-                    title="Parceiros Envolvidos"
+                    title="Padrinhos, doadores e empresas"
                     onClick={(ev) => { ev.stopPropagation(); setShowFiltered('partners'); }}
                   >
                     <Handshake className="h-3.5 w-3.5 text-info sm:h-4 sm:w-4" />
@@ -348,7 +348,7 @@ export default function Dashboard() {
               {UNITS.map(u => (
                 <div key={u} className="flex items-center gap-1.5">
                   <span className={`h-2 w-2 rounded-full ${unitDotColors[u]} shrink-0 sm:h-2.5 sm:w-2.5`} />
-                  <span className="text-[10px] text-muted-foreground sm:text-xs">{u === 'Administração' ? 'Geral' : u}</span>
+                  <span className="text-[10px] text-muted-foreground sm:text-xs">{u}</span>
                 </div>
               ))}
             </div>

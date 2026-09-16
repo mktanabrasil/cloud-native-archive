@@ -20,7 +20,7 @@ export type CampoComLimite = keyof typeof LIMITES_DE_TEXTO;
 
 export const ROTULOS: Record<CampoComLimite, string> = {
   title: 'Título',
-  location: 'Localização',
+  location: 'Local',
   description: 'Descrição',
 };
 

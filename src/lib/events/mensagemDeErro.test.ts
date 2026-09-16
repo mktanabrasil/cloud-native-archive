@@ -36,7 +36,7 @@ describe('descreverErroDeGravacao', () => {
       criar,
     );
     expect(r.tipo).toBe('obrigatorio');
-    expect(r.titulo).toBe('Falta preencher Localização');
+    expect(r.titulo).toBe('Falta preencher Local');
   });
 
   it('CHECK de tamanho diz qual campo passou', () => {

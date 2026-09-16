@@ -180,13 +180,13 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {event.target_audience && (
                       <div>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Público-Alvo</p>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Para quem</p>
                         <p className="text-foreground">{event.target_audience}</p>
                       </div>
                     )}
                     {event.support_team && (
                       <div>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Equipe de Apoio</p>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Quem ajuda no dia</p>
                         <p className="text-foreground">{event.support_team}</p>
                       </div>
                     )}
@@ -200,7 +200,7 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
                     )}
                     {event.food_details && (
                       <div className="col-span-1 md:col-span-2">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Observações gerais da alimentação</p>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Restrições e avisos sobre a comida</p>
                         <p className="text-foreground whitespace-pre-wrap">{event.food_details}</p>
                       </div>
                     )}
@@ -240,13 +240,13 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {event.collaborating_units.length > 0 && (
                       <div>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Unidades Internas</p>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Unidades da ANA</p>
                         <p className="text-foreground">{event.collaborating_units.join(', ')}</p>
                       </div>
                     )}
                     {event.external_collaborators.length > 0 && (
                       <div className="col-span-1 md:col-span-2">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Instituições Externas</p>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Instituições</p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
                           {event.external_collaborators.map((ext, idx) => (
                             <div key={idx} className="bg-muted/50 rounded-lg p-3 border border-border">
@@ -269,7 +269,7 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
                 <div className="pt-6 border-t border-border space-y-4">
                   <div className="flex items-center gap-2">
                     <Megaphone className="h-5 w-5 text-blue-500" />
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-blue-500">Solicitação de Marketing</h3>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-blue-500">Pedido ao marketing</h3>
                   </div>
                   <div className="grid grid-cols-1 gap-6">
                     {(event.marketing_coverage || (event.marketing_items && event.marketing_items.length > 0)) && (
@@ -304,7 +304,7 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
                         {/* Demanda Gráfica */}
                         {event.marketing_items.some(i => i.type === 'demanda_grafica') && (
                           <div className="space-y-3">
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Demanda Gráfica (Arte/Impressão)</p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Arte ou material impresso</p>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {event.marketing_items.filter(i => i.type === 'demanda_grafica').map((item, idx) => (
                                 <div key={idx} className="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
@@ -322,7 +322,7 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
                         saiu: nunca teve campo nem dado. */}
                     {event.printed_materials && (
                       <div className="bg-muted/50 rounded-xl p-4 border border-border">
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-tighter mb-1">Materiais impressos já existentes</p>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-tighter mb-1">Já existe pronto</p>
                         <p className="text-foreground text-sm break-all">{event.printed_materials}</p>
                       </div>
                     )}

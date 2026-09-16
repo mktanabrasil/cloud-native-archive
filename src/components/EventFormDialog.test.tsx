@@ -198,7 +198,7 @@ describe('Tipo e Status', () => {
     // sem valor, sem `capitalize`: o placeholder ficava "Selecione O Tipo"
     expect(document.querySelector('#campo-tipo button')?.className).not.toMatch(/capitalize/);
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
     expect(screen.getAllByText('Escolha o tipo do evento').length).toBeGreaterThan(0);
     expect(espiao.addEvent).not.toHaveBeenCalled();
 
@@ -216,10 +216,10 @@ describe('as pendências', () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
     abrir();
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     expect(screen.getByText(/faltam \d+ campos para criar a programação/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /criar programação \(\d+ pendências\)/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /criar evento \(\d+ pendências\)/i })).toBeInTheDocument();
     expect(espiao.addEvent).not.toHaveBeenCalled();
   });
 });
@@ -233,7 +233,7 @@ describe('o que acontece quando o banco recusa', () => {
     abrir();
     preencher();
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
     expect(fechou).not.toHaveBeenCalled();
@@ -246,7 +246,7 @@ describe('o que acontece quando o banco recusa', () => {
     abrir();
     preencher();
 
-    const botao = () => screen.getByRole('button', { name: /criar programação|salvando/i });
+    const botao = () => screen.getByRole('button', { name: /criar evento|salvando/i });
     fireEvent.click(botao());
     await waitFor(() => expect(espiao.addEvent).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(botao()).not.toBeDisabled());
@@ -266,7 +266,7 @@ describe('quando dá certo', () => {
     abrir();
     preencher();
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     // gravação em curso: o diálogo segue aberto e o botão travado
     await waitFor(() => expect(screen.getByRole('button', { name: /salvando/i })).toBeDisabled());
@@ -283,7 +283,7 @@ describe('quando dá certo', () => {
     abrir();
     preencher();
 
-    const botao = screen.getByRole('button', { name: /criar programação/i });
+    const botao = screen.getByRole('button', { name: /criar evento/i });
     fireEvent.click(botao);
     fireEvent.click(botao);
 
@@ -339,7 +339,7 @@ describe('a gestora envia para aprovação', () => {
     abrir();
     preencher();
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
     expect((espiao.addEvent.mock.calls[0][0] as AppEvent).submitted_at).toBeNull();
@@ -356,7 +356,7 @@ describe('o texto do “Outro” vai aparado só ao salvar', () => {
     fireEvent.change(caixa, { target: { value: 'Pais e mães ' } });
     expect((caixa as HTMLInputElement).value).toBe('Pais e mães ');
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
     expect((espiao.addEvent.mock.calls[0][0] as AppEvent).target_audience).toBe('Os atendidos, Pais e mães');
@@ -368,10 +368,10 @@ describe('linhas em branco nas listas', () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
     abrir();
     preencher();
-    fireEvent.click(screen.getByRole('switch', { name: /parceiro envolvido/i }));
+    fireEvent.click(screen.getByRole('switch', { name: /tem padrinho, doador ou empresa envolvida/i }));
     fireEvent.click(screen.getByRole('button', { name: /adicionar parceiro/i }));
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     expect(espiao.addEvent).not.toHaveBeenCalled();
     expect(screen.getAllByText(/adicione ao menos um parceiro/i).length).toBeGreaterThan(0);
@@ -381,16 +381,16 @@ describe('linhas em branco nas listas', () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
     abrir();
     preencher();
-    fireEvent.click(screen.getByRole('switch', { name: /parceria com unidade ou instituição/i }));
+    fireEvent.click(screen.getByRole('switch', { name: /outra unidade da ana ou instituição participa/i }));
     fireEvent.click(screen.getByRole('button', { name: /adicionar instituição/i }));
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     expect(espiao.addEvent).not.toHaveBeenCalled();
     expect(screen.getAllByText(/marque uma unidade ou adicione uma instituição/i).length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByPlaceholderText(/nome da instituição/i), { target: { value: '  Igreja do Nazareno  ' } });
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
     expect((espiao.addEvent.mock.calls[0][0] as AppEvent).external_collaborators).toEqual([{ name: 'Igreja do Nazareno', details: '' }]);
@@ -402,13 +402,13 @@ describe('a contagem de pendências acompanha a correção', () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
     abrir();
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
-    const antes = Number(screen.getByRole('button', { name: /criar programação \((\d+) pendências\)/i }).textContent!.match(/\((\d+)/)![1]);
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
+    const antes = Number(screen.getByRole('button', { name: /criar evento \((\d+) pendências\)/i }).textContent!.match(/\((\d+)/)![1]);
 
     fireEvent.change(screen.getByPlaceholderText(/nome do evento/i), { target: { value: 'Festa' } });
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: new RegExp(`criar programação \\(${antes - 1} pendências\\)`, 'i') })).toBeInTheDocument(),
+      expect(screen.getByRole('button', { name: new RegExp(`criar evento \\(${antes - 1} pendências\\)`, 'i') })).toBeInTheDocument(),
     );
     expect(screen.queryByText('Título obrigatório')).not.toBeInTheDocument();
   });
@@ -421,7 +421,7 @@ describe('a contagem de pendências acompanha a correção', () => {
     fireEvent.change(screen.getByPlaceholderText(/nome do evento/i), { target: { value: '' } });
 
     expect(screen.queryByText('Título obrigatório')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^criar programação$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^criar evento$/i })).toBeInTheDocument();
   });
 });
 
@@ -435,7 +435,7 @@ describe('checklist de publicação', () => {
   it('a comunicação, sem ser admin, liga o que antes vinha travado', () => {
     abrirComoComunicacao();
 
-    for (const nome of [/exibir no banner superior/i, /usar logo como título/i, /cortina de opacidade/i, /efeito de sombreamento/i, /ocupar toda a altura/i]) {
+    for (const nome of [/exibir no banner superior/i, /usar logo como título/i, /cortina de opacidade/i, /degradê na base/i, /ocupar toda a altura/i]) {
       expect(screen.getByRole('switch', { name: nome })).not.toBeDisabled();
     }
     expect(screen.getByLabelText(/tempo de exibição/i)).not.toBeDisabled();
@@ -468,7 +468,7 @@ describe('um detalhe por item na alimentação e nos equipamentos', () => {
     // "Nenhum" não tem caixa
     expect(screen.queryByLabelText('Detalhes de Nenhum')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
     const salvo = espiao.addEvent.mock.calls[0][0] as AppEvent;
@@ -484,14 +484,14 @@ describe('um detalhe por item na alimentação e nos equipamentos', () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
     abrir();
     preencher();
-    fireEvent.click(screen.getByRole('switch', { name: /outra logística/i }));
+    fireEvent.click(screen.getByRole('switch', { name: /outra comida/i }));
     const nome = screen.getByPlaceholderText('Especifique a alimentação...');
     fireEvent.change(nome, { target: { value: 'Café' } });
     fireEvent.change(screen.getByLabelText('Detalhes de Café'), { target: { value: '7h30, 12 pessoas' } });
     fireEvent.change(nome, { target: { value: 'Café dos voluntários' } });
     expect((screen.getByLabelText('Detalhes de Café dos voluntários') as HTMLTextAreaElement).value).toBe('7h30, 12 pessoas');
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
     await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
     const salvo = espiao.addEvent.mock.calls[0][0] as AppEvent;
     expect(salvo.food_items).toContainEqual({ item: 'Café dos voluntários', detalhes: '7h30, 12 pessoas', outro: true });
@@ -505,7 +505,7 @@ describe('um detalhe por item na alimentação e nos equipamentos', () => {
     // há um "Nenhum" em cada grupo: o da alimentação é o de id `comida-Nenhum`
     fireEvent.click(document.getElementById('comida-Nenhum')!);
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
     await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
     const salvo = espiao.addEvent.mock.calls[0][0] as AppEvent;
     expect(salvo.food_items).toEqual([{ item: 'Nenhum', detalhes: '' }]);
@@ -539,7 +539,7 @@ describe('um detalhe por item na alimentação e nos equipamentos', () => {
 
   it('o campo geral virou “Observações gerais da alimentação”', () => {
     abrir();
-    expect(screen.getByLabelText(/observações gerais da alimentação/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/alguma restrição ou aviso sobre a comida/i)).toBeInTheDocument();
     expect(screen.queryByText(/mais detalhes da alimentação/i)).not.toBeInTheDocument();
   });
 });
@@ -547,10 +547,10 @@ describe('um detalhe por item na alimentação e nos equipamentos', () => {
 describe('os combinados da cobertura', () => {
   it('ao pedir cobertura, a unidade lê os dois combinados', () => {
     abrir();
-    fireEvent.click(screen.getByRole('switch', { name: /solicitação de marketing/i }));
+    fireEvent.click(screen.getByRole('switch', { name: /pedido ao marketing/i }));
     expect(screen.queryByTestId('combinados-da-cobertura')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('switch', { name: /solicitar cobertura do evento/i }));
+    fireEvent.click(screen.getByRole('switch', { name: /fotos e vídeo no dia/i }));
 
     const bloco = screen.getByTestId('combinados-da-cobertura');
     expect(bloco).toHaveTextContent('1. A presença do marketing é confirmada caso a caso.');
@@ -590,9 +590,9 @@ describe('os combinados da cobertura', () => {
     const evento = { ...eventoGravado(), marketing_request: true, marketing_coverage: true, marketing_confirmed: true };
     render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
 
-    fireEvent.click(screen.getByRole('switch', { name: /solicitar cobertura do evento/i }));
-    fireEvent.click(screen.getByRole('switch', { name: /demanda gráfica/i }));
-    fireEvent.change(screen.getByPlaceholderText(/ex: card instagram/i), { target: { value: 'Card' } });
+    fireEvent.click(screen.getByRole('switch', { name: /fotos e vídeo no dia/i }));
+    fireEvent.click(screen.getByRole('switch', { name: /arte ou material impresso/i }));
+    fireEvent.change(screen.getByPlaceholderText(/ex.: post para o instagram/i), { target: { value: 'Card' } });
     fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
 
     await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalled());
@@ -605,15 +605,15 @@ describe('materiais impressos', () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
     abrir();
     preencher();
-    expect(screen.queryByLabelText(/materiais impressos já existentes/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/já existe algo pronto/i)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('switch', { name: /solicitação de marketing/i }));
-    fireEvent.click(screen.getByRole('switch', { name: /solicitar cobertura do evento/i }));
-    fireEvent.change(screen.getByLabelText(/materiais impressos já existentes/i), {
+    fireEvent.click(screen.getByRole('switch', { name: /pedido ao marketing/i }));
+    fireEvent.click(screen.getByRole('switch', { name: /fotos e vídeo no dia/i }));
+    fireEvent.change(screen.getByLabelText(/já existe algo pronto/i), {
       target: { value: '  https://drive.google.com/open?id=1Oygl  ' },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
     const salvo = espiao.addEvent.mock.calls[0][0] as AppEvent & { marketing_info?: unknown };
@@ -629,7 +629,7 @@ describe('transporte', () => {
     preencher();
     fireEvent.click(screen.getByRole('switch', { name: /logística de transporte/i }));
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     expect(espiao.addEvent).not.toHaveBeenCalled();
     expect(screen.getAllByText(/escolha o veículo, ou desligue o transporte/i).length).toBeGreaterThan(0);
@@ -653,7 +653,7 @@ describe('transporte', () => {
   it('o pedido de marketing vem antes do transporte, e a cobertura entra na conta', () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
     abrir();
-    const marketing = screen.getByRole('switch', { name: /solicitação de marketing/i });
+    const marketing = screen.getByRole('switch', { name: /pedido ao marketing/i });
     const transporte = screen.getByRole('switch', { name: /logística de transporte/i });
     // marketing precede transporte no documento
     expect(marketing.compareDocumentPosition(transporte) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -663,7 +663,7 @@ describe('transporte', () => {
     expect(screen.getByTestId('conta-do-transporte')).toHaveTextContent('13 + 1 motorista = 14 pessoas no veículo');
 
     fireEvent.click(marketing);
-    fireEvent.click(screen.getByRole('switch', { name: /solicitar cobertura do evento/i }));
+    fireEvent.click(screen.getByRole('switch', { name: /fotos e vídeo no dia/i }));
     // o motorista aparece na soma mostrada; os lugares continuam sendo assentos − 1
     expect(screen.getByTestId('conta-do-transporte')).toHaveTextContent('13 + 1 do marketing + 1 motorista (se confirmado) = 15 pessoas no veículo');
     // o aviso antigo em duplicata, dentro do marketing, saiu
@@ -683,7 +683,7 @@ describe('transporte', () => {
     fireEvent.click(screen.getByRole('button', { name: /usar sugestão/i }));
     expect(screen.queryByText('Sugestão: Kombi')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
     await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
     const salvo = espiao.addEvent.mock.calls[0][0] as AppEvent;
     expect(salvo.transport_vehicle).toBe('kombi');
@@ -766,10 +766,10 @@ describe('limites de texto', () => {
 
     expect(screen.getByText('174/160 — encurte 14 caracteres')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     expect(espiao.addEvent).not.toHaveBeenCalled();
-    expect(screen.getAllByText(/localização passa de 160 caracteres/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/local passa de 160 caracteres/i).length).toBeGreaterThan(0);
   });
 
   it('no limite exato, passa', async () => {
@@ -778,7 +778,7 @@ describe('limites de texto', () => {
     preencher();
     fireEvent.change(screen.getByPlaceholderText(/nome do evento/i), { target: { value: 'T'.repeat(120) } });
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
   });
@@ -804,7 +804,7 @@ describe('fechar sem querer', () => {
     cancelar();
 
     expect(fechou).not.toHaveBeenCalled();
-    expect(screen.getByText('Descartar esta programação?')).toBeInTheDocument();
+    expect(screen.getByText('Descartar este evento?')).toBeInTheDocument();
     // título + local; o slug que o título gera sozinho não conta
     expect(screen.getByText(/você preencheu 2 campos de “Festa da Primavera”/i)).toBeInTheDocument();
 
@@ -831,7 +831,7 @@ describe('fechar sem querer', () => {
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
 
     expect(fechou).not.toHaveBeenCalled();
-    expect(screen.getByText('Descartar esta programação?')).toBeInTheDocument();
+    expect(screen.getByText('Descartar este evento?')).toBeInTheDocument();
   });
 
   it('ao editar, a pergunta fala em alterações e o que fica é o evento como estava', () => {
@@ -873,7 +873,7 @@ describe('o admin revisa um pedido', () => {
   it('a tela diz de quem é o pedido e oferece os dois caminhos', () => {
     abrirRevisao();
 
-    expect(screen.getByText('Revisar programação')).toBeInTheDocument();
+    expect(screen.getByText('Revisar evento')).toBeInTheDocument();
     expect(screen.getByText(/Pendente · Santana · Vitória De Faria/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /aprovar e confirmar/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /devolver com observação/i })).toBeInTheDocument();
@@ -918,7 +918,7 @@ describe('o admin revisa um pedido', () => {
     espiao.papel = { ...espiao.papel, isAdmin: true, isMarketing: true };
     render(<EventFormDialog open onOpenChange={fechou} event={pedido()} />);
 
-    expect(screen.getByText('Editar Evento')).toBeInTheDocument();
+    expect(screen.getByText('Editar evento')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /salvar alterações/i })).toBeInTheDocument();
   });
 });
@@ -932,7 +932,7 @@ describe('quando o slug colide com um evento que ela não vê', () => {
     abrir();
     preencher();
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     await waitFor(() => expect(fechou).toHaveBeenCalledWith(false));
     expect(espiao.addEvent).toHaveBeenCalledTimes(2);
@@ -946,7 +946,7 @@ describe('quando o slug colide com um evento que ela não vê', () => {
     abrir();
     preencher();
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     await waitFor(() => expect(espiao.addEvent).toHaveBeenCalledTimes(4));
     expect(fechou).not.toHaveBeenCalled();
@@ -994,7 +994,7 @@ describe('editar sem mexer nas datas', () => {
     const campo = document.querySelector('input[type="datetime-local"]') as HTMLInputElement;
 
     expect(campo.value).toMatch(new RegExp(`T${hh}:00$`));
-    expect(screen.getByText(/horários no fuso deste computador/i)).toBeInTheDocument();
+    expect(screen.getByText(/horário de brasília|horários no fuso deste computador/i)).toBeInTheDocument();
   });
 });
 
@@ -1010,7 +1010,7 @@ describe('o slug vazio', () => {
     const campoSlug = screen.getByPlaceholderText('meu-evento-especial');
     fireEvent.change(campoSlug, { target: { value: '   ' } });
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
     expect(espiao.addEvent.mock.calls[0][0].slug).toBeNull();
@@ -1024,7 +1024,7 @@ describe('o slug vazio', () => {
       target: { value: '  festa-da-primavera  ' },
     });
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
     expect(espiao.addEvent.mock.calls[0][0].slug).toBe('festa-da-primavera');
@@ -1068,9 +1068,9 @@ describe('o local do evento', () => {
     preencher();
     fireEvent.change(selectLocal(), { target: { value: '__outro__' } });
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação|enviar para aprovação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento|enviar para aprovação/i }));
 
-    expect(screen.getByText('Localização obrigatória')).toBeInTheDocument();
+    expect(screen.getByText('Informe o local')).toBeInTheDocument();
   });
 
   it('evento antigo com texto livre abre em "Outro local", com o texto', () => {
@@ -1118,7 +1118,7 @@ describe('o status inicial', () => {
     expect(selectStatus().value).toBe('confirmado');
 
     preencher();
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
     expect(espiao.addEvent.mock.calls[0][0].status).toBe('confirmado');
@@ -1149,7 +1149,7 @@ describe('título que é só uma quebra de linha', () => {
     abrir();
     fireEvent.change(screen.getByPlaceholderText(/nome do evento/i), { target: { value: '<br> <br>' } });
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     expect(await screen.findByText('Título obrigatório')).toBeInTheDocument();
     expect(espiao.addEvent).not.toHaveBeenCalled();
@@ -1173,7 +1173,7 @@ describe('rótulos e erros para leitor de tela', () => {
     const titulo = screen.getByLabelText('Título *');
     expect(titulo).toHaveAttribute('placeholder', 'Nome do evento');
 
-    fireEvent.click(screen.getByRole('button', { name: /criar programação/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
     await screen.findByText('Título obrigatório');
     expect(titulo).toHaveAttribute('aria-invalid', 'true');
