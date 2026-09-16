@@ -21,7 +21,7 @@ export function errosDasListas(form: Partial<Listas>): Partial<Record<'partners'
     const parceiros = form.partners || [];
     const preenchidos = parceiros.filter(p => p.name.trim() && p.type);
     if (parceiros.length === 0 || preenchidos.length === 0) {
-      erros.partners = 'Adicione ao menos um parceiro, ou desligue “Parceiro envolvido”';
+      erros.partners = 'Adicione ao menos um parceiro, ou desligue a pergunta do padrinho, doador ou empresa';
     } else if (preenchidos.length < parceiros.length) {
       erros.partners = 'Preencha tipo e nome de cada parceiro, ou remova a linha em branco';
     }

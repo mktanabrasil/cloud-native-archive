@@ -24,7 +24,7 @@ import { CampoDataHora } from './events/CampoDataHora';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { OPCOES_COMIDA, OPCOES_EQUIP, comDetalhe, itensDeTexto, limparItens, sincronizarItens } from '@/lib/events/itens';
 import { TituloDoEvento } from './events/TituloDoEvento';
-import { paraCampoDataHora, rotuloDoFuso } from '@/lib/events/horaLocal';
+import { paraCampoDataHora, fraseDoFuso } from '@/lib/events/horaLocal';
 import { LOCAIS_FIXOS, OUTRO_LOCAL, localAoTrocarUnidade, localDaUnidade, localFixo, opcaoDoLocal } from '@/lib/events/local';
 import { linkPublicoDoEvento, prefixoDoLinkPublico, proximoSlug } from '@/lib/events/linkPublico';
 import { descreverErroDeGravacao } from '@/lib/events/mensagemDeErro';
@@ -64,7 +64,7 @@ const slugify = (text: string): string =>
  * Onde cada erro mora na tela, e como ele se chama para quem lê.
  *
  * Os quatro campos de logística ficam entre 1300px e 2400px de altura, numa
- * janela de 745px: quem aperta "Criar Programação" com eles em branco vê o
+ * janela de 745px: quem aperta "Criar evento" com eles em branco vê o
  * botão não fazer nada, porque o motivo está muito abaixo da dobra.
  */
 const CAMPOS_COM_ERRO: { chave: string; ancora: string; rotulo: string }[] = [
@@ -73,17 +73,17 @@ const CAMPOS_COM_ERRO: { chave: string; ancora: string; rotulo: string }[] = [
   { chave: 'event_type', ancora: 'campo-tipo', rotulo: 'Tipo' },
   { chave: 'start_datetime', ancora: 'campo-start_datetime', rotulo: 'Início' },
   { chave: 'end_datetime', ancora: 'campo-end_datetime', rotulo: 'Término' },
-  { chave: 'location', ancora: 'campo-location', rotulo: 'Localização' },
-  { chave: 'target_audience', ancora: 'campo-publico', rotulo: 'Público-alvo' },
+  { chave: 'location', ancora: 'campo-location', rotulo: 'Local' },
+  { chave: 'target_audience', ancora: 'campo-publico', rotulo: 'Para quem é o evento' },
   { chave: 'support_team', ancora: 'campo-apoio', rotulo: 'Equipe de apoio' },
-  { chave: 'food_logistics', ancora: 'campo-comida', rotulo: 'Logística de alimentação' },
-  { chave: 'equipment_needed', ancora: 'campo-equip', rotulo: 'Equipamentos necessários' },
+  { chave: 'food_logistics', ancora: 'campo-comida', rotulo: 'Alimentação' },
+  { chave: 'equipment_needed', ancora: 'campo-equip', rotulo: 'Equipamentos' },
   { chave: 'transport_vehicle', ancora: 'campo-transporte', rotulo: 'Transporte' },
   { chave: 'transport_passengers', ancora: 'campo-transporte', rotulo: 'Passageiros' },
   { chave: 'transport_support_vehicle', ancora: 'campo-transporte', rotulo: 'Veículo de apoio' },
   { chave: 'marketing_items', ancora: 'campo-marketing', rotulo: 'Solicitação de marketing' },
   { chave: 'partners', ancora: 'campo-parceiros', rotulo: 'Parceiros' },
-  { chave: 'external_collaborators', ancora: 'campo-parceria', rotulo: 'Parceria com unidade ou instituição' },
+  { chave: 'external_collaborators', ancora: 'campo-parceria', rotulo: 'Outra unidade ou instituição' },
 ];
 
 /**
@@ -431,7 +431,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     if (!form.event_type || !(EVENT_TYPES as string[]).includes(form.event_type)) errs.event_type = 'Escolha o tipo do evento';
     if (!form.start_datetime) errs.start_datetime = 'Data/hora início obrigatória';
     if (!form.end_datetime) errs.end_datetime = 'Data/hora término obrigatória';
-    if (!form.location?.trim()) errs.location = 'Localização obrigatória';
+    if (!form.location?.trim()) errs.location = 'Informe o local';
 
     // Limites de texto: o banco também recusa (CHECK), mas aqui a pessoa
     // sabe antes, com o campo apontado e quanto encurtar.
@@ -441,10 +441,10 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     }
     
     // Novos campos obrigatórios
-    if (!form.target_audience?.trim()) errs.target_audience = 'Selecione o público-alvo';
-    if (!form.support_team?.trim()) errs.support_team = 'Informe a equipe de apoio';
-    if (!form.food_logistics?.trim()) errs.food_logistics = 'Informe a logística de alimentação';
-    if (!form.equipment_needed?.trim()) errs.equipment_needed = 'Informe os equipamentos necessários';
+    if (!form.target_audience?.trim()) errs.target_audience = 'Marque para quem é o evento';
+    if (!form.support_team?.trim()) errs.support_team = 'Marque quem vai ajudar no dia';
+    if (!form.food_logistics?.trim()) errs.food_logistics = 'Marque se vai ter comida (ou “Nenhum”)';
+    if (!form.equipment_needed?.trim()) errs.equipment_needed = 'Marque os equipamentos (ou “Nenhum”)';
 
     // Interruptor "Outro" ligado e caixa vazia: antes isso passava — o valor
     // virava "Outro: ", que conta como preenchido e não diz nada a ninguém.
@@ -457,7 +457,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     if (outroAberto.apoio && outroVazio('support_team', ["Funcionários", "Voluntários"]))
       errs.support_team = 'Escreva qual equipe, ou desligue “Outra equipe”';
     if (outroAberto.comida && outroVazio('food_logistics', OPCOES_COMIDA))
-      errs.food_logistics = 'Escreva qual logística, ou desligue “Outra logística”';
+      errs.food_logistics = 'Escreva qual comida, ou desligue “Outra comida”';
     if (outroAberto.equip && outroVazio('equipment_needed', OPCOES_EQUIP))
       errs.equipment_needed = 'Escreva qual equipamento, ou desligue “Outro equipamento”';
     
@@ -471,7 +471,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       const hasGraphics = (form.marketing_items || []).some(i => i.type === 'demanda_grafica');
       
       if (!hasCoverage && !hasGraphics) {
-        errs.marketing_items = 'Selecione ao menos um tipo de solicitação (Cobertura ou Demanda Gráfica)';
+        errs.marketing_items = 'Marque o que precisa: fotos e vídeo, arte ou impresso — ou desligue o pedido';
       } else if (hasGraphics && (form.marketing_items || []).filter(i => i.type === 'demanda_grafica').some(item => !item.item.trim())) {
         errs.marketing_items = 'Preencha todos os campos das demandas gráficas';
       }
@@ -657,7 +657,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
         }`,
       });
     } else {
-      toast.success(isEditing ? 'Alterações salvas' : 'Programação criada', {
+      toast.success(isEditing ? 'Alterações salvas' : 'Evento criado', {
         description: `“${tituloEmTexto(gravado.title)}”, ${quando} · ${eventUnitLabel(gravado.unit)}.${linkAjustado}`,
       });
     }
@@ -744,7 +744,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
         <DialogHeader>
           <div className="flex justify-between items-center pr-8">
             <div className="flex flex-wrap items-center gap-2">
-              <DialogTitle>{emRevisao ? 'Revisar programação' : isEditing ? 'Editar Evento' : 'Nova Programação'}</DialogTitle>
+              <DialogTitle>{emRevisao ? 'Revisar evento' : isEditing ? 'Editar evento' : 'Novo evento'}</DialogTitle>
               {emRevisao && event && (
                 <Badge variant="outline" className="border-warning/60 bg-warning/15 text-foreground text-[11px] font-medium">
                   Pendente · {eventUnitLabel(event.unit)} · {event.created_by}
@@ -754,7 +754,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
             </div>
             {isAdmin && (
               <Badge variant="outline" className="text-primary border-primary/20 bg-primary/5 flex items-center gap-1.5 px-3 py-1">
-                <Layout className="h-3.5 w-3.5" /> Modo Split (Admin)
+                <Layout className="h-3.5 w-3.5" /> Formulário + prévia
               </Badge>
             )}
           </div>
@@ -895,7 +895,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   {/* Quem edita de outro estado precisa saber em que relógio o
                       horário está. O fuso é o do computador de quem preenche. */}
                   <p className="col-span-2 -mt-1 text-[11px] text-muted-foreground">
-                    Horários no fuso deste computador ({rotuloDoFuso()}).
+                    {fraseDoFuso()}
                   </p>
                 </div>
                 {/* Uma lista em vez de texto livre: a mesma unidade saía escrita
@@ -968,7 +968,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     </Label>
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <Label htmlFor="slug" className="text-xs font-medium block">Link personalizado (Slug)</Label>
+                        <Label htmlFor="slug" className="text-xs font-medium block">Endereço do evento no site</Label>
                         {slugMode === 'auto' ? (
                           <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Automático</Badge>
                         ) : (
@@ -1185,7 +1185,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     <div className="flex items-center justify-between gap-3 p-2 bg-muted rounded-md border border-border">
                       <div className="flex flex-col">
                         <Label htmlFor="use_logo_as_title" className="text-sm font-semibold text-foreground">Usar logo como título</Label>
-                        <p className="text-[11px] text-muted-foreground">Estilo streaming: substitui o texto por uma imagem da logo.</p>
+                        <p className="text-[11px] text-muted-foreground">Substitui o texto do título pela imagem da logo.</p>
                       </div>
                       <Switch
                         id="use_logo_as_title"
@@ -1208,7 +1208,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
 
                     <div className="flex items-center justify-between gap-3 p-2 bg-muted rounded-md border border-border">
                       <div className="flex flex-col">
-                        <Label htmlFor="show_banner_fade" className="text-sm font-semibold text-foreground">Efeito de sombreamento (Fade)</Label>
+                        <Label htmlFor="show_banner_fade" className="text-sm font-semibold text-foreground">Degradê na base</Label>
                         <p className="text-[11px] text-muted-foreground">Adiciona um degradê na base do banner para melhorar a leitura.</p>
                       </div>
                       <Switch
@@ -1299,7 +1299,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     </div>
 
                     <div className="pt-2">
-                      <Label className="text-xs mb-2 block">Cor do Card</Label>
+                      <Label className="text-xs mb-2 block">Cor do cartão</Label>
                       <div className="flex flex-wrap gap-2">
                         {SYSTEM_COLORS.map(color => (
                           <button
@@ -1323,7 +1323,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   <div className="space-y-4">
                     <GrupoDeOpcoes
                       id="publico"
-                      titulo="Público-alvo *"
+                      titulo="Para quem é o evento? *"
                       opcoes={["Os funcionários", "Os atendidos", "Os atendidos e suas famílias", "Será aberto para a comunidade"]}
                       valor={form.target_audience || ''}
                       onChange={v => setForm({ ...form, target_audience: v })}
@@ -1336,7 +1336,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
 
                     <GrupoDeOpcoes
                       id="apoio"
-                      titulo="Equipe de apoio (Auxílio) *"
+                      titulo="Quem vai ajudar no dia? *"
                       opcoes={["Funcionários", "Voluntários"]}
                       valor={form.support_team || ''}
                       onChange={v => setForm({ ...form, support_team: v })}
@@ -1350,7 +1350,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     <div>
                       <GrupoDeOpcoes
                         id="comida"
-                        titulo="Logística de alimentação *"
+                        titulo="Vai ter comida? *"
                         opcoes={OPCOES_COMIDA}
                         valor={form.food_logistics || ''}
                         onChange={v => setForm({ ...form, food_logistics: v, food_items: sincronizarItens(v, form.food_items, OPCOES_COMIDA) })}
@@ -1359,7 +1359,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                           onDetalhe: (chave, texto) => setForm({ ...form, food_items: comDetalhe(sincronizarItens(form.food_logistics, form.food_items, OPCOES_COMIDA), chave, texto) }),
                           pista: 'Para quantos, a que hora, cardápio, quem fornece…',
                         }}
-                        rotuloOutro="Outra logística"
+                        rotuloOutro="Outra comida"
                         pistaOutro="Especifique a alimentação..."
                         temNenhum
                         significadoDoNenhum="não haverá alimentação neste evento"
@@ -1374,7 +1374,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       {/* O que não é de um item só: restrição do grupo, aviso da
                           nutricionista. O detalhe de cada item mora no item. */}
                       <Label htmlFor="food_details" className="text-xs font-medium mt-3 mb-1 block text-muted-foreground">
-                        Observações gerais da alimentação (opcional)
+                        Alguma restrição ou aviso sobre a comida? <span className="font-normal text-muted-foreground">(opcional)</span>
                       </Label>
                       <Textarea
                         id="food_details"
@@ -1387,7 +1387,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
 
                     <GrupoDeOpcoes
                       id="equip"
-                      titulo="Equipamentos necessários *"
+                      titulo="Precisa de equipamento? *"
                       opcoes={OPCOES_EQUIP}
                       valor={form.equipment_needed || ''}
                       onChange={v => setForm({ ...form, equipment_needed: v, equipment_items: sincronizarItens(v, form.equipment_items, OPCOES_EQUIP) })}
@@ -1411,7 +1411,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button type="button" variant="outline" size="sm" className="gap-1.5">
-                            Ver resumo
+                            Ver resumo da logística
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent align="start" className="w-[360px] max-w-[90vw] space-y-4" data-testid="popover-resumo">
@@ -1430,14 +1430,13 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       checked={form.marketing_request || false}
                       onCheckedChange={v => setForm({ ...form, marketing_request: v })}
                     />
-                    <Label htmlFor="marketing_request" className="cursor-pointer flex-1 text-sm font-semibold">Solicitação de Marketing</Label>
+                    <Label htmlFor="marketing_request" className="cursor-pointer flex-1 text-sm font-semibold">Pedido ao marketing</Label>
                   </div>
 
                   {form.marketing_request && (
                     <div className="rounded-lg border border-blue-100 bg-blue-50/30 p-4 space-y-4 animate-in fade-in slide-in-from-top-1">
                       <div className="flex items-center justify-between">
-                        <Label className="text-sm font-semibold text-blue-900">Itens de marketing *</Label>
-                        <Badge variant="outline" className="text-[11px] bg-blue-100 text-blue-700 border-blue-200 uppercase font-bold tracking-tight">Briefing / Materiais</Badge>
+                        <Label className="text-sm font-semibold text-blue-900">O que você precisa? *</Label>
                       </div>
                       
                       <div className="space-y-4">
@@ -1448,7 +1447,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                               checked={form.marketing_coverage || false}
                               onCheckedChange={v => setForm({ ...form, marketing_coverage: v })}
                             />
-                            <Label htmlFor="marketing_cobertura" className="cursor-pointer flex-1 text-sm font-medium text-blue-900">Solicitar Cobertura do Evento</Label>
+                            <Label htmlFor="marketing_cobertura" className="cursor-pointer flex-1 text-sm font-medium text-blue-900">Fotos e vídeo no dia (cobertura)</Label>
                           </div>
                           
                           {/* Dois combinados que a unidade precisa ler ao pedir: a
@@ -1492,7 +1491,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                 }
                               }}
                             />
-                            <Label htmlFor="marketing_grafica" className="cursor-pointer flex-1 text-sm font-medium text-blue-900">Demanda Gráfica (Arte/Impressão)</Label>
+                            <Label htmlFor="marketing_grafica" className="cursor-pointer flex-1 text-sm font-medium text-blue-900">Arte ou material impresso</Label>
                           </div>
 
                           {(form.marketing_items || []).filter(i => i.type === 'demanda_grafica').map((item, idx) => {
@@ -1507,7 +1506,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                       updated[originalIdx] = { ...updated[originalIdx], item: e.target.value };
                                       setForm({ ...form, marketing_items: updated });
                                     }} 
-                                    placeholder="Ex: Card Instagram, Banner..." 
+                                    placeholder="Ex.: post para o Instagram, cartaz, convite…" 
                                     className="flex-1 bg-background border-border focus-visible:ring-ring h-8 text-sm"
                                   />
                                   <Button
@@ -1558,7 +1557,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                             marketing, é onde a pessoa diz o que já está pronto. */}
                         <div className="pt-2 border-t border-blue-100">
                           <Label htmlFor="printed_materials" className="text-xs font-medium mb-1 block text-blue-900">
-                            Materiais impressos já existentes <span className="font-normal text-muted-foreground">(opcional)</span>
+                            Já existe algo pronto? <span className="font-normal text-muted-foreground">(opcional)</span>
                           </Label>
                           <Input
                             id="printed_materials"
@@ -1688,7 +1687,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="nenhum">Nenhum</SelectItem>
+                                <SelectItem value="nenhum">Sem veículo de apoio</SelectItem>
                                 {/* Só o que sobrou da frota: há um de cada. */}
                                 {apoiosPossiveis(form.transport_vehicle).map(v => (
                                   <SelectItem key={v.value} value={v.value}>
@@ -1774,7 +1773,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     checked={form.partner_involved || false}
                     onCheckedChange={v => setForm({ ...form, partner_involved: v, ...(!v ? { partner_type: '', partner_name: '', partners: [] } : {}) })}
                   />
-                  <Label htmlFor="partner_involved" className="cursor-pointer flex-1 text-sm font-semibold">Parceiro envolvido</Label>
+                  <Label htmlFor="partner_involved" className="cursor-pointer flex-1 text-sm font-semibold">Tem padrinho, doador ou empresa envolvida?</Label>
                 </div>
 
                 {form.partner_involved && (
@@ -1840,13 +1839,13 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     checked={form.has_unit_collaboration || false}
                     onCheckedChange={v => setForm({ ...form, has_unit_collaboration: v, ...(!v ? { collaborating_units: [], external_collaborators: [] } : {}) })}
                   />
-                  <Label htmlFor="unit_collaboration" className="cursor-pointer flex-1 text-sm font-semibold">Parceria com unidade ou instituição</Label>
+                  <Label htmlFor="unit_collaboration" className="cursor-pointer flex-1 text-sm font-semibold">Outra unidade da ANA ou instituição participa?</Label>
                 </div>
 
                 {form.has_unit_collaboration && (
                   <div className={`space-y-3 rounded-lg border p-3 ${errors.external_collaborators ? 'border-destructive/60' : 'border-border'}`} id="campo-parceria">
                     <div>
-                      <Label className="text-sm font-semibold mb-2 block">Unidades parceiras</Label>
+                      <Label className="text-sm font-semibold mb-2 block">Unidades da ANA</Label>
                       <div className="flex flex-wrap gap-2 mt-2">
                         {UNITS.filter(u => u !== form.unit).map(u => (
                           <label key={u} className="flex items-center gap-1.5 text-sm cursor-pointer">
@@ -1868,7 +1867,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       </div>
                     </div>
                     <div>
-                      <Label className="text-sm font-semibold mb-2 block">Instituições externas</Label>
+                      <Label className="text-sm font-semibold mb-2 block">Instituições <span className="font-normal text-muted-foreground">(escola, igreja, prefeitura…)</span></Label>
                       <div className="space-y-2 mt-2">
                         {(form.external_collaborators || []).map((ext, idx) => (
                           <div key={idx} className="space-y-2 p-3 bg-muted/30 rounded-md border border-border">
@@ -1950,7 +1949,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
               <div className="flex items-start gap-3 rounded-lg border border-dashed border-blue-200 bg-blue-50/60 p-3">
                 <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
                 <p className="text-xs text-blue-900">
-                  Vai para a administração geral, que define o link e onde o evento aparece, e confirma.
+                  Vai para a administração geral, que revisa, confirma e decide se aparece no site.
                 </p>
               </div>
             )}
@@ -1980,7 +1979,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       ? 'Salvar Alterações'
                       : enviaParaAprovacao
                         ? 'Enviar para aprovação'
-                        : 'Criar Programação'}
+                        : 'Criar evento'}
                   {pendencias > 0 && ` (${pendencias} ${pendencias === 1 ? 'pendência' : 'pendências'})`}
                 </Button>
               </DialogFooter>
@@ -2089,7 +2088,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       <AlertDialog open={confirmarSaida} onOpenChange={setConfirmarSaida}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{isEditing ? 'Descartar as alterações?' : 'Descartar esta programação?'}</AlertDialogTitle>
+            <AlertDialogTitle>{isEditing ? 'Descartar as alterações?' : 'Descartar este evento?'}</AlertDialogTitle>
             <AlertDialogDescription>
               {(() => {
                 const n = camposMexidos();
@@ -2138,7 +2137,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       <AlertDialog open={showSlugPrompt} onOpenChange={setShowSlugPrompt}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Slug personalizado detectado</AlertDialogTitle>
+            <AlertDialogTitle>O endereço foi editado à mão</AlertDialogTitle>
             <AlertDialogDescription>
               Você editou o link manualmente, mas o título mudou. O que deseja fazer com o link do evento?
             </AlertDialogDescription>

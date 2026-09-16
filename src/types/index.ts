@@ -254,11 +254,11 @@ export const BOND_RULES: Record<BondType, { permission_level: PermissionLevel; u
   usuario_comum: { permission_level: 'usuario_padrao', unitMode: 'none' },
 };
 
-// Rótulo de leitura da unidade no contexto de EVENTOS.
-// 'Administração' é exibida como 'Grupo ANA Brasil' (globaliza todas as unidades),
-// mas o valor gravado permanece 'Administração'.
+// Rótulo de leitura da unidade no contexto de EVENTOS. Decisão de 16/09/2026:
+// 'Administração' se chama 'Administração' em todas as telas (antes o
+// formulário mostrava 'Grupo ANA Brasil' e a legenda da Timeline, 'Geral').
 export function eventUnitLabel(unit: string): string {
-  return unit === 'Administração' ? 'Grupo ANA Brasil' : unit;
+  return unit;
 }
 
 

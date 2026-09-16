@@ -22,10 +22,21 @@ export function paraCampoDataHora(iso: string | null | undefined): string {
 
 /**
  * "GMT−3", "GMT+1", "GMT" — o fuso em que o campo está sendo lido.
+ * (A tela mostra "Horário de Brasília" quando é GMT−3; ver EventFormDialog.)
  *
  * Aparece embaixo das datas para quem edita de outro estado (ou de outro
  * país) saber em que relógio o horário está.
  */
+/**
+ * A frase embaixo das datas. Em Brasília, que é onde a ANA está, ninguém
+ * precisa ler "GMT−3": vira "Horário de Brasília.". Só quem preenche de outro
+ * fuso vê o deslocamento (decisão da varredura de 16/09/2026).
+ */
+export function fraseDoFuso(data: Date = new Date()): string {
+  const r = rotuloDoFuso(data);
+  return r === 'GMT−3' ? 'Horário de Brasília.' : `Horários no fuso deste computador (${r}).`;
+}
+
 export function rotuloDoFuso(data: Date = new Date()): string {
   const minutos = -data.getTimezoneOffset();
   if (minutos === 0) return 'GMT';

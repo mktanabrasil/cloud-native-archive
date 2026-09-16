@@ -125,19 +125,19 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
                    Detalhes Logísticos
                 </p>
                 <div className="grid grid-cols-1 gap-3">
-                  {event.target_audience && <DetailRow label="Público-Alvo" value={event.target_audience} />}
-                  {event.support_team && <DetailRow label="Equipe de Apoio" value={event.support_team} />}
+                  {event.target_audience && <DetailRow label="Para quem" value={event.target_audience} />}
+                  {event.support_team && <DetailRow label="Quem ajuda no dia" value={event.support_team} />}
                   {/* Por item, com detalhe, quando o evento tem a lista (desde
                       08/09/2026); a string antiga é o fallback. */}
                   {event.food_items && event.food_items.length > 0 ? (
                     <ResumoDeItens titulo="Alimentação" itens={event.food_items} copiar />
                   ) : event.food_logistics && (
                     <div>
-                      <p className="text-xs font-semibold text-muted-foreground">Logística de Alimentação</p>
+                      <p className="text-xs font-semibold text-muted-foreground">Alimentação</p>
                       <p className="text-sm text-foreground whitespace-pre-wrap">{event.food_logistics}</p>
                     </div>
                   )}
-                  {event.food_details && <DetailRow label="Observações gerais da alimentação" value={event.food_details} />}
+                  {event.food_details && <DetailRow label="Restrições e avisos sobre a comida" value={event.food_details} />}
                   {event.equipment_items && event.equipment_items.length > 0 ? (
                     <ResumoDeItens titulo="Equipamentos" itens={event.equipment_items} copiar />
                   ) : event.equipment_needed && <DetailRow label="Equipamentos" value={event.equipment_needed} />}
@@ -149,7 +149,7 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Megaphone className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium text-foreground">Solicitação de Marketing</span>
+                  <span className="text-sm font-medium text-foreground">Pedido ao marketing</span>
                 </div>
                 {event.marketing_coverage && (
                   <p className="text-xs text-blue-900 flex flex-wrap items-center gap-2">
@@ -187,7 +187,7 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
               <div className="rounded-lg border border-border p-3 space-y-1">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium text-foreground">Parceiros Envolvidos</span>
+                  <span className="text-sm font-medium text-foreground">Padrinhos, doadores e empresas</span>
                 </div>
                 {(event.partners || []).filter(p => p.name).map((p, idx) => (
                   <p key={idx} className="text-xs text-muted-foreground">
@@ -206,7 +206,7 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
             {/* Unit collaboration */}
             {event.has_unit_collaboration && (
               <div className="rounded-lg border border-border p-3 space-y-1">
-                <p className="text-xs font-semibold text-muted-foreground">Parceria com Unidades/Instituições</p>
+                <p className="text-xs font-semibold text-muted-foreground">Unidades da ANA e instituições participantes</p>
                 {event.collaborating_units.length > 0 && (
                   <p className="text-xs text-muted-foreground">
                     Unidades: <span className="font-medium text-foreground">{event.collaborating_units.join(', ')}</span>
@@ -214,7 +214,7 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
                 )}
                 {event.external_collaborators.length > 0 && (
                   <div className="pt-1">
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Instituições Externas:</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Instituições:</p>
                     <div className="space-y-1.5">
                       {event.external_collaborators.map((ext, idx) => (
                         <div key={idx} className="text-xs">

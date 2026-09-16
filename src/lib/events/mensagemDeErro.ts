@@ -36,7 +36,7 @@ const colunaDe = (s: string) => s.match(/column "([^"]+)"/)?.[1];
 
 const NOMES: Record<string, string> = {
   title: 'Título',
-  location: 'Localização',
+  location: 'Local',
   start_datetime: 'Início',
   end_datetime: 'Término',
   unit: 'Unidade',
@@ -91,7 +91,7 @@ export function descreverErroDeGravacao(
     // As constraints de tamanho chamam-se `events_<coluna>_limite`.
     const limite = msg.match(/events_(title|location|description)_limite/)?.[1];
     if (limite) {
-      const nomes: Record<string, [string, number]> = { title: ['Título', 120], location: ['Localização', 160], description: ['Descrição', 1000] };
+      const nomes: Record<string, [string, number]> = { title: ['Título', 120], location: ['Local', 160], description: ['Descrição', 1000] };
       const [nome, max] = nomes[limite];
       return {
         tipo: 'invalido',
