@@ -12,10 +12,17 @@ import { toast } from 'sonner';
 
 interface AgendaDoGoogleLista { id: string; nome: string; cor: string | null; primaria: boolean; papel: string }
 
+/** A função responde { error } com status 4xx/5xx; o cliente esconde o corpo atrás de "non-2xx". Aqui a mensagem real vem à frente. */
 const chamar = async <T,>(body: Record<string, unknown>): Promise<T> => {
   const { data, error } = await supabase.functions.invoke('eventos-aviso', { body });
+  if (error) {
+    const ctx = (error as { context?: Response }).context;
+    let detalhe = '';
+    try { detalhe = ctx ? ((await ctx.clone().json()) as { error?: string }).error || '' : ''; } catch { /* sem corpo JSON */ }
+    throw new Error(detalhe || error.message || 'sem resposta');
+  }
   const resposta = data as (T & { error?: string }) | null;
-  if (error || !resposta) throw new Error(error?.message || 'sem resposta');
+  if (!resposta) throw new Error('sem resposta');
   if (resposta.error) throw new Error(resposta.error);
   return resposta;
 };
