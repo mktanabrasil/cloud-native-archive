@@ -55,7 +55,7 @@ describe('AgendaDoGoogle', () => {
     expect(bloco).toHaveTextContent('Google Agenda não conectado');
     expect(bloco).toHaveTextContent('a agenda do robô');
     expect(screen.getByRole('button', { name: /Conectar Google Agenda/ })).toBeEnabled();
-    expect(screen.getByTestId('modo-pre-lancamento')).toHaveTextContent('AVISOS_SO_EQUIPE');
+    expect(screen.getByTestId('modo-pre-lancamento')).toHaveTextContent('Avisos por e-mail');
   });
 
   it('conectado: mostra a conta, a agenda, quem conectou, e Trocar/Desconectar', async () => {

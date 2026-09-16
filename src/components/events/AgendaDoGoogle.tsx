@@ -232,7 +232,7 @@ export function AgendaDoGoogle() {
               <b>Modo pré-lançamento ligado.</b> Só mkt@, contato@, parceiros@ e eventos@ recebem os e-mails.{' '}
               {estado.modo === 'conexao'
                 ? <>Quem vê a agenda é definido por você no Google, no compartilhamento de "{nomeDaAgenda}".</>
-                : <>A gestão das unidades entra quando a chave <code className="rounded bg-muted px-1">AVISOS_SO_EQUIPE</code> for removida no Coolify.</>}
+                : <>A gestão das unidades entra quando você lançar, no card "Avisos por e-mail" abaixo.</>}
             </p>
           </div>
         )}
