@@ -2,12 +2,13 @@ import { AppEvent, PARTNER_TYPES, Unit } from '@/types';
 import { categoriaDoAnexo, normalizarAnexo, rotuloDoTamanho } from '@/lib/events/anexos';
 import { useUserRole } from '@/hooks/useUserRole';
 import { getStatusBadgeClass } from '@/lib/statusColors';
+import { rotuloDoStatus } from '@/lib/events/status';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, Trash2, Megaphone, Users, Paperclip, Globe, Lock, Truck, AlertTriangle } from 'lucide-react';
+import { Pencil, Trash2, Megaphone, Users, Paperclip, Globe, Lock, Truck, AlertTriangle, Clock } from 'lucide-react';
 import { motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
 import { ROTULO_DA_COBERTURA, estadoDaCobertura } from '@/lib/events/cobertura';
 import { ResumoDeItens } from './events/ResumoDeItens';
@@ -46,7 +47,7 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
           {/* Badges */}
           <div className="flex flex-wrap gap-2">
             <Badge className={unitBadgeColors[event.unit]}>{event.unit}</Badge>
-            <Badge variant="outline" className={`capitalize ${statusClass}`}>{event.status}</Badge>
+            <Badge variant="outline" className={statusClass}>{rotuloDoStatus(event.status)}</Badge>
             <Badge variant="secondary" className="gap-1.5 py-0.5">
               {event.visibility === 'publico' ? (
                 <>
@@ -59,6 +60,29 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
               )}
             </Badge>
           </div>
+
+          {/* Onde o evento está na aprovação (varredura de 16/09/2026): a gestora
+              abre aqui primeiro, então é aqui que ela precisa ler "enviado" e a
+              observação de uma devolução, não só dentro do formulário. */}
+          {event.status === 'pendente' && event.submitted_at && !event.review_note && (
+            <div className="flex items-start gap-3 rounded-lg border border-yellow-300 bg-yellow-500/10 p-3" data-testid="onde-esta">
+              <Clock className="mt-0.5 h-4 w-4 shrink-0 text-yellow-700 dark:text-yellow-400" />
+              <div className="text-xs">
+                <p className="font-semibold text-foreground">Enviado por {event.created_by} em {format(new Date(event.submitted_at), "dd/MM 'às' HH:mm", { locale: ptBR })}</p>
+                <p className="text-muted-foreground">Aguardando a administração geral revisar e confirmar.</p>
+              </div>
+            </div>
+          )}
+          {event.review_note && event.status !== 'confirmado' && event.status !== 'concluido' && (
+            <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3" data-testid="onde-esta">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+              <div className="text-xs">
+                <p className="font-semibold text-foreground">Devolvido{event.reviewed_by ? ` por ${event.reviewed_by}` : ''}{event.reviewed_at ? ` em ${format(new Date(event.reviewed_at), "dd/MM 'às' HH:mm", { locale: ptBR })}` : ''}</p>
+                <p className="text-muted-foreground">“{event.review_note}”</p>
+                <p className="mt-1 text-muted-foreground">Edite e salve: volta para a fila com a versão nova.</p>
+              </div>
+            </div>
+          )}
 
           {/* Details */}
           <div className="space-y-3">

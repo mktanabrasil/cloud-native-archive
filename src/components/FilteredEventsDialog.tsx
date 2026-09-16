@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { getStatusBadgeClass } from '@/lib/statusColors';
+import { rotuloDoStatus } from '@/lib/events/status';
 import { useNavigate } from 'react-router-dom';
 import { AppEvent, PARTNER_TYPES, Unit } from '@/types';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, startOfWeek, endOfWeek } from 'date-fns';
@@ -107,7 +108,7 @@ export default function FilteredEventsDialog({ events, filterType, selectedMonth
                           <p className="font-medium text-foreground truncate">{e.title}</p>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <Badge variant="outline" className={`capitalize text-xs ${statusClass}`}>{e.status}</Badge>
+                          <Badge variant="outline" className={`text-xs ${statusClass}`}>{rotuloDoStatus(e.status)}</Badge>
                         </div>
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">

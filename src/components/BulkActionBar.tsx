@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, X, CheckSquare, Rocket } from 'lucide-react';
 import { EventStatus, EVENT_STATUSES } from '@/types';
+import { rotuloDoStatus } from '@/lib/events/status';
 
 interface BulkEventActionBarProps {
   type: 'events';
@@ -43,7 +44,7 @@ export default function BulkActionBar(props: BulkActionBarProps) {
             </SelectTrigger>
             <SelectContent>
               {EVENT_STATUSES.map(s => (
-                <SelectItem key={s} value={s} className="capitalize text-xs">{s}</SelectItem>
+                <SelectItem key={s} value={s} className="text-xs">{rotuloDoStatus(s)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
