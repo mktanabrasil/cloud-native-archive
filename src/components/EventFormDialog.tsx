@@ -37,6 +37,7 @@ import { errosDasListas, limparListas } from '@/lib/events/listas';
 import { toast } from 'sonner';
 import { format as formatarData } from 'date-fns';
 import { rotuloDoStatus } from '@/lib/events/status';
+import { rotuloDoTipo } from '@/lib/events/tipo';
 import { ptBR } from 'date-fns/locale';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -889,16 +890,12 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   <div id="campo-tipo">
                     <Label htmlFor="evento-tipo" className="text-sm font-semibold mb-1.5 block">Tipo *</Label>
                     <Select value={form.event_type || ''} onValueChange={v => setForm({ ...form, event_type: v as EventType })}>
-                      {/* `capitalize` nos dois: sem ele no gatilho, a lista mostrava
-                          "Evento Institucional" e o campo, depois de escolhido,
-                          "evento institucional". O valor guardado é minúsculo nos dois. */}
-                      {/* `capitalize` só com valor: no placeholder ele fazia
-                          "Selecione O Tipo". */}
-                      <SelectTrigger id="evento-tipo" aria-invalid={!!errors.event_type || undefined} aria-describedby={errors.event_type ? 'erro-tipo' : undefined} className={`${form.event_type ? 'capitalize' : ''} ${errors.event_type ? 'border-destructive' : ''}`}>
+                      {/* O rótulo sobe só a primeira letra (rotuloDoTipo); o valor gravado é minúsculo. */}
+                      <SelectTrigger id="evento-tipo" aria-invalid={!!errors.event_type || undefined} aria-describedby={errors.event_type ? 'erro-tipo' : undefined} className={errors.event_type ? 'border-destructive' : undefined}>
                         <SelectValue placeholder="Selecione o tipo" />
                       </SelectTrigger>
                       <SelectContent>
-                        {EVENT_TYPES.map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
+                        {EVENT_TYPES.map(t => <SelectItem key={t} value={t}>{rotuloDoTipo(t)}</SelectItem>)}
                       </SelectContent>
                     </Select>
                     {errors.event_type && <p id="erro-tipo" className="mt-1 text-xs text-destructive">{errors.event_type}</p>}
@@ -1619,7 +1616,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       onCheckedChange={v => setForm({ ...form, transport_needed: v })}
                     />
                     <Label htmlFor="transport_needed" className="cursor-pointer flex-1 text-sm font-semibold flex items-center gap-2">
-                      <Truck className="h-4 w-4" /> Logística de Transporte
+                      <Truck className="h-4 w-4" /> Precisa de transporte?
                     </Label>
                   </div>
 

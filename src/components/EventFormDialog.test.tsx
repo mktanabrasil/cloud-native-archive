@@ -195,19 +195,17 @@ describe('Tipo e Status', () => {
     abrir();
 
     expect(screen.getByText('Selecione o tipo')).toBeInTheDocument();
-    // sem valor, sem `capitalize`: o placeholder ficava "Selecione O Tipo"
-    expect(document.querySelector('#campo-tipo button')?.className).not.toMatch(/capitalize/);
 
     fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
     expect(screen.getAllByText('Escolha o tipo do evento').length).toBeGreaterThan(0);
     expect(espiao.addEvent).not.toHaveBeenCalled();
 
     const opcoes = [...document.querySelectorAll('#campo-tipo option')].map(o => o.textContent).filter(Boolean);
-    expect(opcoes).toEqual(['reunião', 'evento institucional', 'apresentação', 'ação externa', 'programação interna', 'outro']);
+    // só a primeira letra sobe: "Evento institucional", não "Evento Institucional"
+    expect(opcoes).toEqual(['Reunião', 'Evento institucional', 'Apresentação', 'Ação externa', 'Programação interna', 'Outro']);
 
     escolherTipo('apresentação');
     expect(screen.queryAllByText('Escolha o tipo do evento').length).toBe(0);
-    expect(document.querySelector('#campo-tipo button')?.className).toMatch(/capitalize/);
   });
 });
 
@@ -658,7 +656,7 @@ describe('transporte', () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
     abrir();
     preencher();
-    fireEvent.click(screen.getByRole('switch', { name: /logística de transporte/i }));
+    fireEvent.click(screen.getByRole('switch', { name: /precisa de transporte/i }));
 
     fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
 
@@ -685,7 +683,7 @@ describe('transporte', () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
     abrir();
     const marketing = screen.getByRole('switch', { name: /pedido ao marketing/i });
-    const transporte = screen.getByRole('switch', { name: /logística de transporte/i });
+    const transporte = screen.getByRole('switch', { name: /precisa de transporte/i });
     // marketing precede transporte no documento
     expect(marketing.compareDocumentPosition(transporte) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
@@ -705,7 +703,7 @@ describe('transporte', () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
     abrir();
     preencher();
-    fireEvent.click(screen.getByRole('switch', { name: /logística de transporte/i }));
+    fireEvent.click(screen.getByRole('switch', { name: /precisa de transporte/i }));
     fireEvent.change(screen.getByLabelText(/quantas pessoas vão/i), { target: { value: '8' } });
 
     expect(screen.getByText('Sugestão: Kombi')).toBeInTheDocument();
@@ -763,7 +761,7 @@ describe('transporte', () => {
     const evento = { ...eventoGravado(), transport_needed: true, transport_vehicle: 'van' as const, transport_passengers: 3, transport_extra_equipment: true };
     render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
 
-    fireEvent.click(screen.getByRole('switch', { name: /logística de transporte/i }));
+    fireEvent.click(screen.getByRole('switch', { name: /precisa de transporte/i }));
     fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
 
     await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalled());
