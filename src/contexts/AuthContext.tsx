@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
+import { conferirSessao } from '@/lib/sessao';
 
 interface AuthContextType {
   user: User | null;
@@ -38,6 +39,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      // O token guardado pode ter validade no futuro e a sessão já não existir
+      // no servidor. Conferir aqui evita um app "logado" em que as funções
+      // respondem "não autorizado". Se morreu, o signOut local derruba `session`
+      // pelo onAuthStateChange e o roteador leva ao login, com aviso.
+      if (session) void conferirSessao();
     });
 
     return () => subscription.unsubscribe();

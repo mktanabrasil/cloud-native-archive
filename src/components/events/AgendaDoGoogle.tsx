@@ -9,6 +9,7 @@ import { useApp } from '@/contexts/AppContext';
 import { contagemDaAgenda, textoDaCarga } from '@/lib/events/agenda';
 import { type EstadoDaAgenda, linkDaAgendaNoGoogle, retornoDoGoogle, situacaoDaConexao, textoDaTroca } from '@/lib/events/conexaoGoogle';
 import { toast } from 'sonner';
+import { AVISO_DE_SESSAO_EXPIRADA, tratarNaoAutorizado } from '@/lib/sessao';
 
 interface AgendaDoGoogleLista { id: string; nome: string; cor: string | null; primaria: boolean; papel: string }
 
@@ -19,6 +20,8 @@ const chamar = async <T,>(body: Record<string, unknown>): Promise<T> => {
     const ctx = (error as { context?: Response }).context;
     let detalhe = '';
     try { detalhe = ctx ? ((await ctx.clone().json()) as { error?: string }).error || '' : ''; } catch { /* sem corpo JSON */ }
+    // Sessão morta no servidor: a pessoa vai para o login; aqui só não pintamos erro por cima.
+    if (/não autorizado/i.test(detalhe) && await tratarNaoAutorizado()) throw new Error(AVISO_DE_SESSAO_EXPIRADA);
     throw new Error(detalhe || error.message || 'sem resposta');
   }
   const resposta = data as (T & { error?: string }) | null;
