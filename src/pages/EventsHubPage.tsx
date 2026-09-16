@@ -1,4 +1,6 @@
-import { useSearchParams } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { retornoDoGoogle } from '@/lib/events/conexaoGoogle';
 import { Globe, LayoutDashboard, Calendar, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -31,6 +33,15 @@ export default function EventsHubPage() {
    * porque as Programações já usam `?aba=` para Próximos/Já aconteceram.
    */
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  // O Google só devolve para a raiz (URI de redirecionamento fixo). Se veio
+  // com o nosso `state`, é a conexão da agenda: segue para o Painel terminar.
+  useEffect(() => {
+    const retorno = retornoDoGoogle(window.location.search);
+    if (retorno) navigate(`/usuarios?tab=agenda&code=${encodeURIComponent(retorno.code)}&state=${encodeURIComponent(retorno.state)}`, { replace: true });
+  }, [navigate]);
+
   const pedida = searchParams.get('tela');
   const activeTab = abas.some(t => t.value === pedida) ? (pedida as string) : 'programacoes';
   const setActiveTab = (v: string) => {

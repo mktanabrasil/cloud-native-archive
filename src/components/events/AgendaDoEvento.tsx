@@ -35,7 +35,7 @@ export function AgendaDoEvento({ event, ultimo, reenviando, reenviar }: Props) {
           {ROTULO_DA_AGENDA.sincronizado}{quando}
         </p>
         <p className="text-[11px] text-muted-foreground">
-          ANA · Eventos, só para a equipe{abrir && <> · {abrir}</>}
+          Agenda da equipe{abrir && <> · {abrir}</>}
         </p>
       </div>
     );
