@@ -85,6 +85,10 @@ import { rowSiblings } from '@/lib/journal/rows';
 import { JournalTutorial } from './JournalTutorial';
 import { useTutoriaisVistos } from '@/hooks/useTutoriaisVistos';
 import { avisoDeTransbordo, medirFolha, type Transbordo } from '@/lib/journal/transbordo';
+import { avisoDeFotosSemMedida, linhaDoTransbordo, mensagemDoErroDoPdf, tituloDoTransbordo, type PaginaTransbordando } from '@/lib/journal/errosDoPdf';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { JournalElementLibrary } from './JournalElementLibrary';
 import { JournalDecorationProperties } from './JournalDecorationProperties';
 import {
@@ -248,15 +252,43 @@ export function JournalEditor({
     return () => observer.disconnect();
   }, [fitMode]);
 
-  // Autosave com 2s de inatividade.
+  /**
+   * A gravação falhou (rede, sessão, permissão). Antes disto o selo só não
+   * atualizava e a pessoa seguia editando por cima de nada (varredura de
+   * 16/09/2026). O que está na tela continua pendente até gravar.
+   */
+  const [falhouSalvar, setFalhouSalvar] = useState(false);
+  const [confirmandoSaida, setConfirmandoSaida] = useState(false);
+  const avisouFalha = useRef(false);
+
+  const salvarAgora = useCallback(async () => {
+    const ok = await onSave(journal.id, { name, pages, paper });
+    if (ok === false) {
+      setFalhouSalvar(true);
+      if (!avisouFalha.current) {
+        avisouFalha.current = true;
+        toast.error('Não consegui salvar o jornal', { description: 'Sem conexão, ou a sessão expirou. Suas mudanças continuam na tela; vou tentar de novo.' });
+      }
+      return false;
+    }
+    dirtyRef.current = false;
+    setFalhouSalvar(false);
+    avisouFalha.current = false;
+    return true;
+  }, [onSave, journal.id, name, pages, paper]);
+
+  // Autosave com 2s de inatividade; com falha, insiste a cada 10s.
   useEffect(() => {
     if (somenteLeitura || !dirtyRef.current) return;
-    const timer = setTimeout(() => {
-      onSave(journal.id, { name, pages, paper });
-      dirtyRef.current = false;
-    }, 2000);
+    const timer = setTimeout(() => { void salvarAgora(); }, falhouSalvar ? 10000 : 2000);
     return () => clearTimeout(timer);
-  }, [somenteLeitura, name, pages, paper, journal.id, onSave]);
+  }, [somenteLeitura, name, pages, paper, falhouSalvar, salvarAgora]);
+
+  /** Voltar com mudança não gravada pergunta; sem pendência, sai direto. */
+  const pedirParaVoltar = () => {
+    if (!somenteLeitura && (dirtyRef.current || falhouSalvar)) { setConfirmandoSaida(true); return; }
+    onBack();
+  };
 
   /**
    * Alterna entre rascunho e finalizado, e grava na hora em vez de esperar o
@@ -270,7 +302,17 @@ export function JournalEditor({
     if (somenteLeitura) return;
     const next = status === 'finalizado' ? 'rascunho' : 'finalizado';
     setStatus(next);
-    onSave(journal.id, { status: next });
+    void onSave(journal.id, { status: next });
+    // Sem janela de confirmação: finaliza na hora e deixa o caminho de volta à
+    // mão por alguns segundos (decisão de 16/09/2026).
+    if (next === 'finalizado') {
+      toast.success('Jornal finalizado', {
+        description: 'Ele deixa de aceitar edições até ser reaberto.',
+        action: { label: 'Desfazer', onClick: () => { setStatus('rascunho'); void onSave(journal.id, { status: 'rascunho' }); } },
+      });
+    } else {
+      toast.success('Reaberto como rascunho', { description: 'Pode editar de novo.' });
+    }
   }, [somenteLeitura, status, journal.id, onSave]);
 
   const setManualZoom = useCallback((updater: (current: number) => number) => {
@@ -545,8 +587,13 @@ export function JournalEditor({
 
   const removeDecoration = useCallback(
     (corner: JournalCornerKey) => {
-      setDecorations(decorations.filter((decoration) => decoration.corner !== corner));
+      const removida = decorations.find((decoration) => decoration.corner === corner);
+      const restantes = decorations.filter((decoration) => decoration.corner !== corner);
+      setDecorations(restantes);
       setSelectedCorner((current) => (current === corner ? null : current));
+      if (removida) {
+        toast.success('Forma removida', { action: { label: 'Desfazer', onClick: () => setDecorations([...restantes, removida]) } });
+      }
     },
     [decorations, setDecorations],
   );
@@ -561,6 +608,7 @@ export function JournalEditor({
       ),
     );
     setSelectedBlockId(null);
+    toast.success('Peça removida', { action: { label: 'Desfazer', onClick: undo } });
   };
 
   /** Move um bloco uma posição para cima/baixo na ordem da página. */
@@ -618,13 +666,21 @@ export function JournalEditor({
     });
   };
 
+  const [paginaParaExcluir, setPaginaParaExcluir] = useState<JournalPage | null>(null);
   const removePage = (pageId: string) => {
     if (pages.length === 1) {
       toast.error('O jornal precisa de ao menos uma página.');
       return;
     }
-    mutatePages((prev) => prev.filter((page) => page.id !== pageId));
-    if (activePageId === pageId) setActivePageId(pages.find((page) => page.id !== pageId)!.id);
+    // A página é o maior bloco de trabalho e o ícone é pequeno: pergunta antes.
+    setPaginaParaExcluir(pages.find((page) => page.id === pageId) ?? null);
+  };
+  const confirmarExcluirPagina = () => {
+    const alvo = paginaParaExcluir;
+    setPaginaParaExcluir(null);
+    if (!alvo) return;
+    mutatePages((prev) => prev.filter((page) => page.id !== alvo.id));
+    if (activePageId === alvo.id) setActivePageId(pages.find((page) => page.id !== alvo.id)!.id);
   };
 
   const movePage = (pageId: string, direction: -1 | 1) => {
@@ -699,13 +755,15 @@ export function JournalEditor({
     escala: number,
     qualidadeJpeg: number,
     embutidas: Map<string, string>,
-    semMedida: Set<string>,
+    semMedidaPorPagina: Map<number, number>,
   ) => {
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const nodes = Array.from(exportRef.current!.querySelectorAll<HTMLElement>('[data-journal-page]'));
 
     for (let index = 0; index < nodes.length; index += 1) {
+      const semMedida = new Set<string>();
       const canvas = await rasterizar(nodes[index], escala, embutidas, undefined, semMedida);
+      if (semMedida.size) semMedidaPorPagina.set(index + 1, semMedida.size);
 
       let imagem: string;
       try {
@@ -743,16 +801,32 @@ export function JournalEditor({
     return pdf;
   };
 
-  const exportPdf = async (quality: 'digital' | 'impressao') => {
+  /** Páginas que transbordam, medidas nas folhas de exportação (todas, não só a aberta). */
+  const [transbordoDoPdf, setTransbordoDoPdf] = useState<{ paginas: PaginaTransbordando[]; quality: 'digital' | 'impressao' } | null>(null);
+  const medirTodasAsPaginas = (): PaginaTransbordando[] => {
+    const nodes = Array.from(exportRef.current?.querySelectorAll<HTMLElement>('[data-journal-page]') ?? []);
+    return nodes
+      .map((node, indice) => ({ indice, t: medirFolha(node.querySelector<HTMLElement>('[data-journal-grade]')) }))
+      .filter((p) => p.t?.transborda)
+      .map((p) => ({ indice: p.indice, pecasFora: p.t!.pecasFora }));
+  };
+
+  const exportPdf = async (quality: 'digital' | 'impressao', ignorarTransbordo = false) => {
     if (!exportRef.current) return;
+    // O aviso da folha só olha a página aberta; o PDF leva todas. Conferir aqui
+    // é o que impede um texto cortado sair sem ninguém saber.
+    if (!ignorarTransbordo) {
+      const paginas = medirTodasAsPaginas();
+      if (paginas.length > 0) { setTransbordoDoPdf({ paginas, quality }); return; }
+    }
     setExporting(true);
     try {
       await aguardarImagens(exportRef.current);
       const embutidas = await embutirImagens(exportRef.current);
       // Imagem que o html2canvas não consegue medir não é desenhada, e não
       // avisa. Se acontecer, o usuário fica sabendo em vez de descobrir
-      // olhando o PDF.
-      const semMedida = new Set<string>();
+      // olhando o PDF — e sabe de que página.
+      const semMedida = new Map<number, number>();
       const escalas = ESCALAS[quality];
       const qualidadeJpeg = quality === 'impressao' ? 0.98 : 0.9;
 
@@ -778,19 +852,15 @@ export function JournalEditor({
       if (!pdf) throw ultimoErro ?? new Error('nenhuma escala funcionou');
 
       pdf.save(`${name || 'jornal'}.pdf`);
-      if (semMedida.size) {
-        toast.warning(`Saiu sem: ${Array.from(semMedida).join(', ')}.`, {
-          description: 'O navegador não conseguiu medir essas imagens, e o que não tem medida não é desenhado.',
-        });
-      } else {
-        toast.success('PDF gerado.');
-      }
+      const aviso = avisoDeFotosSemMedida(semMedida);
+      if (aviso) toast.warning(aviso.titulo, { description: aviso.descricao });
+      else toast.success('PDF gerado.');
     } catch (error) {
-      // O erro precisa aparecer: esta exportação já falhou em silêncio vezes
-      // demais, e sem a mensagem não há como saber qual camada quebrou.
+      // O texto técnico fica no console, que é onde ele serve; a pessoa lê o
+      // que aconteceu e o que fazer.
       console.error('[jornal] falha ao gerar o PDF', error);
-      const detalhe = error instanceof Error ? error.message : String(error);
-      toast.error('Não foi possível gerar o PDF.', { description: detalhe.slice(0, 200) });
+      const m = mensagemDoErroDoPdf(error);
+      toast.error(m.titulo, { description: m.descricao });
     } finally {
       setExporting(false);
     }
@@ -820,7 +890,7 @@ export function JournalEditor({
       )}
       <div className="flex flex-col gap-2 border-b border-border pb-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={onBack}>
+          <Button variant="ghost" size="sm" onClick={pedirParaVoltar}>
             <ArrowLeft className="mr-1.5 h-4 w-4" /> Voltar
           </Button>
           <Input
@@ -834,10 +904,15 @@ export function JournalEditor({
             className={cn('h-9 w-56 text-base font-semibold', somenteLeitura && 'border-transparent bg-transparent px-0')}
           />
           {!somenteLeitura && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-accent px-2.5 py-1 text-[11px] font-medium text-accent-foreground">
+          <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium', falhouSalvar && !saving ? 'bg-destructive/10 text-destructive' : 'bg-accent text-accent-foreground')} data-testid="selo-de-gravacao">
             {saving ? (
               <>
                 <Loader2 className="h-3 w-3 animate-spin" /> Salvando…
+              </>
+            ) : falhouSalvar ? (
+              <>
+                <AlertTriangle className="h-3 w-3" /> Não salvou ·{' '}
+                <button type="button" className="underline underline-offset-2" onClick={() => void salvarAgora()}>tentar de novo</button>
               </>
             ) : (
               <>
@@ -1427,6 +1502,64 @@ export function JournalEditor({
         </aside>
         )}
       </div>
+
+      {/* Sair com mudança não gravada */}
+      <AlertDialog open={confirmandoSaida} onOpenChange={setConfirmandoSaida}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sair sem salvar?</AlertDialogTitle>
+            <AlertDialogDescription>A última mudança ainda não foi gravada. Se sair agora, ela se perde.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => void salvarAgora()}>Ficar e tentar de novo</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={onBack}>Sair sem salvar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Excluir página */}
+      <AlertDialog open={!!paginaParaExcluir} onOpenChange={(open) => !open && setPaginaParaExcluir(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir a página {paginaParaExcluir ? pages.findIndex((p) => p.id === paginaParaExcluir.id) + 1 : ''}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {paginaParaExcluir && (paginaParaExcluir.blocks.length === 0
+                ? 'Ela está vazia.'
+                : `Ela tem ${paginaParaExcluir.blocks.length === 1 ? '1 peça' : `${paginaParaExcluir.blocks.length} peças`}.`)}{' '}
+              Dá para desfazer logo depois com Ctrl+Z, mas não mais tarde.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={confirmarExcluirPagina}>Excluir página</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* PDF com conteúdo que não cabe */}
+      <AlertDialog open={!!transbordoDoPdf} onOpenChange={(open) => !open && setTransbordoDoPdf(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{transbordoDoPdf && tituloDoTransbordo(transbordoDoPdf.paginas)}</AlertDialogTitle>
+            <AlertDialogDescription>No PDF, o que passa da folha some.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <ul className="space-y-1.5 text-sm" data-testid="paginas-transbordando">
+            {transbordoDoPdf?.paginas.map((p) => (
+              <li key={p.indice} className="flex items-center gap-2">
+                <Badge variant="secondary">Página {p.indice + 1}</Badge> {linhaDoTransbordo(p)}
+              </li>
+            ))}
+          </ul>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { const primeira = transbordoDoPdf?.paginas[0]; if (primeira) setActivePageId(pages[primeira.indice].id); }}>
+              Ir para a página {transbordoDoPdf ? transbordoDoPdf.paginas[0].indice + 1 : ''}
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => { const q = transbordoDoPdf?.quality; setTransbordoDoPdf(null); if (q) void exportPdf(q, true); }}>
+              Gerar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Container offscreen usado somente na exportação (paridade preview = PDF) */}
       <div ref={exportRef} className="pointer-events-none fixed left-[-20000px] top-0" aria-hidden="true">

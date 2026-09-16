@@ -530,6 +530,9 @@ export function JournalPageView({
             /* marca só o canvas editável: as miniaturas também renderizam
                blocos, e medir a folha errada daria alturas de outra escala */
             data-journal-canvas={interactive ? 'true' : undefined}
+            /* toda folha, inclusive a de exportação: é por aqui que o PDF confere
+               o transbordo de todas as páginas antes de gerar */
+            data-journal-grade="true"
             className="relative z-10 grid h-full grid-cols-6 content-start gap-x-4 gap-y-3 overflow-hidden px-12 py-6"
             // Só no canvas: evita que clicar no conteúdo desmarque o bloco. Fora
             // dele a folha é só desenho — barrar o clique impediria a miniatura
