@@ -1,8 +1,7 @@
 import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  Plus, Copy, Trash2, Pencil, Lock, Loader2, Newspaper, Search, Sparkles, GraduationCap,
-} from 'lucide-react';
+  Plus, Copy, Trash2, Pencil, Lock, Loader2, Newspaper, Search, Sparkles, GraduationCap, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -104,7 +103,7 @@ function suggestName(unitId: string | null, month: string): string {
 
 export default function JournalPage() {
   const { canAccessJournal, isMarketing, loading: roleLoading, unit: profileUnit, userName } = useUserRole();
-  const { journals, loading, saving, savedAt, create, save, remove, duplicate } = useJournals();
+  const { journals, loading, saving, savedAt, erroDeLista, erroDeCriacao, refresh, create, save, remove, duplicate } = useJournals();
 
   const defaultUnitId = useMemo(
     () => newsUnitForProfileUnit(profileUnit)?.id ?? null,
@@ -258,8 +257,10 @@ export default function JournalPage() {
       pages: findJournalModel(form.model).build(),
 
     });
+    // Falhou: o diálogo fica aberto e mostra o motivo (antes fechava calado).
+    if (!created) return;
     setCreating(false);
-    if (created) setEditingId(created.id);
+    setEditingId(created.id);
   };
 
   if (editing) {
@@ -398,6 +399,13 @@ export default function JournalPage() {
       {loading ? (
         <div className="flex items-center gap-2 py-16 text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Carregando jornais…
+        </div>
+      ) : erroDeLista && journals.length === 0 ? (
+        <div role="alert" className="mt-3 flex flex-col items-center gap-3 rounded-lg border border-dashed border-destructive/40 py-16 text-center" data-testid="erro-da-lista">
+          <AlertTriangle className="h-8 w-8 text-destructive" />
+          <p className="text-base font-semibold text-foreground">Não consegui carregar os jornais</p>
+          <p className="text-sm text-muted-foreground">Confira a conexão. Nada foi perdido.</p>
+          <Button variant="outline" onClick={() => void refresh()}>Tentar de novo</Button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="mt-3 flex flex-col items-center gap-3 rounded-lg border border-dashed border-border py-20 text-center">
@@ -663,11 +671,16 @@ export default function JournalPage() {
 
           </div>
 
+          {erroDeCriacao && (
+            <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs text-foreground" data-testid="erro-de-criacao">
+              <strong>Não consegui criar o jornal.</strong> Confira a conexão e tente de novo. Se continuar, pode ser a sessão: saia e entre de novo.
+            </p>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreating(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleCreate}>Criar jornal</Button>
+            <Button onClick={handleCreate}>{erroDeCriacao ? 'Tentar de novo' : 'Criar jornal'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

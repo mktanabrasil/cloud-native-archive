@@ -28,6 +28,10 @@ export function useJournals() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  /** A última leitura da lista falhou (rede, sessão): a tela mostra erro, não "vazio". */
+  const [erroDeLista, setErroDeLista] = useState<string | null>(null);
+  /** A última criação falhou: o diálogo mostra em vez de fechar calado. */
+  const [erroDeCriacao, setErroDeCriacao] = useState<string | null>(null);
   const currentIdRef = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -37,7 +41,8 @@ export function useJournals() {
       .select('*')
       .is('deleted_at', null)
       .order('updated_at', { ascending: false });
-    if (!error && data) setJournals(data as unknown as JournalRecord[]);
+    if (!error && data) { setJournals(data as unknown as JournalRecord[]); setErroDeLista(null); }
+    else if (error) setErroDeLista(error.message);
     setLoading(false);
   }, []);
 
@@ -47,7 +52,8 @@ export function useJournals() {
 
   const create = useCallback(
     async (draft: JournalDraft): Promise<JournalRecord | null> => {
-      if (!user) return null;
+      if (!user) { setErroDeCriacao('Sua sessão expirou. Entre de novo para continuar.'); return null; }
+      setErroDeCriacao(null);
       const { data, error } = await supabase
         .from('journals')
         .insert({
@@ -61,7 +67,7 @@ export function useJournals() {
         })
         .select()
         .single();
-      if (error || !data) return null;
+      if (error || !data) { setErroDeCriacao(error?.message || 'sem resposta do servidor'); return null; }
       await refresh();
       return data as unknown as JournalRecord;
     },
@@ -131,5 +137,5 @@ export function useJournals() {
     [user, refresh],
   );
 
-  return { journals, loading, saving, savedAt, refresh, create, save, remove, duplicate };
+  return { journals, loading, saving, savedAt, erroDeLista, erroDeCriacao, refresh, create, save, remove, duplicate };
 }
