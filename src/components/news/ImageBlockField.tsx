@@ -81,7 +81,8 @@ export function ImageBlockField({ value, onChange, placeholder }: Props) {
       onChange(data.publicUrl);
       toast.success('Imagem enviada.');
     } catch (e: any) {
-      toast.error(`Erro no upload: ${e.message || e}`);
+      console.error('[jornal] falha ao enviar a foto', e);
+      toast.error('Não consegui enviar a foto', { description: 'Confira a conexão e tente de novo. Se continuar, a foto pode estar grande demais: o limite é 5 MB.' });
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = '';
@@ -103,7 +104,7 @@ export function ImageBlockField({ value, onChange, placeholder }: Props) {
             mode === 'upload' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
           }`}
         >
-          <Upload size={12} /> Upload
+          <Upload size={12} /> Enviar foto
         </button>
         <button
           type="button"
@@ -112,7 +113,7 @@ export function ImageBlockField({ value, onChange, placeholder }: Props) {
             mode === 'url' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground'
           }`}
         >
-          <LinkIcon size={12} /> URL
+          <LinkIcon size={12} /> Colar link
         </button>
       </div>
 
@@ -127,7 +128,7 @@ export function ImageBlockField({ value, onChange, placeholder }: Props) {
           }}
           role="button"
           tabIndex={0}
-          aria-label="Enviar imagem"
+          aria-label="Enviar foto"
           className="cursor-pointer rounded-lg border border-dashed border-border bg-muted/30 hover:bg-muted/50 transition-colors p-3 flex flex-col items-center justify-center gap-1 min-h-[80px]"
         >
           {uploading ? (
@@ -168,7 +169,7 @@ export function ImageBlockField({ value, onChange, placeholder }: Props) {
         <div className="relative rounded-lg overflow-hidden border border-border bg-muted group">
           <img
             src={value}
-            alt="Preview"
+            alt="Prévia da foto"
             className="w-full h-28 object-cover"
             onError={(e: any) => {
               e.target.style.display = 'none';

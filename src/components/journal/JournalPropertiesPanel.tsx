@@ -44,7 +44,7 @@ export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlo
       <div className="space-y-3 text-sm">
         <p className="font-semibold text-foreground">Conteúdo da página</p>
         <p className="text-muted-foreground">
-          Modelo: <strong>{page ? TEMPLATE_LABELS[page.template] : '—'}</strong>
+          Tipo de página: <strong>{page ? TEMPLATE_LABELS[page.template] : '—'}</strong>
         </p>
         <p className="text-muted-foreground">Peças nesta página: {page?.blocks.length ?? 0}</p>
         <p className="text-xs text-muted-foreground">

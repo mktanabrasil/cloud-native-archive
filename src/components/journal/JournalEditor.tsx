@@ -1004,7 +1004,7 @@ export function JournalEditor({
                   onClick={() => exportPdf('impressao')}
                   disabled={exporting}
                 >
-                  <Download className="mr-1.5 h-4 w-4" /> PDF impressão (alta)
+                  <Download className="mr-1.5 h-4 w-4" /> Para imprimir
                 </Button>
                 <Button
                   variant="ghost"
@@ -1013,7 +1013,7 @@ export function JournalEditor({
                   onClick={() => exportPdf('digital')}
                   disabled={exporting}
                 >
-                  <FileText className="mr-1.5 h-4 w-4" /> PDF digital (leve)
+                  <FileText className="mr-1.5 h-4 w-4" /> Para enviar por WhatsApp
                 </Button>
               </PopoverContent>
             </Popover>
@@ -1056,10 +1056,10 @@ export function JournalEditor({
       {compacto && (
         <div
           role="tablist"
-          aria-label="Areas do editor"
+          aria-label="Áreas do editor"
           className="grid shrink-0 grid-cols-2 gap-1 rounded-lg border border-border bg-card p-1"
         >
-          {([['folha', 'Folha'], ['conteudo', 'Conteudo']] as const).map(([chave, rotulo]) => (
+          {([['folha', 'Folha'], ['conteudo', 'Conteúdo']] as const).map(([chave, rotulo]) => (
             <button
               key={chave}
               type="button"
@@ -1239,7 +1239,7 @@ export function JournalEditor({
               {/* Grupo 3 — opções da folha */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8">
+                  <Button variant="outline" size="sm" className="h-8" data-tutorial="formato">
                     <Settings2 className="mr-1.5 h-3.5 w-3.5" /> Opções da folha
                   </Button>
                 </PopoverTrigger>
@@ -1274,7 +1274,7 @@ export function JournalEditor({
                       ))}
                     </div>
                     <p className="text-[10px] text-muted-foreground">
-                      Aplica-se a todas as páginas, no preview e no PDF.
+                      Vale para todas as páginas, na tela e no PDF.
                     </p>
                   </div>
 
@@ -1312,7 +1312,7 @@ export function JournalEditor({
 
                   <div className="space-y-2 border-t border-border pt-3">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Layout
+                      Formato
                     </p>
                     <Button
                       variant={layoutLocked ? 'secondary' : 'outline'}
@@ -1322,11 +1322,11 @@ export function JournalEditor({
                     >
                       {layoutLocked ? (
                         <>
-                          <Lock className="mr-1.5 h-3.5 w-3.5" /> Formato do modelo protegido
+                          <Lock className="mr-1.5 h-3.5 w-3.5" /> Formato protegido: só textos e fotos
                         </>
                       ) : (
                         <>
-                          <Unlock className="mr-1.5 h-3.5 w-3.5" /> Posso mover as peças
+                          <Unlock className="mr-1.5 h-3.5 w-3.5" /> Formato liberado: posso mover as peças
                         </>
                       )}
                     </Button>
@@ -1338,11 +1338,11 @@ export function JournalEditor({
               </Popover>
 
               {layoutLocked ? (
-                <span data-tutorial="formato" className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[10px] text-muted-foreground">
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[10px] text-muted-foreground">
                   <Lock className="h-3 w-3" /> Formato protegido
                 </span>
               ) : (
-                <span data-tutorial="formato" className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-1 text-[10px] text-accent-foreground">
+                <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-1 text-[10px] text-accent-foreground">
                   <Unlock className="h-3 w-3" /> Formato liberado
                 </span>
               )}
@@ -1431,7 +1431,7 @@ export function JournalEditor({
                     className="col-span-2"
                     onClick={() => addBlock(statBlock())}
                   >
-                    <Hash className="mr-1.5 h-3.5 w-3.5" /> Número
+                    <Hash className="mr-1.5 h-3.5 w-3.5" /> Número em destaque
                   </Button>
                 </>
               )}

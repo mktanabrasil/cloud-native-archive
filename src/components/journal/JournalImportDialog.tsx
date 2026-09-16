@@ -318,7 +318,7 @@ export function JournalImportDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label>Mês e ano desta edição</Label>
+              <Label>Mês da edição</Label>
               <Input
                 value={mes}
                 placeholder="Agosto/2026"

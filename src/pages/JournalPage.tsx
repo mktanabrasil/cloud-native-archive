@@ -359,17 +359,17 @@ export default function JournalPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="pl-9"
-            placeholder="Buscar edição…"
+            placeholder="Buscar jornal…"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
         </div>
         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as JournalStatus | 'todos')}>
           <SelectTrigger>
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder="Situação" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="todos">Todos os status</SelectItem>
+            <SelectItem value="todos">Todas as situações</SelectItem>
             {COUNTER_ORDER.map((status) => (
               <SelectItem key={status} value={status}>
                 {STATUS_LABELS[status]}
@@ -379,7 +379,7 @@ export default function JournalPage() {
         </Select>
         <Select value={monthFilter} onValueChange={setMonthFilter}>
           <SelectTrigger>
-            <SelectValue placeholder="Mês / Ano" />
+            <SelectValue placeholder="Mês da edição" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos os meses</SelectItem>
@@ -550,7 +550,7 @@ export default function JournalPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir esta edição?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir este jornal?</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
@@ -613,7 +613,7 @@ export default function JournalPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Mês/Ano de referência</Label>
+              <Label>Mês da edição</Label>
               <Input
                 value={form.referenceMonth}
                 placeholder="Julho/2026"
