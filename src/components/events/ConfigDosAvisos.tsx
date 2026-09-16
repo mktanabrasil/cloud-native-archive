@@ -105,15 +105,16 @@ export function ConfigDosAvisos() {
         <section className="space-y-2">
           <h3 className="text-sm font-semibold">1. Lançamento <span className="font-normal text-muted-foreground">· quem entra além das quatro caixas</span></h3>
           <div className={`flex items-start gap-3 rounded-lg border p-3 ${config.pre_lancamento ? 'border-dashed border-warning/60 bg-warning/10' : 'border-primary/40 bg-primary/10'}`} data-testid="modo-lancamento">
-            <Switch id="pre-lancamento" checked={!config.pre_lancamento} disabled={!carregado || salvando} onCheckedChange={v => alternar(!v)} aria-label="Lançado para a equipe toda" className="mt-0.5" />
+            {/* O interruptor É o modo pré-lançamento: ligado quando o texto diz "ligado". Desligar = lançar (com confirmação). */}
+            <Switch id="pre-lancamento" checked={config.pre_lancamento} disabled={!carregado || salvando} onCheckedChange={v => alternar(v)} aria-label="Modo pré-lançamento" className="mt-0.5" />
             <div className="flex-1 text-xs">
               <p className="flex items-center gap-1.5 font-semibold text-foreground">
                 {config.pre_lancamento ? <><Lock className="h-3.5 w-3.5 text-warning" /> Modo pré-lançamento ligado</> : <><Rocket className="h-3.5 w-3.5 text-primary" /> Lançado para a equipe</>}
               </p>
               <p className="text-muted-foreground">
                 {config.pre_lancamento
-                  ? 'Só mkt@, contato@, parceiros@ e eventos@ recebem os e-mails. Ao desligar, a gestão das unidades e quem cria eventos entram na hora.'
-                  : 'A gestão das unidades, quem cria eventos e os e-mails adicionados recebem os avisos. Religar tira o acesso deles na hora.'}
+                  ? 'Só mkt@, contato@, parceiros@ e eventos@ recebem os e-mails. Desligue para lançar: a gestão das unidades e quem cria eventos entram na hora.'
+                  : 'Modo pré-lançamento desligado: a gestão das unidades, quem cria eventos e os e-mails adicionados recebem os avisos. Ligar de novo tira o acesso deles na hora.'}
               </p>
               {origem === 'variavel' && carregado && <p className="mt-1 text-muted-foreground">Hoje quem manda ainda é a variável do Coolify. Ao salvar qualquer coisa aqui, o Painel passa a mandar e a variável pode ser removida.</p>}
             </div>
