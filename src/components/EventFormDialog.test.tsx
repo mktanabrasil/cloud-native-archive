@@ -516,7 +516,7 @@ describe('um detalhe por item na alimentação e nos equipamentos', () => {
     abrir();
     preencher();
     fireEvent.click(screen.getByRole('switch', { name: /outra comida/i }));
-    const nome = screen.getByPlaceholderText('Especifique a alimentação...');
+    const nome = screen.getByPlaceholderText('Qual comida?');
     fireEvent.change(nome, { target: { value: 'Café' } });
     fireEvent.change(screen.getByLabelText('Detalhes de Café'), { target: { value: '7h30, 12 pessoas' } });
     fireEvent.change(nome, { target: { value: 'Café dos voluntários' } });
@@ -673,7 +673,7 @@ describe('transporte', () => {
     const evento = { ...eventoGravado(), transport_needed: true, transport_vehicle: 'van' as const, transport_passengers: 10 };
     render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
 
-    fireEvent.click(screen.getByRole('switch', { name: /leva equipamentos\/materiais volumosos/i }));
+    fireEvent.click(screen.getByRole('switch', { name: /leva coisas grandes/i }));
     expect(screen.getByText(/volumosos vão no utilitário/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));

@@ -44,7 +44,7 @@ function Palco({
   );
 }
 
-const COMIDA = ['Almoço', 'Coffee Break', 'Lanche', 'Jantar', 'Nenhum'];
+const COMIDA = ['Almoço', 'Café da manhã / da tarde', 'Lanche', 'Jantar', 'Nenhum'];
 const valor = () => screen.getByTestId('valor').textContent;
 const chave = (nome: string | RegExp) => screen.getByRole('switch', { name: nome });
 
@@ -53,7 +53,7 @@ describe('“Nenhum” em primeiro, e o resto some quando ele está ligado', () 
 
   it('vem primeiro; “Outra coisa” por último; sem “Nenhum” a ordem não muda', () => {
     render(<Palco opcoes={COMIDA} temNenhum />);
-    expect(rotulos()).toEqual(['Nenhum', 'Almoço', 'Coffee Break', 'Lanche', 'Jantar', 'outro']);
+    expect(rotulos()).toEqual(['Nenhum', 'Almoço', 'Café da manhã / da tarde', 'Lanche', 'Jantar', 'outro']);
   });
 
   it('ligado, só ele fica, com o significado e a contagem do que sumiu', () => {
@@ -92,7 +92,7 @@ describe('“Nenhum” em primeiro, e o resto some quando ele está ligado', () 
 
     fireEvent.click(chave('Nenhum'));
 
-    expect(rotulos()).toEqual(['Nenhum', 'Almoço', 'Coffee Break', 'Lanche', 'Jantar', 'outro']);
+    expect(rotulos()).toEqual(['Nenhum', 'Almoço', 'Café da manhã / da tarde', 'Lanche', 'Jantar', 'outro']);
     expect(valor()).toBe('');
   });
 
