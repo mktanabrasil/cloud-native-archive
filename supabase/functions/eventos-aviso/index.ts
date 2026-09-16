@@ -409,13 +409,75 @@ async function garantirAgendas(admin: any, token: string, perfis: Perfil[]): Pro
   return ids;
 }
 
+// ---------- conexão em nome da eventos@ (OAuth, 16/09/2026) ----------
+//
+// Em vez de o robô ter agenda própria, o app escreve na agenda que a equipe
+// já usa ("Eventos ANA Brasil"), como a própria eventos@. Uma pessoa admin
+// conecta uma vez pelo Painel; a chave de renovação fica em
+// `user_google_tokens` (linha da pessoa que conectou) e o resto da conexão
+// em `system_configs` (chave 'agenda_google'). Enquanto não houver conexão
+// com agenda escolhida, o robô (GOOGLE_SA_KEY) continua valendo.
+
+const OAUTH_CLIENT_ID = Deno.env.get('GOOGLE_OAUTH_CLIENT_ID') || '';
+const OAUTH_CLIENT_SECRET = Deno.env.get('GOOGLE_OAUTH_CLIENT_SECRET') || '';
+const CHAVE_DA_CONEXAO = 'agenda_google';
+
+interface Conexao {
+  user_id: string;
+  google_email: string;
+  calendar_id: string | null;
+  calendar_nome: string | null;
+  conectado_por: string;
+  conectado_em: string;
+  erro: string | null;
+}
+
+async function lerConexao(admin: any): Promise<Conexao | null> {
+  const { data } = await admin.from('system_configs').select('value').eq('key', CHAVE_DA_CONEXAO).maybeSingle();
+  const v = data?.value;
+  return v && typeof v === 'object' && v.user_id ? (v as Conexao) : null;
+}
+
+async function gravarConexao(admin: any, c: Conexao | null, por: string) {
+  if (!c) { await admin.from('system_configs').delete().eq('key', CHAVE_DA_CONEXAO); return; }
+  await admin.from('system_configs').upsert({ key: CHAVE_DA_CONEXAO, value: c, updated_at: new Date().toISOString(), updated_by: por }, { onConflict: 'key' });
+}
+
+/** Troca a chave de renovação por um token de acesso. invalid_grant = o Google desconectou (senha trocada, acesso revogado). */
+async function tokenDaConexao(admin: any, c: Conexao): Promise<string> {
+  const { data } = await admin.from('user_google_tokens').select('refresh_token').eq('user_id', c.user_id).maybeSingle();
+  if (!data?.refresh_token) throw new Error('conexão sem chave de renovação: reconecte no Painel');
+  const r = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: data.refresh_token, client_id: OAUTH_CLIENT_ID, client_secret: OAUTH_CLIENT_SECRET }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.access_token) {
+    const motivo = j.error === 'invalid_grant' ? 'o Google desconectou a conta: reconecte no Painel' : `Google não renovou o acesso: ${r.status} ${JSON.stringify(j).slice(0, 200)}`;
+    if (!c.erro) await gravarConexao(admin, { ...c, erro: motivo }, 'sistema');
+    throw new Error(motivo);
+  }
+  if (c.erro) await gravarConexao(admin, { ...c, erro: null }, 'sistema');
+  return j.access_token as string;
+}
+
+/** Só admin geral conecta, troca a agenda e desconecta. */
+async function ehAdmin(admin: any, userId: string): Promise<boolean> {
+  const { data: papel } = await admin.from('user_roles').select('role').eq('user_id', userId).maybeSingle();
+  if (papel?.role === 'admin') return true;
+  const { data: perfil } = await admin.from('profiles').select('permission_level').eq('id', userId).maybeSingle();
+  return perfil?.permission_level === 'admin_geral';
+}
+
+const semSegredo = (c: Conexao | null) => c ? { google_email: c.google_email, calendar_id: c.calendar_id, calendar_nome: c.calendar_nome, conectado_por: c.conectado_por, conectado_em: c.conectado_em, erro: c.erro } : null;
+
 function corpoDoEventoGoogle(e: Evento, site: string) {
   const quem = e.reviewed_by || e.updated_by || e.created_by || '';
   const quando = e.reviewed_at || e.updated_at;
   const rodape = [quem ? `Confirmado por ${quem}${quando ? ' em ' + dataLonga(quando) : ''}.` : '', `Ver no app da ANA: ${linkDoEvento(e, site)}`].filter(Boolean).join('\n');
   return {
     summary: tituloEmTexto(e.title),
-    description: [e.description || '', '', rodape].join('\n').trim(),
+    description: [e.description || '', '', rodape, '· via app'].join('\n').trim(),
     location: e.location || (e.unit ? `Unidade ${e.unit}` : undefined),
     start: { dateTime: new Date(e.start_datetime).toISOString(), timeZone: FUSO },
     end: { dateTime: new Date(e.end_datetime || e.start_datetime).toISOString(), timeZone: FUSO },
@@ -479,6 +541,7 @@ Deno.serve(async (req) => {
   // Quem chama: o banco (segredo) ou alguém logado da equipe (JWT).
   const segredoOk = !!SEGREDO && req.headers.get('x-avisos-segredo') === SEGREDO;
   let pedidoPor = 'banco';
+  let usuarioId: string | null = null;
   if (!segredoOk) {
     const auth = req.headers.get('Authorization');
     if (!auth?.startsWith('Bearer ')) return json({ error: 'Não autorizado.' }, 401);
@@ -486,17 +549,97 @@ Deno.serve(async (req) => {
     const { data, error } = await userClient.auth.getUser(auth.replace('Bearer ', ''));
     if (error || !data?.user) return json({ error: 'Não autorizado.' }, 401);
     pedidoPor = data.user.email || data.user.id;
+    usuarioId = data.user.id;
   }
 
-  let corpo: { aviso_id?: string; estado?: boolean; carga?: boolean; reaplicar?: boolean } = {};
+  let corpo: {
+    aviso_id?: string; estado?: boolean; carga?: boolean; reaplicar?: boolean;
+    oauth_url?: boolean; oauth_code?: string; state?: string; listar_agendas?: boolean;
+    escolher_agenda?: { calendar_id: string; nome: string }; desconectar?: boolean;
+  } = {};
   try { corpo = await req.json(); } catch { /* sem corpo: processa os pendentes */ }
 
   const admin = createClient(SUPABASE_URL, SERVICE);
+  const chaveBruta = Deno.env.get('GOOGLE_SA_KEY');
 
   // { estado: true }: o card do Painel pergunta como está a agenda. Só leitura.
   if (corpo.estado) {
     const { data: agendas } = await admin.from('agendas_google').select('chave, calendar_id, nome, compartilhada_com');
-    return json({ so_equipe: SO_EQUIPE, chave_configurada: !!Deno.env.get('GOOGLE_SA_KEY'), agendas: agendas || [] });
+    const conexao = await lerConexao(admin);
+    const modo = conexao?.calendar_id ? 'conexao' : chaveBruta ? 'robo' : 'nenhum';
+    return json({ so_equipe: SO_EQUIPE, chave_configurada: !!chaveBruta, oauth_configurado: !!OAUTH_CLIENT_ID && !!OAUTH_CLIENT_SECRET, modo, conexao: semSegredo(conexao), agendas: agendas || [] });
+  }
+
+  // ----- conexão em nome da eventos@: só admin, só pessoa logada -----
+  const pedeConexao = corpo.oauth_url || corpo.oauth_code || corpo.listar_agendas || corpo.escolher_agenda || corpo.desconectar;
+  if (pedeConexao) {
+    if (!usuarioId) return json({ error: 'Conectar a agenda é ação de uma pessoa logada.' }, 403);
+    if (!(await ehAdmin(admin, usuarioId))) return json({ error: 'Só a administração geral conecta a agenda.' }, 403);
+    if (!OAUTH_CLIENT_ID || !OAUTH_CLIENT_SECRET) return json({ error: 'GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET não estão no servidor.' }, 500);
+    const redirect = `${SITE}/`;
+
+    if (corpo.oauth_url) {
+      const state = `agenda:${usuarioId}:${Date.now()}`;
+      const url = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
+        client_id: OAUTH_CLIENT_ID, redirect_uri: redirect, response_type: 'code', scope: ESCOPO_AGENDA,
+        access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true', login_hint: 'eventos@anabrasil.org', hd: 'anabrasil.org', state,
+      });
+      return json({ url });
+    }
+
+    if (corpo.oauth_code) {
+      const [marca, dono] = String(corpo.state || '').split(':');
+      if (marca !== 'agenda' || dono !== usuarioId) return json({ error: 'Este retorno do Google não é desta pessoa. Comece de novo em "Conectar".' }, 400);
+      const r = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ code: corpo.oauth_code, client_id: OAUTH_CLIENT_ID, client_secret: OAUTH_CLIENT_SECRET, redirect_uri: redirect, grant_type: 'authorization_code' }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.refresh_token) return json({ error: `O Google não devolveu a chave de renovação: ${j.error_description || j.error || r.status}. Comece de novo em "Conectar".` }, 400);
+      const primaria = await google(j.access_token, 'GET', '/calendars/primary');
+      const anterior = await lerConexao(admin);
+      await admin.from('user_google_tokens').upsert({ user_id: usuarioId, refresh_token: j.refresh_token, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      const conexao: Conexao = { user_id: usuarioId, google_email: primaria.id, calendar_id: anterior?.calendar_id ?? null, calendar_nome: anterior?.calendar_nome ?? null, conectado_por: pedidoPor, conectado_em: new Date().toISOString(), erro: null };
+      await gravarConexao(admin, conexao, pedidoPor);
+      console.log(`[agenda] ${pedidoPor} conectou o Google como ${primaria.id}`);
+      return json({ conexao: semSegredo(conexao) });
+    }
+
+    const conexao = await lerConexao(admin);
+    if (corpo.desconectar) {
+      if (conexao) await admin.from('user_google_tokens').delete().eq('user_id', conexao.user_id);
+      await gravarConexao(admin, null, pedidoPor);
+      console.log(`[agenda] ${pedidoPor} desconectou o Google`);
+      return json({ conexao: null });
+    }
+    if (!conexao) return json({ error: 'Conecte o Google Agenda primeiro.' }, 400);
+    const token = await tokenDaConexao(admin, conexao);
+
+    if (corpo.listar_agendas) {
+      const lista = await google(token, 'GET', '/users/me/calendarList?minAccessRole=writer&showHidden=true');
+      const agendas = ((lista?.items || []) as any[]).map(a => ({ id: a.id, nome: a.summaryOverride || a.summary, cor: a.backgroundColor || null, primaria: !!a.primary, papel: a.accessRole }));
+      return json({ google_email: conexao.google_email, agendas });
+    }
+
+    if (corpo.escolher_agenda) {
+      const { calendar_id, nome } = corpo.escolher_agenda;
+      // A transição: os eventos saem da agenda do robô, que é apagada, e a
+      // carga inicial recoloca todos os confirmados na agenda escolhida.
+      const { data: doRobo } = await admin.from('agendas_google').select('chave, calendar_id').eq('chave', 'equipe').maybeSingle();
+      if (doRobo && chaveBruta) {
+        try {
+          const tokenRobo = await tokenDoRobo(JSON.parse(chaveBruta) as ChaveDoRobo);
+          try { await google(tokenRobo, 'DELETE', `/calendars/${encodeURIComponent(doRobo.calendar_id)}`); }
+          catch (e) { if ((e as { status?: number }).status !== 404 && (e as { status?: number }).status !== 410) throw e; }
+          console.log('[agenda] agenda do robô "ANA · Eventos" apagada no Google');
+        } catch (e) { console.warn('[agenda] não consegui apagar a agenda do robô:', e instanceof Error ? e.message : e); }
+      }
+      await admin.from('agendas_google').delete().eq('chave', 'equipe');
+      await admin.from('events').update({ google_event_id: null, google_event_link: null }).not('google_event_id', 'is', null);
+      await gravarConexao(admin, { ...conexao, calendar_id, calendar_nome: nome, erro: null }, pedidoPor);
+      console.log(`[agenda] ${pedidoPor} escolheu a agenda "${nome}" (${calendar_id})`);
+      corpo.carga = true; // segue para a carga inicial, abaixo
+    }
   }
 
   // { carga: true }: carga inicial — todo confirmado que ainda não está no
@@ -546,8 +689,16 @@ Deno.serve(async (req) => {
   // o painel não mostra nada de agenda — o e-mail segue normal.
   let agenda: { token: string; ids: { equipe: string } } | null = null;
   let erroDaAgenda: string | null = null;
-  const chaveBruta = Deno.env.get('GOOGLE_SA_KEY');
-  if (chaveBruta) {
+  const conexao = await lerConexao(admin);
+  if (conexao?.calendar_id) {
+    try {
+      const token = await tokenDaConexao(admin, conexao);
+      agenda = { token, ids: { equipe: conexao.calendar_id } };
+    } catch (e) {
+      erroDaAgenda = e instanceof Error ? e.message : String(e);
+      console.error('[agenda] conexão indisponível nesta chamada:', erroDaAgenda);
+    }
+  } else if (chaveBruta) {
     try {
       const chave = JSON.parse(chaveBruta) as ChaveDoRobo;
       const token = await tokenDoRobo(chave);
@@ -587,7 +738,7 @@ Deno.serve(async (req) => {
     // ----- passo 2: agenda -----
     if (precisaAgenda) {
       if (!agenda) {
-        if (!chaveBruta) await admin.from('avisos_de_evento').update({ agenda_status: 'ignorado', agenda_erro: 'agenda não configurada (GOOGLE_SA_KEY)' }).eq('id', a.id);
+        if (!chaveBruta && !conexao?.calendar_id) await admin.from('avisos_de_evento').update({ agenda_status: 'ignorado', agenda_erro: 'agenda não configurada (conecte o Google no Painel)' }).eq('id', a.id);
         else await admin.from('avisos_de_evento').update({ agenda_status: 'falhou', agenda_erro: (erroDaAgenda || 'agenda indisponível').slice(0, 500) }).eq('id', a.id);
       } else {
         try {

@@ -1,67 +1,141 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CalendarCheck, ExternalLink, Lock, RefreshCw, Upload, Copy, Check } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { AlertTriangle, CalendarCheck, Check, ExternalLink, Lock, RefreshCw, Unplug, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useApp } from '@/contexts/AppContext';
 import { contagemDaAgenda, textoDaCarga } from '@/lib/events/agenda';
+import { type EstadoDaAgenda, linkDaAgendaNoGoogle, retornoDoGoogle, situacaoDaConexao, textoDaTroca } from '@/lib/events/conexaoGoogle';
 import { toast } from 'sonner';
 
-interface AgendaGoogle { chave: 'equipe'; calendar_id: string; nome: string; compartilhada_com: string[] }
-interface Estado { so_equipe: boolean; chave_configurada: boolean; agendas: AgendaGoogle[] }
+interface AgendaDoGoogleLista { id: string; nome: string; cor: string | null; primaria: boolean; papel: string }
 
-const linkDaAgenda = (id: string) => `https://calendar.google.com/calendar/u/0/r?cid=${encodeURIComponent(id)}`;
-const linkDeInscricao = (id: string) => `https://calendar.google.com/calendar/u/0?cid=${encodeURIComponent(id)}`;
+const chamar = async <T,>(body: Record<string, unknown>): Promise<T> => {
+  const { data, error } = await supabase.functions.invoke('eventos-aviso', { body });
+  const resposta = data as (T & { error?: string }) | null;
+  if (error || !resposta) throw new Error(error?.message || 'sem resposta');
+  if (resposta.error) throw new Error(resposta.error);
+  return resposta;
+};
 
 /**
- * Card "Agenda do Google" do Painel (só admin geral): a agenda que o robô
- * criou (só "ANA · Eventos": a pública foi descartada em 15/09), quem lê hoje, a contagem do que está e do que falta, e o botão
- * da carga inicial — que enfileira todo confirmado ainda fora do Google, sem
- * mandar e-mail de novo. Mockup aprovado em 15/09/2026.
+ * Card "Agenda do Google" do Painel (só admin geral). Desde 16/09/2026 o app
+ * escreve na agenda que a equipe já usa, em nome da eventos@: aqui se conecta
+ * (uma vez), escolhe a agenda, vê o estado da conexão, e dispara a carga
+ * inicial. Enquanto ninguém conectou, o robô continua valendo e o card diz.
+ * Mockup aprovado em 16/09/2026.
  */
 export function AgendaDoGoogle() {
   const { events, refetchEvents } = useApp();
-  const [estado, setEstado] = useState<Estado | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [estado, setEstado] = useState<EstadoDaAgenda | null>(null);
   const [erroDeLeitura, setErroDeLeitura] = useState<string | null>(null);
   const [comErro, setComErro] = useState(0);
-  const [carregando, setCarregando] = useState(false);
-  const [copiado, setCopiado] = useState<string | null>(null);
+  const [ocupado, setOcupado] = useState<string | null>(null);
+  const [escolha, setEscolha] = useState<{ agendas: AgendaDoGoogleLista[]; marcada: AgendaDoGoogleLista | null } | null>(null);
+  const [confirmarTroca, setConfirmarTroca] = useState<AgendaDoGoogleLista | null>(null);
 
   const ler = useCallback(async () => {
-    const { data, error } = await supabase.functions.invoke('eventos-aviso', { body: { estado: true } });
-    const resposta = data as (Partial<Estado> & { error?: string }) | null;
-    if (error || !resposta || resposta.error) { setErroDeLeitura(error?.message || resposta?.error || 'sem resposta'); return; }
-    // Função de versão anterior responde sem `agendas`: avisa em vez de quebrar.
-    if (!Array.isArray(resposta.agendas)) { setErroDeLeitura('a função publicada ainda não conhece a consulta de estado'); return; }
-    setErroDeLeitura(null);
-    setEstado({ so_equipe: !!resposta.so_equipe, chave_configurada: !!resposta.chave_configurada, agendas: resposta.agendas.filter(a => a.chave === 'equipe') });
-    const { count } = await supabase.from('avisos_de_evento').select('id', { count: 'exact', head: true }).eq('agenda_status', 'falhou');
-    setComErro(count || 0);
+    try {
+      const r = await chamar<Partial<EstadoDaAgenda>>({ estado: true });
+      if (!Array.isArray(r.agendas)) throw new Error('a função publicada ainda não conhece a consulta de estado');
+      setErroDeLeitura(null);
+      setEstado({
+        so_equipe: !!r.so_equipe, chave_configurada: !!r.chave_configurada, oauth_configurado: !!r.oauth_configurado,
+        modo: r.modo || (r.chave_configurada ? 'robo' : 'nenhum'), conexao: r.conexao ?? null, agendas: r.agendas.filter(a => a.chave === 'equipe'),
+      });
+      const { count } = await supabase.from('avisos_de_evento').select('id', { count: 'exact', head: true }).eq('agenda_status', 'falhou');
+      setComErro(count || 0);
+    } catch (e) {
+      setErroDeLeitura(e instanceof Error ? e.message : String(e));
+    }
   }, []);
 
   useEffect(() => { void ler(); }, [ler]);
 
-  const contagem = contagemDaAgenda(events, comErro);
-
-  const carregar = async () => {
-    setCarregando(true);
+  const abrirEscolha = useCallback(async () => {
+    setOcupado('listar');
     try {
-      const { data, error } = await supabase.functions.invoke('eventos-aviso', { body: { carga: true } });
-      if (error || (data as { error?: string })?.error) throw new Error(error?.message || (data as { error?: string }).error);
-      toast.success('Carga inicial concluída', { description: 'Os confirmados foram enviados para a agenda. Confira cada um no painel de detalhe.' });
+      const r = await chamar<{ agendas: AgendaDoGoogleLista[] }>({ listar_agendas: true });
+      const recomendada = r.agendas.find(a => /eventos ana/i.test(a.nome)) || r.agendas.find(a => !a.primaria) || r.agendas[0] || null;
+      setEscolha({ agendas: r.agendas, marcada: recomendada });
     } catch (e) {
-      toast.error('A carga inicial não terminou', { description: e instanceof Error ? e.message : String(e) });
+      toast.error('Não consegui listar as agendas', { description: e instanceof Error ? e.message : String(e) });
+    } finally { setOcupado(null); }
+  }, []);
+
+  // Voltando do Google: a raiz mandou para cá com ?code=&state=agenda:…
+  useEffect(() => {
+    const retorno = retornoDoGoogle(searchParams.toString() ? '?' + searchParams.toString() : '');
+    if (!retorno) return;
+    const params = new URLSearchParams(searchParams);
+    params.delete('code'); params.delete('state'); params.delete('scope'); params.delete('authuser'); params.delete('prompt'); params.delete('hd');
+    setSearchParams(params, { replace: true });
+    (async () => {
+      setOcupado('conectar');
+      try {
+        await chamar({ oauth_code: retorno.code, state: retorno.state });
+        toast.success('Google Agenda conectado', { description: 'Agora escolha em qual agenda os eventos confirmados entram.' });
+        await ler();
+        await abrirEscolha();
+      } catch (e) {
+        toast.error('A conexão com o Google não terminou', { description: e instanceof Error ? e.message : String(e) });
+      } finally { setOcupado(null); }
+    })();
+  }, [searchParams, setSearchParams, ler, abrirEscolha]);
+
+  const conectar = async () => {
+    setOcupado('conectar');
+    try {
+      const r = await chamar<{ url: string }>({ oauth_url: true });
+      window.location.href = r.url;
+    } catch (e) {
+      toast.error('Não consegui começar a conexão', { description: e instanceof Error ? e.message : String(e) });
+      setOcupado(null);
+    }
+  };
+
+  const desconectar = async () => {
+    if (!window.confirm('Desconectar o Google Agenda? Os eventos que já estão lá ficam; os próximos confirmados esperam na fila até reconectar.')) return;
+    setOcupado('desconectar');
+    try { await chamar({ desconectar: true }); toast.success('Google Agenda desconectado'); await ler(); }
+    catch (e) { toast.error('Não consegui desconectar', { description: e instanceof Error ? e.message : String(e) }); }
+    finally { setOcupado(null); }
+  };
+
+  const escolher = async (a: AgendaDoGoogleLista) => {
+    setOcupado('escolher');
+    setConfirmarTroca(null); setEscolha(null);
+    try {
+      await chamar({ escolher_agenda: { calendar_id: a.id, nome: a.nome } });
+      toast.success(`Agenda "${a.nome}" em uso`, { description: 'Os confirmados foram enviados para lá. Confira cada um no painel de detalhe.' });
+    } catch (e) {
+      toast.error('A troca de agenda não terminou', { description: e instanceof Error ? e.message : String(e) });
     } finally {
-      setCarregando(false);
+      setOcupado(null);
       await Promise.all([refetchEvents(), ler()]);
     }
   };
 
-  const copiar = async (texto: string, chave: string) => {
-    try { await navigator.clipboard.writeText(texto); setCopiado(chave); setTimeout(() => setCopiado(null), 1500); }
-    catch { toast.error('Não consegui copiar. Selecione e copie o link manualmente.'); }
+  const carregar = async () => {
+    setOcupado('carga');
+    try {
+      await chamar({ carga: true });
+      toast.success('Carga inicial concluída', { description: 'Os confirmados foram enviados para a agenda. Confira cada um no painel de detalhe.' });
+    } catch (e) {
+      toast.error('A carga inicial não terminou', { description: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setOcupado(null);
+      await Promise.all([refetchEvents(), ler()]);
+    }
   };
+
+  const contagem = contagemDaAgenda(events, comErro);
+  const situacao = estado ? situacaoDaConexao(estado) : null;
+  const podeCarregar = !!estado && (estado.modo !== 'nenhum') && contagem.faltam > 0;
+  const nomeDaAgenda = estado?.conexao?.calendar_nome || estado?.agendas[0]?.nome || 'a agenda';
 
   return (
     <Card data-testid="agenda-do-google">
@@ -70,11 +144,11 @@ export function AgendaDoGoogle() {
           <CardTitle className="flex items-center gap-2 text-lg">
             <CalendarCheck className="h-5 w-5 text-primary" /> Agenda do Google
           </CardTitle>
-          <p className="max-w-[56ch] text-sm text-muted-foreground">Eventos confirmados entram sozinhos na agenda abaixo, só da equipe. Edite sempre no app: o Google é só leitura.</p>
+          <p className="max-w-[56ch] text-sm text-muted-foreground">Eventos confirmados entram sozinhos na agenda abaixo. Edite sempre no app: mudanças feitas direto no Google não voltam para cá.</p>
         </div>
-        <Button className="gap-2" disabled={carregando || contagem.faltam === 0 || !estado?.chave_configurada} onClick={carregar}>
-          {carregando ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          {carregando ? 'Enviando para a agenda…' : textoDaCarga(contagem.faltam)}
+        <Button className="gap-2" disabled={!!ocupado || !podeCarregar} onClick={carregar}>
+          {ocupado === 'carga' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          {ocupado === 'carga' ? 'Enviando para a agenda…' : textoDaCarga(contagem.faltam)}
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -84,42 +158,76 @@ export function AgendaDoGoogle() {
           </p>
         )}
 
-        {estado && !estado.chave_configurada && (
-          <p className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">A chave do robô (GOOGLE_SA_KEY) não está no servidor: os eventos não vão para o Google até ela ser configurada.</p>
+        {/* ----- a conexão ----- */}
+        {estado && situacao === 'conectado' && estado.conexao && (
+          <div className="flex flex-col gap-3 rounded-lg border border-primary/40 bg-primary/10 p-3 sm:flex-row sm:items-start" data-testid="conexao-google">
+            <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <div className="min-w-0 flex-1 space-y-0.5 text-xs">
+              <p className="font-semibold text-foreground">Conectado como {estado.conexao.google_email}</p>
+              <p className="text-muted-foreground">
+                Conexão feita por {estado.conexao.conectado_por} em {new Date(estado.conexao.conectado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}.
+                Gravando em <b className="text-foreground">{estado.conexao.calendar_nome}</b>.
+                {estado.conexao.calendar_id && <> <a href={linkDaAgendaNoGoogle(estado.conexao.calendar_id)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-primary underline underline-offset-2"><ExternalLink className="h-3 w-3" /> Abrir no Google</a></>}
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-1">
+              <Button size="sm" variant="ghost" className="h-8 text-xs" disabled={!!ocupado} onClick={abrirEscolha}>Trocar agenda</Button>
+              <Button size="sm" variant="ghost" className="h-8 gap-1 text-xs" disabled={!!ocupado} onClick={desconectar}><Unplug className="h-3.5 w-3.5" /> Desconectar</Button>
+            </div>
+          </div>
+        )}
+
+        {estado && situacao === 'sem_agenda' && estado.conexao && (
+          <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:flex-row sm:items-center" data-testid="conexao-google">
+            <div className="flex-1 text-xs">
+              <p className="font-semibold text-foreground">Conectado como {estado.conexao.google_email}, falta escolher a agenda</p>
+              <p className="text-muted-foreground">Até escolher, os eventos seguem para {estado.modo === 'robo' ? 'a agenda do robô' : 'a fila'}.</p>
+            </div>
+            <div className="flex shrink-0 gap-1">
+              <Button size="sm" className="h-8 text-xs" disabled={!!ocupado} onClick={abrirEscolha}>{ocupado === 'listar' ? 'Buscando agendas…' : 'Escolher a agenda'}</Button>
+              <Button size="sm" variant="ghost" className="h-8 text-xs" disabled={!!ocupado} onClick={desconectar}>Desconectar</Button>
+            </div>
+          </div>
+        )}
+
+        {estado && situacao === 'perdida' && estado.conexao && (
+          <div role="alert" className="flex flex-col gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3 sm:flex-row sm:items-start" data-testid="conexao-google">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+            <div className="flex-1 text-xs">
+              <p className="font-semibold text-foreground">O Google desconectou {estado.conexao.google_email}</p>
+              <p className="text-muted-foreground">{estado.conexao.erro} Os confirmados esperam na fila; nada se perde.</p>
+            </div>
+            <Button size="sm" className="h-8 shrink-0 text-xs" disabled={!!ocupado} onClick={conectar}>Reconectar</Button>
+          </div>
+        )}
+
+        {estado && situacao === 'nao_conectado' && (
+          <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:flex-row sm:items-center" data-testid="conexao-google">
+            <div className="flex-1 text-xs">
+              <p className="font-semibold text-foreground">Google Agenda não conectado</p>
+              <p className="text-muted-foreground">
+                {estado.modo === 'robo'
+                  ? `Por enquanto os eventos vão para "${nomeDaAgenda}", a agenda do robô. Conecte como eventos@ para usar a agenda que a equipe já tem.`
+                  : 'Os eventos confirmados ficam na fila até você conectar. Entre como eventos@ quando o Google pedir.'}
+              </p>
+              {!estado.oauth_configurado && <p className="mt-1 text-destructive">Faltam GOOGLE_OAUTH_CLIENT_ID e GOOGLE_OAUTH_CLIENT_SECRET no servidor.</p>}
+            </div>
+            <Button size="sm" className="h-8 shrink-0 gap-2 text-xs" disabled={!!ocupado || !estado.oauth_configurado} onClick={conectar}>
+              {ocupado === 'conectar' ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <CalendarCheck className="h-3.5 w-3.5" />} Conectar Google Agenda
+            </Button>
+          </div>
         )}
 
         {estado?.so_equipe && (
           <div className="flex items-start gap-3 rounded-lg border border-dashed border-warning/60 bg-warning/10 p-3 text-xs" data-testid="modo-pre-lancamento">
             <Lock className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-            <p><b>Modo pré-lançamento ligado.</b> Só mkt@, contato@, parceiros@ e eventos@ recebem e-mails e leem as agendas. A gestão das unidades entra quando a chave <code className="rounded bg-muted px-1">AVISOS_SO_EQUIPE</code> for removida no Coolify.</p>
+            <p>
+              <b>Modo pré-lançamento ligado.</b> Só mkt@, contato@, parceiros@ e eventos@ recebem os e-mails.{' '}
+              {estado.modo === 'conexao'
+                ? <>Quem vê a agenda é definido por você no Google, no compartilhamento de "{nomeDaAgenda}".</>
+                : <>A gestão das unidades entra quando a chave <code className="rounded bg-muted px-1">AVISOS_SO_EQUIPE</code> for removida no Coolify.</>}
+            </p>
           </div>
-        )}
-
-        {estado && estado.agendas.length > 0 && (
-          <div className="grid gap-3">
-            {estado.agendas.map(a => (
-              <div key={a.chave} className="space-y-1.5 rounded-lg border border-border p-3">
-                <p className="flex items-center gap-2 text-sm font-semibold">
-                  <span className="h-2.5 w-2.5 rounded-full bg-primary" />
-                  {a.nome}
-                  <Badge variant="secondary" className="ml-auto text-[10px]">equipe</Badge>
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  {`Lida por ${a.compartilhada_com.length} ${a.compartilhada_com.length === 1 ? 'endereço' : 'endereços'}: ${a.compartilhada_com.map(e => e.replace(/@anabrasil\.org$/, '@')).join(', ')}`}
-                </p>
-                <p className="flex flex-wrap gap-3 text-xs">
-                  <a href={linkDaAgenda(a.calendar_id)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-primary underline underline-offset-2"><ExternalLink className="h-3 w-3" /> Abrir no Google</a>
-                  <button type="button" className="inline-flex items-center gap-1 font-medium text-primary underline underline-offset-2" onClick={() => copiar(linkDeInscricao(a.calendar_id), a.chave)}>
-                    {copiado === a.chave ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} Copiar link de inscrição
-                  </button>
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {estado && estado.agendas.length === 0 && estado.chave_configurada && (
-          <p className="text-xs text-muted-foreground">A agenda ainda não foi criada: ela nasce na primeira vez que um evento confirmado passa pela função.</p>
         )}
 
         <dl className="flex flex-wrap gap-6 tabular-nums" data-testid="contagem-da-agenda">
@@ -136,6 +244,56 @@ export function AgendaDoGoogle() {
           ))}
         </dl>
       </CardContent>
+
+      {/* ----- escolher a agenda ----- */}
+      <Dialog open={!!escolha} onOpenChange={o => { if (!o) setEscolha(null); }}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Em qual agenda os eventos confirmados entram?</DialogTitle>
+            <DialogDescription>Só aparecem agendas em que {estado?.conexao?.google_email || 'a conta conectada'} pode criar eventos.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2" role="radiogroup" aria-label="Agendas disponíveis">
+            {escolha?.agendas.length === 0 && <p className="text-sm text-muted-foreground">Essa conta não tem nenhuma agenda em que possa criar eventos. Desconecte e entre como eventos@.</p>}
+            {escolha?.agendas.map(a => {
+              const marcada = escolha.marcada?.id === a.id;
+              return (
+                <button key={a.id} type="button" role="radio" aria-checked={marcada}
+                  className={`flex items-center gap-3 rounded-lg border p-3 text-left ${marcada ? 'border-primary bg-primary/10' : 'border-border'}`}
+                  onClick={() => setEscolha({ ...escolha, marcada: a })}>
+                  <span className={`h-4 w-4 shrink-0 rounded-full border-2 ${marcada ? 'border-primary bg-primary' : 'border-border'}`} />
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: a.cor || 'var(--border)' }} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold">{a.nome}</span>
+                    <span className="block text-[11px] text-muted-foreground">{a.primaria ? 'agenda pessoal da conta' : a.papel === 'owner' ? 'a conta é dona' : 'compartilhada com edição'}</span>
+                  </span>
+                  {/eventos ana/i.test(a.nome) && <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">recomendada</span>}
+                </button>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEscolha(null)}>Cancelar</Button>
+            <Button disabled={!escolha?.marcada} onClick={() => { const a = escolha?.marcada; if (!a) return; if (a.id === estado?.conexao?.calendar_id) { setEscolha(null); return; } setConfirmarTroca(a); }}>Usar esta agenda</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ----- confirmar a troca ----- */}
+      <Dialog open={!!confirmarTroca} onOpenChange={o => { if (!o) setConfirmarTroca(null); }}>
+        <DialogContent className="sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle>{contagem.naAgenda > 0 ? `Mover ${contagem.naAgenda === 1 ? 'o evento' : `os ${contagem.naAgenda} eventos`} para "${confirmarTroca?.nome}"?` : `Usar "${confirmarTroca?.nome}"?`}</DialogTitle>
+            <DialogDescription>
+              {confirmarTroca && textoDaTroca(contagem.naAgenda, confirmarTroca.nome)}
+              {contagem.naAgenda > 0 && estado?.modo === 'robo' && <> Quem via "ANA · Eventos" precisa ter acesso à agenda nova.</>}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmarTroca(null)}>Cancelar</Button>
+            <Button disabled={!!ocupado} onClick={() => confirmarTroca && escolher(confirmarTroca)}>{contagem.naAgenda > 0 && estado?.modo === 'robo' ? 'Mover e apagar a antiga' : 'Usar esta agenda'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
