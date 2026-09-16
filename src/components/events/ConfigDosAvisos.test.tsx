@@ -45,13 +45,16 @@ describe('ConfigDosAvisos', () => {
   it('desligar o pré-lançamento pede confirmação e diz quem entra; confirmar salva', async () => {
     render(<ConfigDosAvisos />);
     await waitFor(() => expect(screen.getAllByTestId('linha-destinatario')).toHaveLength(6));
-    fireEvent.click(screen.getByRole('switch', { name: /Lançado para a equipe toda/ }));
+    const interruptor = screen.getByRole('switch', { name: /Modo pré-lançamento/ });
+    expect(interruptor).toHaveAttribute('aria-checked', 'true'); // ligado, como o texto diz
+    fireEvent.click(interruptor);
     const dialogo = await screen.findByRole('dialog');
     expect(dialogo).toHaveTextContent('2 pessoas passam');
     expect(dialogo).toHaveTextContent('dic@anabrasil.org, alyson-viana@hotmail.com');
     fireEvent.click(screen.getByRole('button', { name: 'Lançar agora' }));
     await waitFor(() => expect(espiao.salvos).toEqual([{ pre_lancamento: false, extras: [], excluidos: [] }]));
     expect(await screen.findByText('Lançado para a equipe')).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: /Modo pré-lançamento/ })).toHaveAttribute('aria-checked', 'false');
   });
 
   it('"Não incluir" grava o excluído; adicionar um avulso grava em extras', async () => {
