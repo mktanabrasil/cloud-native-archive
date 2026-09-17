@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SeletorDeMes } from './SeletorDeMes';
 import {
   Dialog,
   DialogContent,
@@ -318,13 +319,14 @@ export function JournalImportDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label>Mês da edição</Label>
-              <Input
+              <Label htmlFor="mes-da-importacao">Mês da edição</Label>
+              <SeletorDeMes
                 value={mes}
-                placeholder="Agosto/2026"
-                onChange={(evento) => {
-                  setMes(evento.target.value);
-                  setNome(sugerirNome(unidade, evento.target.value));
+                idMes="mes-da-importacao"
+                idAno="ano-da-importacao"
+                onChange={(texto) => {
+                  setMes(texto);
+                  setNome(sugerirNome(unidade, texto));
                 }}
               />
             </div>
