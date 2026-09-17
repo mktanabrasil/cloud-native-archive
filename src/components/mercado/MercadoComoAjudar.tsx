@@ -11,7 +11,7 @@ const items = [
 
 const benefits = [
   'Contribui diretamente para a segurança alimentar de famílias em vulnerabilidade.',
-  'Fortalece sua responsabilidade social (ESG).',
+  'Fortalece a responsabilidade social da sua empresa — o ESG que o mercado pede.',
   'Ajuda a reduzir o desperdício de alimentos.',
   'Participa de uma iniciativa séria, transparente e com impacto social comprovado.',
   'Demonstra seu compromisso com a comunidade local.',
@@ -30,8 +30,8 @@ export function MercadoComoAjudar() {
             style={{ background: 'hsl(var(--news-brand-4))' }}
           />
           <p className="mt-4 text-sm text-muted-foreground">
-            Toda doação é destinada às famílias acompanhadas pelos nossos serviços socioassistenciais,
-            seguindo critérios internos de distribuição.
+            Toda doação vai para as famílias acompanhadas pelas nossas unidades, seguindo critérios
+            internos de distribuição.
           </p>
 
           <ul className="mt-6 space-y-3">

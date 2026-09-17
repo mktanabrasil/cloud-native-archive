@@ -125,6 +125,7 @@ export function MercadoContato() {
                       className="break-all font-semibold text-foreground hover:text-primary transition-colors"
                     >
                       {c.value}
+                      <span className="sr-only"> (abre em nova aba)</span>
                     </a>
                   ) : (
                     <p className="font-semibold text-foreground">{c.value}</p>
@@ -140,7 +141,7 @@ export function MercadoContato() {
         <CardContent className="p-6 sm:p-8">
           <h3 className="text-lg font-semibold text-foreground">Envie uma mensagem</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Nossa equipe entrará em contato em breve.
+            Ao continuar, abrimos o WhatsApp com a mensagem pronta para você. É só enviar, e o Ricardo responde por lá.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
@@ -230,7 +231,7 @@ export function MercadoContato() {
 
             <Button type="submit" className="w-full gap-2">
               <Send className="h-4 w-4" />
-              Enviar mensagem via WhatsApp
+              Abrir no WhatsApp com a mensagem
             </Button>
           </form>
         </CardContent>
