@@ -48,6 +48,7 @@ import { JournalPageStrip } from './JournalPageStrip';
 import { useIsCompact } from '@/hooks/useIsCompact';
 import { useToque } from '@/hooks/useToque';
 import { MenuDaPagina } from './MenuDaPagina';
+import { SeletorDeMes } from './SeletorDeMes';
 import {
   ErroDeContaminacao,
   diagnosticarContaminacao,
@@ -112,6 +113,7 @@ interface Props {
       name?: string;
       pages?: JournalPage[];
       status?: JournalRecord['status'];
+      referenceMonth?: string | null;
       unitId?: string | null;
       profileUnit?: string | null;
       paper?: JournalPaperKey;
@@ -128,6 +130,8 @@ interface Props {
   somenteLeitura?: boolean;
   /** Só aparece no modo leitura: a cópia nasce na unidade de quem duplicou. */
   onDuplicarParaMinhaUnidade?: () => void;
+  /** Arquivado abre em leitura; isto o devolve a finalizado (decisão de 16/09/2026). */
+  onDesarquivar?: () => void;
   /**
    * Mover o jornal para outra unidade é da comunicação, não da gestão.
    *
@@ -172,6 +176,7 @@ export function JournalEditor({
   onSave,
   somenteLeitura = false,
   onDuplicarParaMinhaUnidade,
+  onDesarquivar,
   podeTrocarUnidade = false,
 }: Props) {
   const [name, setName] = useState(journal.name);
@@ -880,13 +885,20 @@ export function JournalEditor({
           <Lock className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-              Somente leitura · jornal {unitName ? `da ${unitName}` : 'de outra unidade'}
+              {status === 'arquivado' ? 'Somente leitura · jornal arquivado' : `Somente leitura · jornal ${unitName ? `da ${unitName}` : 'de outra unidade'}`}
             </p>
             <p className="text-xs text-amber-800 dark:text-amber-300/80">
-              Você pode ler e exportar. Para trabalhar em cima dele, duplique para a sua unidade.
+              {status === 'arquivado'
+                ? 'Você pode ler e exportar. Para voltar a editar, desarquive: ele volta como finalizado.'
+                : 'Você pode ler e exportar. Para trabalhar em cima dele, duplique para a sua unidade.'}
             </p>
           </div>
-          {onDuplicarParaMinhaUnidade && (
+          {status === 'arquivado' && onDesarquivar && (
+            <Button size="sm" onClick={onDesarquivar}>
+              <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Desarquivar
+            </Button>
+          )}
+          {status !== 'arquivado' && onDuplicarParaMinhaUnidade && (
             <Button size="sm" onClick={onDuplicarParaMinhaUnidade}>
               <Copy className="mr-1.5 h-3.5 w-3.5" /> Duplicar para minha unidade
             </Button>
@@ -1277,6 +1289,20 @@ export function JournalEditor({
                     <p className="text-[10px] text-muted-foreground">
                       Vale para todas as páginas, na tela e no PDF.
                     </p>
+                  </div>
+
+                  {/* Errar o mês obrigava a recriar o jornal (varredura de 16/09/2026). */}
+                  <div className="space-y-2 border-t border-border pt-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Mês da edição
+                    </p>
+                    <SeletorDeMes
+                      value={journal.reference_month || ''}
+                      idMes="mes-da-edicao-folha"
+                      idAno="ano-da-edicao-folha"
+                      onChange={(texto) => { void onSave(journal.id, { referenceMonth: texto }); }}
+                    />
+                    <p className="text-[10px] text-muted-foreground">Aparece no cabeçalho de todas as páginas.</p>
                   </div>
 
                   <div className="space-y-2 border-t border-border pt-3">

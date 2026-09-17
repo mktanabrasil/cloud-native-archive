@@ -6,6 +6,7 @@ import type { JournalRecord } from '@/lib/journal/types';
 
 const espiao = vi.hoisted(() => ({
   remove: vi.fn(),
+  save: vi.fn(),
   duplicate: vi.fn(),
   journals: [] as unknown[],
   /** Quem está olhando a página. Cada teste ajusta o que precisa. */
@@ -35,7 +36,7 @@ vi.mock('@/hooks/useJournals', () => ({
     saving: false,
     savedAt: null,
     create: vi.fn(),
-    save: vi.fn(),
+    save: espiao.save,
     remove: espiao.remove,
     duplicate: espiao.duplicate,
   }),
@@ -73,6 +74,7 @@ const dialogo = () => screen.findByRole('alertdialog');
 
 beforeEach(() => {
   espiao.remove.mockClear();
+  espiao.save.mockReset(); espiao.save.mockResolvedValue(true);
   espiao.journals = [jornal()];
   espiao.papel = {
     canAccessJournal: true,
@@ -239,5 +241,35 @@ describe('a unidade na URL', () => {
     montar('/jornal-institucional?unidade=nao-existe');
 
     expect(await screen.findByText('ANA Jardim Santana', { selector: 'p' })).toBeInTheDocument();
+  });
+});
+
+/**
+ * Arquivar (PR 4 da varredura de 16/09/2026): só um finalizado arquiva; o
+ * arquivado sai da lista de trabalho e volta filtrando por ele.
+ */
+describe('arquivar', () => {
+  it('rascunho não tem Arquivar; finalizado tem, e arquivar grava com Desfazer', async () => {
+    espiao.journals = [{ ...jornal(), id: 'r', name: 'Rascunho X' }, { ...jornal(), id: 'f', name: 'Finalizado Y', status: 'finalizado' }];
+    montar();
+    await screen.findByText('Finalizado Y');
+
+    expect(screen.getAllByRole('button', { name: /^arquivar$/i })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: /^arquivar$/i }));
+    await waitFor(() => expect(espiao.save).toHaveBeenCalledWith('f', { status: 'arquivado' }));
+  });
+
+  it('o arquivado some de "Todas as situações" e aparece pelo contador Arquivados, com Desarquivar', async () => {
+    espiao.journals = [{ ...jornal(), id: 'r', name: 'Rascunho X' }, { ...jornal(), id: 'a', name: 'Arquivado Z', status: 'arquivado' }];
+    montar();
+    await screen.findByText('Rascunho X');
+    expect(screen.queryByText('Arquivado Z')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /1 arquivad/i }));
+    expect(await screen.findByText('Arquivado Z')).toBeInTheDocument();
+    expect(screen.queryByText('Rascunho X')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: /^desarquivar$/i }));
+    await waitFor(() => expect(espiao.save).toHaveBeenCalledWith('a', { status: 'finalizado' }));
   });
 });

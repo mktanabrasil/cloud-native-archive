@@ -40,13 +40,13 @@ export const PERCURSOS: Record<PercursoId, PassoTutorial[]> = {
       alvo: 'criar',
       titulo: 'Comece por aqui',
       texto:
-        'Dê um nome ao jornal e escolha um modelo: Padrão, Pedagógico, Eventos ou Em branco. Ele já vem com as páginas montadas.',
+        'Escolha o mês da edição, dê um nome ao jornal e escolha um modelo: Padrão, Pedagógico, Eventos ou Em branco. Ele já vem com as páginas montadas.',
     },
     {
       alvo: 'lista',
       titulo: 'Seus jornais ficam nesta lista',
       texto:
-        'Abrir para continuar de onde parou, duplicar para aproveitar o mês passado, excluir se não for mais usar. Jornal de outra unidade abre só para leitura, com “Duplicar para minha unidade”.',
+        'Abrir para continuar de onde parou, duplicar para aproveitar o mês passado, excluir se não for mais usar. Um jornal finalizado pode ser arquivado: sai desta lista e volta pelo filtro “Arquivados”. Jornal de outra unidade abre só para leitura, com “Duplicar para minha unidade”.',
     },
     {
       alvo: 'ajuda',

@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  Plus, Copy, Trash2, Pencil, Lock, Loader2, Newspaper, Search, Sparkles, GraduationCap, AlertTriangle } from 'lucide-react';
+  Plus, Copy, Trash2, Pencil, Lock, Loader2, Newspaper, Search, Sparkles, GraduationCap, AlertTriangle, Archive, ArchiveRestore } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,8 @@ import { JournalEditor } from '@/components/journal/JournalEditor';
 import { JournalPageView, A4_W, A4_H } from '@/components/journal/JournalPageView';
 import { UnitBadge } from '@/components/journal/UnitBadge';
 import { JournalImportDialog } from '@/components/journal/JournalImportDialog';
+import { SeletorDeMes } from '@/components/journal/SeletorDeMes';
+import { formatarMes, mesAtual, ordenarMeses } from '@/lib/journal/mesDaEdicao';
 import { resumirImportacao } from '@/lib/journal/importar';
 import { JournalTutorial } from '@/components/journal/JournalTutorial';
 import { useTutoriaisVistos } from '@/hooks/useTutoriaisVistos';
@@ -135,11 +137,32 @@ export default function JournalPage() {
    * dela. A garantia é a RLS — isto aqui é para a tela dizer a verdade antes
    * de o banco recusar.
    */
-  const podeEditar = useCallback(
+  /** É da unidade dela (ou ela é marketing): pode duplicar, excluir, arquivar. */
+  const ehDela = useCallback(
     (journal: JournalRecord) =>
       isMarketing || (!!profileUnit && journal.profile_unit === profileUnit),
     [isMarketing, profileUnit],
   );
+  /** Edita só o que é dela e não está arquivado: arquivado abre em leitura, com "Desarquivar". */
+  const podeEditar = useCallback(
+    (journal: JournalRecord) => ehDela(journal) && journal.status !== 'arquivado',
+    [ehDela],
+  );
+
+  /** Arquivar e desarquivar: um clique, com Desfazer, como o finalizar. */
+  const arquivar = async (journal: JournalRecord) => {
+    const ok = await save(journal.id, { status: 'arquivado' });
+    if (!ok) { toast.error('Não consegui arquivar. Confira a conexão e tente de novo.'); return; }
+    toast.success('Jornal arquivado', {
+      description: 'Ele sai da lista principal. Para vê-lo, filtre por “Arquivado”.',
+      action: { label: 'Desfazer', onClick: () => { void save(journal.id, { status: 'finalizado' }); } },
+    });
+  };
+  const desarquivar = async (journal: JournalRecord) => {
+    const ok = await save(journal.id, { status: 'finalizado' });
+    if (!ok) { toast.error('Não consegui desarquivar. Confira a conexão e tente de novo.'); return; }
+    toast.success('Jornal de volta como finalizado');
+  };
 
   /** A unidade em que ela pode criar: a dela. */
   const minhaUnidade = { unitId: defaultUnitId, profileUnit: profileUnit ?? null };
@@ -185,7 +208,7 @@ export default function JournalPage() {
   }, [unitJournals]);
 
   const months = useMemo(
-    () => Array.from(new Set(unitJournals.map((j) => j.reference_month).filter(Boolean) as string[])),
+    () => ordenarMeses(Array.from(new Set(unitJournals.map((j) => j.reference_month).filter(Boolean) as string[]))),
     [unitJournals],
   );
 
@@ -193,7 +216,8 @@ export default function JournalPage() {
     () =>
       unitJournals.filter((journal) => {
         const matchesSearch = journal.name.toLowerCase().includes(search.trim().toLowerCase());
-        const matchesStatus = statusFilter === 'todos' || journal.status === statusFilter;
+        // "Todas as situações" é a lista de trabalho: arquivados só aparecem filtrando por eles.
+        const matchesStatus = statusFilter === 'todos' ? journal.status !== 'arquivado' : journal.status === statusFilter;
         const matchesMonth = monthFilter === 'todos' || journal.reference_month === monthFilter;
         return matchesSearch && matchesStatus && matchesMonth;
       }),
@@ -255,9 +279,9 @@ export default function JournalPage() {
 
   const openCreate = () => {
     setForm({
-      name: suggestName(activeUnitId, ''),
+      name: suggestName(activeUnitId, formatarMes(mesAtual())),
       unitId: activeUnitId,
-      referenceMonth: '',
+      referenceMonth: formatarMes(mesAtual()),
       model: 'padrao',
     });
     setCreating(true);
@@ -290,6 +314,7 @@ export default function JournalPage() {
           onSave={save}
           somenteLeitura={!podeEditar(editing as JournalRecord)}
           podeTrocarUnidade={isMarketing}
+          onDesarquivar={ehDela(editing as JournalRecord) && editing.status === 'arquivado' ? () => void desarquivar(editing as JournalRecord) : undefined}
           onDuplicarParaMinhaUnidade={
             defaultUnitId
               ? async () => {
@@ -525,11 +550,22 @@ export default function JournalPage() {
                     <Button size="sm" onClick={() => setEditingId(journal.id)}>
                       <Pencil className="mr-1.5 h-3.5 w-3.5" /> Abrir
                     </Button>
-                    {podeEditar(journal) ? (
+                    {ehDela(journal) ? (
                       <>
                         <Button size="sm" variant="outline" onClick={() => duplicate(journal)}>
                           <Copy className="mr-1.5 h-3.5 w-3.5" /> Duplicar
                         </Button>
+                        {/* Só finalizado arquiva: rascunho ainda está em uso (decisão de 16/09). */}
+                        {journal.status === 'finalizado' && (
+                          <Button size="sm" variant="outline" onClick={() => void arquivar(journal)}>
+                            <Archive className="mr-1.5 h-3.5 w-3.5" /> Arquivar
+                          </Button>
+                        )}
+                        {journal.status === 'arquivado' && (
+                          <Button size="sm" variant="outline" onClick={() => void desarquivar(journal)}>
+                            <ArchiveRestore className="mr-1.5 h-3.5 w-3.5" /> Desarquivar
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"
@@ -631,18 +667,19 @@ export default function JournalPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label>Mês da edição</Label>
-              <Input
+              <Label htmlFor="mes-da-edicao">Mês da edição</Label>
+              <SeletorDeMes
                 value={form.referenceMonth}
-                placeholder="Julho/2026"
-                onChange={(event) =>
+                onChange={(texto) =>
                   setForm((prev) => ({
                     ...prev,
-                    referenceMonth: event.target.value,
-                    name: suggestName(prev.unitId, event.target.value),
+                    referenceMonth: texto,
+                    // o nome sugerido acompanha, a menos que a pessoa já o tenha mudado
+                    name: prev.name === suggestName(prev.unitId, prev.referenceMonth) ? suggestName(prev.unitId, texto) : prev.name,
                   }))
                 }
               />
+              <p className="text-[11px] text-muted-foreground">Aparece no cabeçalho de todas as páginas.</p>
             </div>
 
             <div className="space-y-1.5">
