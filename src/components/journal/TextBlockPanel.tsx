@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { ColorSwatchPicker } from '@/components/journal/ColorSwatchPicker';
 import { cn } from '@/lib/utils';
+import { useToque } from '@/hooks/useToque';
 import { TEXT_STYLE_LABELS, TEXT_STYLE_DEFAULT_SIZES, SELECTABLE_TEXT_STYLES } from '@/lib/journal/types';
 import type {
   JournalBlock,
@@ -53,6 +54,7 @@ const PLACEHOLDERS: Record<TextStyleKey, string> = {
 
 /** Painel contextual de um bloco de texto: todos os controles visíveis. */
 export function TextBlockPanel({ block, onChange }: TextBlockPanelProps) {
+  const toque = useToque();
   const lineHeight = block.lineHeight ?? 1.5;
   const defaultSize = TEXT_STYLE_DEFAULT_SIZES[block.style];
 
@@ -126,7 +128,8 @@ export function TextBlockPanel({ block, onChange }: TextBlockPanelProps) {
                 aria-pressed={block.align === value}
                 onClick={() => onChange({ align: value } as Partial<JournalBlock>)}
                 className={cn(
-                  'grid h-8 w-8 place-items-center rounded transition-colors',
+                  'grid place-items-center rounded transition-colors',
+                  toque ? 'h-11 w-11' : 'h-8 w-8',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   block.align === value
                     ? 'bg-primary text-primary-foreground'
@@ -151,7 +154,8 @@ export function TextBlockPanel({ block, onChange }: TextBlockPanelProps) {
                 aria-pressed={Boolean(block[key])}
                 onClick={() => onChange({ [key]: !block[key] } as Partial<JournalBlock>)}
                 className={cn(
-                  'grid h-8 w-8 place-items-center rounded transition-colors',
+                  'grid place-items-center rounded transition-colors',
+                  toque ? 'h-11 w-11' : 'h-8 w-8',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   block[key]
                     ? 'bg-primary text-primary-foreground'

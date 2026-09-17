@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, Navigate, useSearchParams } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppProvider } from "@/contexts/AppContext";
@@ -71,7 +72,14 @@ function JournalRoute({ children }: { children: React.ReactNode }) {
 
   if (authLoading || roleLoading) return null;
   if (!isAuthenticated && !isEmbed) return <Navigate to="/login" replace />;
-  if (!canAccessJournal) return <Navigate to="/" replace />;
+  if (!canAccessJournal) {
+    // Antes era um redirecionamento mudo. O id evita repetir se a rota renderizar duas vezes.
+    toast.info('O Jornal é da comunicação e da gestão de cada unidade.', {
+      id: 'jornal-sem-acesso',
+      description: 'Você foi levado para a página inicial. Se precisa do Jornal, fale com a coordenação para liberar seu acesso.',
+    });
+    return <Navigate to="/" replace />;
+  }
   return <>{children}</>;
 }
 

@@ -135,11 +135,11 @@ export function JournalBlockList({
                   <p className="truncate text-[10px] text-muted-foreground">{blockPreview(block)}</p>
                 </button>
                 {!locked && (
-                  <div className="flex shrink-0 flex-col opacity-60 transition-opacity group-hover:opacity-100">
+                  <div className="flex shrink-0 flex-col">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-4 w-6"
+                      className="h-7 w-8"
                       aria-label="Mover para cima"
                       disabled={index === 0}
                       onClick={() => onMove(block.id, -1)}
@@ -149,7 +149,7 @@ export function JournalBlockList({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-4 w-6"
+                      className="h-7 w-8"
                       aria-label="Mover para baixo"
                       disabled={index === blocks.length - 1}
                       onClick={() => onMove(block.id, 1)}

@@ -1,4 +1,4 @@
-import { Trash2, Plus, X, AlignVerticalSpaceAround } from 'lucide-react';
+import { Trash2, Plus, X, AlignVerticalSpaceAround, ChevronUp, ChevronDown } from 'lucide-react';
 import { TextBlockPanel } from '@/components/journal/TextBlockPanel';
 
 import { Button } from '@/components/ui/button';
@@ -36,9 +36,13 @@ interface Props {
   onEqualizeRow?: () => void;
   /** Quantas outras peças dividem a fileira com este bloco. */
   rowSiblingCount?: number;
+  /** Mover e mudar a largura sem arrastar: no toque não há alças (varredura de 16/09/2026). */
+  onMoveBlock?: (direction: -1 | 1) => void;
+  onResizeSpan?: (span: number) => void;
+  posicao?: { indice: number; total: number };
 }
 
-export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlock, onClose, locked, onEqualizeRow, rowSiblingCount = 0 }: Props) {
+export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlock, onClose, locked, onEqualizeRow, rowSiblingCount = 0, onMoveBlock, onResizeSpan, posicao }: Props) {
   if (!block) {
     return (
       <div className="space-y-3 text-sm">
@@ -89,6 +93,35 @@ export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlo
           . Na folha: puxe a borda direita para mudar a largura e a de baixo para a altura (dois
           cliques voltam ao automático). A alça da esquerda muda a ordem das peças.
         </p>
+      )}
+
+      {/* Sem arrastar: mover e largura em colunas, para o toque e para quem prefere botão. */}
+      {!locked && (onMoveBlock || onResizeSpan) && (
+        <div className="space-y-2 rounded-md border border-border p-2.5" data-testid="mover-e-largura">
+          {onMoveBlock && (
+            <div className="flex items-center gap-2">
+              <span className="w-16 text-[11px] text-muted-foreground">Posição</span>
+              <Button variant="outline" size="sm" className="h-9 flex-1" disabled={posicao?.indice === 0} onClick={() => onMoveBlock(-1)}>
+                <ChevronUp className="mr-1 h-4 w-4" /> Para cima
+              </Button>
+              <Button variant="outline" size="sm" className="h-9 flex-1" disabled={!!posicao && posicao.indice === posicao.total - 1} onClick={() => onMoveBlock(1)}>
+                <ChevronDown className="mr-1 h-4 w-4" /> Para baixo
+              </Button>
+            </div>
+          )}
+          {onResizeSpan && (
+            <div className="flex items-center gap-2">
+              <span className="w-16 text-[11px] text-muted-foreground">Largura</span>
+              <div className="flex flex-1 gap-1" role="radiogroup" aria-label="Largura em colunas">
+                {[2, 3, 4, 6].map((span) => (
+                  <Button key={span} type="button" role="radio" aria-checked={block.span === span} variant={block.span === span ? 'secondary' : 'outline'} size="sm" className="h-9 flex-1 px-0" onClick={() => onResizeSpan(span)}>
+                    {span === 6 ? 'Toda' : `${span}/6`}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Só faz sentido com companhia na fileira — sozinho não há a que igualar. */}

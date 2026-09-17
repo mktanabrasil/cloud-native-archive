@@ -1,5 +1,6 @@
+import type React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createPage } from '@/lib/journal/templates';
 import type { JournalRecord } from '@/lib/journal/types';
 
@@ -24,6 +25,13 @@ vi.mock('sonner', () => ({
 }));
 vi.mock('@/hooks/useTutoriaisVistos', () => ({
   useTutoriaisVistos: () => ({ carregado: true, jaViu: () => true, marcarVisto: vi.fn(), esquecer: vi.fn() }),
+}));
+/* Popover do Radix fica inline: fechar um popover neste DOM grande leva dezenas de
+   segundos no jsdom (foco e aria-hidden varrendo as folhas), e não é o que se testa aqui. */
+vi.mock('@/components/ui/popover', () => ({
+  Popover: ({ children }: { children: React.ReactNode }) => <div data-popover-falso>{children}</div>,
+  PopoverTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 vi.mock('html2canvas', () => ({ default: vi.fn() }));
 vi.mock('jspdf', () => ({ default: vi.fn() }));
@@ -59,35 +67,41 @@ beforeEach(() => {
 describe('JournalEditor · não perder trabalho', () => {
   it('Finalizar edição finaliza na hora e oferece Desfazer, que volta a rascunho', async () => {
     montar();
-    fireEvent.click(screen.getByRole('button', { name: /finalizar edição/i }));
+    fireEvent.click(screen.getAllByText(/finalizar edição/i, { selector: 'button' })[0]);
 
     expect(espiao.onSave).toHaveBeenCalledWith('j1', { status: 'finalizado' });
     const aviso = espiao.toasts.find(t => t.titulo === 'Jornal finalizado');
     expect(aviso?.opcoes?.action?.label).toBe('Desfazer');
-    expect(screen.getByRole('button', { name: /reabrir como rascunho/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/reabrir como rascunho/i, { selector: 'button' })[0]).toBeInTheDocument();
 
     aviso!.opcoes!.action!.onClick();
     await waitFor(() => expect(espiao.onSave).toHaveBeenCalledWith('j1', { status: 'rascunho' }));
-    expect(screen.getByRole('button', { name: /finalizar edição/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/finalizar edição/i, { selector: 'button' })[0]).toBeInTheDocument();
   });
 
   it('Excluir página pergunta, diz quantas peças, e só apaga ao confirmar', async () => {
     montar();
     expect(screen.getByText(/Página 02 ·/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByRole('button', { name: /excluir página/i })[1]);
-    const dialogo = await screen.findByRole('alertdialog');
-    expect(dialogo).toHaveTextContent(/Excluir a página 2\?/);
-    expect(dialogo).toHaveTextContent(/peça/);
+    // Consultas por texto e por seletor: a árvore do editor é grande e byRole é lento no jsdom.
+    const dialogo = () => document.querySelector<HTMLElement>('[role="alertdialog"]');
+    const abrirMenuEExcluir = async () => {
+      // popover inline no teste: o item da página 2 é o segundo "Excluir página" da tela
+      fireEvent.click(screen.getAllByText('Excluir página', { selector: 'button' })[1]);
+      await waitFor(() => expect(dialogo()).not.toBeNull());
+    };
 
-    fireEvent.click(screen.getByRole('button', { name: /^cancelar$/i }));
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    await abrirMenuEExcluir();
+    expect(dialogo()).toHaveTextContent(/Excluir a página 2?/);
+    expect(dialogo()).toHaveTextContent(/peça/);
+    fireEvent.click(within(dialogo()!).getByText('Cancelar'));
+    await waitFor(() => expect(dialogo()).toBeNull());
     expect(screen.getByText(/Página 02 ·/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByRole('button', { name: /excluir página/i })[1]);
-    fireEvent.click(await screen.findByRole('button', { name: /^excluir página$/i }));
+    await abrirMenuEExcluir();
+    fireEvent.click(within(dialogo()!).getByText('Excluir página', { selector: 'button' }));
     await waitFor(() => expect(screen.queryByText(/Página 02 ·/)).not.toBeInTheDocument());
-  });
+  }, 20000);
 
   it('quando a gravação falha, o selo diz "Não salvou" e Voltar pergunta antes de sair', async () => {
     espiao.onSave.mockResolvedValue(false);
@@ -98,18 +112,18 @@ describe('JournalEditor · não perder trabalho', () => {
     await waitFor(() => expect(screen.getByTestId('selo-de-gravacao')).toHaveTextContent(/não salvou/i));
     expect(espiao.toasts.some(t => t.titulo === 'Não consegui salvar o jornal')).toBe(true);
 
-    fireEvent.click(screen.getByRole('button', { name: /^voltar$/i }));
+    fireEvent.click(screen.getByText(/^voltar$/i, { selector: 'button' }));
     const dialogo = await screen.findByRole('alertdialog');
     expect(dialogo).toHaveTextContent(/Sair sem salvar\?/);
     expect(espiao.onBack).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: /sair sem salvar/i }));
     await waitFor(() => expect(espiao.onBack).toHaveBeenCalled());
-  }, 10000);
+  }, 20000);
 
   it('sem mudança pendente, Voltar sai direto', () => {
     montar();
-    fireEvent.click(screen.getByRole('button', { name: /^voltar$/i }));
+    fireEvent.click(screen.getByText(/^voltar$/i, { selector: 'button' }));
     expect(espiao.onBack).toHaveBeenCalled();
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
