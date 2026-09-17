@@ -1,6 +1,9 @@
 import { cn } from '@/lib/utils';
 import { A4_H, A4_W, JournalPageView } from './JournalPageView';
-import { TEMPLATE_LABELS, type JournalPage } from '@/lib/journal/types';
+import { TEMPLATE_LABELS, type JournalPage, type JournalTemplate } from '@/lib/journal/types';
+import { MenuDaPagina } from './MenuDaPagina';
+import { Plus } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 
 /** Largura da miniatura na tira; a altura decorre da proporção A4. */
 const STRIP_W = 46;
@@ -16,6 +19,14 @@ interface Props {
   edition: string;
   unitName: string;
   unitId?: string | null;
+  /** Mover, duplicar, excluir e adicionar: no celular a tira é o único lugar das páginas. */
+  acoes?: {
+    onMove: (id: string, direction: -1 | 1) => void;
+    onDuplicate: (id: string) => void;
+    onRemove: (id: string) => void;
+    onAdd: (template: JournalTemplate) => void;
+    templates: readonly JournalTemplate[];
+  };
 }
 
 /**
@@ -39,6 +50,7 @@ export function JournalPageStrip({
   edition,
   unitName,
   unitId,
+  acoes,
 }: Props) {
   return (
     <div
@@ -52,8 +64,8 @@ export function JournalPageStrip({
         const active = page.id === activePageId;
         const pending = statusOf(page) === 'pendente';
         return (
+          <div key={page.id} className="relative shrink-0">
           <button
-            key={page.id}
             type="button"
             role="tab"
             aria-selected={active}
@@ -86,8 +98,36 @@ export function JournalPageStrip({
               {pending && <i aria-hidden="true" className="h-1 w-1 rounded-full bg-muted-foreground" />}
             </span>
           </button>
+          {acoes && active && (
+            <MenuDaPagina
+              className="absolute -right-1 -top-1"
+              indice={index}
+              total={pages.length}
+              rotulo={TEMPLATE_LABELS[page.template]}
+              onMove={(direction) => acoes.onMove(page.id, direction)}
+              onDuplicate={() => acoes.onDuplicate(page.id)}
+              onRemove={() => acoes.onRemove(page.id)}
+            />
+          )}
+          </div>
         );
       })}
+      {acoes && (
+        <Select onValueChange={(value) => acoes.onAdd(value as JournalTemplate)}>
+          <SelectTrigger
+            aria-label="Adicionar página"
+            className="h-auto shrink-0 flex-col justify-center gap-1 rounded-md border-dashed px-2 text-[10px] text-muted-foreground [&>svg:last-child]:hidden"
+            style={{ width: STRIP_W + 10, minHeight: Math.round(A4_H * STRIP_SCALE) + 26 }}
+          >
+            <Plus className="h-5 w-5" /> Página
+          </SelectTrigger>
+          <SelectContent>
+            {acoes.templates.map((template) => (
+              <SelectItem key={template} value={template}>{TEMPLATE_LABELS[template]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
     </div>
   );
 }

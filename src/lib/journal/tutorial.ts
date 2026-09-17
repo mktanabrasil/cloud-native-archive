@@ -66,7 +66,7 @@ export const PERCURSOS: Record<PercursoId, PassoTutorial[]> = {
       alvo: 'paginas',
       titulo: 'As páginas ficam aqui',
       texto:
-        'Clique numa miniatura para trabalhar nela. O selo diz se a página está completa ou se ainda falta preencher alguma peça. No celular, as páginas ficam numa tira acima da folha.',
+        'Clique numa miniatura para trabalhar nela. O selo diz se a página está completa ou se ainda falta preencher alguma peça. O botão “⋯” de cada página move, duplica ou exclui. No celular, as páginas ficam numa tira acima da folha.',
     },
     {
       alvo: 'painel',
@@ -90,7 +90,7 @@ export const PERCURSOS: Record<PercursoId, PassoTutorial[]> = {
       alvo: 'formato',
       titulo: 'O formato vem protegido',
       texto:
-        'Assim você troca textos e fotos sem bagunçar o desenho. Para mover as peças de lugar, abra “Opções da folha” e, em Formato, escolha “Formato liberado”.',
+        'Assim você troca textos e fotos sem bagunçar o desenho. Para mover as peças de lugar, abra “Opções da folha” e, em Formato, escolha “Formato liberado”: aí o painel da peça ganha botões de posição e largura, e na folha dá para arrastar.',
     },
     {
       alvo: 'paginas',
@@ -114,7 +114,7 @@ export const PERCURSOS: Record<PercursoId, PassoTutorial[]> = {
       alvo: 'pdf',
       titulo: 'Gerar o PDF',
       texto:
-        '“Baixar PDF” gera a versão para imprimir. No menu “⋯” ao lado há a versão leve, “Para enviar por WhatsApp”. Se alguma página tiver conteúdo que não cabe, o app avisa antes. Pronto — você fez um jornal.',
+        '“Baixar PDF” abre duas opções: “Para imprimir”, em alta qualidade, e “Para enviar por WhatsApp”, mais leve. Se alguma página tiver conteúdo que não cabe, o app avisa antes. Pronto — você fez um jornal.',
     },
   ],
 };

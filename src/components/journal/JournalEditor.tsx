@@ -46,6 +46,8 @@ import { JournalPropertiesPanel } from './JournalPropertiesPanel';
 import { JournalBlockList } from './JournalBlockList';
 import { JournalPageStrip } from './JournalPageStrip';
 import { useIsCompact } from '@/hooks/useIsCompact';
+import { useToque } from '@/hooks/useToque';
+import { MenuDaPagina } from './MenuDaPagina';
 import {
   ErroDeContaminacao,
   diagnosticarContaminacao,
@@ -194,6 +196,9 @@ export function JournalEditor({
    * deixa ambos pequenos demais para servir. Uma coisa de cada vez rende mais.
    */
   const compacto = useIsCompact();
+  /** No toque, os controles pequenos crescem para 44px (varredura de 16/09/2026). */
+  const toque = useToque();
+  const alvo = toque ? 'h-11 w-11' : 'h-7 w-7';
   const [abaMovel, setAbaMovel] = useState<'folha' | 'conteudo'>('folha');
   const exportRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -893,9 +898,12 @@ export function JournalEditor({
           <Button variant="ghost" size="sm" onClick={pedirParaVoltar}>
             <ArrowLeft className="mr-1.5 h-4 w-4" /> Voltar
           </Button>
+          <Label htmlFor="nome-do-jornal" className="sr-only">Nome do jornal</Label>
           <Input
+            id="nome-do-jornal"
             value={name}
             readOnly={somenteLeitura}
+            placeholder="Nome do jornal"
             onChange={(event) => {
               if (somenteLeitura) return;
               dirtyRef.current = true;
@@ -954,66 +962,55 @@ export function JournalEditor({
             >
               <GraduationCap className="mr-1.5 h-4 w-4" /> Como usar
             </Button>
-            <Button
-              size="sm"
-              className="hidden sm:inline-flex"
-              data-tutorial="pdf"
-              onClick={() => exportPdf('impressao')}
-              disabled={exporting}
-            >
-              {exporting ? (
-                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="mr-1.5 h-4 w-4" />
-              )}
-              Baixar PDF
-            </Button>
+            {/* Sempre à vista, em qualquer largura: no celular ele sumia para
+                dentro do ⋯ (varredura de 16/09/2026). Abre as duas qualidades,
+                com o nome pelo uso, igual em todo aparelho. */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" aria-label="Mais opções">
+                <Button size="sm" className={toque ? 'h-11' : undefined} data-tutorial="pdf" disabled={exporting}>
+                  {exporting ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-1.5 h-4 w-4" />
+                  )}
+                  Baixar PDF
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-64 p-1.5" data-testid="menu-do-pdf">
+                <p className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Baixar PDF</p>
+                <Button variant="ghost" className={cn('w-full justify-start', toque ? 'h-11' : 'h-9')} onClick={() => exportPdf('impressao')} disabled={exporting}>
+                  <Download className="mr-2 h-4 w-4" /> Para imprimir
+                  <span className="ml-auto text-[11px] text-muted-foreground">arquivo maior</span>
+                </Button>
+                <Button variant="ghost" className={cn('w-full justify-start', toque ? 'h-11' : 'h-9')} onClick={() => exportPdf('digital')} disabled={exporting}>
+                  <FileText className="mr-2 h-4 w-4" /> Para enviar por WhatsApp
+                  <span className="ml-auto text-[11px] text-muted-foreground">leve</span>
+                </Button>
+              </PopoverContent>
+            </Popover>
+            {/* No celular, Finalizar e Como usar moram aqui, com nome. */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn('sm:hidden', toque && 'h-11 w-11')} aria-label="Mais opções">
                   ⋯
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="end" className="w-56 space-y-1.5">
-                <div className="sm:hidden">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                    onClick={toggleStatus}
-                  >
+              <PopoverContent align="end" className="w-60 p-1.5">
+                {!somenteLeitura && (
+                  <Button variant="ghost" className="h-11 w-full justify-start" onClick={toggleStatus}>
                     {status === 'finalizado' ? (
                       <>
-                        <RotateCcw className="mr-1.5 h-4 w-4" /> Reabrir como rascunho
+                        <RotateCcw className="mr-2 h-4 w-4" /> Reabrir como rascunho
                       </>
                     ) : (
                       <>
-                        <CheckCircle2 className="mr-1.5 h-4 w-4" /> Finalizar edição
+                        <CheckCircle2 className="mr-2 h-4 w-4" /> Finalizar edição
                       </>
                     )}
                   </Button>
-                  <div className="my-1.5 h-px bg-border" />
-                </div>
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Exportar
-                </p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start"
-                  onClick={() => exportPdf('impressao')}
-                  disabled={exporting}
-                >
-                  <Download className="mr-1.5 h-4 w-4" /> Para imprimir
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start"
-                  onClick={() => exportPdf('digital')}
-                  disabled={exporting}
-                >
-                  <FileText className="mr-1.5 h-4 w-4" /> Para enviar por WhatsApp
+                )}
+                <Button variant="ghost" className="h-11 w-full justify-start" onClick={() => setTutorial(true)}>
+                  <GraduationCap className="mr-2 h-4 w-4" /> Como usar
                 </Button>
               </PopoverContent>
             </Popover>
@@ -1048,6 +1045,13 @@ export function JournalEditor({
           edition={journal.reference_month || ''}
           unitName={unitName}
           unitId={journal.unit_id}
+          acoes={somenteLeitura ? undefined : {
+            onMove: (id, direction) => movePage(id, direction),
+            onDuplicate: (id) => { const p = pages.find((x) => x.id === id); if (p) duplicatePage(p); },
+            onRemove: (id) => removePage(id),
+            onAdd: (template) => addPage(template),
+            templates: TEMPLATE_OPTIONS,
+          }}
         />
       )}
 
@@ -1135,20 +1139,17 @@ export function JournalEditor({
                   </span>
                 </button>
 
-                <div className="absolute right-1 top-1 flex items-center gap-0.5 rounded-md bg-card/90 p-0.5 opacity-0 shadow-sm transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
-                  <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Mover para cima" onClick={() => movePage(page.id, -1)}>
-                    <ChevronUp className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Mover para baixo" onClick={() => movePage(page.id, 1)}>
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" aria-label="Duplicar página" onClick={() => duplicatePage(page)}>
-                    <Copy className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" aria-label="Excluir página" onClick={() => removePage(page.id)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
+                {!somenteLeitura && (
+                  <MenuDaPagina
+                    className="absolute right-1 top-1"
+                    indice={index}
+                    total={pages.length}
+                    rotulo={TEMPLATE_LABELS[page.template]}
+                    onMove={(direction) => movePage(page.id, direction)}
+                    onDuplicate={() => duplicatePage(page)}
+                    onRemove={() => removePage(page.id)}
+                  />
+                )}
               </div>
             );
           })}
@@ -1181,7 +1182,7 @@ export function JournalEditor({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className={alvo}
                   onClick={undo}
                   disabled={!canUndo}
                   title="Desfazer (Ctrl+Z)"
@@ -1192,7 +1193,7 @@ export function JournalEditor({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className={alvo}
                   onClick={redo}
                   disabled={!canRedo}
                   title="Refazer (Ctrl+Shift+Z)"
@@ -1207,7 +1208,7 @@ export function JournalEditor({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className={alvo}
                   onClick={() => setManualZoom((z) => z - 0.1)}
                   aria-label="Diminuir zoom"
                 >
@@ -1219,7 +1220,7 @@ export function JournalEditor({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className={alvo}
                   onClick={() => setManualZoom((z) => z + 0.1)}
                   aria-label="Aumentar zoom"
                 >
@@ -1228,7 +1229,7 @@ export function JournalEditor({
                 <Button
                   variant={fitMode === 'screen' ? 'secondary' : 'ghost'}
                   size="sm"
-                  className="h-7"
+                  className={toque ? 'h-11' : 'h-7'}
                   onClick={() => setFitMode('screen')}
                   title="Ajustar a folha à tela"
                 >
@@ -1491,6 +1492,9 @@ export function JournalEditor({
               onRemoveBlock={removeBlock}
               onClose={() => setSelectedBlockId(null)}
               locked={layoutLocked}
+              onMoveBlock={selectedBlock ? (direction) => moveBlock(selectedBlock.id, direction) : undefined}
+              onResizeSpan={selectedBlock ? (span) => resizeBlockSpan(selectedBlock.id, span) : undefined}
+              posicao={selectedBlock ? { indice: activePage.blocks.findIndex((b) => b.id === selectedBlock.id), total: activePage.blocks.length } : undefined}
               rowSiblingCount={
                 selectedBlock ? rowSiblings(activePage.blocks, selectedBlock.id).length : 0
               }

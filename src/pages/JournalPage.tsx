@@ -5,6 +5,7 @@ import {
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -222,7 +223,22 @@ export default function JournalPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- só o primeiro carregamento decide
   }, [roleLoading, canAccessJournal, tutoriais.carregado]);
 
-  if (roleLoading) return null;
+  // Enquanto descobre quem é a pessoa: esqueleto, não tela branca.
+  if (roleLoading) {
+    return (
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 lg:px-8" aria-busy="true" aria-label="Carregando o Jornal">
+        <div className="space-y-3">
+          <Skeleton className="h-7 w-56" />
+          <Skeleton className="h-4 w-80" />
+        </div>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Skeleton className="h-64 rounded-xl" />
+          <Skeleton className="h-64 rounded-xl" />
+          <Skeleton className="h-64 rounded-xl" />
+        </div>
+      </div>
+    );
+  }
 
   if (!canAccessJournal) {
     return (
@@ -357,7 +373,9 @@ export default function JournalPage() {
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Label htmlFor="busca-de-jornal" className="sr-only">Buscar jornal</Label>
           <Input
+            id="busca-de-jornal"
             className="pl-9"
             placeholder="Buscar jornal…"
             value={search}
@@ -365,7 +383,7 @@ export default function JournalPage() {
           />
         </div>
         <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as JournalStatus | 'todos')}>
-          <SelectTrigger>
+          <SelectTrigger aria-label="Situação">
             <SelectValue placeholder="Situação" />
           </SelectTrigger>
           <SelectContent>
@@ -378,7 +396,7 @@ export default function JournalPage() {
           </SelectContent>
         </Select>
         <Select value={monthFilter} onValueChange={setMonthFilter}>
-          <SelectTrigger>
+          <SelectTrigger aria-label="Mês da edição">
             <SelectValue placeholder="Mês da edição" />
           </SelectTrigger>
           <SelectContent>

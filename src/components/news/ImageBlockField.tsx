@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useId } from 'react';
 import { Upload, Link as LinkIcon, Loader2, Image as ImageIcon, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -58,6 +58,7 @@ export function ImageBlockField({ value, onChange, placeholder }: Props) {
   const [mode, setMode] = useState<'upload' | 'url'>(initialMode);
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const idDoLink = useId();
 
   const handleFile = async (file: File) => {
     if (!ACCEPTED.includes(file.type)) {
@@ -118,7 +119,8 @@ export function ImageBlockField({ value, onChange, placeholder }: Props) {
       </div>
 
       {mode === 'upload' ? (
-        <div
+        <button
+          type="button"
           onClick={() => !uploading && inputRef.current?.click()}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
@@ -126,10 +128,9 @@ export function ImageBlockField({ value, onChange, placeholder }: Props) {
             const f = e.dataTransfer.files?.[0];
             if (f) handleFile(f);
           }}
-          role="button"
-          tabIndex={0}
+          disabled={uploading}
           aria-label="Enviar foto"
-          className="cursor-pointer rounded-lg border border-dashed border-border bg-muted/30 hover:bg-muted/50 transition-colors p-3 flex flex-col items-center justify-center gap-1 min-h-[80px]"
+          className="w-full cursor-pointer rounded-lg border border-dashed border-border bg-muted/30 hover:bg-muted/50 transition-colors p-3 flex flex-col items-center justify-center gap-1 min-h-[80px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {uploading ? (
             <>
@@ -154,15 +155,19 @@ export function ImageBlockField({ value, onChange, placeholder }: Props) {
               if (f) handleFile(f);
             }}
           />
-        </div>
+        </button>
       ) : (
-        <input
-          type="url"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full p-2.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
-        />
+        <div className="space-y-1">
+          <label htmlFor={idDoLink} className="text-[11px] font-medium text-muted-foreground">Link da foto</label>
+          <input
+            id={idDoLink}
+            type="url"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder || 'https://…/foto.jpg'}
+            className="w-full p-2.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent transition-all"
+          />
+        </div>
       )}
 
       {value ? (
@@ -175,14 +180,15 @@ export function ImageBlockField({ value, onChange, placeholder }: Props) {
               e.target.style.display = 'none';
             }}
           />
-          <button
-            type="button"
-            onClick={handleRemove}
-            className="absolute top-1 right-1 p-1 bg-black/60 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-            aria-label="Remover imagem"
-          >
-            <X size={12} />
-          </button>
+          {/* Sempre visíveis: no toque não existe hover (varredura de 16/09/2026). */}
+          <div className="flex gap-1 border-t border-border bg-card p-1">
+            <button type="button" onClick={() => inputRef.current?.click()} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md text-xs font-medium hover:bg-muted">
+              <Upload size={12} /> Trocar foto
+            </button>
+            <button type="button" onClick={handleRemove} className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md text-xs font-medium text-destructive hover:bg-muted" aria-label="Remover foto">
+              <X size={12} /> Remover
+            </button>
+          </div>
         </div>
       ) : (
         <div className="rounded-lg border border-dashed border-border bg-muted/30 h-20 flex items-center justify-center">

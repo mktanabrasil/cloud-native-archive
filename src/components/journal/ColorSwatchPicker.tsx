@@ -1,5 +1,6 @@
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useToque } from '@/hooks/useToque';
 import {
   JOURNAL_COLOR_HEX,
   JOURNAL_COLOR_KEYS,
@@ -30,6 +31,7 @@ export function ColorSwatchPicker({
   className,
   colors = JOURNAL_COLOR_KEYS,
 }: ColorSwatchPickerProps) {
+  const toque = useToque();
   const current: JournalColorKey = value ?? 'tinta';
 
   return (
@@ -47,7 +49,8 @@ export function ColorSwatchPicker({
             aria-pressed={current === key}
             onClick={() => onChange(key)}
             className={cn(
-              'grid h-7 w-7 place-items-center rounded-full border border-border transition-transform',
+              'grid place-items-center rounded-full border border-border transition-transform',
+              toque ? 'h-10 w-10' : 'h-7 w-7',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               current === key ? 'ring-2 ring-ring ring-offset-2' : 'hover:scale-110',
             )}
