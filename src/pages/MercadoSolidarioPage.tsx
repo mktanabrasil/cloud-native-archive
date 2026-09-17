@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import PageHeader from '@/components/PageHeader';
+import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import { InstitutionalFooterBar } from '@/components/news/InstitutionalFooterBar';
 import { MercadoHero } from '@/components/mercado/MercadoHero';
 import { MercadoProposito } from '@/components/mercado/MercadoProposito';
@@ -10,6 +11,7 @@ import { MercadoContato } from '@/components/mercado/MercadoContato';
 export default function MercadoSolidarioPage() {
   const contatoRef = useRef<HTMLDivElement>(null);
   const propositoRef = useRef<HTMLDivElement>(null);
+  useTituloDaAba('Mercado Solidário · ANA Brasil');
 
   const scrollTo = (ref: React.RefObject<HTMLDivElement>) => {
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });

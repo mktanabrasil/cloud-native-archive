@@ -6,16 +6,29 @@ import { MercadoComoAjudar } from '@/components/mercado/MercadoComoAjudar';
 import { MercadoAtuacao } from '@/components/mercado/MercadoAtuacao';
 import { MercadoContato } from '@/components/mercado/MercadoContato';
 import { useIframeHeightReporter } from '@/hooks/useIframeHeightReporter';
+import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 
 export default function MercadoSolidarioPublicPage() {
   const contatoRef = useRef<HTMLDivElement>(null);
   const propositoRef = useRef<HTMLDivElement>(null);
 
   useIframeHeightReporter('mercado-solidario-height');
+  useTituloDaAba('Mercado Solidário · ANA Brasil');
 
   useEffect(() => {
-    document.documentElement.classList.add('mercado-embed');
-    return () => document.documentElement.classList.remove('mercado-embed');
+    const root = document.documentElement;
+    root.classList.add('mercado-embed');
+    // Embutida no site, que é claro, a página fica sempre clara — mesmo com o
+    // celular em modo noturno (decisão de 17/09/2026). O ThemeProvider lê esta
+    // marca e não a sobrescreve.
+    root.dataset.temaForcado = 'light';
+    root.classList.remove('dark');
+    root.classList.add('light');
+    root.style.colorScheme = 'light';
+    return () => {
+      root.classList.remove('mercado-embed');
+      delete root.dataset.temaForcado;
+    };
   }, []);
 
   const scrollTo = (ref: React.RefObject<HTMLDivElement>) => {

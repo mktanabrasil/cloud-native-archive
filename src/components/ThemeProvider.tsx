@@ -80,10 +80,13 @@ export function ThemeProvider({
 
   useEffect(() => {
     const root = window.document.documentElement;
+    // Uma página pode se declarar sempre clara (o Mercado Solidário embutido no
+    // site): a marca vence o tema do aparelho enquanto ela estiver montada.
+    const aplicado: ResolvedTheme = root.dataset.temaForcado === "light" ? "light" : resolvedTheme;
     root.classList.remove("light", "dark");
-    root.classList.add(resolvedTheme);
-    root.style.colorScheme = resolvedTheme;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", COR_DA_BARRA[resolvedTheme]);
+    root.classList.add(aplicado);
+    root.style.colorScheme = aplicado;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", COR_DA_BARRA[aplicado]);
   }, [resolvedTheme]);
 
   const value = useMemo<ThemeProviderState>(
