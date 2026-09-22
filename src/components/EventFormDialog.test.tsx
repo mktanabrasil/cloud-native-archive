@@ -583,8 +583,8 @@ describe('os combinados da cobertura', () => {
 
     const bloco = screen.getByTestId('combinados-da-cobertura');
     expect(bloco).toHaveTextContent('1. A presença do marketing é confirmada caso a caso.');
-    expect(bloco).toHaveTextContent('2. O registro do evento é sempre da unidade.');
-    expect(bloco).toHaveTextContent('os registros da unidade completam a cobertura');
+    expect(bloco).toHaveTextContent('2. Registrar o evento também compete à unidade.');
+    expect(bloco).toHaveTextContent('A presença do marketing não tira essa responsabilidade da unidade');
     // a gestora não responde — só o admin
     expect(screen.queryByRole('switch', { name: /marketing vai estar presente/i })).not.toBeInTheDocument();
   });

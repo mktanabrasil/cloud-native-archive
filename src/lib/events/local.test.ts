@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LOCAIS_FIXOS, OUTRO_LOCAL, localAoTrocarUnidade, localDaUnidade, localFixo, opcaoDoLocal } from './local';
+import { LOCAIS_FIXOS, OUTRO_LOCAL, enderecoDoLocal, localAoTrocarUnidade, localDaUnidade, localFixo, opcaoDoLocal } from './local';
 
 describe('a lista de locais', () => {
   it('tem as três unidades e o Escritório, com os nomes decididos', () => {
@@ -48,5 +48,20 @@ describe('semAcento', () => {
     const { semAcento } = await import('./local');
     expect(semAcento('  Páscoa ')).toBe('pascoa');
     expect(semAcento('NILÓPOLIS')).toBe('nilopolis');
+  });
+});
+
+describe('enderecoDoLocal (22/09/2026)', () => {
+  it('as três unidades têm endereço completo; o texto antigo em outra grafia também acha', () => {
+    expect(enderecoDoLocal('Unidade Nilópolis')).toBe('R. Ana Arruda de Camargo, 344 - Jardim Nilópolis, Campinas - SP, 13088-820');
+    expect(enderecoDoLocal('Unidade DIC')).toContain('Ibrantina Cardona, 386');
+    expect(enderecoDoLocal('  unidade santana ')).toContain('Emílio Lang Júnior, 411');
+  });
+
+  it('a sede e "Outro local" não têm endereço a acrescentar', () => {
+    expect(enderecoDoLocal('Escritório')).toBe('');
+    expect(enderecoDoLocal('Parque Ecológico, Av. Heitor Penteado')).toBe('');
+    expect(enderecoDoLocal('')).toBe('');
+    expect(enderecoDoLocal(null)).toBe('');
   });
 });

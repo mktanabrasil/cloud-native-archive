@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { OPCOES_COMIDA, OUTRO, comDetalhe, detalheDe, itensDeTexto, itensDoResumo, limparItens, linhasParaCopiar, paraTexto, sincronizarItens } from './itens';
+import { OPCOES_COMIDA, OPCOES_EQUIP, OUTRO, comDetalhe, detalheDe, itensDeTexto, itensDoResumo, limparItens, linhasParaCopiar, paraTexto, pistaDoEstoque, sincronizarItens } from './itens';
 
 describe('sincronizarItens', () => {
   it('monta a lista a partir do valor e preserva detalhes já escritos', () => {
@@ -67,5 +67,18 @@ describe('resumo e cópia', () => {
       { item: 'Lanche', detalhes: '' },
     ]);
     expect(t).toBe('Alimentação:\n• Almoço — 60 crianças, 12h\n• Lanche');
+  });
+});
+
+describe('equipamentos (22/09/2026)', () => {
+  it('Notebook saiu da lista; um evento antigo com Notebook cai em Outro, com o texto preservado', () => {
+    expect(OPCOES_EQUIP).not.toContain('Notebook');
+    const itens = sincronizarItens('Som, Notebook', [], OPCOES_EQUIP);
+    expect(itens).toEqual([{ item: 'Som', detalhes: '' }, { item: 'Notebook', detalhes: '', outro: true }]);
+  });
+
+  it('a pista do estoque só existe para o que já foi contado', () => {
+    expect(pistaDoEstoque('Projetor')).toBe('temos 1');
+    expect(pistaDoEstoque('Som')).toBe('');
   });
 });

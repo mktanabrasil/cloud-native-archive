@@ -238,3 +238,13 @@ describe('marcar mais de um', () => {
     expect(chave('Outra coisa')).toBeChecked();
   });
 });
+
+describe('pista por opção (22/09/2026)', () => {
+  it('mostra "temos 1" ao lado do Projetor e nada nos demais', () => {
+    render(
+      <GrupoDeOpcoes id="eq" titulo="Equip" opcoes={['Som', 'Projetor', 'Nenhum']} valor="" onChange={() => {}} rotuloOutro="Outro" pistaOutro="" temNenhum outroAberto={false} onOutroAberto={() => {}} pistas={{ Projetor: 'temos 1' }} />,
+    );
+    expect(screen.getByTestId('eq-Projetor-pista')).toHaveTextContent('temos 1');
+    expect(screen.queryByTestId('eq-Som-pista')).toBeNull();
+  });
+});

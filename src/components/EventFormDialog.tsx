@@ -22,7 +22,7 @@ import { GrupoDeOpcoes, normalizarOpcoes } from './events/GrupoDeOpcoes';
 import { ResumoDeItens } from './events/ResumoDeItens';
 import { CampoDataHora } from './events/CampoDataHora';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { OPCOES_COMIDA, OPCOES_EQUIP, comDetalhe, itensDeTexto, limparItens, sincronizarItens } from '@/lib/events/itens';
+import { OPCOES_COMIDA, OPCOES_EQUIP, comDetalhe, itensDeTexto, limparItens, pistaDoEstoque, sincronizarItens } from '@/lib/events/itens';
 import { TituloDoEvento } from './events/TituloDoEvento';
 import { paraCampoDataHora, fraseDoFuso } from '@/lib/events/horaLocal';
 import { LOCAIS_FIXOS, OUTRO_LOCAL, localAoTrocarUnidade, localDaUnidade, localFixo, opcaoDoLocal } from '@/lib/events/local';
@@ -1430,6 +1430,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                         onDetalhe: (chave, texto) => setForm({ ...form, equipment_items: comDetalhe(sincronizarItens(form.equipment_needed, form.equipment_items, OPCOES_EQUIP), chave, texto) }),
                         pista: 'Quantos, modelo, quem traz, onde liga…',
                       }}
+                      pistas={Object.fromEntries(OPCOES_EQUIP.map(o => [o, pistaDoEstoque(o)]).filter(([, p]) => p))}
                       rotuloOutro="Outro equipamento"
                       pistaOutro="Quais equipamentos?"
                       temNenhum
@@ -1500,9 +1501,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                 atende todas as unidades, então o pedido entra na agenda e a resposta vem com a aprovação do evento.
                               </p>
                               <p>
-                                <strong>2. O registro do evento é sempre da unidade.</strong> Fotos e vídeos pelo celular, no dia — e o
-                                material vai para o marketing depois. Isso vale também quando o marketing estiver presente:
-                                os registros da unidade completam a cobertura.
+                                <strong>2. Registrar o evento também compete à unidade.</strong> Fotos e vídeos pelo celular, no dia — e o
+                                material vai para o marketing depois. A presença do marketing não tira essa responsabilidade
+                                da unidade: os dois registros se completam.
                               </p>
                               {form.marketing_confirmed === true && (
                                 <p className="mt-2 font-semibold text-emerald-700">✓ Marketing confirmado para este evento.</p>
@@ -1749,30 +1750,19 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                         </div>
 
                         {/* Acima do teto da frota (VAN + Kombi = 25) não há veículo a
-                            sugerir: o aviso pede para acionar a equipe de apoio, e o
-                            interruptor grava que ela vai acionar. Só avisa — o envio
-                            segue; o fretado é decisão de quem aprova. */}
+                            sugerir: o aviso explica e oferece só o apoio externo
+                            (opcional, decisão de 22/09/2026). O botão "Usar VAN + Kombi
+                            mesmo assim" saiu: escolher a frota lotada não resolve quem
+                            ficou de fora. Só avisa — o envio segue; o fretado é decisão
+                            de quem aprova. */}
                         {r.acimaDoTeto ? (
                           <div className="rounded-md border border-dashed border-destructive/40 bg-destructive/10 p-3 space-y-2 animate-in fade-in zoom-in-95 duration-200" data-testid="aviso-frota">
                             <p className="text-sm font-semibold text-destructive">Não cabe na frota da ANA</p>
                             <p className="text-[11px] text-destructive">
-                              VAN + Kombi levam {TETO_DA_FROTA} passageiros; faltam <b>{r.faltamNaFrota}</b>.{' '}
-                              <b>Acione a equipe de apoio para transporte</b> — ônibus fretado, segunda viagem ou carona de parceiro.
-                              Registre o combinado nas observações.
+                              Nossa frota (VAN + Kombi) leva até {TETO_DA_FROTA} passageiros; faltam <b>{r.faltamNaFrota}</b>.
+                              Se precisar, marque o apoio externo abaixo — ônibus fretado, segunda viagem ou carona de parceiro — e
+                              registre o combinado nas observações.
                             </p>
-                            <div className="flex flex-wrap gap-2">
-                              {(form.transport_vehicle !== 'van' || (form.transport_support_vehicle || '') !== 'kombi') && (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-7 text-xs"
-                                  onClick={() => setForm({ ...form, transport_vehicle: 'van', transport_support_vehicle: 'kombi' })}
-                                >
-                                  Usar VAN + Kombi mesmo assim
-                                </Button>
-                              )}
-                            </div>
                             <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-2.5 shadow-sm">
                               <Switch
                                 id="transport_external_support"

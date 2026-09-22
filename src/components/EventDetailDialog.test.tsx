@@ -183,3 +183,15 @@ describe('acessibilidade do diálogo', () => {
     expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
   });
 });
+
+describe('endereço no detalhe (22/09/2026)', () => {
+  it('evento público na unidade mostra o endereço completo abaixo do local', () => {
+    montar();
+    expect(screen.getByTestId('endereco-detalhe')).toHaveTextContent('Rua Emílio Lang Júnior, 411');
+  });
+
+  it('evento interno não mostra endereço', () => {
+    render(<EventDetailDialog open onOpenChange={() => {}} event={{ ...evento, visibility: 'interno' }} />);
+    expect(screen.queryByTestId('endereco-detalhe')).toBeNull();
+  });
+});

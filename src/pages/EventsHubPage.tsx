@@ -1,7 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { retornoDoGoogle } from '@/lib/events/conexaoGoogle';
-import { Globe, LayoutDashboard, Calendar, Trash2 } from 'lucide-react';
+import { Globe, LayoutDashboard, Calendar, Trash2, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import EventFormDialog from '@/components/EventFormDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useEntryGateTransition } from '@/hooks/useIsEntryGate';
@@ -24,8 +26,9 @@ const tabs = [
 
 export default function EventsHubPage() {
   const { isAuthenticated } = useAuth();
-  const { isAdmin } = useUserRole();
+  const { isAdmin, canCreate } = useUserRole();
   const { isGate, leaving, entering } = useEntryGateTransition();
+  const [novoAberto, setNovoAberto] = useState(false);
   const abas = tabs.filter(t => !t.apenasAdmin || isAdmin);
   /**
    * A aba vive na URL (`?tela=calendario`): F5 e "voltar" respeitam onde a
@@ -70,17 +73,28 @@ export default function EventsHubPage() {
         )}
       >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="overflow-x-auto pb-2">
-          {/* alvo de toque: 44px no mobile, os 32px de antes no desktop */}
-          <TabsList className="h-[3.25rem] w-max md:h-10">
-            {abas.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value} className="h-11 gap-1.5 md:h-8">
-                <tab.icon className="h-4 w-4" />
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+        {/* Um só "Novo", ao lado das abas (22/09/2026): antes havia um em cada
+            cabeçalho (Visão Geral e Calendário) e nenhum nas Programações. No
+            celular a faixa de abas rola e o botão fica fixo na ponta direita. */}
+        <div className="flex items-center gap-3 pb-2">
+          <div className="min-w-0 flex-1 overflow-x-auto">
+            {/* alvo de toque: 44px no mobile, os 32px de antes no desktop */}
+            <TabsList className="h-[3.25rem] w-max md:h-10">
+              {abas.map((tab) => (
+                <TabsTrigger key={tab.value} value={tab.value} className="h-11 gap-1.5 md:h-8">
+                  <tab.icon className="h-4 w-4" />
+                  {tab.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
+          {canCreate && (
+            <Button onClick={() => setNovoAberto(true)} className="h-11 shrink-0 gap-2 shadow-sm md:h-10" data-testid="novo-evento">
+              <Plus className="h-4 w-4" /> Novo
+            </Button>
+          )}
         </div>
+        {canCreate && <EventFormDialog open={novoAberto} onOpenChange={setNovoAberto} />}
 
         {abas.map((tab) => (
           <TabsContent key={tab.value} value={tab.value} className="mt-4">

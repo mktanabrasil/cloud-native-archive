@@ -877,3 +877,17 @@ describe('menores da varredura (11/09)', () => {
     expect(regiao).toHaveTextContent('10 a 12 de outubro');
   });
 });
+
+describe('endereço da unidade no evento público (22/09/2026)', () => {
+  it('o card mostra o endereço completo quando o local é uma unidade', () => {
+    espiao.eventos = [evento({ id: 'e-nil', title: 'Festa junina', location: 'Unidade Nilópolis', visibility: 'publico' })];
+    montar();
+    expect(screen.getAllByTestId('endereco-card')[0]).toHaveTextContent('R. Ana Arruda de Camargo, 344');
+  });
+
+  it('"Outro local" ou a sede não ganham endereço', () => {
+    espiao.eventos = [evento({ id: 'e-ext', title: 'Reunião externa', location: 'Parque Ecológico', visibility: 'publico' })];
+    montar();
+    expect(screen.queryByTestId('endereco-card')).toBeNull();
+  });
+});
