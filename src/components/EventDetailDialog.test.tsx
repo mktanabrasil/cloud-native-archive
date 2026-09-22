@@ -45,6 +45,16 @@ const montar = () => render(<EventDetailDialog open onOpenChange={() => {}} even
 
 afterEach(() => vi.restoreAllMocks());
 
+describe('a capa sem arte (22/09/2026)', () => {
+  it('mostra a foto da unidade com o título por cima', () => {
+    montar();
+    const capa = screen.getByTestId('capa-da-unidade');
+    expect(capa).toHaveAttribute('data-unidade', 'Santana');
+    expect(capa.querySelector('img')).toHaveAttribute('src', '/unidades/santana.webp');
+    expect(screen.getByTestId('titulo-na-capa')).toHaveTextContent('HOPE DAY');
+  });
+});
+
 describe('o título no detalhe', () => {
   it('quebra a linha em vez de escrever o marcador', () => {
     montar();

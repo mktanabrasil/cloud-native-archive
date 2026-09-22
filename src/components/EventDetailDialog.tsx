@@ -14,6 +14,7 @@ import { ROTULO_DA_COBERTURA, estadoDaCobertura } from '@/lib/events/cobertura';
 import { ResumoDeItens } from './events/ResumoDeItens';
 import { TextoComLinks } from './events/TextoComLinks';
 import { TituloDoEvento } from './events/TituloDoEvento';
+import { CapaDaUnidade } from './events/CapaDaUnidade';
 import { tituloEmTexto } from '@/lib/events/titulo';
 import { textoDaData, textoDoHorario } from '@/lib/events/periodo';
 import { jaAconteceu } from '@/lib/events/proximosEPassados';
@@ -82,19 +83,8 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
               className="w-full h-full object-cover opacity-80"
             />
           ) : (
-            <div 
-              className="w-full h-full flex items-center justify-start p-8 text-left overflow-hidden"
-              style={{ backgroundColor: event.custom_color || '#1e293b' }}
-            >
-              <span 
-                className="font-bold text-white leading-[1.1] break-words uppercase select-none"
-                style={{ 
-                  fontSize: event.title.length < 15 ? '4rem' : event.title.length < 30 ? '3rem' : event.title.length < 50 ? '2rem' : '1.5rem',
-                }}
-              >
-                <TituloDoEvento texto={event.title} />
-              </span>
-            </div>
+            /* Sem arte: a foto da unidade com a cor dela por cima (22/09/2026). */
+            <CapaDaUnidade evento={event} tamanho="detalhe" className="select-none" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
           <button 

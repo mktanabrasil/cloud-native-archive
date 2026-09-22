@@ -19,6 +19,7 @@ import { EventDetailDialog } from './EventDetailDialog';
 import { BannerMissingDialog } from './BannerMissingDialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { GrupoDeOpcoes, normalizarOpcoes } from './events/GrupoDeOpcoes';
+import { CapaDaUnidade, unidadeDaFoto } from './events/CapaDaUnidade';
 import { ResumoDeItens } from './events/ResumoDeItens';
 import { CampoDataHora } from './events/CampoDataHora';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -2138,9 +2139,15 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                           className="w-full h-full object-cover opacity-80"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-start p-6" style={{ backgroundColor: form.custom_color || '#1e293b' }}>
-                          <Layout className="h-10 w-10 text-white/20" />
-                        </div>
+                        /* Sem arte: a prévia mostra a mesma foto da unidade que a vitrine vai mostrar */
+                        <CapaDaUnidade
+                          evento={{ unit: form.unit as Unit, location: form.location ?? '', title: form.title ?? '', custom_color: form.custom_color }}
+                          comTitulo={false}
+                        >
+                          {!unidadeDaFoto({ unit: form.unit as Unit, location: form.location ?? '' }) && (
+                            <div className="w-full h-full flex items-center justify-start p-6"><Layout className="h-10 w-10 text-white/20" /></div>
+                          )}
+                        </CapaDaUnidade>
                       )}
 
                       <div className="absolute bottom-0 left-0 right-0 p-4 z-[20] flex flex-col items-start justify-end h-full">
