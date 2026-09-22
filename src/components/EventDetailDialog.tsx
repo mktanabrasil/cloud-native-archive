@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { linkPublicoDoEvento } from '@/lib/events/linkPublico';
+import { enderecoDoLocal } from '@/lib/events/local';
 import { motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
 import { ROTULO_DA_COBERTURA, estadoDaCobertura } from '@/lib/events/cobertura';
 import { ResumoDeItens } from './events/ResumoDeItens';
@@ -156,6 +157,9 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
                   <div>
                     <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Local</p>
                     <p className="font-medium">{event.location}</p>
+                    {event.visibility === 'publico' && enderecoDoLocal(event.location) && (
+                      <p className="text-xs text-muted-foreground" data-testid="endereco-detalhe">{enderecoDoLocal(event.location)}</p>
+                    )}
                   </div>
                 </div>
               </div>

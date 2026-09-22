@@ -7,7 +7,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AppEvent, EventStatus, UNITS, EVENT_STATUSES, EVENT_TYPES, Unit } from '@/types';
-import { CalendarDays, CheckCircle2, Clock, AlertCircle, Plus, ChevronLeft, ChevronRight, ChevronDown, AlertTriangle, Camera, Handshake, Search, LayoutGrid, List, Calendar as CalendarIcon, Globe, Lock } from 'lucide-react';
+import { CalendarDays, CheckCircle2, Clock, AlertCircle, ChevronLeft, ChevronRight, ChevronDown, AlertTriangle, Camera, Handshake, Search, LayoutGrid, List, Calendar as CalendarIcon, Globe, Lock } from 'lucide-react';
 import { MarcaDaAgenda } from '@/components/events/AgendaDoEvento';
 import { rotuloDoStatus } from '@/lib/events/status';
 import { Button } from '@/components/ui/button';
@@ -45,9 +45,8 @@ export default function Dashboard() {
   const { events: rawEvents, selectedMonth, setSelectedMonth, setSelectedEvent, deleteEvent, updateEvent } = useApp();
   const events = useFilteredEvents();
   const { isAuthenticated } = useAuth();
-  const { canEdit, canCreate, unit, isMarketing } = useUserRole();
+  const { canEdit, unit, isMarketing } = useUserRole();
   const isMobile = useIsMobile();
-  const [showNewEvent, setShowNewEvent] = useState(false);
   const [detailEvent, setDetailEvent] = useState<AppEvent | null>(null);
   const [showDetail, setShowDetail] = useState(false);
   const [editingEvent, setEditingEvent] = useState<AppEvent | null>(null);
@@ -276,15 +275,7 @@ export default function Dashboard() {
                   className="pl-9 h-10 shadow-sm border-muted-foreground/20 focus-visible:ring-primary bg-background" 
                 />
               </div>
-
-              {canCreate && (
-                <Button 
-                  onClick={() => setShowNewEvent(true)} 
-                  className="gap-2 h-10 shadow-sm"
-                >
-                  <Plus className="h-4 w-4" /> Novo
-                </Button>
-              )}
+              {/* O botão "Novo" mora no hub, ao lado das abas (22/09/2026). */}
             </div>
           </div>
         }
@@ -388,7 +379,6 @@ export default function Dashboard() {
       </Card>
 
 
-      <EventFormDialog open={showNewEvent} onOpenChange={setShowNewEvent} />
       <EventFormDialog
         open={showEdit}
         onOpenChange={(v) => { setShowEdit(v); if (!v) { setEditingEvent(null); setRevisando(false); } }}

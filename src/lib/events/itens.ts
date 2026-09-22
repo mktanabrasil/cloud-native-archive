@@ -18,7 +18,25 @@ export const OUTRO = '__outro__';
 export const LIMITE_DETALHE = 300;
 
 export const OPCOES_COMIDA = ['Almoço', 'Café da manhã / da tarde', 'Lanche', 'Jantar', 'Nenhum'];
-export const OPCOES_EQUIP = ['Som', 'Microfone', 'Projetor', 'Televisão', 'Notebook', 'Nenhum'];
+/**
+ * "Notebook" saiu em 22/09/2026: não é equipamento que a ANA empresta para
+ * evento. Um evento antigo com "Notebook" gravado continua legível — cai em
+ * "Outro equipamento", com o texto preservado.
+ */
+export const OPCOES_EQUIP = ['Som', 'Microfone', 'Projetor', 'Televisão', 'Nenhum'];
+
+/**
+ * Quantos de cada equipamento a ANA tem, para a gestora saber o que dá para
+ * pedir. Só o que já foi contado (22/09/2026): o levantamento dos demais
+ * vem depois e entra aqui.
+ */
+export const ESTOQUE_EQUIP: Partial<Record<string, number>> = { Projetor: 1 };
+
+/** "temos 1" · "temos 3", ou vazio quando ainda não foi contado. */
+export const pistaDoEstoque = (opcao: string): string => {
+  const n = ESTOQUE_EQUIP[opcao];
+  return n === undefined ? '' : `temos ${n}`;
+};
 
 const separar = (valor: string | null | undefined): string[] =>
   (valor ?? '').split(', ').map(v => v.trim()).filter(Boolean);

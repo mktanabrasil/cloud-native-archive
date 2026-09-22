@@ -25,7 +25,7 @@ import { TituloDoEvento } from '@/components/events/TituloDoEvento';
 import { tituloEmTexto } from '@/lib/events/titulo';
 import { abaInicial, jaAconteceu, lerAba, separarPorData, type Aba } from '@/lib/events/proximosEPassados';
 import { textoDaData, textoDoHorario } from '@/lib/events/periodo';
-import { semAcento } from '@/lib/events/local';
+import { enderecoDoLocal, semAcento } from '@/lib/events/local';
 import EventFormDialog from '@/components/EventFormDialog';
 import { BannerMissingDialog } from '@/components/BannerMissingDialog';
 import { VitrineVazia } from '@/components/events/VitrineVazia';
@@ -438,9 +438,14 @@ export default function PublicEventsPage() {
                     <CalendarDays className="h-5 w-5" />
                     <span>{textoDaData(event, { comAno: false })}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-5 w-5" />
-                    <span>{event.location}</span>
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-5 w-5 shrink-0" />
+                    <span>
+                      {event.location}
+                      {event.visibility === 'publico' && enderecoDoLocal(event.location) && (
+                        <span className="block text-xs md:text-sm text-slate-300" data-testid="endereco-heroi">{enderecoDoLocal(event.location)}</span>
+                      )}
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-4 mt-6">
@@ -798,9 +803,16 @@ export default function PublicEventsPage() {
                       <span>{textoDoHorario(event)}</span>
                     </div>
                     {event.location && (
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="line-clamp-1">{event.location}</span>
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                        <span className="min-w-0">
+                          <span className="line-clamp-1">{event.location}</span>
+                          {/* Evento público mostra o endereço inteiro da unidade
+                              (22/09/2026): quem vem de fora precisa saber onde é. */}
+                          {event.visibility === 'publico' && enderecoDoLocal(event.location) && (
+                            <span className="block text-xs text-muted-foreground line-clamp-2" data-testid="endereco-card">{enderecoDoLocal(event.location)}</span>
+                          )}
+                        </span>
                       </div>
                     )}
                   </div>

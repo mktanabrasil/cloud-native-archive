@@ -71,6 +71,11 @@ export interface GrupoDeOpcoesProps {
     onDetalhe: (chave: string, texto: string) => void;
     pista: string;
   };
+  /**
+   * Um aviso curto ao lado do nome da opção ("temos 1"), por opção. Quem não
+   * tem aviso não ganha nada. Equipamentos, desde 22/09/2026.
+   */
+  pistas?: Partial<Record<string, string>>;
 }
 
 const separar = (valor: string): string[] =>
@@ -102,6 +107,7 @@ export function GrupoDeOpcoes({
   onOutroAberto,
   erro,
   detalhes,
+  pistas,
 }: GrupoDeOpcoesProps) {
   /** O item que acabou de ser ligado: a caixa dele abre em foco. */
   const [recemLigado, setRecemLigado] = useState<string | null>(null);
@@ -191,6 +197,9 @@ export function GrupoDeOpcoes({
           />
           <Label htmlFor={`${id}-${opcao}`} className="text-sm cursor-pointer flex-1 font-medium">
             {opcao}
+            {pistas?.[opcao] && (
+              <span className="ml-1.5 font-normal text-muted-foreground" data-testid={`${id}-${opcao}-pista`}>· {pistas[opcao]}</span>
+            )}
             {opcao === 'Nenhum' && nenhumLigado && significadoDoNenhum && (
               <span className="ml-1.5 font-normal text-muted-foreground">— {significadoDoNenhum}</span>
             )}

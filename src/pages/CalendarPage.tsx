@@ -33,7 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, List, LayoutGrid, Search, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, List, LayoutGrid, Search } from 'lucide-react';
 import { MarcaDaAgenda } from '@/components/events/AgendaDoEvento';
 import { rotuloDoStatus } from '@/lib/events/status';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -64,7 +64,7 @@ export default function CalendarPage() {
   const { events: rawEvents, selectedMonth, setSelectedMonth, setSelectedEvent, deleteEvent, updateEvent, detectConflicts, loading, refetchEvents } = useApp();
   const events = useFilteredEvents();
   const { isAuthenticated } = useAuth();
-  const { canEdit, canCreate, userName, unit, isAdmin } = useUserRole();
+  const { canEdit, userName, unit, isAdmin } = useUserRole();
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const hideTitle = searchParams.get('hideTitle') === 'true';
@@ -383,15 +383,7 @@ export default function CalendarPage() {
                   className="pl-9 h-10 shadow-sm border-muted-foreground/20 focus-visible:ring-primary bg-background" 
                 />
               </div>
-
-              {canCreate && (
-                <Button 
-                  onClick={() => setShowForm(true)} 
-                  className="gap-2 h-10 shadow-sm"
-                >
-                  <Plus className="h-4 w-4" /> Novo
-                </Button>
-              )}
+              {/* O botão "Novo" mora no hub, ao lado das abas (22/09/2026). */}
             </div>
           </div>
         }

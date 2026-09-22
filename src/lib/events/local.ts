@@ -27,6 +27,28 @@ export const LOCAIS_FIXOS: LocalFixo[] = [
   { valor: 'Escritório', unidade: 'Administração' },
 ];
 
+/**
+ * O endereço de cada unidade, para o evento público (decisão de 22/09/2026:
+ * "endereço sempre no público"). Quem chega pelo link do WhatsApp precisa
+ * saber onde é, e "Unidade Nilópolis" não diz. Continua sem coluna no banco:
+ * o endereço é derivado do local fixo na hora de mostrar. A sede não tem
+ * endereço aqui de propósito — evento no Escritório é interno na prática.
+ */
+export const ENDERECO_DA_UNIDADE: Partial<Record<Unit, string>> = {
+  'Nilópolis': 'R. Ana Arruda de Camargo, 344 - Jardim Nilópolis, Campinas - SP, 13088-820',
+  'DIC': 'Rua Ibrantina Cardona, 386 - Dic IV - Campinas/SP - 13054-513',
+  'Santana': 'Rua Emílio Lang Júnior, 411 - Vila Nogueira - Campinas/SP - 13088-011',
+};
+
+/**
+ * O endereço a mostrar para um local, ou vazio: só os locais fixos de unidade
+ * têm um. "Outro local" já traz o que a gestora escreveu.
+ */
+export const enderecoDoLocal = (location: string | null | undefined): string => {
+  const fixo = localFixo(location);
+  return fixo ? ENDERECO_DA_UNIDADE[fixo.unidade] ?? '' : '';
+};
+
 /** O valor da opção "Outro local" na lista. Nunca vai para o banco. */
 export const OUTRO_LOCAL = '__outro__';
 
