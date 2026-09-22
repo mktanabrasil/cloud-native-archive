@@ -18,6 +18,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import PageHeader from '@/components/PageHeader';
 import { EsqueletoDaVitrine, ErroAoCarregar } from '@/components/events/EsqueletoDeEventos';
+import { CapaDaUnidade } from '@/components/events/CapaDaUnidade';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { EventDetailDialog } from '@/components/EventDetailDialog';
@@ -382,12 +383,8 @@ export default function PublicEventsPage() {
                   />
                 </picture>
               ) : (
-                <div
-                  className="w-full h-full flex items-center justify-center px-8 md:px-16"
-                  style={{ backgroundColor: event.custom_color || '#1e293b' }}
-                >
-                  {/* Sem imagem, fica a cor do evento */}
-                </div>
+                /* Sem imagem: a foto da unidade, ou a cor do evento quando não há foto */
+                <CapaDaUnidade evento={event} comTitulo={false} />
               )}
 
               {event.show_banner_overlay !== false && (
@@ -704,19 +701,9 @@ export default function PublicEventsPage() {
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : (
-                    <div
-                      className="capa-sem-imagem w-full h-full flex items-center justify-start p-6 text-left overflow-hidden"
-                      style={{ backgroundColor: event.custom_color || '#94a3b8' }}
-                    >
-                      <span
-                        className="font-bold text-white leading-[1.1] break-words uppercase select-none"
-                        style={{
-                          fontSize: event.title.length < 15 ? '2.5rem' : event.title.length < 30 ? '1.75rem' : event.title.length < 50 ? '1.25rem' : '1rem',
-                        }}
-                      >
-                        <TituloDoEvento texto={event.title} />
-                      </span>
-                    </div>
+                    /* Sem arte: a foto da unidade com a cor dela por cima
+                       (22/09/2026). Sede ou outro local: o card chapado. */
+                    <CapaDaUnidade evento={event} className="select-none" />
                   )}
                   <div className={`absolute top-0 left-0 h-1 w-full ${UNIT_BG_COLORS[event.unit]}`} />
                   <Badge className={`absolute top-3 left-3 ${UNIT_BG_COLORS[event.unit]} text-slate-900 border-none shadow-sm`}>

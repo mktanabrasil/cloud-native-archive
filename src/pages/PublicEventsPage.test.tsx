@@ -537,6 +537,35 @@ describe('a imagem do card', () => {
   });
 });
 
+describe('a capa sem arte (22/09/2026)', () => {
+  it('usa a foto da unidade, com a cor dela por cima e o título em branco', () => {
+    espiao.eventos = [evento({ id: 'sem-arte', title: 'Festa Junina', unit: 'Nilópolis', location: 'Unidade Nilópolis' })];
+    montar();
+
+    // O herói e o card mostram a mesma capa; o card é o que traz o título.
+    const capa = screen.getAllByTestId('capa-da-unidade').find(c => c.querySelector('[data-testid="titulo-na-capa"]'))!;
+    expect(capa).toHaveAttribute('data-unidade', 'Nilópolis');
+    expect(capa.querySelector('img')).toHaveAttribute('src', '/unidades/nilopolis.webp');
+    expect(screen.getByTestId('titulo-na-capa')).toHaveTextContent('Festa Junina');
+    expect(screen.getByTestId('titulo-na-capa')).not.toHaveClass('uppercase');
+  });
+
+  it('evento da Administração numa unidade: a foto é a do local', () => {
+    espiao.eventos = [evento({ id: 'adm', title: 'Reunião', unit: 'Administração', location: 'Unidade DIC' })];
+    montar();
+
+    for (const capa of screen.getAllByTestId('capa-da-unidade')) expect(capa).toHaveAttribute('data-unidade', 'DIC');
+  });
+
+  it('sem foto (escritório, outro local): fica o card na cor do evento', () => {
+    espiao.eventos = [evento({ id: 'sede', title: 'Reunião', unit: 'Administração', location: 'Escritório', custom_color: '#123456' })];
+    montar();
+
+    expect(screen.queryByTestId('capa-da-unidade')).toBeNull();
+    for (const capa of screen.getAllByTestId('capa-chapada')) expect(capa).toHaveStyle({ backgroundColor: '#123456' });
+  });
+});
+
 describe('o rodapé', () => {
   it('para o visitante, convida a conhecer a ANA', () => {
     espiao.autenticado = false;
