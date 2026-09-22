@@ -23,7 +23,9 @@ import { CapaDaUnidade, unidadeDaFoto } from './events/CapaDaUnidade';
 import { ResumoDeItens } from './events/ResumoDeItens';
 import { CampoDataHora } from './events/CampoDataHora';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { OPCOES_COMIDA, OPCOES_EQUIP, comDetalhe, itensDeTexto, limparItens, pistaDoEstoque, sincronizarItens } from '@/lib/events/itens';
+import { OPCOES_COMIDA, OPCOES_EQUIP, OUTRO, comDetalhe, itensDeTexto, limparItens, pistaDoEstoque, sincronizarItens } from '@/lib/events/itens';
+import { alimentosDe, cardapioDe, comAlimentos, comCardapio, resumoDaRefeicao } from '@/lib/events/alimentos';
+import { TabelaDeAlimentos } from './events/TabelaDeAlimentos';
 import { TituloDoEvento } from './events/TituloDoEvento';
 import { paraCampoDataHora, fraseDoFuso } from '@/lib/events/horaLocal';
 import { LOCAIS_FIXOS, OUTRO_LOCAL, localAoTrocarUnidade, localDaUnidade, localFixo, opcaoDoLocal } from '@/lib/events/local';
@@ -632,7 +634,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       food_logistics: normalizarOpcoes(form.food_logistics),
       // A lista por item é a fonte; a string acima é derivada dela para as
       // telas e a validação antigas. `limparItens` apara e limita a 300.
-      food_items: limparItens(sincronizarItens(form.food_logistics, form.food_items, OPCOES_COMIDA)),
+      food_items: limparItens(
+        sincronizarItens(form.food_logistics, form.food_items, OPCOES_COMIDA).map(i => (i.item === 'Nenhum' || i.alimentos ? i : { ...i, alimentos: [] })),
+      ),
       equipment_items: limparItens(sincronizarItens(form.equipment_needed, form.equipment_items, OPCOES_EQUIP)),
       food_details: form.food_details?.trim() || '',
       // `marketing_info` deixou de ser gravado: nenhuma linha o usava (0/108
@@ -1448,11 +1452,29 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                         opcoes={OPCOES_COMIDA}
                         valor={form.food_logistics || ''}
                         onChange={v => setForm({ ...form, food_logistics: v, food_items: sincronizarItens(v, form.food_items, OPCOES_COMIDA) })}
-                        detalhes={{
-                          itens: form.food_items || [],
-                          onDetalhe: (chave, texto) => setForm({ ...form, food_items: comDetalhe(sincronizarItens(form.food_logistics, form.food_items, OPCOES_COMIDA), chave, texto) }),
-                          pista: 'Para quantos, a que hora, cardápio, quem fornece…',
+                        /* Por refeição, a tabelinha de alimentos (22/09/2026).
+                           A refeição nasce com a tabela vazia, e é ela quem
+                           diz "este é o modelo novo"; o texto de antes, se
+                           houver, fica como "Observação antiga". */
+                        subformulario={(chave, rotulo) => {
+                          const itens = sincronizarItens(form.food_logistics, form.food_items, OPCOES_COMIDA);
+                          const atual = itens.find(i => (i.outro ? OUTRO : i.item) === chave);
+                          return (
+                            <TabelaDeAlimentos
+                              id={`comida-${chave}`}
+                              refeicao={rotulo}
+                              alimentos={alimentosDe(itens, chave)}
+                              onAlimentos={lista => setForm({ ...form, food_items: comAlimentos(itens, chave, lista) })}
+                              cardapio={cardapioDe(itens, chave)}
+                              onCardapio={texto => setForm({ ...form, food_items: comCardapio(itens, chave, texto) })}
+                              observacaoAntiga={atual?.detalhes ?? ''}
+                              onObservacaoAntiga={texto => setForm({ ...form, food_items: comDetalhe(itens, chave, texto) })}
+                            />
+                          );
                         }}
+                        pistas={Object.fromEntries(
+                          (form.food_items || []).filter(i => !i.outro).map(i => [i.item, resumoDaRefeicao(i.alimentos)]).filter(([, p]) => p),
+                        )}
                         rotuloOutro="Outra comida"
                         pistaOutro="Qual comida?"
                         temNenhum

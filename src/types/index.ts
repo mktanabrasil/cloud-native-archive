@@ -28,10 +28,30 @@ export type PartnerType = 'padrinho' | 'doador' | 'empresa' | 'figura_publica' |
  * Um item de alimentação ou equipamento com o seu detalhe.
  * `outro` marca o texto livre do "Outro"; o nome dele é o que a pessoa escreveu.
  */
+/** Quem fornece um alimento. "ANA" quer dizer: precisamos providenciar. */
+export type Fornecedor = 'ANA' | 'Unidade' | 'Parceiro' | 'Doação';
+
+/** Uma linha da tabelinha de uma refeição (22/09/2026). */
+export interface Alimento {
+  nome: string;
+  quantidade: string;
+  fornecedor: Fornecedor;
+  /** Nome do parceiro, da unidade ou de quem doa, quando não é a ANA. */
+  quem?: string;
+}
+
 export interface ItemComDetalhe {
   item: string;
+  /**
+   * Texto livre. Nos equipamentos é o detalhe do item. Na alimentação virou
+   * legado em 22/09/2026: aparece como "Observação antiga" enquanto existir.
+   */
   detalhes: string;
   outro?: boolean;
+  /** Alimentação, desde 22/09/2026: uma linha por alimento da refeição. */
+  alimentos?: Alimento[];
+  /** Alimentação: como a refeição vai ser servida. */
+  cardapio?: string;
 }
 
 export interface Anexo {

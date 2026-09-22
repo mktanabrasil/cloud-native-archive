@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -76,6 +76,12 @@ export interface GrupoDeOpcoesProps {
    * tem aviso não ganha nada. Equipamentos, desde 22/09/2026.
    */
   pistas?: Partial<Record<string, string>>;
+  /**
+   * Um sub-formulário próprio por item ligado, no lugar da caixa de detalhe
+   * (alimentação, desde 22/09/2026: a tabelinha de alimentos). Recebe a chave
+   * do item e o nome dele. Quando existe, `detalhes` não é usado.
+   */
+  subformulario?: (chave: string, rotulo: string) => ReactNode;
 }
 
 const separar = (valor: string): string[] =>
@@ -108,6 +114,7 @@ export function GrupoDeOpcoes({
   erro,
   detalhes,
   pistas,
+  subformulario,
 }: GrupoDeOpcoesProps) {
   /** O item que acabou de ser ligado: a caixa dele abre em foco. */
   const [recemLigado, setRecemLigado] = useState<string | null>(null);
@@ -142,6 +149,7 @@ export function GrupoDeOpcoes({
 
   /** A caixa de detalhe de um item ligado, quando o grupo tem detalhes. */
   const caixaDeDetalhe = (chave: string, rotulo: string) => {
+    if (subformulario) return subformulario(chave, rotulo);
     if (!detalhes) return null;
     const valorDetalhe = detalheDe(detalhes.itens, chave);
     const usados = valorDetalhe.length;
@@ -183,7 +191,7 @@ export function GrupoDeOpcoes({
 
   const linha = (opcao: string) => {
     const ligada = escolhidos.includes(opcao);
-    const comDetalhe = !!detalhes && ligada && opcao !== 'Nenhum';
+    const comDetalhe = (!!detalhes || !!subformulario) && ligada && opcao !== 'Nenhum';
     return (
       <div
         key={opcao}

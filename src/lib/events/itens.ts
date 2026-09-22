@@ -1,4 +1,5 @@
 import type { ItemComDetalhe } from '@/types';
+import { limparAlimentos, linhasDaRefeicao, temTabela } from './alimentos';
 
 /**
  * Alimentação e equipamentos como lista de itens com detalhe.
@@ -50,14 +51,19 @@ export const chaveDe = (i: ItemComDetalhe): string => (i.outro ? OUTRO : i.item)
  */
 export function sincronizarItens(valor: string | null | undefined, atuais: ItemComDetalhe[] | null | undefined, opcoes: string[]): ItemComDetalhe[] {
   const partes = separar(valor);
-  const mapa = new Map((atuais ?? []).map(i => [chaveDe(i), i.detalhes]));
+  const mapa = new Map((atuais ?? []).map(i => [chaveDe(i), i]));
+  /** O que a refeição já tinha: detalhe, tabela e cardápio. */
+  const guardado = (chave: string) => {
+    const g = mapa.get(chave);
+    return { detalhes: g?.detalhes ?? '', ...(g?.alimentos ? { alimentos: g.alimentos } : {}), ...(g?.cardapio ? { cardapio: g.cardapio } : {}) };
+  };
   const itens: ItemComDetalhe[] = [];
   for (const p of partes) {
     if (opcoes.includes(p)) {
       if (p === 'Nenhum') return [{ item: 'Nenhum', detalhes: '' }];
-      itens.push({ item: p, detalhes: mapa.get(p) ?? '' });
+      itens.push({ item: p, ...guardado(p) });
     } else {
-      itens.push({ item: p, detalhes: mapa.get(OUTRO) ?? '', outro: true });
+      itens.push({ item: p, ...guardado(OUTRO), outro: true });
     }
   }
   return itens;
@@ -77,7 +83,14 @@ export function detalheDe(itens: ItemComDetalhe[] | null | undefined, chave: str
 export function limparItens(itens: ItemComDetalhe[] | null | undefined): ItemComDetalhe[] {
   return (itens ?? [])
     .filter(i => i.item.trim())
-    .map(i => ({ item: i.item.trim(), detalhes: i.detalhes.trim().slice(0, LIMITE_DETALHE), ...(i.outro ? { outro: true } : {}) }));
+    .map(i => ({
+      item: i.item.trim(),
+      detalhes: (i.detalhes ?? '').trim().slice(0, LIMITE_DETALHE),
+      ...(i.outro ? { outro: true } : {}),
+      // Alimentação por refeição (22/09/2026): a tabela e o cardápio viajam junto.
+      ...(temTabela(i) ? { alimentos: limparAlimentos(i.alimentos) } : {}),
+      ...(i.cardapio?.trim() ? { cardapio: i.cardapio.trim() } : {}),
+    }));
 }
 
 /** A string de compatibilidade: "Almoço, Lanche, Café dos voluntários". */
@@ -102,5 +115,5 @@ export function itensDoResumo(itens: ItemComDetalhe[] | null | undefined): ItemC
 export function linhasParaCopiar(titulo: string, itens: ItemComDetalhe[] | null | undefined): string {
   const lista = itensDoResumo(itens);
   if (lista.length === 0) return `${titulo}: nenhum`;
-  return [`${titulo}:`, ...lista.map(i => `• ${i.item}${i.detalhes ? ` — ${i.detalhes}` : ''}`)].join('\n');
+  return [`${titulo}:`, ...lista.flatMap(i => (temTabela(i) ? linhasDaRefeicao(i) : [`• ${i.item}${i.detalhes ? ` — ${i.detalhes}` : ''}`]))].join('\n');
 }

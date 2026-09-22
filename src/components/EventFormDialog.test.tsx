@@ -488,16 +488,30 @@ describe('checklist de publicação', () => {
 });
 
 describe('um detalhe por item na alimentação e nos equipamentos', () => {
-  it('ligar um item abre a caixa dele; o texto vai para food_items e a string continua', async () => {
+  it('ligar uma refeição abre a tabelinha; cada alimento vai para food_items e a string continua', async () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
     abrir();
     preencher(); // liga Lanche e Som
 
     fireEvent.click(screen.getByRole('switch', { name: 'Almoço' }));
-    fireEvent.change(screen.getByLabelText('Detalhes de Almoço'), { target: { value: '60 crianças + 8 educadores, 12h ' } });
-    fireEvent.change(screen.getByLabelText('Detalhes de Lanche'), { target: { value: '15h, bolo e suco' } });
+    // Almoço: arroz (ANA providencia) e frango (parceiro)
+    const tabelaAlmoco = screen.getByTestId('comida-Almoço-tabela');
+    fireEvent.click(within(tabelaAlmoco).getByRole('button', { name: /adicionar alimento/i }));
+    fireEvent.change(screen.getByLabelText('Alimento 1 de Almoço'), { target: { value: ' Arroz e feijão ' } });
+    fireEvent.change(screen.getByLabelText('Quantidade do alimento 1 de Almoço'), { target: { value: '120 porções' } });
+    expect(screen.getByTestId('comida-Almoço-alimento-0-ana')).toHaveTextContent('ANA providencia');
+    fireEvent.click(within(tabelaAlmoco).getByRole('button', { name: /adicionar alimento/i }));
+    fireEvent.change(screen.getByLabelText('Alimento 2 de Almoço'), { target: { value: 'Frango assado' } });
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Precisamos providenciar o alimento 2 de Almoço?' })).getByRole('radio', { name: 'Não' }));
+    fireEvent.change(screen.getByLabelText('Quem fornece o alimento 2 de Almoço'), { target: { value: 'Parceiro' } });
+    fireEvent.change(screen.getByLabelText('Nome de quem fornece o alimento 2 de Almoço'), { target: { value: 'Padaria Sol' } });
+    fireEvent.change(screen.getByLabelText(/cardápio: almoço/i), { target: { value: 'Arroz, feijão e frango. 12h30.' } });
+    // O resumo ao lado do interruptor acompanha
+    expect(screen.getByTestId('comida-Almoço-pista')).toHaveTextContent('2 alimentos · 1 a providenciar');
+    // Equipamentos seguem com a caixa de detalhe
     fireEvent.change(screen.getByLabelText('Detalhes de Som'), { target: { value: 'caixa da unidade' } });
-    // "Nenhum" não tem caixa
+    // "Nenhum" não tem tabela nem caixa
+    expect(screen.queryByTestId('comida-Nenhum-tabela')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Detalhes de Nenhum')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
@@ -506,10 +520,33 @@ describe('um detalhe por item na alimentação e nos equipamentos', () => {
     const salvo = espiao.addEvent.mock.calls[0][0] as AppEvent;
     expect(salvo.food_logistics).toBe('Lanche, Almoço');
     expect(salvo.food_items).toEqual([
-      { item: 'Lanche', detalhes: '15h, bolo e suco' },
-      { item: 'Almoço', detalhes: '60 crianças + 8 educadores, 12h' },
+      { item: 'Lanche', detalhes: '', alimentos: [] },
+      {
+        item: 'Almoço',
+        detalhes: '',
+        alimentos: [
+          { nome: 'Arroz e feijão', quantidade: '120 porções', fornecedor: 'ANA' },
+          { nome: 'Frango assado', quantidade: '', fornecedor: 'Parceiro', quem: 'Padaria Sol' },
+        ],
+        cardapio: 'Arroz, feijão e frango. 12h30.',
+      },
     ]);
     expect(salvo.equipment_items).toEqual([{ item: 'Som', detalhes: 'caixa da unidade' }]);
+  });
+
+  it('um evento antigo, com texto livre na refeição, mostra a observação antiga editável e não a perde', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    const evento = { ...eventoGravado(), food_logistics: 'Almoço', food_items: [{ item: 'Almoço', detalhes: '60 crianças, 12h' }] };
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+
+    const antiga = screen.getByLabelText(/observação antiga/i) as HTMLTextAreaElement;
+    expect(antiga.value).toBe('60 crianças, 12h');
+    fireEvent.change(antiga, { target: { value: '60 crianças' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
+    await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalled());
+    const salvo = espiao.updateEvent.mock.calls[0][0] as AppEvent;
+    expect(salvo.food_items).toEqual([{ item: 'Almoço', detalhes: '60 crianças', alimentos: [] }]);
   });
 
   it('o “Outro” ganha detalhe embaixo do nome, e o detalhe sobrevive enquanto o nome muda', async () => {
@@ -519,21 +556,21 @@ describe('um detalhe por item na alimentação e nos equipamentos', () => {
     fireEvent.click(screen.getByRole('switch', { name: /outra comida/i }));
     const nome = screen.getByPlaceholderText('Qual comida?');
     fireEvent.change(nome, { target: { value: 'Café' } });
-    fireEvent.change(screen.getByLabelText('Detalhes de Café'), { target: { value: '7h30, 12 pessoas' } });
+    fireEvent.change(screen.getByLabelText(/cardápio: café \(/i), { target: { value: '7h30, 12 pessoas' } });
     fireEvent.change(nome, { target: { value: 'Café dos voluntários' } });
-    expect((screen.getByLabelText('Detalhes de Café dos voluntários') as HTMLTextAreaElement).value).toBe('7h30, 12 pessoas');
+    expect((screen.getByLabelText(/cardápio: café dos voluntários/i) as HTMLTextAreaElement).value).toBe('7h30, 12 pessoas');
 
     fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
     await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
     const salvo = espiao.addEvent.mock.calls[0][0] as AppEvent;
-    expect(salvo.food_items).toContainEqual({ item: 'Café dos voluntários', detalhes: '7h30, 12 pessoas', outro: true });
+    expect(salvo.food_items).toContainEqual({ item: 'Café dos voluntários', detalhes: '', outro: true, alimentos: [], cardapio: '7h30, 12 pessoas' });
   });
 
   it('desligar um item leva o detalhe junto; “Nenhum” zera a lista', async () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
     abrir();
     preencher();
-    fireEvent.change(screen.getByLabelText('Detalhes de Lanche'), { target: { value: 'x' } });
+    fireEvent.change(screen.getByLabelText(/cardápio: lanche/i), { target: { value: 'x' } });
     // há um "Nenhum" em cada grupo: o da alimentação é o de id `comida-Nenhum`
     fireEvent.click(document.getElementById('comida-Nenhum')!);
 
@@ -548,10 +585,14 @@ describe('um detalhe por item na alimentação e nos equipamentos', () => {
     espiao.papel = { ...espiao.papel, isAdmin: true, isMarketing: true };
     abrir();
     preencher();
-    fireEvent.change(screen.getByLabelText('Detalhes de Lanche'), { target: { value: '15h, bolo e suco' } });
+    fireEvent.click(within(screen.getByTestId('comida-Lanche-tabela')).getByRole('button', { name: /adicionar alimento/i }));
+    fireEvent.change(screen.getByLabelText('Alimento 1 de Lanche'), { target: { value: 'Bolo' } });
+    fireEvent.change(screen.getByLabelText(/cardápio: lanche/i), { target: { value: '15h, bolo e suco' } });
 
     const coluna = screen.getByTestId('resumo-coluna-direita');
     expect(coluna).toHaveTextContent('Alimentação · 1 item');
+    expect(coluna).toHaveTextContent('Bolo');
+    expect(coluna).toHaveTextContent('Para providenciar: 1 item · Bolo');
     expect(coluna).toHaveTextContent('15h, bolo e suco');
     expect(coluna).toHaveTextContent('Equipamentos · 1 item');
     expect(coluna).toHaveTextContent('— sem detalhes ainda');
