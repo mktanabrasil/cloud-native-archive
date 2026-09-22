@@ -23,7 +23,7 @@ interface Props {
  * Dois modos que sempre foram dois componentes disfarçados de um:
  *  - `single`: uma imagem (capa, banner, logo). Mostra a prévia.
  *  - `multiple`: os anexos do evento. Aceita PDF, imagem, planilha e
- *    documento até 10 MB; mostra nome e tamanho; remover apaga o arquivo
+ *    documento, sem limite de tamanho; mostra nome e tamanho; remover apaga o arquivo
  *    quando ele subiu nesta sessão (é órfão de qualquer jeito). O que já
  *    estava no evento sai só da lista — quem grava o evento decide o que
  *    fazer com o arquivo (ver `EventFormDialog.salvar`).
@@ -151,7 +151,7 @@ export function FileUpload({ attachments = [], url = '', onChange, mode = 'multi
     <div className="space-y-3">
       <Label className="text-sm font-semibold block">
         {label ?? 'Anexos'}
-        <span className="ml-1.5 font-normal text-muted-foreground">— PDF, imagem, planilha ou documento · até 10 MB cada</span>
+        <span className="ml-1.5 font-normal text-muted-foreground">— PDF, imagem, planilha ou documento</span>
       </Label>
 
       {attachments.length > 0 && (

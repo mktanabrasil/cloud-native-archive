@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor, cleanup } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, cleanup, within } from '@testing-library/react';
 import type { AppEvent } from '@/types';
 
 /**
@@ -78,6 +78,9 @@ const temVisibilidade = () => !!screen.queryByText('Onde este evento deve aparec
 const temCompartilhamento = () => !!screen.queryByText(/Configurações de Compartilhamento/i);
 
 beforeEach(() => {
+  // O autosave do rascunho grava no localStorage do jsdom; um teste não pode
+  // herdar o rascunho do anterior.
+  localStorage.clear();
   espiao.papel = { userName: 'Quem preenche', unit: 'DIC', isAdmin: false, isMarketing: false };
   espiao.addEvent.mockClear();
   espiao.addEvent.mockResolvedValue(undefined);
@@ -848,9 +851,22 @@ describe('fechar sem querer', () => {
     fireEvent.change(screen.getByPlaceholderText(/nome do evento/i), { target: { value: 'Festa' } });
 
     cancelar();
-    fireEvent.click(screen.getByRole('button', { name: 'Descartar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Descartar tudo' }));
 
     expect(fechou).toHaveBeenCalledWith(false);
+    expect(localStorage.getItem('evento-rascunho:u1:novo')).toBeNull();
+  });
+
+  it('“Guardar rascunho e sair” fecha e deixa o rascunho no aparelho (22/09/2026)', () => {
+    localStorage.clear();
+    abrir();
+    fireEvent.change(screen.getByPlaceholderText(/nome do evento/i), { target: { value: 'Festa guardada' } });
+
+    cancelar();
+    fireEvent.click(screen.getByTestId('sair-guardando'));
+
+    expect(fechou).toHaveBeenCalledWith(false);
+    expect(localStorage.getItem('evento-rascunho:u1:novo')).toContain('Festa guardada');
   });
 
   it('Esc também pergunta', () => {
@@ -1220,5 +1236,40 @@ describe('o link é da administração', () => {
 
     await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
     expect(espiao.addEvent.mock.calls[0][0].slug).toBeNull();
+  });
+});
+
+describe('rascunho no aparelho (22/09/2026)', () => {
+  it('ao mexer, guarda; ao reabrir, oferece retomar; retomar devolve o que foi digitado', async () => {
+    localStorage.clear();
+    const { unmount } = abrir();
+    fireEvent.change(screen.getByLabelText(/título/i), { target: { value: 'Festa do rascunho' } });
+    await waitFor(() => expect(localStorage.getItem('evento-rascunho:u1:novo')).toContain('Festa do rascunho'), { timeout: 3000 });
+    unmount();
+
+    abrir();
+    const faixa = screen.getByTestId('faixa-rascunho');
+    expect(faixa).toHaveTextContent(/Você tem um rascunho de “Festa do rascunho”/);
+    fireEvent.click(within(faixa).getByRole('button', { name: 'Retomar' }));
+    expect((screen.getByLabelText(/título/i) as HTMLInputElement).value).toBe('Festa do rascunho');
+    expect(screen.queryByTestId('faixa-rascunho')).toBeNull();
+  }, 20000);
+
+  it('descartar na faixa apaga o rascunho; sem rascunho, a faixa não aparece', () => {
+    localStorage.setItem('evento-rascunho:u1:novo', JSON.stringify({ form: { title: 'Velho' }, em: new Date().toISOString() }));
+    abrir();
+    fireEvent.click(within(screen.getByTestId('faixa-rascunho')).getByRole('button', { name: 'Descartar' }));
+    expect(localStorage.getItem('evento-rascunho:u1:novo')).toBeNull();
+    expect(screen.queryByTestId('faixa-rascunho')).toBeNull();
+  });
+
+  it('os anexos moram no pedido ao marketing', () => {
+    localStorage.clear();
+    abrir();
+    expect(screen.queryByTestId('anexos-do-marketing')).toBeNull();
+    fireEvent.click(screen.getByRole('switch', { name: /pedido ao marketing/i }));
+    // O FileUpload é mockado aqui; o que se garante é o lugar dele.
+    expect(screen.getByTestId('anexos-do-marketing')).toBeInTheDocument();
+    expect(screen.queryByTestId('anexos-legado')).toBeNull();
   });
 });
