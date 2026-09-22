@@ -10,12 +10,11 @@ import type { Anexo, AppEvent } from '@/types';
  * "Anexo 1", "Anexo 2". Tirar da lista não apagava o arquivo.
  *
  * O balde `event-attachments` é compartilhado com as fotos do Jornal
- * (`jornal/`), então o limite do balde é mais folgado (25 MB, por causa das
- * Formas ANA em SVG); o limite de 10 MB aqui é dos anexos de evento.
+ * (`jornal/`). Desde 22/09/2026 não há limite de tamanho por arquivo: nem
+ * aqui, nem no balde (migração `anexos_sem_limite_de_tamanho`).
  */
 
 export const BALDE = 'event-attachments';
-export const ANEXO_MAX_BYTES = 10 * 1024 * 1024;
 
 /** O que o campo de anexos aceita. A mesma lista vai para o `accept` do input. */
 export const TIPOS_ACEITOS: Record<string, string> = {
@@ -102,11 +101,13 @@ export function categoriaDoAnexo(a: Anexo): string {
   return 'Arquivo';
 }
 
-/** Por que um arquivo não pode subir; `null` se pode. */
+/**
+ * Por que um arquivo não pode subir; `null` se pode.
+ *
+ * Desde 22/09/2026 não há limite de tamanho por arquivo (o balde acompanha,
+ * ver a migração `anexos_sem_limite_de_tamanho`); só o tipo é conferido.
+ */
 export function motivoDeRecusa(arquivo: { name: string; size: number; type: string }): string | null {
-  if (arquivo.size > ANEXO_MAX_BYTES) {
-    return `“${arquivo.name}” tem ${rotuloDoTamanho(arquivo.size)}; o limite é ${rotuloDoTamanho(ANEXO_MAX_BYTES)}.`;
-  }
   if (arquivo.type && !TIPOS_ACEITOS[arquivo.type]) {
     return `“${arquivo.name}” não é PDF, imagem, planilha nem documento.`;
   }

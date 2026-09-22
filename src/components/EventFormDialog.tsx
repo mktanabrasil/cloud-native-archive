@@ -30,6 +30,7 @@ import { linkPublicoDoEvento, prefixoDoLinkPublico, proximoSlug } from '@/lib/ev
 import { descreverErroDeGravacao } from '@/lib/events/mensagemDeErro';
 import { contar, erroDeLimite, type CampoComLimite } from '@/lib/events/limites';
 import { apagarDoBalde, urlsDeArquivosDoEvento, urlsQueSairam, CAMPOS_DE_IMAGEM } from '@/lib/events/anexos';
+import { apagarRascunho, chaveDoRascunho, guardarRascunho, lerRascunho, quandoFoiGuardado, rascunhoDiferente, type Rascunho } from '@/lib/events/rascunho';
 import { tituloEmTexto } from '@/lib/events/titulo';
 import { FROTA, TETO_DA_FROTA, apoiosPossiveis, errosDeTransporte, motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
 import { estadoDaCobertura } from '@/lib/events/cobertura';
@@ -190,7 +191,16 @@ const emptyEvent = (): Partial<AppEvent> => ({
 export default function EventFormDialog({ open, onOpenChange, event, revisao = false }: Props) {
   const { addEvent, updateEvent, detectConflicts, setSelectedEvent, events } = useApp();
   const { userName, unit, isAdmin, isMarketing } = useUserRole();
+  const { user } = useAuth();
   const [form, setForm] = useState<Partial<AppEvent>>(emptyEvent());
+  /**
+   * Rascunho guardado no aparelho (22/09/2026). `rascunho` é o que foi
+   * encontrado ao abrir e ainda não foi retomado nem descartado; a faixa no
+   * topo oferece os dois. Enquanto o formulário está aberto e mexido, cada
+   * mudança é guardada com um atraso curto.
+   */
+  const chaveDoRascunhoAtual = chaveDoRascunho(user?.id, event?.id);
+  const [rascunho, setRascunho] = useState<Rascunho | null>(null);
   const [conflicts, setConflicts] = useState<AppEvent[]>([]);
   const [showConflictAlert, setShowConflictAlert] = useState(false);
   const [showBannerWarning, setShowBannerWarning] = useState(false);
@@ -361,6 +371,10 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       setOutroLocal(false);
     }
     setConfirmarSaida(false);
+    // Há rascunho deste evento (ou de um novo) neste aparelho? Oferece, sem
+    // aplicar sozinho: a pessoa pode ter mudado de ideia.
+    const guardado = lerRascunho(chaveDoRascunho(user?.id, event?.id));
+    setRascunho(rascunhoDiferente(guardado, JSON.parse(inicialRef.current || '{}') as Partial<AppEvent>) ? guardado : null);
     // Ao editar um evento que já possui slug, preserva o valor existente.
     setSlugMode(event?.slug ? 'custom' : 'auto');
     setShowSlugPrompt(false);
@@ -399,6 +413,26 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
   /** Algo mudou desde que abriu. */
   const mexido = camposMexidosLista().length > 0;
 
+  // Autosave do rascunho: 600 ms depois da última mudança, enquanto aberto e
+  // mexido. Sem mexer, nada é gravado — abrir e fechar não deixa rastro.
+  useEffect(() => {
+    if (!open || !mexido || salvando) return;
+    const t = setTimeout(() => guardarRascunho(chaveDoRascunhoAtual, form), 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, open, mexido, salvando, chaveDoRascunhoAtual]);
+
+  const retomarRascunho = () => {
+    if (!rascunho) return;
+    setForm(rascunho.form);
+    setOutroLocal(!!rascunho.form.location && !localFixo(rascunho.form.location));
+    setRascunho(null);
+  };
+  const descartarRascunho = () => {
+    apagarRascunho(chaveDoRascunhoAtual);
+    setRascunho(null);
+  };
+
   /** Quantos campos diferem do que estava ao abrir — para a pergunta dizer o tamanho da perda. */
   const camposMexidos = (): number => camposMexidosLista().length;
 
@@ -424,6 +458,17 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     setConfirmarSaida(false);
     const novos = urlsQueSairam(form, event);
     if (novos.length > 0) void apagarDoBalde(novos);
+    apagarRascunho(chaveDoRascunhoAtual);
+    onOpenChange(false);
+  };
+
+  /**
+   * Sair guardando: o rascunho já está no aparelho pelo autosave; aqui só se
+   * garante a última versão e fecha. Ao reabrir, a faixa oferece retomar.
+   */
+  const sairGuardando = () => {
+    setConfirmarSaida(false);
+    guardarRascunho(chaveDoRascunhoAtual, form);
     onOpenChange(false);
   };
 
@@ -682,6 +727,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
 
     setSalvando(false);
     setSelectedEvent(null);
+    // Gravou: o rascunho deste evento não tem mais razão de existir.
+    apagarRascunho(chaveDoRascunhoAtual);
     onOpenChange(false);
   };
 
@@ -847,6 +894,18 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   </div>
                 )}
 
+                {rascunho && (
+                  <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50/70 p-3 dark:bg-amber-950/30" data-testid="faixa-rascunho">
+                    <Clock className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+                    <p className="flex-1 min-w-[200px] text-sm">
+                      <b>Você tem um rascunho</b>{rascunho.form.title?.trim() ? ` de “${tituloEmTexto(rascunho.form.title)}”` : ''}, guardado {quandoFoiGuardado(rascunho.em)} neste aparelho.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button type="button" size="sm" onClick={retomarRascunho}>Retomar</Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={descartarRascunho}>Descartar</Button>
+                    </div>
+                  </div>
+                )}
                 <CabecalhoDeSecao n={1} titulo="O evento" sub="título, unidade, quando e onde" />
                 <div id="campo-title">
                   <Label htmlFor="evento-titulo" className="text-sm font-semibold mb-1.5 block">Título *</Label>
@@ -1604,6 +1663,18 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                           />
                           <p className="text-[11px] text-muted-foreground mt-1">O que já está pronto, para o marketing não refazer.</p>
                         </div>
+
+                        {/* Anexos moram no pedido ao marketing (22/09/2026): é para o
+                            marketing que a gestora manda ofício, lista, referência de
+                            arte. Sem limite de tamanho por arquivo. */}
+                        <div className="pt-2 border-t border-blue-100" data-testid="anexos-do-marketing">
+                          <FileUpload
+                            mode="multiple"
+                            label="Anexos para o marketing"
+                            attachments={form.attachments || []}
+                            onChange={(lista) => setForm({ ...form, attachments: lista as AppEvent['attachments'] })}
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
@@ -1787,7 +1858,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     );
                   })()}
                 </div>
-                <CabecalhoDeSecao n={4} titulo="Parcerias, observações e anexos" />
+                <CabecalhoDeSecao n={4} titulo="Parcerias e observações" />
                 <div className="space-y-4">
                   <Label htmlFor="evento-notas" className="text-sm font-semibold mb-1.5 block">Algo mais que a administração precisa saber? <span className="font-normal text-muted-foreground">(só a equipe vê)</span></Label>
                   <Textarea id="evento-notas" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Combinados, pedidos especiais, contexto…" rows={2} />
@@ -1960,14 +2031,18 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   </div>
                 )}
 
-                {/* Um rótulo só: o de dentro. Antes "Anexos" aparecia duas vezes. */}
-                <div className="rounded-lg border border-border p-3">
-                  <FileUpload
-                    mode="multiple"
-                    attachments={form.attachments || []}
-                    onChange={(lista) => setForm({ ...form, attachments: lista as AppEvent['attachments'] })}
-                  />
-                </div>
+                {/* Os anexos foram para dentro do pedido ao marketing (22/09/2026).
+                    Um evento antigo com anexos e sem pedido ainda os mostra aqui,
+                    para nada sumir da tela. */}
+                {!form.marketing_request && (form.attachments || []).length > 0 && (
+                  <div className="rounded-lg border border-border p-3" data-testid="anexos-legado">
+                    <FileUpload
+                      mode="multiple"
+                      attachments={form.attachments || []}
+                      onChange={(lista) => setForm({ ...form, attachments: lista as AppEvent['attachments'] })}
+                    />
+                  </div>
+                )}
               </div>
             )}
             
@@ -2135,15 +2210,18 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 const titulo = form.title?.trim();
                 const oque = titulo ? ` de “${titulo}”` : '';
                 return isEditing
-                  ? `Você alterou ${n} ${n === 1 ? 'campo' : 'campos'}${oque}. Se sair agora, o evento fica como estava.`
-                  : `Você preencheu ${n} ${n === 1 ? 'campo' : 'campos'}${oque}. Se sair agora, isso se perde.`;
+                  ? `Você alterou ${n} ${n === 1 ? 'campo' : 'campos'}${oque}. O evento fica como estava; o que você mexeu pode ficar guardado como rascunho neste aparelho.`
+                  : `Você preencheu ${n} ${n === 1 ? 'campo' : 'campos'}${oque}. Dá para guardar como rascunho neste aparelho e continuar depois.`;
               })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
             <AlertDialogCancel>Continuar editando</AlertDialogCancel>
+            <AlertDialogAction onClick={sairGuardando} data-testid="sair-guardando">
+              Guardar rascunho e sair
+            </AlertDialogAction>
             <AlertDialogAction onClick={descartar} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Descartar
+              Descartar tudo
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

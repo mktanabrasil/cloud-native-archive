@@ -72,8 +72,9 @@ describe('categoriaDoAnexo e tamanho', () => {
 });
 
 describe('motivoDeRecusa', () => {
-  it('recusa acima de 10 MB e tipo desconhecido; aceita PDF e imagem', () => {
-    expect(motivoDeRecusa({ name: 'video.mp4', size: 11 * 1024 * 1024, type: 'video/mp4' })).toMatch(/limite é 10 MB/);
+  it('não recusa por tamanho (22/09/2026); recusa tipo desconhecido; aceita PDF e imagem', () => {
+    expect(motivoDeRecusa({ name: 'oficio-grande.pdf', size: 200 * 1024 * 1024, type: 'application/pdf' })).toBeNull();
+    expect(motivoDeRecusa({ name: 'video.mp4', size: 11 * 1024 * 1024, type: 'video/mp4' })).toMatch(/não é PDF/);
     expect(motivoDeRecusa({ name: 'x.zip', size: 10, type: 'application/zip' })).toMatch(/não é PDF/);
     expect(motivoDeRecusa({ name: 'oficio.pdf', size: 10, type: 'application/pdf' })).toBeNull();
     expect(motivoDeRecusa({ name: 'foto.jpg', size: 10, type: 'image/jpeg' })).toBeNull();
