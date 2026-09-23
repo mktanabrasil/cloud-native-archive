@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { afterEach, vi } from 'vitest';
 import type { AppEvent } from '@/types';
 import { gerarChecklistPdf } from './checklistPdf';
 import { montarChecklist } from './checklist';
@@ -58,6 +59,39 @@ describe('gerarChecklistPdf', () => {
     if (pasta) {
       mkdirSync(pasta, { recursive: true });
       writeFileSync(`${pasta}/${r.nome}`, Buffer.from(r.bytes!));
+    }
+  });
+
+  it('sem os arquivos da fonte, sai em Helvetica em vez de falhar', async () => {
+    const r = await gerarChecklistPdf(festa, montarChecklist(festa), false);
+    expect(r.fonte).toBe('helvetica');
+  });
+
+  it('com os arquivos em public/fontes, embute a Poppins nos dois pesos', async () => {
+    // O jsdom não serve arquivos: aqui o fetch lê direto de public/.
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (url: string | URL | Request) => {
+      const caminho = String(url);
+      const local = caminho.startsWith('/') ? `public${caminho}` : null;
+      if (!local) return new Response(null, { status: 404 });
+      try {
+        const bytes = readFileSync(local);
+        return new Response(bytes, { status: 200, headers: { 'content-type': caminho.endsWith('.png') ? 'image/png' : 'font/ttf' } });
+      } catch {
+        return new Response(null, { status: 404 });
+      }
+    }) as typeof fetch;
+    try {
+      const r = await gerarChecklistPdf(festa, montarChecklist(festa), false);
+      expect(r.fonte).toBe('Poppins');
+      expect(r.paginas).toBe(1);
+      // A fonte embutida pesa (o PDF só com Helvetica tem ~5 KB), mas comprimida e com subconjunto fica em dezenas de KB, não centenas.
+      expect(r.bytes!.byteLength).toBeGreaterThan(20_000);
+      expect(r.bytes!.byteLength).toBeLessThan(200_000);
+      const pasta = process.env.CHECKLIST_PDF_SAIDA;
+      if (pasta) writeFileSync(`${pasta}/poppins-${r.nome}`, Buffer.from(r.bytes!));
+    } finally {
+      globalThis.fetch = original;
     }
   });
 

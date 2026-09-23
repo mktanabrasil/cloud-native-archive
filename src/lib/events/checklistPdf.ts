@@ -14,8 +14,10 @@ import { tituloEmTexto } from './titulo';
  * rodapé**: ele pediu para tirar a de cima.
  *
  * Desenhado com o jsPDF que o Jornal já usa, carregado só na hora (o
- * formulário não paga o peso dele). Fonte Helvetica, a do PDF: embutir a
- * Poppins custaria ~150 KB por download para um checklist de parede.
+ * formulário não paga o peso dele). Fonte Poppins, a da identidade: os dois
+ * pesos (Regular e Bold, ~300 KB, licença OFL em `public/fontes/`) são
+ * baixados só quando o PDF é gerado e embutidos nele. Se não der para
+ * baixar, sai em Helvetica em vez de falhar.
  * Se a lista passar da folha, continua numa segunda, com o mesmo rodapé.
  */
 
@@ -48,6 +50,36 @@ async function carregarLogo(): Promise<string | null> {
   }
 }
 
+/** Um arquivo público em base64, ou null se não deu para baixar. */
+async function baixarBase64(caminho: string): Promise<string | null> {
+  try {
+    const r = await fetch(caminho);
+    if (!r.ok) return null;
+    const bytes = new Uint8Array(await r.arrayBuffer());
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  } catch {
+    return null;
+  }
+}
+
+export const FONTES_POPPINS = { normal: '/fontes/poppins-regular.ttf', bold: '/fontes/poppins-bold.ttf' };
+
+/**
+ * Registra a Poppins no PDF e devolve o nome da fonte a usar. Sem os dois
+ * arquivos, fica a Helvetica do próprio PDF.
+ */
+async function registrarPoppins(pdf: { addFileToVFS: (n: string, d: string) => unknown; addFont: (f: string, n: string, e: string) => unknown }): Promise<'Poppins' | 'helvetica'> {
+  const [normal, bold] = await Promise.all([baixarBase64(FONTES_POPPINS.normal), baixarBase64(FONTES_POPPINS.bold)]);
+  if (!normal || !bold) return 'helvetica';
+  pdf.addFileToVFS('Poppins-Regular.ttf', normal);
+  pdf.addFont('Poppins-Regular.ttf', 'Poppins', 'normal');
+  pdf.addFileToVFS('Poppins-Bold.ttf', bold);
+  pdf.addFont('Poppins-Bold.ttf', 'Poppins', 'bold');
+  return 'Poppins';
+}
+
 /** "Sábado, 27 de setembro de 2026 · 14:00 às 18:00 · Unidade Nilópolis · R. Ana… · Responsável: Carla" */
 export function linhaDoEvento(e: Partial<AppEvent>): string {
   const partes: string[] = [];
@@ -74,10 +106,11 @@ export async function gerarChecklistPdf(
   e: Partial<AppEvent>,
   checklist: Checklist = montarChecklist(e),
   salvar = true,
-): Promise<{ nome: string; paginas: number; bytes?: ArrayBuffer }> {
+): Promise<{ nome: string; paginas: number; fonte: 'Poppins' | 'helvetica'; bytes?: ArrayBuffer }> {
   const { default: JsPDF } = await import('jspdf');
-  const pdf = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const logo = await carregarLogo();
+  // `compress`: a fonte embutida é o que pesa; comprimida, o PDF cai de ~1 MB para uma fração.
+  const pdf = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+  const [logo, fonte] = await Promise.all([carregarLogo(), registrarPoppins(pdf)]);
   const geradoEm = new Date().toLocaleDateString('pt-BR');
 
   const rodape = (pagina: number, total: number) => {
@@ -87,11 +120,17 @@ export async function gerarChecklistPdf(
       pdf.setFillColor(...hex(cor));
       pdf.rect(i * larguraFaixa, ALTURA - 4, larguraFaixa + 0.2, 4, 'F');
     });
-    pdf.setFont('helvetica', 'normal');
+    pdf.setFont(fonte, 'normal');
     pdf.setFontSize(7.5);
     pdf.setTextColor(...hex(CINZA));
-    pdf.text('Gerado pelo app da ANA a partir do que foi preenchido no evento. O que não foi marcado no formulário não aparece.', MARGEM, ALTURA - 9);
-    pdf.text(`app.anabrasil.org · página ${pagina} de ${total}`, LARGURA - MARGEM, ALTURA - 9, { align: 'right' });
+    // A nota à esquerda quebra em até duas linhas para nunca invadir o
+    // "página N de M" à direita (com a Poppins, mais larga, invadia).
+    const nota = pdf.splitTextToSize(
+      'Gerado pelo app da ANA a partir do que foi preenchido no evento. O que não foi marcado no formulário não aparece.',
+      LARGURA - MARGEM * 2 - 48,
+    ) as string[];
+    pdf.text(nota, MARGEM, ALTURA - 12);
+    pdf.text(`app.anabrasil.org · página ${pagina} de ${total}`, LARGURA - MARGEM, ALTURA - 12, { align: 'right' });
   };
 
   const cabecalho = () => {
@@ -100,11 +139,11 @@ export async function gerarChecklistPdf(
       pdf.addImage(logo, 'PNG', MARGEM, MARGEM - 2, 8, 8);
       x += 10;
     }
-    pdf.setFont('helvetica', 'bold');
+    pdf.setFont(fonte, 'bold');
     pdf.setFontSize(12);
     pdf.setTextColor(...hex(GRAFITE));
     pdf.text('anabrasil', x, MARGEM + 4);
-    pdf.setFont('helvetica', 'normal');
+    pdf.setFont(fonte, 'normal');
     pdf.setFontSize(8);
     pdf.setTextColor(...hex(CINZA));
     pdf.text(`Checklist do evento · gerado em ${geradoEm}`, LARGURA - MARGEM, MARGEM + 4, { align: 'right' });
@@ -113,13 +152,13 @@ export async function gerarChecklistPdf(
   // Primeira página: cabeçalho, título, linha do evento.
   cabecalho();
   let y = MARGEM + 16;
-  pdf.setFont('helvetica', 'bold');
+  pdf.setFont(fonte, 'bold');
   pdf.setFontSize(20);
   pdf.setTextColor(...hex(GRAFITE));
   const titulo = pdf.splitTextToSize(tituloEmTexto(e.title || 'Evento'), LARGURA - MARGEM * 2) as string[];
   pdf.text(titulo, MARGEM, y);
   y += titulo.length * 8 + 1;
-  pdf.setFont('helvetica', 'normal');
+  pdf.setFont(fonte, 'normal');
   pdf.setFontSize(9);
   pdf.setTextColor(...hex(CINZA));
   const meta = pdf.splitTextToSize(linhaDoEvento(e), LARGURA - MARGEM * 2) as string[];
@@ -142,7 +181,7 @@ export async function gerarChecklistPdf(
   const desenharColuna = (n: number, coluna: { titulo: string; itens: string[] }, yInicial: number) => {
     const x = MARGEM + n * (larguraColuna + espaco);
     let yy = yInicial;
-    pdf.setFont('helvetica', 'bold');
+    pdf.setFont(fonte, 'bold');
     pdf.setFontSize(10);
     pdf.setTextColor(...hex(GRAFITE));
     pdf.text(coluna.titulo.toUpperCase(), x, yy);
@@ -151,7 +190,7 @@ export async function gerarChecklistPdf(
     pdf.setLineWidth(0.8);
     pdf.line(x, yy, x + larguraColuna, yy);
     yy += 5;
-    pdf.setFont('helvetica', 'normal');
+    pdf.setFont(fonte, 'normal');
     pdf.setFontSize(9);
     if (coluna.itens.length === 0) {
       pdf.setTextColor(...hex(CINZA));
@@ -196,8 +235,8 @@ export async function gerarChecklistPdf(
   const nome = nomeDoArquivo(e);
   if (salvar) {
     pdf.save(nome);
-    return { nome, paginas: total };
+    return { nome, paginas: total, fonte };
   }
   // Sem salvar (teste): os bytes, para conferir o desenho.
-  return { nome, paginas: total, bytes: pdf.output('arraybuffer') };
+  return { nome, paginas: total, fonte, bytes: pdf.output('arraybuffer') };
 }
