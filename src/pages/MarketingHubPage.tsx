@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { History, BookOpen, FileSearch, LayoutDashboard, Lock } from 'lucide-react';
+import { History, BookOpen, FileSearch, LayoutDashboard, Lock, BarChart3 } from 'lucide-react';
+import EnquetesPage from '@/pages/EnquetesPage';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import AuditPage from '@/pages/AuditPage';
@@ -12,6 +13,7 @@ const tabs = [
   { value: 'design-manual', label: 'Manual Design', icon: BookOpen, Component: DesignManualPage },
   { value: 'transparencia', label: 'Portal Transparência', icon: FileSearch, Component: TransparencyPage },
   { value: 'widgets', label: 'Widgets', icon: LayoutDashboard, Component: AdminToolboxPage },
+  { value: 'enquetes', label: 'Enquetes', icon: BarChart3, Component: EnquetesPage },
 ];
 
 export default function MarketingHubPage() {
