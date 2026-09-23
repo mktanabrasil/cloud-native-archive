@@ -27,6 +27,8 @@ import EventsHubPage from "./pages/EventsHubPage";
 import TransparencyPage from "./pages/TransparencyPage";
 import MercadoSolidarioPage from "./pages/MercadoSolidarioPage";
 import MercadoSolidarioPublicPage from "./pages/MercadoSolidarioPublicPage";
+import EnquetePublicaPage from "./pages/EnquetePublicaPage";
+import EnqueteResultadoPage from "./pages/EnqueteResultadoPage";
 import TransparencyPublicPage from "./pages/TransparencyPublicPage";
 import NotFound from "./pages/NotFound";
 import EmailPreview from "./pages/EmailPreview";
@@ -118,6 +120,10 @@ const App = () => (
                 <Route path="/email-preview" element={<EmailPreview />} />
                 <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
                 <Route path="/mercado-solidario-publico" element={<MercadoSolidarioPublicPage />} />
+                {/* Enquetes (23/09/2026): votar e acompanhar são públicos, fora
+                    da barra do app, como a vitrine embutida. */}
+                <Route path="/enquete/:slug" element={<EnquetePublicaPage />} />
+                <Route path="/enquete/:slug/resultado" element={<EnqueteResultadoPage />} />
                 <Route path="/portal-transparencia-publico" element={<TransparencyPublicPage />} />
                 <Route element={<AppLayout />}>
                   <Route path="/" element={<EventsHubPage />} />

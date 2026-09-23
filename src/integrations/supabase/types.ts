@@ -677,6 +677,63 @@ export type Database = {
         }
         Relationships: []
       }
+      enquetes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          criada_por: string
+          deleted_at: string | null
+          dias: Json
+          encerra_em: string | null
+          encerrada_em: string | null
+          id: string
+          identificar: boolean
+          mostrar_resultado: boolean
+          opcoes: Json
+          pergunta: string
+          permitir_troca: boolean
+          slug: string
+          texto: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          criada_por?: string
+          deleted_at?: string | null
+          dias?: Json
+          encerra_em?: string | null
+          encerrada_em?: string | null
+          id?: string
+          identificar?: boolean
+          mostrar_resultado?: boolean
+          opcoes: Json
+          pergunta: string
+          permitir_troca?: boolean
+          slug: string
+          texto?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          criada_por?: string
+          deleted_at?: string | null
+          dias?: Json
+          encerra_em?: string | null
+          encerrada_em?: string | null
+          id?: string
+          identificar?: boolean
+          mostrar_resultado?: boolean
+          opcoes?: Json
+          pergunta?: string
+          permitir_troca?: boolean
+          slug?: string
+          texto?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tutoriais_vistos: {
         Row: {
           percurso: string
@@ -692,6 +749,45 @@ export type Database = {
           percurso?: string
           user_id?: string
           visto_em?: string
+        }
+        Relationships: []
+      }
+      votos_de_enquete: {
+        Row: {
+          alterado_em: string | null
+          enquete_id: string
+          erros: number
+          id: string
+          nome: string
+          opcao_id: string
+          pin_hash: string | null
+          telefone: string
+          travado_ate: string | null
+          votado_em: string
+        }
+        Insert: {
+          alterado_em?: string | null
+          enquete_id: string
+          erros?: number
+          id?: string
+          nome?: string
+          opcao_id: string
+          pin_hash?: string | null
+          telefone: string
+          travado_ate?: string | null
+          votado_em?: string
+        }
+        Update: {
+          alterado_em?: string | null
+          enquete_id?: string
+          erros?: number
+          id?: string
+          nome?: string
+          opcao_id?: string
+          pin_hash?: string | null
+          telefone?: string
+          travado_ate?: string | null
+          votado_em?: string
         }
         Relationships: []
       }
@@ -783,6 +879,9 @@ export type Database = {
         Args: { _unit: string; _user_id: string }
         Returns: boolean
       }
+      enquete_resultado: { Args: { p_slug: string; p_acompanhamento?: boolean }; Returns: Json }
+      meu_voto_na_enquete: { Args: { p_slug: string; p_telefone: string; p_pin: string }; Returns: Json }
+      votar_enquete: { Args: { p_slug: string; p_opcao_id: string; p_telefone: string; p_nome: string; p_pin: string }; Returns: Json }
       is_marketing_user: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
