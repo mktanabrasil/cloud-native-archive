@@ -2242,8 +2242,10 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
               })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
-            <AlertDialogCancel>Continuar editando</AlertDialogCancel>
+          {/* Três botões com rótulos longos: em fila eles vazavam do diálogo
+              (print de 23/09/2026). Agora a fila quebra quando não cabe. */}
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end sm:space-x-0">
+            <AlertDialogCancel className="mt-0">Continuar editando</AlertDialogCancel>
             <AlertDialogAction onClick={sairGuardando} data-testid="sair-guardando">
               Guardar rascunho e sair
             </AlertDialogAction>
