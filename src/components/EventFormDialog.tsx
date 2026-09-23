@@ -2242,16 +2242,18 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
               })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {/* Três botões com rótulos longos: em fila eles vazavam do diálogo
-              (print de 23/09/2026). Agora a fila quebra quando não cabe. */}
-          <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end sm:space-x-0">
-            <AlertDialogCancel className="mt-0">Continuar editando</AlertDialogCancel>
-            <AlertDialogAction onClick={sairGuardando} data-testid="sair-guardando">
+          {/* Três botões com rótulos longos não cabem numa fila: vazavam do
+              diálogo, e quebrando a linha ficavam tortos (prints de 23/09/2026).
+              Em coluna, largura cheia, do mais ao menos importante: guardar,
+              descartar, continuar. Mesmo desenho em qualquer largura. */}
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col sm:space-x-0">
+            <AlertDialogAction onClick={sairGuardando} data-testid="sair-guardando" className="w-full">
               Guardar rascunho e sair
             </AlertDialogAction>
-            <AlertDialogAction onClick={descartar} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={descartar} className="w-full bg-transparent border border-destructive/40 text-destructive hover:bg-destructive/10">
               Descartar tudo
             </AlertDialogAction>
+            <AlertDialogCancel className="mt-0 w-full border-0 shadow-none hover:bg-muted">Continuar editando</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
