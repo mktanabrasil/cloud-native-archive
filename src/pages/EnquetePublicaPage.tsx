@@ -111,7 +111,10 @@ export default function EnquetePublicaPage() {
       toast.success(r.trocou ? 'Voto trocado' : 'Voto registrado', { description: opcao.titulo });
       await atualizarResultado();
     } catch (erro) {
-      setErroForm(erro instanceof Error ? erro.message : 'Não deu para registrar. Tente de novo.');
+      // O erro do banco vem como objeto com `message`, não como Error: mostrar
+      // a causa poupa uma rodada de adivinhação (23/09/2026).
+      const msg = erro instanceof Error ? erro.message : (erro as { message?: string } | null)?.message;
+      setErroForm(msg ? `Não deu para registrar: ${msg}` : 'Não deu para registrar. Tente de novo.');
     } finally {
       setEnviando(false);
     }
