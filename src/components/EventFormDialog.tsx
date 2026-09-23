@@ -26,6 +26,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { OPCOES_COMIDA, OPCOES_EQUIP, OUTRO, comDetalhe, itensDeTexto, limparItens, pistaDoEstoque, sincronizarItens } from '@/lib/events/itens';
 import { alimentosDe, cardapioDe, comAlimentos, comCardapio, resumoDaRefeicao } from '@/lib/events/alimentos';
 import { TabelaDeAlimentos } from './events/TabelaDeAlimentos';
+import { PedidoDeArte } from './events/PedidoDeArte';
+import { PEDIDO_VAZIO, comPedidoDeArte, errosDoPedidoDeArte, itensAntigosDeArte, lerPedidoDeArte, limparPedidoDeArte, temArte } from '@/lib/events/arte';
 import { TituloDoEvento } from './events/TituloDoEvento';
 import { paraCampoDataHora, fraseDoFuso } from '@/lib/events/horaLocal';
 import { LOCAIS_FIXOS, OUTRO_LOCAL, localAoTrocarUnidade, localDaUnidade, localFixo, opcaoDoLocal } from '@/lib/events/local';
@@ -221,6 +223,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
    * também é o que um evento novo tem antes de a unidade sugerir algo.
    */
   const [outroLocal, setOutroLocal] = useState(false);
+  /** "Arte ou material impresso" ligado. Mora aqui porque o pedido pode estar aberto e ainda vazio. */
+  const [arteAberta, setArteAberta] = useState(false);
   const [slugMode, setSlugMode] = useState<'auto' | 'custom'>('auto');
   const [showSlugPrompt, setShowSlugPrompt] = useState(false);
   const [autoSlugPreview, setAutoSlugPreview] = useState('');
@@ -359,6 +363,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       inicialRef.current = JSON.stringify(aberto);
       // Evento antigo com texto livre abre em "Outro local", com o texto.
       setOutroLocal(!!event.location && !localFixo(event.location));
+      setArteAberta(temArte(event.marketing_items));
     } else {
       const unidade = (unit as Unit) || 'DIC';
       // O local já vem sugerido pela unidade; a pessoa só mexe se for fora.
@@ -372,6 +377,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       setForm(vazio);
       inicialRef.current = JSON.stringify(vazio);
       setOutroLocal(false);
+      setArteAberta(false);
     }
     setConfirmarSaida(false);
     // Há rascunho deste evento (ou de um novo) neste aparelho? Oferece, sem
@@ -429,6 +435,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     if (!rascunho) return;
     setForm(rascunho.form);
     setOutroLocal(!!rascunho.form.location && !localFixo(rascunho.form.location));
+    setArteAberta(temArte(rascunho.form.marketing_items));
     setRascunho(null);
   };
   const descartarRascunho = () => {
@@ -534,12 +541,14 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     // Condicional para marketing
     if (form.marketing_request) {
       const hasCoverage = form.marketing_coverage;
-      const hasGraphics = (form.marketing_items || []).some(i => i.type === 'demanda_grafica');
-      
+      const hasGraphics = arteAberta || temArte(form.marketing_items);
+
       if (!hasCoverage && !hasGraphics) {
         errs.marketing_items = 'Marque o que precisa: fotos e vídeo, arte ou impresso — ou desligue o pedido';
-      } else if (hasGraphics && (form.marketing_items || []).filter(i => i.type === 'demanda_grafica').some(item => !item.item.trim())) {
-        errs.marketing_items = 'Preencha todos os campos das demandas gráficas';
+      } else {
+        // O pedido novo precisa dizer o que é; um pedido antigo já diz.
+        const erroDaArte = errosDoPedidoDeArte(lerPedidoDeArte(form.marketing_items), arteAberta && itensAntigosDeArte(form.marketing_items).length === 0);
+        if (erroDaArte) errs.marketing_items = erroDaArte;
       }
     }
 
@@ -643,7 +652,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       // em 04/09/2026) e não havia campo. A coluna fica no banco até um DROP.
       printed_materials: form.printed_materials?.trim() || '',
       equipment_needed: normalizarOpcoes(form.equipment_needed),
-      marketing_items: form.marketing_items || [],
+      marketing_items: limparPedidoDeArte(form.marketing_items),
       marketing_coverage: form.marketing_coverage || false,
       // A resposta só faz sentido com pedido de cobertura; sem ele, volta a nulo.
       marketing_confirmed: form.marketing_request && form.marketing_coverage ? (form.marketing_confirmed ?? null) : null,
@@ -1599,73 +1608,45 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                           <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 shadow-sm">
                             <Switch
                               id="marketing_grafica"
-                              checked={(form.marketing_items || []).some(i => i.type === 'demanda_grafica')}
+                              checked={arteAberta}
                               onCheckedChange={v => {
-                                const current = form.marketing_items || [];
-                                if (v) {
-                                  setForm({ ...form, marketing_items: [...current, { type: 'demanda_grafica', item: '', description: '' }] });
-                                } else {
-                                  setForm({ ...form, marketing_items: current.filter(i => i.type !== 'demanda_grafica') });
-                                }
+                                setArteAberta(v);
+                                // Desligar tira o pedido novo; os pedidos antigos ficam,
+                                // porque foram escritos por alguém e o marketing os leu.
+                                if (!v) setForm({ ...form, marketing_items: comPedidoDeArte(form.marketing_items, PEDIDO_VAZIO) });
                               }}
                             />
                             <Label htmlFor="marketing_grafica" className="cursor-pointer flex-1 text-sm font-medium text-blue-900">Arte ou material impresso</Label>
                           </div>
 
-                          {(form.marketing_items || []).filter(i => i.type === 'demanda_grafica').map((item, idx) => {
-                            const originalIdx = (form.marketing_items || []).findIndex(mi => mi === item);
-                            return (
-                              <div key={`grafica-${idx}`} className="space-y-2 p-3 bg-card rounded-md border border-border shadow-sm animate-in fade-in slide-in-from-top-1">
-                                <div className="flex items-center gap-2">
-                                  <Input 
-                                    value={item.item} 
-                                    onChange={e => {
-                                      const updated = [...(form.marketing_items || [])];
-                                      updated[originalIdx] = { ...updated[originalIdx], item: e.target.value };
-                                      setForm({ ...form, marketing_items: updated });
-                                    }} 
-                                    placeholder="Ex.: post para o Instagram, cartaz, convite…" 
-                                    className="flex-1 bg-background border-border focus-visible:ring-ring h-8 text-sm"
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="shrink-0 h-8 w-8 text-blue-400 hover:text-blue-600 hover:bg-blue-50"
-                                    onClick={() => {
-                                      const updated = (form.marketing_items || []).filter((_, i) => i !== originalIdx);
-                                      setForm({ ...form, marketing_items: updated });
-                                    }}
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                                <Textarea 
-                                  value={item.description} 
-                                  onChange={e => {
-                                    const updated = [...(form.marketing_items || [])];
-                                    updated[originalIdx] = { ...updated[originalIdx], description: e.target.value };
-                                    setForm({ ...form, marketing_items: updated });
-                                  }} 
-                                  placeholder="Tamanho, texto, prazo…" 
-                                  rows={2}
-                                  className="bg-muted/50 border-blue-100 focus-visible:ring-blue-500 text-xs"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="w-full h-7 text-[10px] text-blue-600 hover:bg-blue-50 gap-1"
-                                  onClick={() => setForm({ 
-                                    ...form, 
-                                    marketing_items: [...(form.marketing_items || []), { type: 'demanda_grafica', item: '', description: '' }] 
-                                  })}
-                                >
-                                  <Plus className="h-3 w-3" /> Adicionar outro material
-                                </Button>
+                          {/* O pedido de verdade (22/09/2026): duas escolhas, legenda,
+                              o que vai na arte, quantos cartazes. */}
+                          {arteAberta && (
+                            <PedidoDeArte
+                              pedido={lerPedidoDeArte(form.marketing_items)}
+                              onChange={p => setForm({ ...form, marketing_items: comPedidoDeArte(form.marketing_items, p) })}
+                            />
+                          )}
+
+                          {/* Pedidos do modelo antigo: legíveis e apagáveis, não editáveis. */}
+                          {itensAntigosDeArte(form.marketing_items).map((item, idx) => (
+                            <div key={`antigo-${idx}`} className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-xs" data-testid="arte-pedido-antigo">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-muted-foreground">Arte (pedido antigo) · {item.item}</p>
+                                {item.description && <p className="whitespace-pre-wrap text-foreground">{item.description}</p>}
                               </div>
-                            );
-                          })}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                                aria-label="Remover pedido antigo"
+                                onClick={() => setForm({ ...form, marketing_items: (form.marketing_items || []).filter(i => i !== item) })}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ))}
                         </div>
                         {errors.marketing_items && <p className="mt-1 text-xs text-destructive">{errors.marketing_items}</p>}
 
