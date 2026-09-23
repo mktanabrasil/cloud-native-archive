@@ -675,6 +675,27 @@ describe('os combinados da cobertura', () => {
   });
 });
 
+describe('o pop-up com o checklist (22/09/2026)', () => {
+  it('depois de criar, o formulário fecha e o pop-up oferece o checklist com o resumo do que foi preenchido', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    preencher(); // liga Lanche e Som
+
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
+    await waitFor(() => expect(fechou).toHaveBeenCalledWith(false));
+
+    const popup = await screen.findByTestId('popup-do-checklist');
+    expect(popup).toHaveTextContent('Evento criado');
+    expect(screen.getByTestId('resumo-do-popup')).toHaveTextContent('Alimentação');
+    expect(screen.getByTestId('resumo-do-popup')).toHaveTextContent('lanche');
+    expect(screen.getByTestId('resumo-do-popup')).toHaveTextContent('Equipamentos');
+    expect(screen.getByRole('button', { name: /baixar checklist do evento/i })).toBeInTheDocument();
+
+    fireEvent.click(within(popup).getAllByRole('button', { name: /^fechar$/i }).find(b => b.textContent === 'Fechar')!);
+    await waitFor(() => expect(screen.queryByTestId('popup-do-checklist')).not.toBeInTheDocument());
+  });
+});
+
 describe('o pedido de arte (22/09/2026)', () => {
   const ligarPedido = () => {
     fireEvent.click(screen.getByRole('switch', { name: /pedido ao marketing/i }));
