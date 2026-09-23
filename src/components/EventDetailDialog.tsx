@@ -15,6 +15,8 @@ import { ResumoDeItens } from './events/ResumoDeItens';
 import { TextoComLinks } from './events/TextoComLinks';
 import { TituloDoEvento } from './events/TituloDoEvento';
 import { CapaDaUnidade } from './events/CapaDaUnidade';
+import { ResumoDoPedidoDeArte } from './events/ResumoDoPedidoDeArte';
+import { temArte } from '@/lib/events/arte';
 import { tituloEmTexto } from '@/lib/events/titulo';
 import { textoDaData, textoDoHorario } from '@/lib/events/periodo';
 import { jaAconteceu } from '@/lib/events/proximosEPassados';
@@ -296,16 +298,11 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
                         )}
 
                         {/* Demanda Gráfica */}
-                        {event.marketing_items.some(i => i.type === 'demanda_grafica') && (
+                        {temArte(event.marketing_items) && (
                           <div className="space-y-3">
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Arte ou material impresso</p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {event.marketing_items.filter(i => i.type === 'demanda_grafica').map((item, idx) => (
-                                <div key={idx} className="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
-                                  <p className="text-xs font-bold text-indigo-700 uppercase tracking-tighter mb-1">{item.item}</p>
-                                  <p className="text-indigo-900 text-sm whitespace-pre-wrap leading-relaxed opacity-80">{item.description}</p>
-                                </div>
-                              ))}
+                            <div className="bg-muted/40 rounded-xl p-4 border border-border">
+                              <ResumoDoPedidoDeArte itens={event.marketing_items} />
                             </div>
                           </div>
                         )}

@@ -13,6 +13,7 @@ import { Pencil, Trash2, Megaphone, Users, Paperclip, Globe, Lock, Truck, AlertT
 import { motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
 import { ROTULO_DA_COBERTURA, estadoDaCobertura } from '@/lib/events/cobertura';
 import { ResumoDeItens } from './events/ResumoDeItens';
+import { ResumoDoPedidoDeArte } from './events/ResumoDoPedidoDeArte';
 import { AvisosDoEvento } from './events/AvisosDoEvento';
 
 const unitBadgeColors: Record<Unit, string> = {
@@ -191,16 +192,7 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
                     })()}
                   </div>
                 )}
-                {event.marketing_items && event.marketing_items.length > 0 && (
-                  <div className="space-y-2">
-                    {event.marketing_items.map((item, idx) => (
-                      <div key={idx} className="rounded-lg border border-blue-100 bg-blue-50/30 p-2 text-[11px] text-blue-900">
-                        <p className="font-bold mb-0.5">{item.item}</p>
-                        <p className="whitespace-pre-wrap opacity-80">{item.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <ResumoDoPedidoDeArte itens={event.marketing_items} compacto />
                 {event.printed_materials && (
                   <p className="text-xs text-muted-foreground">
                     Já existe: <span className="font-medium text-foreground break-all">{event.printed_materials}</span>

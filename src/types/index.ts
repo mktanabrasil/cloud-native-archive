@@ -28,6 +28,23 @@ export type PartnerType = 'padrinho' | 'doador' | 'empresa' | 'figura_publica' |
  * Um item de alimentação ou equipamento com o seu detalhe.
  * `outro` marca o texto livre do "Outro"; o nome dele é o que a pessoa escreveu.
  */
+/** Os dois pedidos de arte ao marketing (22/09/2026). */
+export type TipoDeArte = 'arte_whatsapp' | 'cartaz_a4';
+
+/**
+ * Um item do pedido ao marketing. `demanda_grafica` é o modelo antigo (texto
+ * solto em `item` e `description`), legível para sempre. Os tipos de arte
+ * levam legenda, conteúdo e, no cartaz, a quantidade.
+ */
+export interface MarketingItem {
+  type: 'cobertura' | 'demanda_grafica' | TipoDeArte;
+  item: string;
+  description: string;
+  legenda?: string;
+  conteudo?: string;
+  quantidade?: number;
+}
+
 /** Quem fornece um alimento. "ANA" quer dizer: precisamos providenciar. */
 export type Fornecedor = 'ANA' | 'Unidade' | 'Parceiro' | 'Doação';
 
@@ -126,7 +143,7 @@ export interface AppEvent {
   /** Cartaz, folder, lista que já existem: link ou descrição. Editado no bloco de marketing. */
   printed_materials?: string;
   equipment_needed?: string;
-  marketing_items?: Array<{ type: 'cobertura' | 'demanda_grafica'; item: string; description: string }>;
+  marketing_items?: MarketingItem[];
   marketing_coverage?: boolean;
   /**
    * Resposta do admin ao pedido de cobertura: `null` a confirmar, `true`
