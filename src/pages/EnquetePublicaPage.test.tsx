@@ -86,6 +86,13 @@ describe('a página de voto', () => {
     fireEvent.change(screen.getByLabelText(/seu whatsapp/i), { target: { value: '19 99876 5432' } });
     expect((screen.getByLabelText(/seu whatsapp/i) as HTMLInputElement).value).toBe('(19) 99876-5432');
     fireEvent.change(screen.getByLabelText(/crie um pin/i), { target: { value: '2026' } });
+    // Sem repetir o PIN, não vai; repetido errado, também não.
+    fireEvent.click(screen.getByTestId('confirmar-voto'));
+    expect(screen.getByRole('alert')).toHaveTextContent(/não são iguais/i);
+    fireEvent.change(screen.getByLabelText(/repita o pin/i), { target: { value: '2027' } });
+    expect(screen.getByText(/não bateu com o primeiro/i)).toBeInTheDocument();
+    expect(espiao.votos).toHaveLength(0);
+    fireEvent.change(screen.getByLabelText(/repita o pin/i), { target: { value: '2026' } });
     fireEvent.click(screen.getByTestId('confirmar-voto'));
 
     await waitFor(() => expect(espiao.votos).toHaveLength(1));

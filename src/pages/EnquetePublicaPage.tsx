@@ -45,7 +45,7 @@ export default function EnquetePublicaPage() {
   const [escolhida, setEscolhida] = useState<OpcaoDeEnquete | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [agora, setAgora] = useState(() => new Date());
-  const [form, setForm] = useState({ nome: '', telefone: '', pin: '' });
+  const [form, setForm] = useState({ nome: '', telefone: '', pin: '', pin2: '' });
   const [erroForm, setErroForm] = useState<string | null>(null);
 
   useTituloDaAba(enquete ? `${enquete.pergunta} · Enquete ANA Brasil` : 'Enquete · ANA Brasil');
@@ -68,7 +68,7 @@ export default function EnquetePublicaPage() {
         const lembrada = e.identificar ? lerIdentidade(slug) : { telefone: chaveDoAparelho(), nome: '', pin: '' };
         if (lembrada) {
           setIdentidade(lembrada);
-          setForm({ nome: lembrada.nome, telefone: formatarTelefone(lembrada.telefone), pin: lembrada.pin });
+          setForm({ nome: lembrada.nome, telefone: formatarTelefone(lembrada.telefone), pin: lembrada.pin, pin2: lembrada.pin });
           const mv = await meuVoto(slug, lembrada.telefone, lembrada.pin);
           if (vivo && mv.ok) setMeuVotoId(mv.opcao_id);
           else if (vivo && e.identificar) { esquecerIdentidade(slug); setIdentidade(null); }
@@ -130,6 +130,7 @@ export default function EnquetePublicaPage() {
     if (!form.nome.trim()) return setErroForm('Diga seu nome.');
     if (!telefoneValido(form.telefone)) return setErroForm('Número com DDD, como (19) 99876-5432.');
     if (!pinValido(form.pin)) return setErroForm('O PIN tem 4 números.');
+    if (form.pin !== form.pin2) return setErroForm('Os dois PINs não são iguais. Digite o mesmo nos dois campos.');
     void registrar(escolhida, { nome: form.nome.trim(), telefone: normalizarTelefone(form.telefone), pin: form.pin });
   };
 
@@ -244,7 +245,16 @@ export default function EnquetePublicaPage() {
                 <Label htmlFor="enquete-pin" className="text-xs font-medium">
                   Crie um PIN de 4 dígitos <span className="font-normal text-muted-foreground">(para trocar o voto depois)</span>
                 </Label>
-                <Input id="enquete-pin" className="mt-1 h-12 max-w-[180px] text-center text-2xl font-bold tracking-[.5em] tabular-nums" inputMode="numeric" pattern="\d*" maxLength={4} value={form.pin} onChange={e => setForm({ ...form, pin: e.target.value.replace(/\D/g, '').slice(0, 4) })} placeholder="••••" />
+                {/* Dois campos lado a lado: o PIN e a confirmação (pedido de
+                    23/09/2026), para não travar o voto num dígito errado. */}
+                <div className="mt-1 flex items-end gap-3">
+                  <Input id="enquete-pin" aria-label="Crie um PIN de 4 dígitos" className="h-12 w-[132px] text-center text-2xl font-bold tracking-[.5em] tabular-nums" inputMode="numeric" pattern="\d*" maxLength={4} value={form.pin} onChange={e => setForm({ ...form, pin: e.target.value.replace(/\D/g, '').slice(0, 4) })} placeholder="••••" />
+                  <div className="flex-1">
+                    <Label htmlFor="enquete-pin2" className="text-xs font-medium">Repita o PIN</Label>
+                    <Input id="enquete-pin2" className={`mt-1 h-12 w-[132px] text-center text-2xl font-bold tracking-[.5em] tabular-nums ${form.pin2.length === 4 && form.pin2 !== form.pin ? 'border-destructive' : ''}`} inputMode="numeric" pattern="\d*" maxLength={4} value={form.pin2} onChange={e => setForm({ ...form, pin2: e.target.value.replace(/\D/g, '').slice(0, 4) })} placeholder="••••" />
+                  </div>
+                </div>
+                {form.pin2.length === 4 && form.pin2 !== form.pin && <p className="mt-1 text-[11px] text-destructive">Não bateu com o primeiro.</p>}
               </div>
               {erroForm && <p className="text-xs text-destructive" role="alert">{erroForm}</p>}
               <Button className="h-11 w-full" onClick={confirmar} disabled={enviando} data-testid="confirmar-voto">
