@@ -17,6 +17,8 @@ import { TituloDoEvento } from './events/TituloDoEvento';
 import { CapaDaUnidade } from './events/CapaDaUnidade';
 import { ResumoDoPedidoDeArte } from './events/ResumoDoPedidoDeArte';
 import { temArte } from '@/lib/events/arte';
+import { gerarChecklistPdf } from '@/lib/events/checklistPdf';
+import { ClipboardList } from 'lucide-react';
 import { tituloEmTexto } from '@/lib/events/titulo';
 import { textoDaData, textoDoHorario } from '@/lib/events/periodo';
 import { jaAconteceu } from '@/lib/events/proximosEPassados';
@@ -325,8 +327,28 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
             <div className="w-full md:w-72 space-y-6">
               {/* O clique no card abre este detalhe para todo mundo; a edição,
                   que antes vinha direto para o admin, fica aqui, explícita. */}
-              {(onEditar || onAlternarBanner) && (
+              {(onEditar || onAlternarBanner || isInternalView) && (
                 <div className="bg-muted/50 rounded-2xl p-6 border border-border space-y-3">
+                  {/* O checklist do evento, para baixar de novo depois do
+                      pop-up (22/09/2026). Acompanha as edições: é montado
+                      do evento como está agora. */}
+                  {isInternalView && (
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 border-border"
+                      data-testid="baixar-checklist"
+                      onClick={async () => {
+                        try {
+                          const { nome } = await gerarChecklistPdf(event);
+                          toast.success('Checklist baixado', { description: nome });
+                        } catch (erro) {
+                          toast.error('Não deu para gerar o PDF', { description: erro instanceof Error ? erro.message : 'Tente de novo.' });
+                        }
+                      }}
+                    >
+                      <ClipboardList className="h-4 w-4" /> Baixar checklist (PDF)
+                    </Button>
+                  )}
                   {onEditar && (
                     <Button className="w-full gap-2" onClick={() => onEditar(event)}>
                       <Pencil className="h-4 w-4" /> Editar evento

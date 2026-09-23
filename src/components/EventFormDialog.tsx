@@ -27,6 +27,7 @@ import { OPCOES_COMIDA, OPCOES_EQUIP, OUTRO, comDetalhe, itensDeTexto, limparIte
 import { alimentosDe, cardapioDe, comAlimentos, comCardapio, resumoDaRefeicao } from '@/lib/events/alimentos';
 import { TabelaDeAlimentos } from './events/TabelaDeAlimentos';
 import { PedidoDeArte } from './events/PedidoDeArte';
+import { PopupDoChecklist, type Sucesso } from './events/PopupDoChecklist';
 import { PEDIDO_VAZIO, comPedidoDeArte, errosDoPedidoDeArte, itensAntigosDeArte, lerPedidoDeArte, limparPedidoDeArte, temArte } from '@/lib/events/arte';
 import { TituloDoEvento } from './events/TituloDoEvento';
 import { paraCampoDataHora, fraseDoFuso } from '@/lib/events/horaLocal';
@@ -240,6 +241,12 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
    *  Sem isto, dois cliques rápidos criavam dois eventos: o primeiro ainda
    *  estava indo quando o segundo saía. */
   const [salvando, setSalvando] = useState(false);
+  /**
+   * O pop-up de sucesso com o checklist (22/09/2026). Vive fora do Dialog do
+   * formulário: o formulário fecha, o pop-up fica, e quem monta este
+   * componente o mantém montado com `open` falso.
+   */
+  const [sucesso, setSucesso] = useState<Sucesso | null>(null);
   /** A caixa de "Devolver com observação" e o que foi escrito nela. */
   const [devolvendo, setDevolvendo] = useState(false);
   const [observacao, setObservacao] = useState('');
@@ -728,15 +735,23 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     if (aviso) {
       toast.success(aviso.titulo, { description: aviso.descricao });
     } else if (enviaParaAprovacao && !isEditing) {
-      toast.success('Enviado para aprovação', {
-        description: `“${tituloEmTexto(gravado.title)}”, ${quando} · ${eventUnitLabel(gravado.unit)}, está como pendente. A administração geral vai revisar.${
+      const mensagem = {
+        titulo: 'Enviado para aprovação',
+        descricao: `“${tituloEmTexto(gravado.title)}”, ${quando} · ${eventUnitLabel(gravado.unit)}, está como pendente. A administração geral vai revisar.${
           gravado.marketing_request && gravado.marketing_coverage ? ' A presença do marketing será confirmada na resposta.' : ''
         }`,
-      });
+      };
+      toast.success(mensagem.titulo, { description: mensagem.descricao });
+      setSucesso({ evento: gravado, ...mensagem });
     } else {
-      toast.success(isEditing ? 'Alterações salvas' : 'Evento criado', {
-        description: `“${tituloEmTexto(gravado.title)}”, ${quando} · ${eventUnitLabel(gravado.unit)}.${linkAjustado}`,
-      });
+      const mensagem = {
+        titulo: isEditing ? 'Alterações salvas' : 'Evento criado',
+        descricao: `“${tituloEmTexto(gravado.title)}”, ${quando} · ${eventUnitLabel(gravado.unit)}.${linkAjustado}`,
+      };
+      toast.success(mensagem.titulo, { description: mensagem.descricao });
+      // O pop-up com o checklist: para quem cria ou salva o evento da
+      // unidade. A devolução e a aprovação do admin (`aviso`) não precisam.
+      setSucesso({ evento: gravado, ...mensagem });
     }
 
     setSalvando(false);
@@ -818,6 +833,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
   };
 
   return (
+    <>
+    <PopupDoChecklist sucesso={sucesso} onFechar={() => setSucesso(null)} />
     <Dialog open={open} onOpenChange={pedirParaFechar}>
       <DialogContent className={`max-h-[95vh] overflow-y-auto ${isAdmin ? 'sm:max-w-[95vw] lg:max-w-[90vw]' : 'sm:max-w-lg'}`}>
         <DialogHeader>
@@ -2311,6 +2328,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       </AlertDialog>
 
     </Dialog>
+    </>
   );
 }
 
