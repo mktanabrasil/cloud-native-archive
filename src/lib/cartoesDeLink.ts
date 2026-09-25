@@ -35,6 +35,16 @@ export interface CartaoDeLink {
 
 export const ORIGEM = 'https://app.anabrasil.org';
 
+/**
+ * Versão da arte, no fim do endereço da imagem. Ao redesenhar as imagens com
+ * o mesmo nome de arquivo, suba este número: o WhatsApp guarda a imagem pelo
+ * endereço, e sem a troca podia continuar mostrando a antiga.
+ * v2 (25/09/2026): tudo centrado no quadrado do meio, que é o que o WhatsApp
+ * do computador mostra; a v1, alinhada à esquerda, saía cortada.
+ * O index.html usa o mesmo número no og:image da programação.
+ */
+export const VERSAO_DA_ARTE = '2';
+
 export const CARTOES_DE_LINK: CartaoDeLink[] = [
   {
     arquivo: 'enquete-resultado.html',
@@ -106,11 +116,11 @@ export function comCartao(indexHtml: string, c: CartaoDeLink, origem = ORIGEM): 
   html = trocarMeta(html, 'name', 'description', c.descricao);
   html = trocarMeta(html, 'property', 'og:title', c.titulo);
   html = trocarMeta(html, 'property', 'og:description', c.descricao);
-  html = trocarMeta(html, 'property', 'og:image', origem + c.imagem);
+  html = trocarMeta(html, 'property', 'og:image', `${origem}${c.imagem}?v=${VERSAO_DA_ARTE}`);
   html = trocarMeta(html, 'property', 'og:image:alt', c.imagemAlt);
   html = trocarMeta(html, 'name', 'twitter:title', c.titulo);
   html = trocarMeta(html, 'name', 'twitter:description', c.descricao);
-  html = trocarMeta(html, 'name', 'twitter:image', origem + c.imagem);
+  html = trocarMeta(html, 'name', 'twitter:image', `${origem}${c.imagem}?v=${VERSAO_DA_ARTE}`);
   // Sem og:url: o da vitrine apontava tudo para /eventos, e o WhatsApp
   // agrupava os cartões por ele. Sem a marcação, vale o próprio link.
   html = html.replace(/\s*<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/, '');

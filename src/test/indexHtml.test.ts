@@ -23,7 +23,7 @@ describe('index.html', () => {
 
   it('o cartão do link aponta para a imagem da ANA e descreve a programação', () => {
     // Desde 25/09/2026: a arte na identidade do app, não a foto do desfile, e sem og:url fixo.
-    expect(html).toMatch(/property="og:image" content="https:\/\/app\.anabrasil\.org\/og-programacao\.jpg"/);
+    expect(html).toMatch(/property="og:image" content="https:\/\/app\.anabrasil\.org\/og-programacao\.jpg\?v=\d+"/);
     expect(html).not.toMatch(/og-eventos\.jpg/);
     expect(html).not.toMatch(/property="og:url"/);
     expect(html).toMatch(/property="og:title" content="Programação de Eventos · ANA Brasil"/);
