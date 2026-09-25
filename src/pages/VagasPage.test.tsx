@@ -95,11 +95,13 @@ describe('abas do RH', () => {
     const { unmount } = abrir('/vagas?tela=gestao');
     expect(await screen.findByText(/3 vagas abertas/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Gestão' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Voltar ao app/ })).not.toBeInTheDocument();
     unmount();
 
     espiao.rh = true;
     abrir('/vagas?tela=gestao');
     expect(screen.getByText('painel da gestão')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Voltar ao app/ })).toHaveAttribute('href', '/');
     fireEvent.click(screen.getByRole('button', { name: 'Portal' }));
     expect(await screen.findByText(/3 vagas abertas/)).toBeInTheDocument();
   });
