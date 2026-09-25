@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Plus, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Bold, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -10,19 +10,32 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { CartaoDeOpcao, DiasEmDestaque, Marca, TextoDaEnquete } from './PecasDaEnquete';
 import { CORES_DE_OPCAO, COR_HEX, LIMITES, novaOpcao, type CorDeOpcao, type DiaEmDestaque, type Enquete, type OpcaoDeEnquete } from '@/lib/enquetes/modelo';
-import { criarEnquete } from '@/lib/enquetes/api';
+import { atualizarEnquete, criarEnquete } from '@/lib/enquetes/api';
 import { slugDaPergunta } from '@/lib/enquetes/links';
 
 /**
  * Nova enquete (23/09/2026, mockup aprovado): pergunta, texto com
  * **negrito**, 2 a 6 opções com cor, dias em destaque opcionais, os três
  * interruptores e o prazo com atalhos ("Hoje, 18:00"). Prévia ao lado.
+ *
+ * Desde 25/09 o mesmo formulário também edita e duplica. Editando, o link
+ * não muda e uma opção que já recebeu voto não sai (só muda de nome), para
+ * nenhum voto ficar apontando para o nada. Duplicando, nasce uma enquete
+ * nova com o mesmo conteúdo, sem votos e com prazo novo.
  */
+export type ModoDoFormulario = 'nova' | 'editar' | 'duplicar';
+
 interface Props {
   open: boolean;
   onOpenChange: (aberto: boolean) => void;
   criadaPor: string;
-  onCriada: (enquete: Enquete) => void;
+  /** Chamado com a enquete criada ou atualizada. */
+  onSalva: (enquete: Enquete) => void;
+  modo?: ModoDoFormulario;
+  /** A enquete de partida, para editar ou duplicar. */
+  enquete?: Enquete | null;
+  /** Votos por opção: opção com voto não pode ser removida na edição. */
+  votosPorOpcao?: Record<string, number>;
 }
 
 /** "2026-09-23T18:00" no fuso local, para o input datetime-local. */
@@ -54,9 +67,50 @@ const vazio = () => ({
   encerra_em: atalhosDePrazo()[0].valor as string | null,
 });
 
-export function EnqueteFormDialog({ open, onOpenChange, criadaPor, onCriada }: Props) {
+type Formulario = ReturnType<typeof vazio>;
+
+/** O formulário a partir de uma enquete existente. */
+export function formularioDe(e: Enquete, modo: ModoDoFormulario): Formulario {
+  const opcoes = e.opcoes.map((o, i) => (modo === 'duplicar' ? { ...novaOpcao(i), titulo: o.titulo, subtitulo: o.subtitulo, cor: o.cor } : { ...o }));
+  return {
+    pergunta: e.pergunta,
+    texto: e.texto,
+    opcoes,
+    dias: e.dias.map(d => ({ ...d })),
+    mostrar_resultado: e.mostrar_resultado,
+    identificar: e.identificar,
+    permitir_troca: e.permitir_troca,
+    // Duplicar começa com o prazo padrão; editar mantém o que estava.
+    encerra_em: modo === 'duplicar' ? atalhosDePrazo()[0].valor : e.encerra_em ? paraCampoLocal(new Date(e.encerra_em)) : null,
+  };
+}
+
+export function EnqueteFormDialog({ open, onOpenChange, criadaPor, onSalva, modo = 'nova', enquete = null, votosPorOpcao = {} }: Props) {
   const { user } = useAuth();
   const [form, setForm] = useState(vazio);
+  const textoRef = useRef<HTMLTextAreaElement>(null);
+  const editando = modo === 'editar' && !!enquete;
+  const prazoOriginal = editando && enquete!.encerra_em ? paraCampoLocal(new Date(enquete!.encerra_em)) : null;
+
+  // Cada abertura parte do zero (nova) ou da enquete escolhida (editar, duplicar).
+  useEffect(() => {
+    if (!open) return;
+    setForm(enquete && modo !== 'nova' ? formularioDe(enquete, modo) : vazio());
+    setErro(null);
+    setNovoDia('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, enquete?.id, modo]);
+
+  /** Põe **asteriscos** em volta do trecho selecionado do texto. */
+  const negrito = () => {
+    const el = textoRef.current;
+    if (!el) return;
+    const { selectionStart: a, selectionEnd: b, value } = el;
+    const meio = value.slice(a, b) || 'texto em negrito';
+    const novo = `${value.slice(0, a)}**${meio}**${value.slice(b)}`.slice(0, LIMITES.texto);
+    setForm(f => ({ ...f, texto: novo }));
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(a + 2, a + 2 + meio.length); });
+  };
   const [novoDia, setNovoDia] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
@@ -70,33 +124,49 @@ export function EnqueteFormDialog({ open, onOpenChange, criadaPor, onCriada }: P
     const validas = form.opcoes.filter(o => o.titulo.trim());
     if (validas.length < LIMITES.opcoes.min) return 'Pelo menos duas opções com título.';
     if (form.opcoes.some(o => !o.titulo.trim())) return 'Tem opção sem título: preencha ou remova.';
-    if (form.encerra_em && new Date(form.encerra_em) <= new Date()) return 'O prazo já passou. Escolha um horário à frente.';
+    // Editando sem mexer no prazo, vale o que estava (mesmo já vencido).
+    const prazoMudou = !editando || form.encerra_em !== prazoOriginal;
+    if (prazoMudou && form.encerra_em && new Date(form.encerra_em) <= new Date()) return 'O prazo já passou. Escolha um horário à frente.';
     return null;
   };
+
+  const conteudo = () => ({
+    pergunta: form.pergunta.trim(),
+    texto: form.texto.trim(),
+    opcoes: form.opcoes.map(o => ({ ...o, titulo: o.titulo.trim(), subtitulo: o.subtitulo.trim() })),
+    dias: form.dias.filter(d => d.data).map(d => ({ ...d, rotulo: d.rotulo.trim() })),
+    mostrar_resultado: form.mostrar_resultado,
+    identificar: form.identificar,
+    permitir_troca: form.permitir_troca,
+    encerra_em: form.encerra_em ? new Date(form.encerra_em).toISOString() : null,
+  });
 
   const criar = async () => {
     const e = validar();
     if (e) return setErro(e);
     setErro(null);
     setSalvando(true);
+    if (editando) {
+      try {
+        const c = conteudo();
+        await atualizarEnquete(enquete!.id, c);
+        toast.success('Enquete atualizada', { description: 'O link continua o mesmo.' });
+        onOpenChange(false);
+        onSalva({ ...enquete!, ...c });
+      } catch (err) {
+        setErro(err instanceof Error ? err.message : (err as { message?: string } | null)?.message ?? 'Não deu para salvar. Tente de novo.');
+      } finally {
+        setSalvando(false);
+      }
+      return;
+    }
     try {
       const base = slugDaPergunta(form.pergunta);
       let slug = base;
       let criada: Enquete | null = null;
       for (let tentativa = 0; tentativa < 4 && !criada; tentativa++) {
         try {
-          criada = await criarEnquete({
-            slug,
-            pergunta: form.pergunta.trim(),
-            texto: form.texto.trim(),
-            opcoes: form.opcoes.map(o => ({ ...o, titulo: o.titulo.trim(), subtitulo: o.subtitulo.trim() })),
-            dias: form.dias.filter(d => d.data).map(d => ({ ...d, rotulo: d.rotulo.trim() })),
-            mostrar_resultado: form.mostrar_resultado,
-            identificar: form.identificar,
-            permitir_troca: form.permitir_troca,
-            encerra_em: form.encerra_em ? new Date(form.encerra_em).toISOString() : null,
-            criada_por: criadaPor,
-          }, user?.id ?? null);
+          criada = await criarEnquete({ slug, ...conteudo(), criada_por: criadaPor }, user?.id ?? null);
         } catch (err) {
           // Slug já usado: acrescenta um sufixo e tenta de novo.
           if (err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === '23505' && tentativa < 3) {
@@ -110,9 +180,9 @@ export function EnqueteFormDialog({ open, onOpenChange, criadaPor, onCriada }: P
       toast.success('Enquete criada', { description: criada.pergunta });
       onOpenChange(false);
       setForm(vazio());
-      onCriada(criada);
+      onSalva(criada);
     } catch (err) {
-      setErro(err instanceof Error ? err.message : 'Não deu para criar. Tente de novo.');
+      setErro(err instanceof Error ? err.message : (err as { message?: string } | null)?.message ?? 'Não deu para criar. Tente de novo.');
     } finally {
       setSalvando(false);
     }
@@ -128,8 +198,14 @@ export function EnqueteFormDialog({ open, onOpenChange, criadaPor, onCriada }: P
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[95vh] overflow-y-auto sm:max-w-4xl" data-testid="form-enquete">
         <DialogHeader>
-          <DialogTitle>Nova enquete</DialogTitle>
-          <DialogDescription>Pergunta, opções e prazo. Ao criar, você recebe os dois links.</DialogDescription>
+          <DialogTitle>{editando ? 'Editar enquete' : modo === 'duplicar' ? 'Duplicar enquete' : 'Nova enquete'}</DialogTitle>
+          <DialogDescription>
+            {editando
+              ? 'O link continua o mesmo e os votos ficam. Opção que já recebeu voto só muda de nome.'
+              : modo === 'duplicar'
+                ? 'Uma enquete nova, com o mesmo conteúdo, sem votos e com link próprio.'
+                : 'Pergunta, opções e prazo. Ao criar, você recebe os dois links.'}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-6 md:grid-cols-[1.3fr_1fr]">
@@ -142,7 +218,13 @@ export function EnqueteFormDialog({ open, onOpenChange, criadaPor, onCriada }: P
               <Label htmlFor="enq-texto" className="text-xs font-semibold">
                 Texto de contexto <span className="font-normal text-muted-foreground">(opcional · **negrito** entre asteriscos)</span>
               </Label>
-              <Textarea id="enq-texto" className="mt-1" rows={3} maxLength={LIMITES.texto} value={form.texto} onChange={e => setForm({ ...form, texto: e.target.value })} placeholder="Pessoal, teremos um **feriado no dia 12/10**…" />
+              <div className="mt-1 flex items-center gap-1 rounded-t-md border border-b-0 border-input bg-muted/40 px-1.5 py-1">
+                <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={negrito} aria-label="Negrito no trecho selecionado" data-testid="botao-negrito">
+                  <Bold className="h-3.5 w-3.5" /> Negrito
+                </Button>
+                <span className="text-[11px] text-muted-foreground">selecione um trecho e toque</span>
+              </div>
+              <Textarea ref={textoRef} id="enq-texto" className="rounded-t-none" rows={3} maxLength={LIMITES.texto} value={form.texto} onChange={e => setForm({ ...form, texto: e.target.value })} placeholder="Pessoal, teremos um feriado no dia 12/10…" />
             </div>
 
             <div>
@@ -161,7 +243,7 @@ export function EnqueteFormDialog({ open, onOpenChange, criadaPor, onCriada }: P
                     />
                     <Input aria-label={`Título da opção ${i + 1}`} className="h-9" maxLength={LIMITES.titulo} value={o.titulo} onChange={e => trocarOpcao(i, { titulo: e.target.value })} placeholder={`Opção ${i + 1}`} />
                     <Input aria-label={`Subtítulo da opção ${i + 1}`} className="h-9 col-span-2 sm:col-span-1 col-start-2 sm:col-start-auto text-xs" maxLength={LIMITES.subtitulo} value={o.subtitulo} onChange={e => trocarOpcao(i, { subtitulo: e.target.value })} placeholder="Detalhe curto (opcional)" />
-                    <button type="button" aria-label={`Remover opção ${i + 1}`} className="mt-1 grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-30 row-start-1 col-start-3 sm:col-start-4" disabled={form.opcoes.length <= LIMITES.opcoes.min} onClick={() => setForm(f => ({ ...f, opcoes: f.opcoes.filter((_, n) => n !== i) }))}>
+                    <button type="button" aria-label={`Remover opção ${i + 1}`} className="mt-1 grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-30 row-start-1 col-start-3 sm:col-start-4" disabled={form.opcoes.length <= LIMITES.opcoes.min || (editando && (votosPorOpcao[o.id] ?? 0) > 0)} title={editando && (votosPorOpcao[o.id] ?? 0) > 0 ? `Tem ${votosPorOpcao[o.id]} voto(s): só dá para mudar o nome` : undefined} onClick={() => setForm(f => ({ ...f, opcoes: f.opcoes.filter((_, n) => n !== i) }))}>
                       <X className="h-4 w-4" />
                     </button>
                   </div>
@@ -244,7 +326,7 @@ export function EnqueteFormDialog({ open, onOpenChange, criadaPor, onCriada }: P
         {erro && <p className="text-xs text-destructive" role="alert">{erro}</p>}
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={criar} disabled={salvando} data-testid="criar-enquete">{salvando ? 'Criando…' : 'Criar enquete'}</Button>
+          <Button onClick={criar} disabled={salvando} data-testid="criar-enquete">{salvando ? 'Salvando…' : editando ? 'Salvar alterações' : 'Criar enquete'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

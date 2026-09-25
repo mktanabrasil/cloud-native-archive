@@ -1,27 +1,35 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Copy, Link2, Lock, LockOpen, MessageCircle, Plus, Trash2 } from 'lucide-react';
+import { Copy, CopyPlus, Download, Link2, Lock, LockOpen, MessageCircle, Pencil, Plus, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUserRole } from '@/hooks/useUserRole';
-import { EnqueteFormDialog } from '@/components/enquetes/EnqueteFormDialog';
+import { EnqueteFormDialog, type ModoDoFormulario } from '@/components/enquetes/EnqueteFormDialog';
 import { tomDaCor } from '@/components/enquetes/PecasDaEnquete';
 import type { Enquete, ResultadoDaEnquete } from '@/lib/enquetes/modelo';
 import { estaAberta, lider, percentual } from '@/lib/enquetes/modelo';
-import { apagarEnquete, encerrarEnquete, listarEnquetes, reabrirEnquete, resultado as buscarResultado } from '@/lib/enquetes/api';
+import { apagarEnquete, apagarVoto, encerrarEnquete, listarEnquetes, listarVotos, reabrirEnquete, resultado as buscarResultado, type VotoDaEquipe } from '@/lib/enquetes/api';
+import { baixarArquivo, csvDosVotos, nomeDaPlanilha } from '@/lib/enquetes/planilha';
+import { formatarTelefone } from '@/lib/enquetes/telefone';
 import { linksDaEnquete, textoDoWhatsAppDaEnquete } from '@/lib/enquetes/links';
 
 /**
  * A aba "Enquetes" do Painel do Marketing (23/09/2026): tudo registrado —
  * estado, votos, quem lidera — com encerrar, reabrir, apagar e os links.
+ * Desde 25/09 (PR 2): editar, duplicar, ver e apagar votos, baixar a lista.
  */
 export default function EnquetesPage() {
   const { isMarketing, userName } = useUserRole();
   const [enquetes, setEnquetes] = useState<Enquete[] | null>(null);
   const [resultados, setResultados] = useState<Record<string, ResultadoDaEnquete>>({});
-  const [novaAberta, setNovaAberta] = useState(false);
+  /** O formulário aberto: nova, editar ou duplicar, com a enquete de partida. */
+  const [formulario, setFormulario] = useState<{ modo: ModoDoFormulario; enquete: Enquete | null } | null>(null);
+  /** A enquete cujos votos estão abertos, com a lista. */
+  const [votosDe, setVotosDe] = useState<Enquete | null>(null);
+  const [votos, setVotos] = useState<VotoDaEquipe[] | null>(null);
+  const [apagandoVoto, setApagandoVoto] = useState<VotoDaEquipe | null>(null);
   const [links, setLinks] = useState<Enquete | null>(null);
   const [apagando, setApagando] = useState<Enquete | null>(null);
 
@@ -47,6 +55,31 @@ export default function EnquetesPage() {
     try { await navigator.clipboard.writeText(texto); toast.success(`${rotulo} copiado`, { description: texto }); } catch { toast.error('Não deu para copiar', { description: texto }); }
   };
 
+  const abrirVotos = async (e: Enquete) => {
+    setVotosDe(e);
+    setVotos(null);
+    try { setVotos(await listarVotos(e.id)); } catch (erro) { toast.error('Não deu para carregar os votos', { description: erro instanceof Error ? erro.message : (erro as { message?: string })?.message }); setVotos([]); }
+  };
+
+  const baixarPlanilha = (e: Enquete, lista: VotoDaEquipe[]) => {
+    const csv = csvDosVotos(e, lista.map(v => ({ nome: v.nome, telefone: formatarTelefone(v.telefone), opcao_id: v.opcao_id, em: v.alterado_em ?? v.votado_em, trocou: !!v.alterado_em })));
+    baixarArquivo(csv, nomeDaPlanilha(e.slug));
+    toast.success('Planilha baixada', { description: `${lista.length} ${lista.length === 1 ? 'voto' : 'votos'}` });
+  };
+
+  const confirmarApagarVoto = async () => {
+    if (!apagandoVoto || !votosDe) return;
+    try {
+      await apagarVoto(apagandoVoto.id);
+      toast.success('Voto apagado', { description: apagandoVoto.nome || formatarTelefone(apagandoVoto.telefone) });
+      setApagandoVoto(null);
+      await abrirVotos(votosDe);
+      await carregar();
+    } catch (erro) {
+      toast.error('Não deu para apagar', { description: erro instanceof Error ? erro.message : (erro as { message?: string })?.message });
+    }
+  };
+
   if (!isMarketing) return null;
 
   return (
@@ -56,7 +89,7 @@ export default function EnquetesPage() {
           <h2 className="text-lg font-bold">Enquetes</h2>
           <p className="text-sm text-muted-foreground">Crie, mande o link de voto no grupo e o de acompanhamento para a chefia.</p>
         </div>
-        <Button className="gap-1.5" onClick={() => setNovaAberta(true)} data-testid="nova-enquete"><Plus className="h-4 w-4" /> Nova enquete</Button>
+        <Button className="gap-1.5" onClick={() => setFormulario({ modo: 'nova', enquete: null })} data-testid="nova-enquete"><Plus className="h-4 w-4" /> Nova enquete</Button>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-border">
@@ -103,6 +136,9 @@ export default function EnquetesPage() {
                   </td>
                   <td className="px-3.5 py-3 whitespace-nowrap text-right">
                     <Button variant="outline" size="sm" className="ml-1.5 gap-1" onClick={() => setLinks(e)}><Link2 className="h-3.5 w-3.5" /> Links</Button>
+                    <Button variant="outline" size="sm" className="ml-1.5 gap-1" onClick={() => abrirVotos(e)} data-testid={`votos-${e.slug}`}><Users className="h-3.5 w-3.5" /> Votos</Button>
+                    <Button variant="ghost" size="sm" className="ml-1.5" aria-label="Editar" title="Editar" onClick={() => setFormulario({ modo: 'editar', enquete: e })} data-testid={`editar-${e.slug}`}><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="sm" className="ml-1.5" aria-label="Duplicar" title="Duplicar" onClick={() => setFormulario({ modo: 'duplicar', enquete: e })} data-testid={`duplicar-${e.slug}`}><CopyPlus className="h-3.5 w-3.5" /></Button>
                     {aberta ? (
                       <Button variant="outline" size="sm" className="ml-1.5 gap-1" onClick={() => agir(() => encerrarEnquete(e.id), 'Enquete encerrada')}><Lock className="h-3.5 w-3.5" /> Encerrar</Button>
                     ) : e.encerrada_em ? (
@@ -117,7 +153,77 @@ export default function EnquetesPage() {
         </table>
       </div>
 
-      <EnqueteFormDialog open={novaAberta} onOpenChange={setNovaAberta} criadaPor={userName || 'Marketing'} onCriada={e => { setLinks(e); void carregar(); }} />
+      <EnqueteFormDialog
+        open={!!formulario}
+        onOpenChange={a => !a && setFormulario(null)}
+        modo={formulario?.modo ?? 'nova'}
+        enquete={formulario?.enquete ?? null}
+        votosPorOpcao={formulario?.enquete ? resultados[formulario.enquete.slug]?.por_opcao ?? {} : {}}
+        criadaPor={userName || 'Marketing'}
+        onSalva={e => {
+          // Criada ou duplicada: os links, prontos para mandar. Editada: só a lista.
+          if (formulario?.modo !== 'editar') setLinks(e);
+          setFormulario(null);
+          void carregar();
+        }}
+      />
+
+      {/* Os votos, com o número inteiro (só a equipe vê), apagar e planilha. */}
+      <Dialog open={!!votosDe} onOpenChange={a => { if (!a) { setVotosDe(null); setVotos(null); } }}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" data-testid="dialogo-votos">
+          {votosDe && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Votos · {votosDe.pergunta}</DialogTitle>
+                <DialogDescription>{votos === null ? 'Carregando…' : `${votos.length} ${votos.length === 1 ? 'voto' : 'votos'}. Só a equipe vê o número inteiro.`}</DialogDescription>
+              </DialogHeader>
+              {votos && votos.length > 0 && (
+                <>
+                  <ul className="divide-y divide-border rounded-xl border border-border text-sm">
+                    {votos.map(v => {
+                      const o = votosDe.opcoes.find(x => x.id === v.opcao_id);
+                      return (
+                        <li key={v.id} className="flex items-center gap-2.5 px-3 py-2.5" data-testid="linha-voto">
+                          {o && <span className={`h-[9px] w-[9px] shrink-0 rounded-full ${tomDaCor(o.cor).forte}`} aria-hidden="true" />}
+                          <div className="min-w-0 flex-1">
+                            <b className="block truncate">{v.nome || 'Sem nome'}</b>
+                            <small className="block text-muted-foreground tabular-nums">
+                              {v.telefone.startsWith('ap:') ? 'aparelho anônimo' : formatarTelefone(v.telefone)} · {o?.titulo ?? '(opção removida)'}
+                              {v.alterado_em ? ' · trocou' : ''} · {format(new Date(v.alterado_em ?? v.votado_em), 'dd/MM HH:mm', { locale: ptBR })}
+                            </small>
+                          </div>
+                          <Button variant="ghost" size="sm" className="shrink-0 text-muted-foreground hover:text-destructive" aria-label={`Apagar o voto de ${v.nome || 'sem nome'}`} onClick={() => setApagandoVoto(v)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <Button variant="outline" className="w-full gap-2" onClick={() => baixarPlanilha(votosDe, votos)} data-testid="baixar-planilha">
+                    <Download className="h-4 w-4" /> Baixar a lista em planilha
+                  </Button>
+                </>
+              )}
+              {votos && votos.length === 0 && <p className="text-sm text-muted-foreground">Ninguém votou ainda.</p>}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!apagandoVoto} onOpenChange={a => !a && setApagandoVoto(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Apagar este voto?</DialogTitle>
+            <DialogDescription>
+              O voto de {apagandoVoto?.nome || 'sem nome'} sai da contagem. A pessoa pode votar de novo com o mesmo número, criando outro PIN.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <Button variant="destructive" onClick={confirmarApagarVoto} data-testid="confirmar-apagar-voto">Apagar o voto</Button>
+            <Button variant="ghost" onClick={() => setApagandoVoto(null)}>Cancelar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Os dois links, prontos para mandar. */}
       <Dialog open={!!links} onOpenChange={a => !a && setLinks(null)}>
