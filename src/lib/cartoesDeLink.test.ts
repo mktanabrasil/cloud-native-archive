@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
-import { CARTOES_DE_LINK, comCartao } from './cartoesDeLink';
+import { CARTOES_DE_LINK, VERSAO_DA_ARTE, comCartao } from './cartoesDeLink';
 
 // O index.html de verdade do projeto: se alguém mexer nas marcações dele, o
 // teste avisa antes de o build gerar um cartão errado.
@@ -17,8 +17,8 @@ describe('cartão de link das enquetes (25/09/2026)', () => {
     expect(html).toContain('<title>Enquete · ANA Brasil</title>');
     expect(meta(html, 'property', 'og:title')).toBe('Enquete · ANA Brasil');
     expect(meta(html, 'property', 'og:description')).toMatch(/toque para votar/i);
-    expect(meta(html, 'property', 'og:image')).toBe('https://app.anabrasil.org/og-enquete.jpg');
-    expect(meta(html, 'name', 'twitter:image')).toBe('https://app.anabrasil.org/og-enquete.jpg');
+    expect(meta(html, 'property', 'og:image')).toBe(`https://app.anabrasil.org/og-enquete.jpg?v=${VERSAO_DA_ARTE}`);
+    expect(meta(html, 'name', 'twitter:image')).toBe(`https://app.anabrasil.org/og-enquete.jpg?v=${VERSAO_DA_ARTE}`);
     expect(meta(html, 'name', 'description')).toMatch(/toque para votar/i);
     expect(html).not.toMatch(/property="og:url"/);
     expect(html).not.toMatch(/Programação de Eventos/);
@@ -27,7 +27,7 @@ describe('cartão de link das enquetes (25/09/2026)', () => {
   it('o de acompanhamento tem título e imagem próprios', () => {
     const html = comCartao(index, resultado);
     expect(meta(html, 'property', 'og:title')).toBe('Resultado da enquete · ANA Brasil');
-    expect(meta(html, 'property', 'og:image')).toBe('https://app.anabrasil.org/og-enquete-resultado.jpg');
+    expect(meta(html, 'property', 'og:image')).toBe(`https://app.anabrasil.org/og-enquete-resultado.jpg?v=${VERSAO_DA_ARTE}`);
   });
 
   it('o resto do HTML (scripts, ícones, fonte) fica igual', () => {
@@ -70,5 +70,11 @@ describe('um cartão para cada página (25/09/2026)', () => {
       const caminho = rota.replace(/^\//, '').replace(':slug', 'exemplo');
       expect(regras.some(r => r.test(caminho)), rota).toBe(true);
     }
+  });
+});
+
+describe('versão da arte (25/09/2026)', () => {
+  it('o index.html usa a mesma versão da arte que as cópias', () => {
+    expect(index).toContain(`og-programacao.jpg?v=${VERSAO_DA_ARTE}`);
   });
 });
