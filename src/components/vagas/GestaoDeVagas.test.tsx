@@ -19,7 +19,7 @@ vi.mock('@/lib/vagas/api', async () => {
     ...real,
     listarTodasAsVagas: async () => espiao.vagas,
     listarPerguntas: async (id: string | null) => (id === null ? [{ id: 'b1', vaga_id: null, texto: 'Como ficou sabendo da vaga?', tipo: 'unica', opcoes: ['Site', 'Instagram'], obrigatoria: true, ordem: 0, bloqueada: false }] : []),
-    criarVaga: async (d: Record<string, unknown>) => { espiao.criadas.push(d); return real.paraVaga({ ...d, id: 'nova' }); },
+    criarVaga: async (d: Record<string, unknown>) => { espiao.criadas.push(d); return real.paraVaga({ ...d, id: String(d.slug) }); },
     atualizarVaga: async (id: string, d: Record<string, unknown>) => { espiao.atualizadas.push([id, d]); const v = espiao.vagas.find(x => x.id === id)!; return real.paraVaga({ ...v, ...d }); },
     mudarStatus: async (id: string, status: string) => { espiao.atualizadas.push([id, { status }]); const v = espiao.vagas.find(x => x.id === id)!; return real.paraVaga({ ...v, status }); },
     salvarPerguntas: async (id: string, p: unknown[]) => { espiao.perguntas.push([id, p]); },
@@ -125,5 +125,20 @@ describe('gestão de vagas', () => {
     const linha = screen.getByTestId('linha-professor');
     fireEvent.click(within(linha).getByRole('button', { name: 'Apagar' }));
     await waitFor(() => expect(espiao.apagadas).toEqual(['professor']));
+  });
+
+  it('importa as vagas do site: 39 marcadas, as 3 duplicadas de fora, e publica', async () => {
+    abrir();
+    await screen.findByText('Professor');
+    fireEvent.click(screen.getByRole('button', { name: /Importar do site/ }));
+    const dlg = await screen.findByTestId('importar-vagas');
+    expect(within(dlg).getByText('39 marcadas')).toBeInTheDocument();
+    expect(within(dlg).getAllByText(/mesmo Forms de/)).toHaveLength(3);
+    expect(within(dlg).getByText(/Saiu "vaga masculina"/)).toBeInTheDocument();
+    fireEvent.click(within(dlg).getByRole('button', { name: /Importar e publicar 39/ }));
+    await waitFor(() => expect(espiao.criadas).toHaveLength(39));
+    expect(espiao.criadas.every(c => c.status === 'publicada')).toBe(true);
+    expect(new Set(espiao.criadas.map(c => c.slug)).size).toBe(39);
+    expect(await screen.findByText('Auxiliar de Serviços Gerais')).toBeInTheDocument();
   });
 });
