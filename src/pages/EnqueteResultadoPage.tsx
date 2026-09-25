@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Lock } from 'lucide-react';
+import { Download, Lock } from 'lucide-react';
+import { baixarArquivo, csvDosVotos, nomeDaPlanilha } from '@/lib/enquetes/planilha';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
@@ -162,6 +163,21 @@ export default function EnqueteResultadoPage() {
                 <button type="button" className="mt-2 text-xs underline" onClick={() => setVerTodos(v => !v)}>{verTodos ? 'Ver menos' : `Ver todos (${votantes.length})`}</button>
               )}
               {enquete.identificar && <p className="mt-2 text-[11px] text-muted-foreground">Nome e fim do número: dá para saber quem votou e cobrar quem falta, sem expor o número inteiro.</p>}
+              {/* A lista em planilha, para cobrar quem falta (25/09/2026). Aqui
+                  o número sai só com o fim, como na tela. */}
+              {enquete.identificar && votantes.length > 0 && (
+                <button
+                  type="button"
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold hover:bg-muted"
+                  data-testid="baixar-planilha-publica"
+                  onClick={() => baixarArquivo(
+                    csvDosVotos(enquete, votantes.map(v => ({ nome: v.nome, telefone: `•••-${v.fim}`, opcao_id: v.opcao_id, em: v.em, trocou: !!(v as { trocou?: boolean }).trocou })), 'Final do número'),
+                    nomeDaPlanilha(enquete.slug),
+                  )}
+                >
+                  <Download className="h-3.5 w-3.5" /> Baixar a lista em planilha
+                </button>
+              )}
 
               {votantes.length > 0 && (
                 <>

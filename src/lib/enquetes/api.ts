@@ -64,6 +64,35 @@ export async function atualizarEnquete(id: string, mudancas: Partial<NovaEnquete
   if (error) throw error;
 }
 
+/** Um voto como a equipe vê no app: número inteiro, para achar a pessoa. */
+export interface VotoDaEquipe {
+  id: string;
+  opcao_id: string;
+  telefone: string;
+  nome: string;
+  votado_em: string;
+  alterado_em: string | null;
+}
+
+/** Os votos de uma enquete, mais recentes primeiro. Só para a equipe (RLS). */
+export async function listarVotos(enqueteId: string): Promise<VotoDaEquipe[]> {
+  const { data, error } = await supabase
+    .from('votos_de_enquete')
+    .select('id, opcao_id, telefone, nome, votado_em, alterado_em')
+    .eq('enquete_id', enqueteId)
+    .order('votado_em', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as VotoDaEquipe[];
+}
+
+/** Apaga um voto (teste, número errado). Só a equipe (RLS). */
+export async function apagarVoto(id: string): Promise<void> {
+  const { error, count } = await supabase.from('votos_de_enquete').delete({ count: 'exact' }).eq('id', id);
+  if (error) throw error;
+  // Sem a policy de DELETE o banco não reclama: só não apaga nada.
+  if (count === 0) throw new Error('O voto não foi apagado. A migração de 25/09 (apagar voto) foi aplicada?');
+}
+
 export const encerrarEnquete = (id: string) => atualizarEnquete(id, { encerrada_em: new Date().toISOString() });
 export const reabrirEnquete = (id: string) => atualizarEnquete(id, { encerrada_em: null });
 export const apagarEnquete = (id: string) => atualizarEnquete(id, { deleted_at: new Date().toISOString() });

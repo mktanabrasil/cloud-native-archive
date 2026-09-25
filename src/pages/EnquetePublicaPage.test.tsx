@@ -105,6 +105,15 @@ describe('a página de voto', () => {
     expect(JSON.parse(localStorage.getItem('enquete-identidade:qual-folga')!)).toMatchObject({ telefone: '19998765432', pin: '2026' });
   });
 
+  it('Esc fecha a folha de identificação', async () => {
+    montar();
+    fireEvent.click(await screen.findByTestId('opcao-b'));
+    expect(screen.getByTestId('folha-identidade')).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByTestId('folha-identidade')).not.toBeInTheDocument());
+    expect(espiao.votos).toHaveLength(0);
+  });
+
   it('PIN errado: avisa e não troca', async () => {
     localStorage.setItem('enquete-identidade:qual-folga', JSON.stringify({ nome: 'Ana', telefone: '19998765432', pin: '1111' }));
     espiao.meuVoto = { ok: true, opcao_id: 'a', nome: 'Ana' };

@@ -81,6 +81,14 @@ export default function EnquetePublicaPage() {
     return () => { vivo = false; };
   }, [slug, atualizarResultado]);
 
+  // Esc fecha a folha de identificação, como qualquer janela (25/09/2026).
+  useEffect(() => {
+    if (!escolhida) return;
+    const aoTeclar = (e: KeyboardEvent) => { if (e.key === 'Escape' && !enviando) setEscolhida(null); };
+    window.addEventListener('keydown', aoTeclar);
+    return () => window.removeEventListener('keydown', aoTeclar);
+  }, [escolhida, enviando]);
+
   // Ao vivo: resultado a cada 10 s e o relógio do prazo a cada 30 s.
   useEffect(() => {
     if (!enquete) return;
