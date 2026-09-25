@@ -1493,3 +1493,21 @@ describe('rascunho e refeições (varredura de 25/09/2026)', () => {
     expect((screen.getByLabelText('Alimento 1 de Lanche') as HTMLInputElement).value).toBe('Bolo de cenoura');
   });
 });
+
+describe('cor do cartão (decisão de 25/09/2026)', () => {
+  it('com foto da unidade, o seletor de cor sai e a nota explica', () => {
+    espiao.papel = { ...espiao.papel, isAdmin: true, isMarketing: true };
+    const evento = { ...eventoGravado(), visibility: 'publico' as const, unit: 'DIC' as const, location: 'Unidade DIC' };
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+    expect(screen.getByTestId('cor-pela-unidade')).toHaveTextContent(/foto da unidade/i);
+    expect(screen.queryByTestId('seletor-de-cor')).toBeNull();
+  });
+
+  it('sem foto (Administração no escritório), o seletor aparece', () => {
+    espiao.papel = { ...espiao.papel, isAdmin: true, isMarketing: true };
+    const evento = { ...eventoGravado(), visibility: 'publico' as const, unit: 'Administração' as const, location: 'Escritório' };
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+    expect(screen.getByTestId('seletor-de-cor')).toBeInTheDocument();
+    expect(screen.queryByTestId('cor-pela-unidade')).toBeNull();
+  });
+});
