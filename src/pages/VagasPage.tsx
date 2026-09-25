@@ -4,6 +4,8 @@ import { Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
+import { useUserRole } from '@/hooks/useUserRole';
+import { GestaoDeVagas } from '@/components/vagas/GestaoDeVagas';
 import { CartaoDaVaga, COR_DA_AREA, ICONE_DA_AREA, MolduraDasVagas } from '@/components/vagas/PecasDasVagas';
 import { listarVagasPublicadas } from '@/lib/vagas/api';
 import { ROTULO_DA_AREA, type Area, type Vaga } from '@/lib/vagas/modelo';
@@ -18,7 +20,32 @@ import { contagemPorArea, enderecoDoFiltro, filtrarVagas, filtroDoEndereco, vaga
  * "Candidatar-se" fica na página da vaga e, nesta fase, abre o Forms dela.
  */
 export default function VagasPage() {
-  useTituloDaAba('Trabalhe Conosco · ANA Brasil');
+  const { isRh } = useUserRole();
+  const [params, setParams] = useSearchParams();
+  const gestao = isRh && params.get('tela') === 'gestao';
+  useTituloDaAba(gestao ? 'Gestão de vagas · ANA Brasil' : 'Trabalhe Conosco · ANA Brasil');
+  // RH e admin veem as duas abas; o público só a vitrine, sem aba nenhuma.
+  const abas = isRh ? (
+    <nav aria-label="Vagas: portal e gestão" className="border-b border-border bg-muted/40">
+      <div className="mx-auto flex max-w-6xl gap-1 px-4 sm:px-6">
+        {([['Portal', false], ['Gestão', true]] as const).map(([rotulo, g]) => (
+          <button
+            key={rotulo}
+            type="button"
+            aria-current={gestao === g ? 'page' : undefined}
+            onClick={() => setParams(g ? new URLSearchParams('tela=gestao') : new URLSearchParams(), { replace: true })}
+            className={`-mb-px border-b-2 px-3 py-2.5 text-sm font-semibold ${gestao === g ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+          >
+            {rotulo}
+          </button>
+        ))}
+      </div>
+    </nav>
+  ) : null;
+  return <MolduraDasVagas abas={abas}>{gestao ? <GestaoDeVagas /> : <Vitrine />}</MolduraDasVagas>;
+}
+
+function Vitrine() {
   const [params, setParams] = useSearchParams();
   const filtro = useMemo(() => filtroDoEndereco(params), [params]);
   const [vagas, setVagas] = useState<Vaga[] | null>(null);
@@ -53,7 +80,7 @@ export default function VagasPage() {
   );
 
   return (
-    <MolduraDasVagas>
+    <>
       <section className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] items-center gap-8 px-4 pb-8 pt-9 sm:px-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:pt-11">
         <div className="flex flex-col gap-4">
           <h1 className="text-[34px] font-bold leading-[1.05] tracking-tight sm:text-[46px]">Trabalhe com a gente.</h1>
@@ -126,7 +153,7 @@ export default function VagasPage() {
           </>
         )}
       </section>
-    </MolduraDasVagas>
+    </>
   );
 }
 

@@ -82,10 +82,11 @@ export function TopoDasVagas() {
 }
 
 /** A moldura das duas páginas: topo, miolo, rodapé da ANA e o fio de cinco cores. */
-export function MolduraDasVagas({ children }: { children: ReactNode }) {
+export function MolduraDasVagas({ children, abas = null }: { children: ReactNode; abas?: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground">
       <TopoDasVagas />
+      {abas}
       <main className="flex-1">{children}</main>
       <RodapePublico />
       <InstitutionalFooterBar />

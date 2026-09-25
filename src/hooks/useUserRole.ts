@@ -171,6 +171,12 @@ export function useUserRole() {
    * A unidade entra na conta de propósito: gestora sem unidade não tem jornal
    * nenhum para ver, e cairia numa lista vazia sem entender o porquê.
    */
+  /**
+   * Espelho de `is_rh_or_admin` no banco (vagas, 25/09/2026): admin, ou
+   * vínculo "rh" ativo. É quem vê a aba Gestão em /vagas.
+   */
+  const isRh = isAdmin || (bondType === 'rh' && isActive);
+
   const isUnitManager = permissionLevel === 'gestor_unidade' && isActive && !!unit;
   const canAccessJournal = isMarketing || isUnitManager;
 
@@ -194,6 +200,7 @@ export function useUserRole() {
     canViewAuditoria,
     bondType,
     isMarketing,
+    isRh,
     isUnitManager,
     canAccessJournal,
   };
