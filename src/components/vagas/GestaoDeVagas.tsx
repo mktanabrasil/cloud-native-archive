@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Copy, ExternalLink, MoreHorizontal, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { Copy, Download, ExternalLink, MoreHorizontal, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SeloDaArea } from './PecasDasVagas';
 import { VagaFormDialog, type ModoDaVaga } from './VagaFormDialog';
+import { ImportarVagasDialog } from './ImportarVagasDialog';
 import { apagarVaga, listarTodasAsVagas, mensagemDoErro, mudarStatus } from '@/lib/vagas/api';
 import { PROXIMOS_STATUS, ROTULO_DO_STATUS, STATUS_DA_VAGA, type StatusDaVaga, type Vaga } from '@/lib/vagas/modelo';
 import { casaComBusca } from '@/lib/vagas/vitrine';
@@ -47,6 +48,7 @@ export function GestaoDeVagas() {
   const [busca, setBusca] = useState('');
   const [form, setForm] = useState<{ modo: ModoDaVaga; vaga: Vaga | null } | null>(null);
   const [apagando, setApagando] = useState<string | null>(null);
+  const [importando, setImportando] = useState(false);
 
   const carregar = useCallback(() => {
     setErro(false);
@@ -88,6 +90,7 @@ export function GestaoDeVagas() {
     <section className="mx-auto flex max-w-6xl flex-col gap-4 px-4 pb-12 pt-6 sm:px-6" aria-label="Gestão de vagas">
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="mr-auto text-2xl font-bold">Gestão de vagas</h1>
+        <Button variant="outline" disabled={vagas === null} onClick={() => setImportando(true)}><Download className="h-4 w-4" /> Importar do site</Button>
         <Button onClick={() => setForm({ modo: 'nova', vaga: null })}><Plus className="h-4 w-4" /> Nova vaga</Button>
       </div>
 
@@ -121,8 +124,11 @@ export function GestaoDeVagas() {
       ) : vagas.length === 0 ? (
         <div className="flex flex-col items-start gap-2 rounded-2xl bg-muted/60 p-6">
           <p className="text-lg font-semibold">Nenhuma vaga ainda.</p>
-          <p className="text-sm text-muted-foreground">Crie a primeira. Ela nasce como rascunho e só aparece no portal quando você publicar.</p>
-          <Button className="mt-2" onClick={() => setForm({ modo: 'nova', vaga: null })}><Plus className="h-4 w-4" /> Nova vaga</Button>
+          <p className="text-sm text-muted-foreground">Traga as vagas que estão hoje nos sites do Social e do GOE, ou crie uma do zero.</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button onClick={() => setImportando(true)}><Download className="h-4 w-4" /> Importar as vagas do site</Button>
+            <Button variant="outline" onClick={() => setForm({ modo: 'nova', vaga: null })}><Plus className="h-4 w-4" /> Nova vaga</Button>
+          </div>
         </div>
       ) : lista.length === 0 ? (
         <p className="rounded-2xl bg-muted/60 p-6 text-sm text-muted-foreground">Nenhuma vaga com esse filtro.</p>
@@ -173,6 +179,13 @@ export function GestaoDeVagas() {
           ))}
         </ul>
       )}
+
+      <ImportarVagasDialog
+        open={importando}
+        onOpenChange={setImportando}
+        existentes={vagas ?? []}
+        onImportadas={novas => setVagas(atual => [...novas, ...(atual ?? [])])}
+      />
 
       <VagaFormDialog
         open={form !== null}
