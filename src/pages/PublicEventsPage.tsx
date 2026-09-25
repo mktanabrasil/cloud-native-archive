@@ -8,6 +8,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useApp } from '@/contexts/AppContext';
 import { AppEvent, UNIT_BG_COLORS, type Unit } from '@/types';
 import { rotuloDoTipo } from '@/lib/events/tipo';
+import { anoQuandoPreciso } from '@/lib/events/periodo';
 import { CalendarDays, MapPin, Clock, Search, ChevronLeft, ChevronRight, LayoutPanelTop, Eye, EyeOff, Pencil, Users, Info, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -449,7 +450,7 @@ export default function PublicEventsPage() {
                 <div className="flex flex-wrap gap-4 text-slate-200 text-sm md:text-base mb-6">
                   <div className="flex items-center gap-2">
                     <CalendarDays className="h-5 w-5" />
-                    <span>{textoDaData(event, { comAno: false })}</span>
+                    <span>{textoDaData(event, anoQuandoPreciso(event))}</span>
                   </div>
                   {event.location && (
                     <div className="flex items-start gap-2" data-testid="local-heroi">
@@ -771,7 +772,7 @@ export default function PublicEventsPage() {
                     <div className="flex gap-2">
                       {jaAconteceu(event) && (
                         <Badge variant="outline" className="bg-muted text-muted-foreground border-border font-medium text-[10px]">
-                          Encerrado
+                          Já aconteceu
                         </Badge>
                       )}
                       {/* Na vitrine todo evento é confirmado: o selo não dizia nada.

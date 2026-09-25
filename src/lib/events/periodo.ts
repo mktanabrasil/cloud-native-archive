@@ -38,6 +38,14 @@ export const textoDaData = (e: Periodo, { comAno = true }: { comAno?: boolean } 
 };
 
 /**
+ * O ano só aparece quando o evento não é deste ano (varredura de 25/09/2026):
+ * o herói e o detalhe escondiam sempre, e um evento de 2027 aparecia sem ano.
+ */
+export const anoQuandoPreciso = (e: Periodo, agora: Date = new Date()): { comAno: boolean } => ({
+  comAno: [e.start_datetime, e.end_datetime].some(d => new Date(d).getFullYear() !== agora.getFullYear()),
+});
+
+/**
  * Um dia: "08:00 às 16:00" (card) ou "08:00 - 16:00" (detalhe), como sempre foi.
  * Vários dias: "Começa às 08:00, termina às 16:00" — o separador muda para o
  * do detalhe (" · ") quando pedido.

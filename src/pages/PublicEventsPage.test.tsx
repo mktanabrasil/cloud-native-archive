@@ -249,7 +249,7 @@ describe('as abas Próximos e Já aconteceram', () => {
     expect(screen.getByRole('tab', { name: /próximos/i })).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('mostra o passado ao trocar de aba, com o selo Encerrado', () => {
+  it('mostra o passado ao trocar de aba, com o selo Já aconteceu', () => {
     espiao.eventos = [passado, futuro];
     montar();
 
@@ -257,7 +257,7 @@ describe('as abas Próximos e Já aconteceram', () => {
 
     expect(noCard('Festa de Páscoa')).toBeGreaterThan(0);
     expect(noCard('Hope Day 2026')).toBe(0);
-    expect(screen.getByText('Encerrado')).toBeInTheDocument();
+    expect(screen.getAllByText('Já aconteceu').length).toBeGreaterThan(0);
   });
 
   it('quando só há passados, já abre em Já aconteceram', () => {

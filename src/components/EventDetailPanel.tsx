@@ -148,7 +148,7 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
             {(event.target_audience || event.support_team || event.food_logistics || event.equipment_needed || event.printed_materials) && (
               <div className="rounded-xl border border-border p-4 space-y-3 bg-muted/10">
                 <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2 mb-2">
-                   Detalhes Logísticos
+                   Logística
                 </p>
                 <div className="grid grid-cols-1 gap-3">
                   {event.target_audience && <DetailRow label="Para quem" value={event.target_audience} />}

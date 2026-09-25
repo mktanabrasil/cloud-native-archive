@@ -71,7 +71,10 @@ export function ResumoDeItens({ titulo, itens, vazio = 'nenhum', copiar = false,
             <div key={i.item} className="overflow-hidden rounded-md border border-border" data-testid={`refeicao-${i.item}`}>
               <p className={`bg-muted/60 px-2.5 py-1.5 font-semibold text-foreground ${texto}`}>{i.item}</p>
               {alimentos.length > 0 ? (
-                <table className={`w-full ${texto}`}>
+                // Rola de lado no celular: com overflow-hidden no cartão, a coluna
+                // "Quem fornece" era cortada sem aviso (varredura de 25/09/2026).
+                <div className="overflow-x-auto" data-testid="rolagem-da-tabela">
+                <table className={`w-full min-w-[420px] ${texto}`}>
                   <thead>
                     <tr className="border-t border-border text-left text-[10px] uppercase tracking-wider text-muted-foreground">
                       <th className="px-2.5 py-1 font-semibold">Alimento</th>
@@ -91,6 +94,7 @@ export function ResumoDeItens({ titulo, itens, vazio = 'nenhum', copiar = false,
                     ))}
                   </tbody>
                 </table>
+                </div>
               ) : (
                 <p className={`px-2.5 py-1.5 italic text-muted-foreground border-t border-border ${texto}`}>— sem alimentos ainda</p>
               )}

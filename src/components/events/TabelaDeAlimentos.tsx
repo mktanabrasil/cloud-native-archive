@@ -52,11 +52,11 @@ export function TabelaDeAlimentos({ id, refeicao, alimentos, onAlimentos, cardap
         const sim = providenciar(a);
         const base = `${id}-alimento-${n}`;
         return (
-          <div key={n} className="grid grid-cols-2 md:grid-cols-[1.4fr_1fr_auto_1.3fr_28px] gap-2 items-start rounded-lg border border-border bg-background p-2 md:p-1.5 md:border-0 md:bg-transparent" data-testid={`${base}`}>
+          <div key={n} className="relative grid grid-cols-2 md:grid-cols-[1.4fr_1fr_auto_1.3fr_28px] gap-2 items-start rounded-lg border border-border bg-background p-2 md:p-1.5 md:border-0 md:bg-transparent" data-testid={`${base}`}>
             <Input
               id={`${base}-nome`}
               aria-label={`Alimento ${n + 1} de ${refeicao}`}
-              className="h-9 col-span-2 md:col-span-1"
+              className="h-11 md:h-9 col-span-2 md:col-span-1 mr-12 md:mr-0"
               maxLength={LIMITE_CAMPO}
               value={a.nome}
               onChange={e => trocar(n, { nome: e.target.value })}
@@ -65,7 +65,7 @@ export function TabelaDeAlimentos({ id, refeicao, alimentos, onAlimentos, cardap
             />
             <Input
               aria-label={`Quantidade do alimento ${n + 1} de ${refeicao}`}
-              className="h-9"
+              className="h-11 md:h-9"
               maxLength={LIMITE_CAMPO}
               value={a.quantidade}
               onChange={e => trocar(n, { quantidade: e.target.value })}
@@ -74,13 +74,22 @@ export function TabelaDeAlimentos({ id, refeicao, alimentos, onAlimentos, cardap
             <div
               role="radiogroup"
               aria-label={`Precisamos providenciar o alimento ${n + 1} de ${refeicao}?`}
-              className="inline-flex h-9 rounded-md border border-border overflow-hidden text-xs font-medium self-start"
+              className="inline-flex h-11 md:h-9 rounded-md border border-border overflow-hidden text-xs font-medium self-start"
+              // Setas trocam entre Sim e Não, como num grupo de rádio de verdade.
+              onKeyDown={e => {
+                if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+                e.preventDefault();
+                trocar(n, sim ? { fornecedor: 'Unidade' } : { fornecedor: 'ANA', quem: '' });
+                const botoes = e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]');
+                botoes[sim ? 1 : 0]?.focus();
+              }}
             >
               <button
                 type="button"
                 role="radio"
                 aria-checked={sim}
-                className={`px-3 ${sim ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+                tabIndex={sim ? 0 : -1}
+                className={`px-4 md:px-3 ${sim ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
                 onClick={() => trocar(n, { fornecedor: 'ANA', quem: '' })}
               >
                 Sim
@@ -89,7 +98,8 @@ export function TabelaDeAlimentos({ id, refeicao, alimentos, onAlimentos, cardap
                 type="button"
                 role="radio"
                 aria-checked={!sim}
-                className={`px-3 border-l border-border ${!sim ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+                tabIndex={!sim ? 0 : -1}
+                className={`px-4 md:px-3 border-l border-border ${!sim ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
                 onClick={() => sim && trocar(n, { fornecedor: 'Unidade' })}
               >
                 Não
@@ -126,7 +136,9 @@ export function TabelaDeAlimentos({ id, refeicao, alimentos, onAlimentos, cardap
             <button
               type="button"
               aria-label={`Remover alimento ${n + 1} de ${refeicao}`}
-              className="h-9 w-7 md:w-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 justify-self-end md:justify-self-auto"
+              // No celular, no canto do cartão e do tamanho de um dedo; na tela
+              // larga, a última coluna da linha (varredura de 25/09/2026).
+              className="absolute right-1.5 top-1.5 h-11 w-11 md:static md:h-9 md:w-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10"
               onClick={() => remover(n)}
             >
               <X className="h-4 w-4" />

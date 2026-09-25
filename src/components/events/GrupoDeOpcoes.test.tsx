@@ -248,3 +248,19 @@ describe('pista por opção (22/09/2026)', () => {
     expect(screen.queryByTestId('eq-Som-pista')).toBeNull();
   });
 });
+
+describe('textos livres (varredura de 25/09/2026)', () => {
+  it('o campo do "Outro" tem nome para leitor de tela', () => {
+    render(<Palco opcoes={COMIDA} temNenhum />);
+    fireEvent.click(chave(/outra coisa/i));
+    expect(screen.getByRole('textbox', { name: 'Especifique...' })).toBeInTheDocument();
+  });
+
+  it('dois textos livres aparecem juntos no campo e sobrevivem a ligar outra opção', () => {
+    render(<Palco opcoes={COMIDA} temNenhum inicial="Almoço, Pipoca, Algodão doce" />);
+    const campo = screen.getByRole('textbox', { name: 'Especifique...' }) as HTMLInputElement;
+    expect(campo.value).toBe('Pipoca, Algodão doce');
+    fireEvent.click(chave('Lanche'));
+    expect(valor()).toBe('Almoço, Lanche, Pipoca, Algodão doce');
+  });
+});
