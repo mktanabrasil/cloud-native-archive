@@ -555,6 +555,8 @@ describe('a capa sem arte (22/09/2026)', () => {
     montar();
 
     for (const capa of screen.getAllByTestId('capa-da-unidade')) expect(capa).toHaveAttribute('data-unidade', 'DIC');
+    // Véu coral da Administração, que bate com o selo (decisão de 25/09/2026).
+    for (const capa of screen.getAllByTestId('capa-da-unidade')) expect(capa).toHaveAttribute('data-veu', 'Administração');
   });
 
   it('sem foto (escritório, outro local): fica o card na cor do evento', () => {

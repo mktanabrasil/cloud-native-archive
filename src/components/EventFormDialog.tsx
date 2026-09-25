@@ -1474,7 +1474,15 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       </div>
                     </div>
 
-                    <div className="pt-2">
+                    {/* Com foto da unidade, a capa leva a cor da unidade (decisão de
+                        25/09/2026): o seletor só aparece para evento sem foto —
+                        sede e "Outro local" —, onde a cor é o próprio cartão. */}
+                    {unidadeDaFoto({ unit: form.unit as Unit, location: form.location ?? '' }) ? (
+                      <p className="pt-2 text-[11px] text-muted-foreground" data-testid="cor-pela-unidade">
+                        Sem banner, o cartão usa a foto da unidade com a cor {form.unit === 'Administração' ? 'da Administração' : 'dela'}.
+                      </p>
+                    ) : (
+                    <div className="pt-2" data-testid="seletor-de-cor">
                       <Label className="text-xs mb-2 block">Cor do cartão</Label>
                       <div className="flex flex-wrap gap-2">
                         {SYSTEM_COLORS.map(color => (
@@ -1490,6 +1498,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                         ))}
                       </div>
                     </div>
+                    )}
                   </div>
                 )}
                 

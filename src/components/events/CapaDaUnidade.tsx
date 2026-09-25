@@ -12,7 +12,9 @@ import { TituloDoEvento } from './TituloDoEvento';
  * vitrine, no herói, no detalhe e na prévia do formulário.
  *
  * Qual foto: a da unidade do evento. Evento da Administração usa a foto da
- * unidade do local, quando o local é uma unidade. Sem foto (sede, "Outro
+ * unidade do local, quando o local é uma unidade, com o véu coral da
+ * Administração (decisão de 25/09/2026): bate com o selo e a faixa do card.
+ * A cor escolhida no evento não entra aqui; ela vale só para o card sem foto. Sem foto (sede, "Outro
  * local"), volta ao card chapado de antes — nada quebra.
  *
  * As fotos vivem em `public/unidades/`, 1200 px, WebP (~100 KB), como o
@@ -80,7 +82,7 @@ export function CapaDaUnidade({ evento, comTitulo = true, tamanho = 'card', clas
   }
 
   return (
-    <div className={`capa-da-unidade relative w-full h-full overflow-hidden ${className}`} data-testid="capa-da-unidade" data-unidade={unidade}>
+    <div className={`capa-da-unidade relative w-full h-full overflow-hidden ${className}`} data-testid="capa-da-unidade" data-unidade={unidade} data-veu={evento.unit}>
       <img
         src={FOTO_DA_UNIDADE[unidade]}
         alt=""
@@ -88,7 +90,7 @@ export function CapaDaUnidade({ evento, comTitulo = true, tamanho = 'card', clas
         fetchPriority={prioridade ? 'high' : 'auto'}
         className="absolute inset-0 w-full h-full object-cover"
       />
-      <div className="absolute inset-0" style={{ backgroundColor: COR_DA_UNIDADE[unidade], opacity: 0.55 }} />
+      <div className="absolute inset-0" style={{ backgroundColor: COR_DA_UNIDADE[evento.unit] ?? COR_DA_UNIDADE[unidade], opacity: 0.55 }} />
       {/* Sombra mais forte e mais alta (varredura de 25/09/2026): sobre o véu
           verde-água do Nilópolis e o amarelo de Santana, o título branco de
           uma linha ficava sobre cor clara. */}
