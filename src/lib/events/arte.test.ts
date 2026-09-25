@@ -51,3 +51,10 @@ describe('pílulas', () => {
     expect(pilulasDoPedido({ ...pedido, quantidade: null, whatsapp: false })).toEqual(['Cartaz A4']);
   });
 });
+
+describe('legenda só com WhatsApp (varredura de 25/09/2026)', () => {
+  it('desmarcou o WhatsApp: a legenda escrita antes não é gravada no cartaz', () => {
+    const itens = limparPedidoDeArte(comPedidoDeArte([], { whatsapp: false, cartaz: true, quantidade: 4, legenda: 'Vem!', conteudo: 'Título' }));
+    expect(itens).toEqual([{ type: 'cartaz_a4', item: 'Cartaz A4', description: '', legenda: '', conteudo: 'Título', quantidade: 4 }]);
+  });
+});

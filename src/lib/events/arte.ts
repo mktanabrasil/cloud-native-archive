@@ -89,7 +89,9 @@ export function limparPedidoDeArte(itens: MarketingItem[] | null | undefined): M
   if (!pedido.whatsapp && !pedido.cartaz) return (itens ?? []).filter(i => !ehArte(i));
   return comPedidoDeArte(itens, {
     ...pedido,
-    legenda: pedido.legenda.trim().slice(0, LIMITE_LEGENDA),
+    // A legenda é do WhatsApp: sem ele, ela ficava escondida no formulário
+    // mas gravada no cartaz, e o detalhe mostrava "Copiar legenda".
+    legenda: pedido.whatsapp ? pedido.legenda.trim().slice(0, LIMITE_LEGENDA) : '',
     conteudo: pedido.conteudo.trim().slice(0, LIMITE_CONTEUDO),
     quantidade: pedido.cartaz && pedido.quantidade && pedido.quantidade > 0 ? Math.floor(pedido.quantidade) : null,
   });

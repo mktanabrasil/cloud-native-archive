@@ -696,6 +696,52 @@ describe('o pop-up com o checklist (22/09/2026)', () => {
   });
 });
 
+describe('varredura de 25/09/2026: o que não pode passar calado', () => {
+  it('com um pedido de arte antigo no evento, um cartaz novo ainda precisa de quantidade', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    const evento = { ...eventoGravado(), marketing_request: true, marketing_items: [{ type: 'demanda_grafica' as const, item: 'Cartaz', description: 'A3' }] };
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /cartaz a4/i }));
+    fireEvent.change(screen.getByLabelText(/o que precisa estar na arte/i), { target: { value: 'Título' } });
+    fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
+
+    expect((await screen.findAllByText(/quantos cartazes/i, { selector: 'p' })).length).toBeGreaterThan(0);
+    expect(espiao.updateEvent).not.toHaveBeenCalled();
+  });
+
+  it('alimento com quantidade e sem nome não some: o envio para e diz onde', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    preencher(); // liga Lanche
+    fireEvent.click(within(screen.getByTestId('comida-Lanche-tabela')).getByRole('button', { name: /adicionar alimento/i }));
+    fireEvent.change(screen.getByLabelText('Quantidade do alimento 1 de Lanche'), { target: { value: '40 L' } });
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
+
+    expect((await screen.findAllByText(/tem alimento sem nome em “lanche”/i)).length).toBeGreaterThan(0);
+    expect(espiao.addEvent).not.toHaveBeenCalled();
+  });
+
+  it('pedido ao marketing desligado: o pedido de arte novo não é gravado, o antigo fica', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    const evento = {
+      ...eventoGravado(),
+      marketing_request: true,
+      marketing_items: [
+        { type: 'demanda_grafica' as const, item: 'Cartaz', description: 'A3' },
+        { type: 'cartaz_a4' as const, item: 'Cartaz A4', description: '', legenda: '', conteudo: 'Título', quantidade: 3 },
+      ],
+    };
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+    fireEvent.click(screen.getByRole('switch', { name: /pedido ao marketing/i }));
+    fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
+
+    await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalled());
+    const salvo = espiao.updateEvent.mock.calls[0][0] as AppEvent;
+    expect(salvo.marketing_items).toEqual([{ type: 'demanda_grafica', item: 'Cartaz', description: 'A3' }]);
+  });
+});
+
 describe('o pedido de arte (22/09/2026)', () => {
   const ligarPedido = () => {
     fireEvent.click(screen.getByRole('switch', { name: /pedido ao marketing/i }));

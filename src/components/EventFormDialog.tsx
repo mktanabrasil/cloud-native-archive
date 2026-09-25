@@ -540,6 +540,15 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       errs.food_logistics = 'Escreva qual comida, ou desligue “Outra comida”';
     if (outroAberto.equip && outroVazio('equipment_needed', OPCOES_EQUIP))
       errs.equipment_needed = 'Escreva qual equipamento, ou desligue “Outro equipamento”';
+
+    // Alimento com quantidade ou fornecedor e sem nome sumia ao salvar, sem
+    // aviso (varredura de 25/09/2026). Linha totalmente vazia continua
+    // podendo ficar: ela só é descartada.
+    if (!errs.food_logistics) {
+      const semNome = sincronizarItens(form.food_logistics, form.food_items, OPCOES_COMIDA)
+        .find(i => (i.alimentos ?? []).some(a => !a.nome.trim() && (a.quantidade.trim() || a.quem?.trim() || a.fornecedor !== 'ANA')));
+      if (semNome) errs.food_logistics = `Tem alimento sem nome em “${semNome.item}”: escreva o nome ou remova a linha`;
+    }
     
     // Transporte ligado pede veículo e gente: sem isso a logística não sabe
     // o que reservar.
@@ -554,7 +563,13 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
         errs.marketing_items = 'Marque o que precisa: fotos e vídeo, arte ou impresso — ou desligue o pedido';
       } else {
         // O pedido novo precisa dizer o que é; um pedido antigo já diz.
-        const erroDaArte = errosDoPedidoDeArte(lerPedidoDeArte(form.marketing_items), arteAberta && itensAntigosDeArte(form.marketing_items).length === 0);
+        // O pedido novo é validado sempre que tem alguma escolha. Só um
+        // pedido antigo, sozinho, dispensa (ele já diz o que é). Antes, com
+        // um pedido antigo no evento, um cartaz novo passava sem quantidade
+        // nem conteúdo (varredura de 25/09/2026).
+        const pedido = lerPedidoDeArte(form.marketing_items);
+        const temEscolhaNova = pedido.whatsapp || pedido.cartaz;
+        const erroDaArte = errosDoPedidoDeArte(pedido, arteAberta && (temEscolhaNova || itensAntigosDeArte(form.marketing_items).length === 0));
         if (erroDaArte) errs.marketing_items = erroDaArte;
       }
     }
@@ -659,7 +674,12 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       // em 04/09/2026) e não havia campo. A coluna fica no banco até um DROP.
       printed_materials: form.printed_materials?.trim() || '',
       equipment_needed: normalizarOpcoes(form.equipment_needed),
-      marketing_items: limparPedidoDeArte(form.marketing_items),
+      // Pedido ao marketing desligado: o pedido de arte novo não vai junto
+      // (ficava gravado, incompleto, e voltava ao religar). Pedido antigo e
+      // cobertura seguem como estavam (varredura de 25/09/2026).
+      marketing_items: form.marketing_request
+        ? limparPedidoDeArte(form.marketing_items)
+        : comPedidoDeArte(form.marketing_items, PEDIDO_VAZIO),
       marketing_coverage: form.marketing_coverage || false,
       // A resposta só faz sentido com pedido de cobertura; sem ele, volta a nulo.
       marketing_confirmed: form.marketing_request && form.marketing_coverage ? (form.marketing_confirmed ?? null) : null,

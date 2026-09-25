@@ -54,7 +54,9 @@ describe('anexos do evento', () => {
     render(<FileUpload mode="multiple" attachments={[]} onChange={vi.fn()} />);
 
     expect(screen.getAllByText(/anexos/i)).toHaveLength(1);
-    expect(screen.getByText(/PDF, imagem, planilha ou documento · até 10 MB/)).toBeInTheDocument();
+    expect(screen.getByText(/PDF, imagem, planilha ou documento/)).toBeInTheDocument();
+    // Sem limite de tamanho desde 22/09/2026: o rótulo não promete um.
+    expect(screen.queryByText(/até \d+ MB/)).not.toBeInTheDocument();
   });
 
   it('aceita PDF e guarda nome, tamanho e tipo', async () => {
@@ -71,16 +73,14 @@ describe('anexos do evento', () => {
     expect(espiao.toasts.success).toHaveBeenCalledWith('“Ofício Secretaria.pdf” anexado');
   });
 
-  it('recusa acima de 10 MB pelo nome, e sobe o resto', async () => {
+  it('sem limite de tamanho: um arquivo de 40 MB sobe junto com os outros', async () => {
     const onChange = vi.fn();
     render(<FileUpload mode="multiple" attachments={[]} onChange={onChange} />);
 
-    escolher([arquivo('video.mp4', 11 * 1024 * 1024, 'video/mp4'), arquivo('foto.jpg', 1000, 'image/jpeg')]);
+    escolher([arquivo('planta-baixa.pdf', 40 * 1024 * 1024, 'application/pdf'), arquivo('foto.jpg', 1000, 'image/jpeg')]);
 
-    await waitFor(() => expect(onChange).toHaveBeenCalled());
-    expect(espiao.toasts.error).toHaveBeenCalledWith('Arquivo não enviado', { description: expect.stringMatching(/“video.mp4” tem 11 MB/) });
-    expect(espiao.uploads).toHaveLength(1);
-    expect(onChange.mock.calls[0][0][0].name).toBe('foto.jpg');
+    await waitFor(() => expect(espiao.uploads).toHaveLength(2));
+    expect(espiao.toasts.error).not.toHaveBeenCalled();
   });
 
   it('mostra nome e tamanho, não "Anexo 1"', () => {

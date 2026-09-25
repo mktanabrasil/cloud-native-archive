@@ -58,13 +58,41 @@ export function sincronizarItens(valor: string | null | undefined, atuais: ItemC
     return { detalhes: g?.detalhes ?? '', ...(g?.alimentos ? { alimentos: g.alimentos } : {}), ...(g?.cardapio ? { cardapio: g.cardapio } : {}) };
   };
   const itens: ItemComDetalhe[] = [];
+  const livres: string[] = [];
   for (const p of partes) {
     if (opcoes.includes(p)) {
       if (p === 'Nenhum') return [{ item: 'Nenhum', detalhes: '' }];
       itens.push({ item: p, ...guardado(p) });
     } else {
-      itens.push({ item: p, ...guardado(OUTRO), outro: true });
+      livres.push(p);
     }
+  }
+  // Tudo que não é opção fixa é um "Outro" só (varredura de 25/09/2026).
+  // Antes cada texto livre virava um item com a mesma chave OUTRO, e a tela
+  // só mostrava o primeiro: "Notebook, Extensão" perdia a "Extensão" no
+  // primeiro toque. E um item antigo gravado sem a marca `outro` (o
+  // "Notebook" que saiu da lista em 22/09) perdia o detalhe, porque a busca
+  // era só pela chave OUTRO. Agora vale a chave OUTRO e, se não houver, o
+  // detalhe de cada texto pelo próprio nome.
+  if (livres.length > 0) {
+    const doOutro = mapa.get(OUTRO);
+    let extra: Omit<ItemComDetalhe, 'item'>;
+    if (doOutro) {
+      extra = guardado(OUTRO);
+    } else {
+      const antigos = livres.map(l => mapa.get(l)).filter((g): g is ItemComDetalhe => !!g);
+      const comTexto = antigos.filter(g => g.detalhes?.trim());
+      const detalhes = comTexto.length === 1
+        ? comTexto[0].detalhes
+        : comTexto.map(g => `${g.item}: ${g.detalhes.trim()}`).join(' · ');
+      const comTabela = antigos.find(g => g.alimentos || g.cardapio);
+      extra = {
+        detalhes: detalhes.slice(0, LIMITE_DETALHE),
+        ...(comTabela?.alimentos ? { alimentos: comTabela.alimentos } : {}),
+        ...(comTabela?.cardapio ? { cardapio: comTabela.cardapio } : {}),
+      };
+    }
+    itens.push({ item: livres.join(', '), ...extra, outro: true });
   }
   return itens;
 }
