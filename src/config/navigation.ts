@@ -1,4 +1,4 @@
-import { Globe, LayoutDashboard, Calendar, Users, History, BookOpen, FileSearch, Megaphone, ShoppingBasket } from 'lucide-react';
+import { Briefcase, Globe, LayoutDashboard, Calendar, Users, History, BookOpen, FileSearch, Megaphone, ShoppingBasket } from 'lucide-react';
 
 export interface NavItem {
   to: string;
@@ -16,6 +16,11 @@ export interface NavItem {
    * Portal da Transparência e Widgets, que continuam só da comunicação.
    */
   journalOnly?: boolean;
+  /**
+   * Só RH e admin (vagas, 25/09/2026): o atalho para /vagas, onde eles veem
+   * as abas Portal e Gestão. O candidato chega pelo endereço, sem menu.
+   */
+  rhOnly?: boolean;
   hidden?: boolean;
 }
 
@@ -25,6 +30,7 @@ export const navItems: NavItem[] = [
   { to: '/calendario', label: 'Calendário', icon: Calendar, requireAuth: true, hidden: true },
   { to: '/jornal-institucional', label: 'Jornal Institucional', icon: BookOpen, requireAuth: true, journalOnly: true },
   { to: '/mercado-solidario', label: 'Mercado Solidário', icon: ShoppingBasket },
+  { to: '/vagas', label: 'Vagas', icon: Briefcase, requireAuth: true, rhOnly: true },
   { to: '/marketing', label: 'Marketing', icon: Megaphone, requireAuth: true, marketingOnly: true },
   { to: '/usuarios', label: 'Painel', icon: Users, requireAuth: true },
   { to: '/auditoria', label: 'Auditoria', icon: History, requireAuth: true, marketingOnly: true, hidden: true },

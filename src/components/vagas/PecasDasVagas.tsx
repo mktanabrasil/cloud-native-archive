@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Briefcase, Clock, Home, MapPin } from 'lucide-react';
+import { ArrowLeft, BookOpen, Briefcase, Clock, Home, MapPin } from 'lucide-react';
+import { useUserRole } from '@/hooks/useUserRole';
 import InstitutionalFooterBar from '@/components/news/InstitutionalFooterBar';
 import { RodapePublico } from '@/components/events/RodapePublico';
 import { ROTULO_DA_AREA, ROTULO_DA_CONTRATACAO, ROTULO_DA_MODALIDADE, type Area, type Vaga } from '@/lib/vagas/modelo';
@@ -68,6 +69,7 @@ export function CartaoDaVaga({ vaga }: { vaga: Vaga }) {
 
 /** Topo das páginas públicas de vagas: a marca leva à vitrine. */
 export function TopoDasVagas() {
+  const { isRh } = useUserRole();
   return (
     <header className="border-b border-border bg-background">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
@@ -75,7 +77,9 @@ export function TopoDasVagas() {
           <img src="/logo.png" alt="" width={32} height={32} className="rounded-lg" />
           <span className="text-lg lowercase tracking-tight">anabrasil</span>
         </Link>
-        <Link to="/vagas" className="text-sm font-semibold text-foreground hover:text-primary">Vagas</Link>
+        {isRh
+          ? <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-primary"><ArrowLeft className="h-4 w-4" aria-hidden /> Voltar ao app</Link>
+          : <Link to="/vagas" className="text-sm font-semibold text-foreground hover:text-primary">Vagas</Link>}
       </div>
     </header>
   );
