@@ -278,8 +278,8 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest flex items-center gap-1.5">
                               <CheckCircle2 className="h-3 w-3 text-blue-500" /> Cobertura do Evento Solicitada
                             </p>
-                            <div className="bg-blue-50 rounded-xl p-4 border border-blue-100 space-y-2">
-                              <p className="text-blue-900 text-sm font-medium">
+                            <div className="bg-blue-50 dark:bg-blue-400/10 rounded-xl p-4 border border-blue-100 dark:border-blue-400/30 space-y-2">
+                              <p className="text-blue-900 dark:text-blue-100 text-sm font-medium">
                                 Cobertura fotográfica e/ou vídeo solicitada pela unidade.
                               </p>
                               {(() => {
@@ -288,11 +288,11 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
                                 const classe = estado === 'confirmada'
                                   ? 'bg-success/15 text-success border-success/40'
                                   : estado === 'sem-marketing'
-                                    ? 'bg-amber-100 text-amber-900 border-amber-300'
-                                    : 'bg-white text-muted-foreground border-border';
+                                    ? 'bg-amber-100 dark:bg-amber-400/15 text-amber-900 dark:text-amber-100 border-amber-300 dark:border-amber-400/30'
+                                    : 'bg-background text-muted-foreground border-border';
                                 return <Badge variant="outline" className={`text-[11px] font-medium ${classe}`}>{ROTULO_DA_COBERTURA[estado]}</Badge>;
                               })()}
-                              <p className="text-[11px] text-blue-900/80">
+                              <p className="text-[11px] text-blue-900/80 dark:text-blue-100/80">
                                 Em todo caso, a unidade registra o evento (fotos e vídeos pelo celular) e envia o material ao marketing.
                               </p>
                             </div>
@@ -372,7 +372,7 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
                 <div className="grid grid-cols-1 gap-3">
                   <Button
                     variant="outline"
-                    className="flex items-center justify-center gap-2 border-border hover:bg-green-50 hover:text-green-600 hover:border-green-200"
+                    className="flex items-center justify-center gap-2 border-border hover:bg-green-50 hover:text-green-600 hover:border-green-200 dark:hover:bg-green-400/10 dark:hover:text-green-300 dark:hover:border-green-400/30"
                     onClick={shareOnWhatsApp}
                   >
                     <MessageCircle className="h-4 w-4" />

@@ -887,9 +887,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 <ResumoDePendencias erros={errors} acao={acaoDoBotao} />
 
                 {travadoParaEla && (
-                  <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
-                    <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                    <p className="text-xs text-amber-900">
+                  <div className="flex items-start gap-3 rounded-lg border border-amber-300 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-400/10 p-3">
+                    <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+                    <p className="text-xs text-amber-900 dark:text-amber-100">
                       <strong>{event?.status === 'concluido' ? 'Já concluído.' : 'Já confirmado pela administração geral.'}</strong> Para
                       alterar, peça à administração — ela pode devolver o evento para pendente.
                     </p>
@@ -897,9 +897,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 )}
 
                 {event?.review_note && event.status !== 'confirmado' && (
-                  <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
-                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                    <p className="text-xs text-amber-900">
+                  <div className="flex items-start gap-3 rounded-lg border border-amber-300 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-400/10 p-3">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+                    <p className="text-xs text-amber-900 dark:text-amber-100">
                       <strong>Devolvido pela administração{event.reviewed_by ? ` (${event.reviewed_by})` : ''}:</strong>{' '}
                       {event.review_note}
                     </p>
@@ -926,7 +926,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 )}
 
                 {rascunho && (
-                  <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50/70 p-3 dark:bg-amber-950/30" data-testid="faixa-rascunho">
+                  <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 dark:border-amber-400/30 bg-amber-50/70 p-3 dark:bg-amber-950/30" data-testid="faixa-rascunho">
                     <Clock className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
                     <p className="flex-1 min-w-[200px] text-sm">
                       <b>Você tem um rascunho</b>{rascunho.form.title?.trim() ? ` de “${tituloEmTexto(rascunho.form.title)}”` : ''}, guardado {quandoFoiGuardado(rascunho.em)} neste aparelho.
@@ -1205,7 +1205,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       onClick={() => setForm({ ...form, visibility: 'publico' })}
                       className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
                         form.visibility === 'publico' 
-                          ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' 
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-400/10 text-blue-700 dark:text-blue-300 shadow-sm' 
                           : 'border-border bg-card text-muted-foreground hover:border-muted-foreground/30'
                       }`}
                     >
@@ -1219,10 +1219,10 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       pessoa marca "Visível para todos", cumpre o checklist inteiro e o
                       evento nunca aparece — sem nada explicando por quê. */}
                   {form.visibility === 'publico' && form.status !== 'confirmado' && !emRevisao && (
-                    <div className="mt-3 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
-                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                    <div className="mt-3 flex items-start gap-3 rounded-lg border border-amber-300 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-400/10 p-3">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
                       <div className="space-y-2">
-                        <p className="text-xs text-amber-900">
+                        <p className="text-xs text-amber-900 dark:text-amber-100">
                           <strong>Ainda não vai aparecer no site.</strong> A página pública mostra só
                           eventos confirmados, e este está como {form.status}.
                         </p>
@@ -1239,7 +1239,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   )}
 
                   {form.visibility === 'publico' && form.status === 'confirmado' && (
-                    <p className="mt-3 flex items-center gap-2 text-xs text-emerald-700">
+                    <p className="mt-3 flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-300">
                       <CheckCircle2 className="h-3.5 w-3.5" /> Vai aparecer no site assim que for salvo.
                     </p>
                   )}
@@ -1248,8 +1248,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       só faz sentido quando a unidade pediu. "Não" tira a vaga do
                       marketing da conta do transporte. */}
                   {form.marketing_request && form.marketing_coverage && (
-                    <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50/60 p-3" data-testid="resposta-da-cobertura">
-                      <p className="mb-2 text-xs font-semibold text-blue-900">Cobertura pedida pela unidade</p>
+                    <div className="mt-4 rounded-lg border border-blue-200 dark:border-blue-400/30 bg-blue-50/60 dark:bg-blue-400/10 p-3" data-testid="resposta-da-cobertura">
+                      <p className="mb-2 text-xs font-semibold text-blue-900 dark:text-blue-100">Cobertura pedida pela unidade</p>
                       <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-2.5 shadow-sm">
                         <Switch
                           id="marketing_confirmed"
@@ -1273,11 +1273,11 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 )}
 
                 {isMarketing && form.visibility === 'publico' && (
-                  <div className="space-y-6 rounded-2xl border-2 border-blue-200 p-5 bg-blue-50/30">
-                    <div className="flex justify-between items-center border-b border-blue-100 pb-3">
+                  <div className="space-y-6 rounded-2xl border-2 border-blue-200 dark:border-blue-400/30 p-5 bg-blue-50/30 dark:bg-blue-400/10">
+                    <div className="flex justify-between items-center border-b border-blue-100 dark:border-blue-400/30 pb-3">
                       <div className="flex items-center gap-2">
-                        <Share2 className="h-4 w-4 text-blue-600" />
-                        <Label className="text-sm font-semibold text-blue-800 uppercase tracking-wider">Checklist de publicação</Label>
+                        <Share2 className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+                        <Label className="text-sm font-semibold text-blue-800 dark:text-blue-100 uppercase tracking-wider">Checklist de publicação</Label>
                       </div>
 
                     </div>
@@ -1297,9 +1297,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     {/* Antes passava em silêncio: o carrossel mostrava um bloco só de
                         cor. A ordem de fallback é a mesma do preview ao lado. */}
                     {form.show_in_banner && !form.banner_image_desktop && !form.banner_url_desktop && !form.banner_url_mobile && (
-                      <div className="flex items-start gap-3 rounded-lg border border-dashed border-amber-300 bg-amber-50 p-3">
-                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                        <p className="text-xs text-amber-900">
+                      <div className="flex items-start gap-3 rounded-lg border border-dashed border-amber-300 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-400/10 p-3">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+                        <p className="text-xs text-amber-900 dark:text-amber-100">
                           <strong>“Exibir no banner” ligado sem imagem.</strong> O carrossel vai usar só a cor do card.
                           Envie ao menos o Banner Desktop (21:9) abaixo.
                         </p>
@@ -1578,9 +1578,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   </div>
 
                   {form.marketing_request && (
-                    <div className="rounded-lg border border-blue-100 bg-blue-50/30 p-4 space-y-4 animate-in fade-in slide-in-from-top-1">
+                    <div className="rounded-lg border border-blue-100 dark:border-blue-400/30 bg-blue-50/30 dark:bg-blue-400/10 p-4 space-y-4 animate-in fade-in slide-in-from-top-1">
                       <div className="flex items-center justify-between">
-                        <Label className="text-sm font-semibold text-blue-900">O que você precisa? *</Label>
+                        <Label className="text-sm font-semibold text-blue-900 dark:text-blue-100">O que você precisa? *</Label>
                       </div>
                       
                       <div className="space-y-4">
@@ -1591,7 +1591,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                               checked={form.marketing_coverage || false}
                               onCheckedChange={v => setForm({ ...form, marketing_coverage: v })}
                             />
-                            <Label htmlFor="marketing_cobertura" className="cursor-pointer flex-1 text-sm font-medium text-blue-900">Fotos e vídeo no dia (cobertura)</Label>
+                            <Label htmlFor="marketing_cobertura" className="cursor-pointer flex-1 text-sm font-medium text-blue-900 dark:text-blue-100">Fotos e vídeo no dia (cobertura)</Label>
                           </div>
                           
                           {/* Dois combinados que a unidade precisa ler ao pedir: a
@@ -1600,7 +1600,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                               no transporte aparece na conta do transporte, não aqui. */}
                           {form.marketing_coverage && (
                             <div
-                              className="rounded-lg border border-blue-200 bg-blue-50/70 px-3 py-2.5 text-[12px] leading-relaxed text-blue-900 animate-in fade-in zoom-in-95 duration-200"
+                              className="rounded-lg border border-blue-200 dark:border-blue-400/30 bg-blue-50/70 dark:bg-blue-400/10 px-3 py-2.5 text-[12px] leading-relaxed text-blue-900 dark:text-blue-100 animate-in fade-in zoom-in-95 duration-200"
                               data-testid="combinados-da-cobertura"
                             >
                               <p className="mb-1.5 font-semibold">Pedido registrado. Dois combinados:</p>
@@ -1614,10 +1614,10 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                 da unidade: os dois registros se completam.
                               </p>
                               {form.marketing_confirmed === true && (
-                                <p className="mt-2 font-semibold text-emerald-700">✓ Marketing confirmado para este evento.</p>
+                                <p className="mt-2 font-semibold text-emerald-700 dark:text-emerald-300">✓ Marketing confirmado para este evento.</p>
                               )}
                               {form.marketing_confirmed === false && (
-                                <p className="mt-2 font-semibold text-amber-800">Sem marketing neste evento — o registro é pela unidade.</p>
+                                <p className="mt-2 font-semibold text-amber-800 dark:text-amber-100">Sem marketing neste evento — o registro é pela unidade.</p>
                               )}
                             </div>
                           )}
@@ -1633,7 +1633,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                 if (!v) setForm({ ...form, marketing_items: comPedidoDeArte(form.marketing_items, PEDIDO_VAZIO) });
                               }}
                             />
-                            <Label htmlFor="marketing_grafica" className="cursor-pointer flex-1 text-sm font-medium text-blue-900">Arte ou material impresso</Label>
+                            <Label htmlFor="marketing_grafica" className="cursor-pointer flex-1 text-sm font-medium text-blue-900 dark:text-blue-100">Arte ou material impresso</Label>
                           </div>
 
                           {/* O pedido de verdade (22/09/2026): duas escolhas, legenda,
@@ -1671,8 +1671,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                             Impressos"), mas não havia onde escrever: o único
                             valor entrou por migração. Aqui, junto do pedido de
                             marketing, é onde a pessoa diz o que já está pronto. */}
-                        <div className="pt-2 border-t border-blue-100">
-                          <Label htmlFor="printed_materials" className="text-xs font-medium mb-1 block text-blue-900">
+                        <div className="pt-2 border-t border-blue-100 dark:border-blue-400/30">
+                          <Label htmlFor="printed_materials" className="text-xs font-medium mb-1 block text-blue-900 dark:text-blue-100">
                             Já existe algo pronto? <span className="font-normal text-muted-foreground">(opcional)</span>
                           </Label>
                           <Input
@@ -1688,7 +1688,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                         {/* Anexos moram no pedido ao marketing (22/09/2026): é para o
                             marketing que a gestora manda ofício, lista, referência de
                             arte. Sem limite de tamanho por arquivo. */}
-                        <div className="pt-2 border-t border-blue-100" data-testid="anexos-do-marketing">
+                        <div className="pt-2 border-t border-blue-100 dark:border-blue-400/30" data-testid="anexos-do-marketing">
                           <FileUpload
                             mode="multiple"
                             label="Anexos para o marketing"
@@ -1727,7 +1727,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     const usarSugestao = () =>
                       s && setForm({ ...form, transport_vehicle: s.principal.value, transport_support_vehicle: s.apoio?.value ?? '' });
                     return (
-                      <div className="rounded-lg border border-amber-100 bg-amber-50/30 p-4 space-y-4 animate-in fade-in slide-in-from-top-1">
+                      <div className="rounded-lg border border-amber-100 dark:border-amber-400/30 bg-amber-50/30 dark:bg-amber-400/10 p-4 space-y-4 animate-in fade-in slide-in-from-top-1">
                         <div>
                           <Label htmlFor="transport_passengers" className="text-xs font-medium mb-1 block">Quantas pessoas vão? *</Label>
                           <div className="grid gap-3 sm:grid-cols-[120px_1fr] sm:items-center">
@@ -1868,9 +1868,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                           </div>
                         ) : motivo && (
                           <div className={`px-3 py-2 rounded-md border border-dashed animate-in fade-in zoom-in-95 duration-200 ${
-                            r.excedido ? 'bg-destructive/10 border-destructive/40' : 'bg-amber-50/60 border-amber-300'
+                            r.excedido ? 'bg-destructive/10 border-destructive/40' : 'bg-amber-50/60 dark:bg-amber-400/10 border-amber-300 dark:border-amber-400/30'
                           }`}>
-                            <p className={`text-[11px] flex items-center gap-1.5 font-medium ${r.excedido ? 'text-destructive' : 'text-amber-700'}`}>
+                            <p className={`text-[11px] flex items-center gap-1.5 font-medium ${r.excedido ? 'text-destructive' : 'text-amber-700 dark:text-amber-300'}`}>
                               <AlertTriangle className="h-3 w-3" /> {motivo}
                             </p>
                           </div>
@@ -2068,9 +2068,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
             )}
             
             {!showConflictAlert && enviaParaAprovacao && !isEditing && (
-              <div className="flex items-start gap-3 rounded-lg border border-dashed border-blue-200 bg-blue-50/60 p-3">
-                <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
-                <p className="text-xs text-blue-900">
+              <div className="flex items-start gap-3 rounded-lg border border-dashed border-blue-200 dark:border-blue-400/30 bg-blue-50/60 dark:bg-blue-400/10 p-3">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-300" />
+                <p className="text-xs text-blue-900 dark:text-blue-100">
                   Vai para a administração geral, que revisa, confirma e decide se aparece no site.
                 </p>
               </div>
@@ -2127,10 +2127,10 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
             <div className="hidden lg:block border-l pl-8 space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Preview público (Banner)</Label>
-                <Badge variant="outline" className="text-[10px] text-amber-600 bg-amber-50">Exclusivo Banner</Badge>
+                <Badge variant="outline" className="text-[10px] text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-200 dark:bg-amber-400/10 dark:border-amber-400/30">Exclusivo Banner</Badge>
               </div>
               <div className="rounded-2xl border bg-muted/50 overflow-hidden shadow-inner h-full flex flex-col">
-                <div className="bg-white border-b px-4 py-2 flex items-center justify-between">
+                <div className="bg-background border-b px-4 py-2 flex items-center justify-between">
                   <div className="flex gap-1">
                     <div className="h-2 w-2 rounded-full bg-red-400" />
                     <div className="h-2 w-2 rounded-full bg-amber-400" />
@@ -2141,7 +2141,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   </div>
                 </div>
                 <div className="p-0 overflow-y-auto max-h-[75vh] flex-1">
-                  <div className="bg-white h-full">
+                  {/* Fundo do tema, não branco fixo: o conteúdo usa as cores do tema e,
+                      no modo escuro, virava texto claro sobre branco (print de 25/09/2026). */}
+                  <div className="bg-background text-foreground h-full">
                     {/* Visualização de Slide do Banner */}
                     <div className={`relative ${(!form.banner_image_desktop && !form.banner_url_desktop && !form.banner_url_mobile) ? 'aspect-[21/12]' : 'aspect-[21/9]'} bg-slate-900 overflow-hidden`}>
                       {form.show_banner_overlay !== false && (
@@ -2204,7 +2206,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       </div>
                     </div>
 
-                    <div className="p-6 border-t bg-muted/50/50">
+                    <div className="p-6 border-t bg-muted/40">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
                         <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-tighter">Detalhes do evento (Card/Modal)</span>
