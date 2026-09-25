@@ -71,6 +71,14 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
     imagemAlt: 'Mercado Solidário da ANA Brasil: alimento que vira esperança',
   },
   {
+    arquivo: 'vagas.html',
+    regra: 'RewriteRule ^vagas(/|$) /vagas.html [L]',
+    titulo: 'Trabalhe Conosco · ANA Brasil',
+    descricao: 'Vagas abertas na ANA Brasil. Veja os detalhes e candidate-se em minutos.',
+    imagem: '/og-vagas.jpg',
+    imagemAlt: 'Trabalhe Conosco na ANA Brasil: vagas abertas',
+  },
+  {
     arquivo: 'transparencia.html',
     regra: 'RewriteRule ^portal-transparencia(-publico)?/?$ /transparencia.html [L]',
     titulo: 'Portal da Transparência · ANA Brasil',

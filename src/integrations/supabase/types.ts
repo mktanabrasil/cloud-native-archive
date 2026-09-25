@@ -752,6 +752,146 @@ export type Database = {
         }
         Relationships: []
       }
+      perguntas_de_vaga: {
+        Row: {
+          bloqueada: boolean
+          created_at: string
+          id: string
+          obrigatoria: boolean
+          opcoes: Json
+          ordem: number
+          texto: string
+          tipo: string
+          updated_at: string
+          vaga_id: string | null
+        }
+        Insert: {
+          bloqueada?: boolean
+          created_at?: string
+          id?: string
+          obrigatoria?: boolean
+          opcoes?: Json
+          ordem?: number
+          texto: string
+          tipo?: string
+          updated_at?: string
+          vaga_id?: string | null
+        }
+        Update: {
+          bloqueada?: boolean
+          created_at?: string
+          id?: string
+          obrigatoria?: boolean
+          opcoes?: Json
+          ordem?: number
+          texto?: string
+          tipo?: string
+          updated_at?: string
+          vaga_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "perguntas_de_vaga_vaga_id_fkey"
+            columns: ["vaga_id"]
+            isOneToOne: false
+            referencedRelation: "vagas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vagas: {
+        Row: {
+          aberta_pcd: boolean
+          afirmativa_pcd: boolean
+          aprendizagem: boolean
+          area: string
+          beneficios: Json
+          carga_horaria: string
+          cidade: string
+          codigo: string
+          complementares: string
+          contratacao: string
+          created_at: string
+          created_by: string | null
+          descricao: string
+          diferenciais: Json
+          encerrada_em: string | null
+          id: string
+          link_externo: string | null
+          modalidade: string
+          prazo: string | null
+          publicada_em: string | null
+          requisitos: Json
+          responsabilidades: Json
+          responsavel_id: string | null
+          slug: string
+          status: string
+          titulo: string
+          updated_at: string
+          versao: number
+        }
+        Insert: {
+          aberta_pcd?: boolean
+          afirmativa_pcd?: boolean
+          aprendizagem?: boolean
+          area: string
+          beneficios?: Json
+          carga_horaria?: string
+          cidade?: string
+          codigo: string
+          complementares?: string
+          contratacao?: string
+          created_at?: string
+          created_by?: string | null
+          descricao?: string
+          diferenciais?: Json
+          encerrada_em?: string | null
+          id?: string
+          link_externo?: string | null
+          modalidade?: string
+          prazo?: string | null
+          publicada_em?: string | null
+          requisitos?: Json
+          responsabilidades?: Json
+          responsavel_id?: string | null
+          slug: string
+          status?: string
+          titulo: string
+          updated_at?: string
+          versao?: number
+        }
+        Update: {
+          aberta_pcd?: boolean
+          afirmativa_pcd?: boolean
+          aprendizagem?: boolean
+          area?: string
+          beneficios?: Json
+          carga_horaria?: string
+          cidade?: string
+          codigo?: string
+          complementares?: string
+          contratacao?: string
+          created_at?: string
+          created_by?: string | null
+          descricao?: string
+          diferenciais?: Json
+          encerrada_em?: string | null
+          id?: string
+          link_externo?: string | null
+          modalidade?: string
+          prazo?: string | null
+          publicada_em?: string | null
+          requisitos?: Json
+          responsabilidades?: Json
+          responsavel_id?: string | null
+          slug?: string
+          status?: string
+          titulo?: string
+          updated_at?: string
+          versao?: number
+        }
+        Relationships: []
+      }
       votos_de_enquete: {
         Row: {
           alterado_em: string | null
@@ -882,6 +1022,7 @@ export type Database = {
       enquete_resultado: { Args: { p_slug: string; p_acompanhamento?: boolean }; Returns: Json }
       meu_voto_na_enquete: { Args: { p_slug: string; p_telefone: string; p_pin: string }; Returns: Json }
       votar_enquete: { Args: { p_slug: string; p_opcao_id: string; p_telefone: string; p_nome: string; p_pin: string }; Returns: Json }
+      is_rh_or_admin: { Args: { _user_id: string }; Returns: boolean }
       is_marketing_user: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
