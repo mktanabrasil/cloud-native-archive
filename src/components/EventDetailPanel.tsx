@@ -136,7 +136,7 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
               if (!t) return null;
               const apoio = motivoDoApoio(t);
               return (
-                <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-3 space-y-1">
+                <div className="rounded-xl border border-amber-200 dark:border-amber-400/30 bg-amber-50/40 dark:bg-amber-400/10 p-3 space-y-1">
                   <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><Truck className="h-3.5 w-3.5" /> Transporte</p>
                   <p className="text-sm text-foreground">{t.texto}</p>
                   {apoio && (
@@ -178,7 +178,7 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
                   <span className="text-sm font-medium text-foreground">Pedido ao marketing</span>
                 </div>
                 {event.marketing_coverage && (
-                  <div className="text-xs text-blue-900 flex flex-wrap items-center gap-2">
+                  <div className="text-xs text-blue-900 dark:text-blue-100 flex flex-wrap items-center gap-2">
                     Cobertura solicitada
                     {(() => {
                       const estado = estadoDaCobertura(event);
@@ -186,7 +186,7 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
                       const classe = estado === 'confirmada'
                         ? 'bg-success/15 text-success border-success/40'
                         : estado === 'sem-marketing'
-                          ? 'bg-amber-100 text-amber-900 border-amber-300'
+                          ? 'bg-amber-100 dark:bg-amber-400/15 text-amber-900 dark:text-amber-100 border-amber-300 dark:border-amber-400/30'
                           : 'bg-muted text-muted-foreground border-border';
                       return <Badge variant="outline" className={`text-[10px] font-medium ${classe}`}>{ROTULO_DA_COBERTURA[estado]}</Badge>;
                     })()}
