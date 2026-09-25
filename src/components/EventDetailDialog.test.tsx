@@ -147,7 +147,7 @@ describe('copiar link', () => {
 });
 
 describe('evento que já passou', () => {
-  it('o detalhe mostra o selo Encerrado ao lado da unidade', () => {
+  it('o detalhe mostra o selo Já aconteceu ao lado da unidade', () => {
     render(
       <EventDetailDialog
         open
@@ -156,12 +156,12 @@ describe('evento que já passou', () => {
       />,
     );
 
-    expect(screen.getByText('Encerrado')).toBeInTheDocument();
+    expect(screen.getByText('Já aconteceu')).toBeInTheDocument();
   });
 
   it('evento futuro não tem o selo', () => {
     montar();
-    expect(screen.queryByText('Encerrado')).toBeNull();
+    expect(screen.queryByText('Já aconteceu')).toBeNull();
   });
 });
 

@@ -280,6 +280,7 @@ export function GrupoDeOpcoes({
                 value={texto}
                 onChange={(e) => onChange(montar(escolhidos, e.target.value))}
                 placeholder={pistaOutro}
+                aria-label={pistaOutro}
               />
               {texto.trim() === '' && (
                 <p className="text-xs text-destructive">Escreva qual, ou desligue esta opção.</p>

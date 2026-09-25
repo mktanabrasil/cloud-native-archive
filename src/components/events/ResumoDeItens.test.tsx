@@ -75,3 +75,12 @@ describe('alimentação por refeição (22/09/2026)', () => {
     expect(screen.getByTestId('refeicao-Almoço')).toHaveTextContent('Observação antiga: 60 crianças');
   });
 });
+
+describe('no celular (varredura de 25/09/2026)', () => {
+  it('a tabela de uma refeição fica dentro de uma área que rola de lado, em vez de cortar colunas', () => {
+    render(<ResumoDeItens titulo="Alimentação" itens={[{ item: 'Almoço', detalhes: '', alimentos: [{ nome: 'Arroz', quantidade: '1', fornecedor: 'Parceiro', quem: 'Padaria com nome comprido' }] }]} />);
+    const rolagem = screen.getByTestId('rolagem-da-tabela');
+    expect(rolagem).toHaveClass('overflow-x-auto');
+    expect(rolagem.querySelector('table')).not.toBeNull();
+  });
+});

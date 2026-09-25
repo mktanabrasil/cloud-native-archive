@@ -20,7 +20,7 @@ import { temArte } from '@/lib/events/arte';
 import { gerarChecklistPdf } from '@/lib/events/checklistPdf';
 import { ClipboardList } from 'lucide-react';
 import { tituloEmTexto } from '@/lib/events/titulo';
-import { textoDaData, textoDoHorario } from '@/lib/events/periodo';
+import { anoQuandoPreciso, textoDaData, textoDoHorario } from '@/lib/events/periodo';
 import { jaAconteceu } from '@/lib/events/proximosEPassados';
 import { textoDoWhatsApp } from '@/lib/events/compartilhar';
 
@@ -112,7 +112,7 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
                 partir dele, ou de um link antigo, não tinha. */}
             {jaAconteceu(event) && (
               <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-sm px-3 py-1">
-                Encerrado
+                Já aconteceu
               </Badge>
             )}
           </div>
@@ -134,7 +134,7 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Data</p>
-                    <p className="font-medium">{textoDaData(event, { comAno: false })}</p>
+                    <p className="font-medium">{textoDaData(event, anoQuandoPreciso(event))}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -176,7 +176,7 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
               {isInternalView &&
                 (event.target_audience || event.support_team || event.food_logistics || event.equipment_needed || event.printed_materials || event.transport_needed) && (
                 <div className="pt-6 border-t border-border space-y-4">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Logística e Apoio</h3>
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Logística</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {event.target_audience && (
                       <div>

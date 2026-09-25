@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { textoDaData, textoDoHorario, variosDias } from './periodo';
+import { anoQuandoPreciso, textoDaData, textoDoHorario, variosDias } from './periodo';
 
 const ev = (ini: string, fim: string) => ({
   start_datetime: new Date(ini).toISOString(),
@@ -50,5 +50,14 @@ describe('textoDoHorario', () => {
   it('vários dias: começa e termina', () => {
     expect(textoDoHorario(mesmoMes)).toBe('Começa às 08:00, termina às 16:00');
     expect(textoDoHorario(viraMes, { separador: ' - ' })).toBe('Começa às 14:00 · termina às 12:00');
+  });
+});
+
+describe('anoQuandoPreciso (varredura de 25/09/2026)', () => {
+  const agora = new Date('2026-09-25T12:00:00-03:00');
+  it('evento deste ano: sem ano; de outro ano, ou que atravessa o ano: com ano', () => {
+    expect(anoQuandoPreciso({ start_datetime: '2026-10-10T12:00:00Z', end_datetime: '2026-10-10T15:00:00Z' }, agora)).toEqual({ comAno: false });
+    expect(anoQuandoPreciso({ start_datetime: '2027-01-10T12:00:00Z', end_datetime: '2027-01-10T15:00:00Z' }, agora)).toEqual({ comAno: true });
+    expect(anoQuandoPreciso({ start_datetime: '2026-12-30T12:00:00Z', end_datetime: '2027-01-02T15:00:00Z' }, agora)).toEqual({ comAno: true });
   });
 });
