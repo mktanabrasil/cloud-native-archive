@@ -3,7 +3,10 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { Vaga } from '@/lib/vagas/modelo';
 
-const espiao = vi.hoisted(() => ({ vagas: [] as Vaga[], falha: false }));
+const espiao = vi.hoisted(() => ({ vagas: [] as Vaga[], falha: false, rh: false }));
+
+vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ isRh: espiao.rh }) }));
+vi.mock('@/components/vagas/GestaoDeVagas', () => ({ GestaoDeVagas: () => <p>painel da gestão</p> }));
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/lib/vagas/api', async () => {
@@ -83,6 +86,21 @@ describe('portal /vagas', () => {
     expect(await screen.findByText('Não deu para carregar as vagas.')).toBeInTheDocument();
     espiao.falha = false;
     fireEvent.click(screen.getByRole('button', { name: 'Tentar de novo' }));
+    expect(await screen.findByText(/3 vagas abertas/)).toBeInTheDocument();
+  });
+});
+
+describe('abas do RH', () => {
+  it('o público não vê aba; o RH vê Portal e Gestão, e ?tela=gestao abre a gestão', async () => {
+    const { unmount } = abrir('/vagas?tela=gestao');
+    expect(await screen.findByText(/3 vagas abertas/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Gestão' })).not.toBeInTheDocument();
+    unmount();
+
+    espiao.rh = true;
+    abrir('/vagas?tela=gestao');
+    expect(screen.getByText('painel da gestão')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Portal' }));
     expect(await screen.findByText(/3 vagas abertas/)).toBeInTheDocument();
   });
 });

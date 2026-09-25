@@ -120,6 +120,7 @@ describe('o papel vem do banco', () => {
 
     expect(result.current.isAdmin).toBe(false);
     expect(result.current.isMarketing).toBe(false);
+    expect(result.current.isRh).toBe(false);
     expect(result.current.role).toBeNull();
   });
 
@@ -133,5 +134,6 @@ describe('o papel vem do banco', () => {
 
     expect(result.current.isAdmin).toBe(true);
     expect(result.current.isMarketing).toBe(true);
+    expect(result.current.isRh).toBe(true);
   });
 });
