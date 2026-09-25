@@ -26,11 +26,17 @@
   # publicação achava que o arquivo existia (08/09/2026).
   RewriteRule ^assets/ - [R=404,L]
 
-  # Enquetes: o mesmo app, com o cartão de link próprio (25/09/2026). O
-  # WhatsApp lê só o cabeçalho do HTML; sem isto, o link da enquete chegava
-  # como "Programação de Eventos". Os dois arquivos são gerados no build.
+  # Cada página com o seu cartão de link (25/09/2026). O WhatsApp lê só o
+  # cabeçalho do HTML; sem isto, todo link chegava como "Programação de
+  # Eventos", com a foto do desfile. Os arquivos são cópias do index.html
+  # geradas no build (src/lib/cartoesDeLink.ts): o app carrega igual.
+  # A raiz e a vitrine (/, /eventos) usam o próprio index.html.
   RewriteRule ^enquete/[^/]+/resultado/?$ /enquete-resultado.html [L]
   RewriteRule ^enquete/ /enquete.html [L]
+  RewriteRule ^mercado-solidario(-publico)?/?$ /mercado.html [L]
+  RewriteRule ^portal-transparencia(-publico)?/?$ /transparencia.html [L]
+  RewriteRule ^jornal-institucional/?$ /jornal.html [L]
+  RewriteRule ^(login|redefinir-senha|auth/confirm|visao-geral|calendario|usuarios|auditoria|design-manual|marketing|admin-toolbox|email-preview)/?$ /app.html [L]
 
   # Todo o resto entrega o index.html, e o React resolve a rota.
   RewriteRule . /index.html [L]
@@ -42,7 +48,7 @@
   # 404 intermitente de 21/08/2026. `no-cache` não proíbe guardar, só obriga
   # a reconferir com o servidor a cada abertura. Os assets, que têm hash no
   # nome, continuam com a semana de cache que o servidor já dá.
-  <FilesMatch "^(index|enquete|enquete-resultado)\.html$">
+  <FilesMatch "^(index|enquete|enquete-resultado|mercado|transparencia|jornal|app)\.html$">
     Header set Cache-Control "no-cache"
   </FilesMatch>
 

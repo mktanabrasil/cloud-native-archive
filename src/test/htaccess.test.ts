@@ -27,7 +27,7 @@ describe('public/.htaccess', () => {
   });
 
   it('o index.html e as páginas do cartão de enquete não ficam em cache', () => {
-    expect(diretivas).toContain('<FilesMatch "^(index|enquete|enquete-resultado)\\.html$">');
+    expect(diretivas).toContain('<FilesMatch "^(index|enquete|enquete-resultado|mercado|transparencia|jornal|app)\\.html$">');
     expect(diretivas).toMatch(/<FilesMatch "[^"]*">\s*Header set Cache-Control "no-cache"/);
   });
 
