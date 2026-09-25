@@ -75,6 +75,22 @@ export default function PublicEventsPage() {
    * pessoa já está no site da ANA, e o rodapé do WordPress vem logo abaixo.
    */
   const embutida = useIsEmbedded() || searchParams.get('embed') === 'true';
+
+  // Embutida no site, que é claro, a vitrine fica sempre clara, mesmo com o
+  // celular em modo noturno. Antes ela seguia o aparelho e virava um bloco
+  // escuro na página branca (varredura de 25/09/2026). É a mesma marca do
+  // Mercado: o ThemeProvider lê `temaForcado` e não a sobrescreve.
+  useEffect(() => {
+    if (!embutida) return;
+    const root = document.documentElement;
+    root.dataset.temaForcado = 'light';
+    root.classList.remove('dark');
+    root.classList.add('light');
+    root.style.colorScheme = 'light';
+    return () => {
+      delete root.dataset.temaForcado;
+    };
+  }, [embutida]);
   const comoVisitante = searchParams.get('como') === 'visitante';
   /** Logado e sem o interruptor ligado: vê e faz o que é da equipe. */
   const equipe = isAuthenticated && !comoVisitante;
@@ -384,7 +400,7 @@ export default function PublicEventsPage() {
                 </picture>
               ) : (
                 /* Sem imagem: a foto da unidade, ou a cor do evento quando não há foto */
-                <CapaDaUnidade evento={event} comTitulo={false} />
+                <CapaDaUnidade evento={event} comTitulo={false} prioridade />
               )}
 
               {event.show_banner_overlay !== false && (
@@ -435,15 +451,17 @@ export default function PublicEventsPage() {
                     <CalendarDays className="h-5 w-5" />
                     <span>{textoDaData(event, { comAno: false })}</span>
                   </div>
-                  <div className="flex items-start gap-2">
-                    <MapPin className="h-5 w-5 shrink-0" />
-                    <span>
-                      {event.location}
-                      {event.visibility === 'publico' && enderecoDoLocal(event.location) && (
-                        <span className="block text-xs md:text-sm text-slate-300" data-testid="endereco-heroi">{enderecoDoLocal(event.location)}</span>
-                      )}
-                    </span>
-                  </div>
+                  {event.location && (
+                    <div className="flex items-start gap-2" data-testid="local-heroi">
+                      <MapPin className="h-5 w-5 shrink-0" />
+                      <span>
+                        {event.location}
+                        {event.visibility === 'publico' && enderecoDoLocal(event.location) && (
+                          <span className="block text-xs md:text-sm text-slate-300" data-testid="endereco-heroi">{enderecoDoLocal(event.location)}</span>
+                        )}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-4 mt-6">
                   <Button

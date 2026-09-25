@@ -47,9 +47,14 @@ interface Props {
   tamanho?: 'card' | 'detalhe';
   className?: string;
   children?: ReactNode;
+  /**
+   * A capa já abre visível (herói, detalhe): a foto carrega na hora, em vez
+   * de esperar o navegador decidir, e o fundo escuro não pisca.
+   */
+  prioridade?: boolean;
 }
 
-export function CapaDaUnidade({ evento, comTitulo = true, tamanho = 'card', className = '', children }: Props) {
+export function CapaDaUnidade({ evento, comTitulo = true, tamanho = 'card', className = '', children, prioridade = false }: Props) {
   const unidade = unidadeDaFoto(evento);
   const titulo = comTitulo && (
     <span
@@ -79,11 +84,15 @@ export function CapaDaUnidade({ evento, comTitulo = true, tamanho = 'card', clas
       <img
         src={FOTO_DA_UNIDADE[unidade]}
         alt=""
-        loading="lazy"
+        loading={prioridade ? 'eager' : 'lazy'}
+        fetchPriority={prioridade ? 'high' : 'auto'}
         className="absolute inset-0 w-full h-full object-cover"
       />
       <div className="absolute inset-0" style={{ backgroundColor: COR_DA_UNIDADE[unidade], opacity: 0.55 }} />
-      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/75 via-slate-900/15 to-transparent" />
+      {/* Sombra mais forte e mais alta (varredura de 25/09/2026): sobre o véu
+          verde-água do Nilópolis e o amarelo de Santana, o título branco de
+          uma linha ficava sobre cor clara. */}
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/85 via-slate-900/35 to-transparent" />
       {titulo}
       {children}
     </div>

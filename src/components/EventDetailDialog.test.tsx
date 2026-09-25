@@ -46,12 +46,16 @@ const montar = () => render(<EventDetailDialog open onOpenChange={() => {}} even
 afterEach(() => vi.restoreAllMocks());
 
 describe('a capa sem arte (22/09/2026)', () => {
-  it('mostra a foto da unidade com o título por cima', () => {
+  it('mostra a foto da unidade, carregada de cara, sem repetir o título sobre ela', () => {
     montar();
     const capa = screen.getByTestId('capa-da-unidade');
     expect(capa).toHaveAttribute('data-unidade', 'Santana');
-    expect(capa.querySelector('img')).toHaveAttribute('src', '/unidades/santana.webp');
-    expect(screen.getByTestId('titulo-na-capa')).toHaveTextContent('HOPE DAY');
+    const img = capa.querySelector('img')!;
+    expect(img).toHaveAttribute('src', '/unidades/santana.webp');
+    expect(img).toHaveAttribute('loading', 'eager');
+    // O título fica só no h2 abaixo: na capa ele se sobrepunha ao conteúdo (25/09/2026).
+    expect(screen.queryByTestId('titulo-na-capa')).toBeNull();
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('HOPE DAY');
   });
 });
 
