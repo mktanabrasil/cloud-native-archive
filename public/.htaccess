@@ -34,6 +34,7 @@
   RewriteRule ^enquete/[^/]+/resultado/?$ /enquete-resultado.html [L]
   RewriteRule ^enquete/ /enquete.html [L]
   RewriteRule ^mercado-solidario(-publico)?/?$ /mercado.html [L]
+  RewriteRule ^vagas(/|$) /vagas.html [L]
   RewriteRule ^portal-transparencia(-publico)?/?$ /transparencia.html [L]
   RewriteRule ^jornal-institucional/?$ /jornal.html [L]
   RewriteRule ^(login|redefinir-senha|auth/confirm|visao-geral|calendario|usuarios|auditoria|design-manual|marketing|admin-toolbox|email-preview)/?$ /app.html [L]

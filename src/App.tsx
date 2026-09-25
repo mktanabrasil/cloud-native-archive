@@ -30,6 +30,8 @@ import MercadoSolidarioPublicPage from "./pages/MercadoSolidarioPublicPage";
 import EnquetePublicaPage from "./pages/EnquetePublicaPage";
 import EnqueteResultadoPage from "./pages/EnqueteResultadoPage";
 import TransparencyPublicPage from "./pages/TransparencyPublicPage";
+import VagasPage from "./pages/VagasPage";
+import VagaPage from "./pages/VagaPage";
 import NotFound from "./pages/NotFound";
 import EmailPreview from "./pages/EmailPreview";
 import AdminToolboxPage from "./pages/AdminToolboxPage";
@@ -124,6 +126,9 @@ const App = () => (
                     da barra do app, como a vitrine embutida. */}
                 <Route path="/enquete/:slug" element={<EnquetePublicaPage />} />
                 <Route path="/enquete/:slug/resultado" element={<EnqueteResultadoPage />} />
+                {/* Trabalhe Conosco (fase 1, 25/09/2026): vitrine pública das vagas, fora da barra do app. */}
+                <Route path="/vagas" element={<VagasPage />} />
+                <Route path="/vagas/:slug" element={<VagaPage />} />
                 <Route path="/portal-transparencia-publico" element={<TransparencyPublicPage />} />
                 <Route element={<AppLayout />}>
                   <Route path="/" element={<EventsHubPage />} />
