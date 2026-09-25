@@ -1448,3 +1448,48 @@ describe('rascunho no aparelho (22/09/2026)', () => {
     expect(screen.queryByTestId('anexos-legado')).toBeNull();
   });
 });
+
+describe('rascunho e refeições (varredura de 25/09/2026)', () => {
+  it('retomar um rascunho de edição depois que o evento mudou não desfaz o que outra pessoa gravou', () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    const gravado = { ...eventoGravado(), updated_at: '2026-09-25T10:00:00.000Z', marketing_request: true, marketing_coverage: true, marketing_confirmed: true };
+    const base = { title: gravado.title, marketing_confirmed: null };
+    localStorage.setItem(`evento-rascunho:u1:${gravado.id}`, JSON.stringify({
+      form: { ...base, title: 'Título do rascunho' },
+      em: '2026-09-22T12:00:00.000Z',
+      versao: '2026-09-22T09:00:00.000Z',
+      base,
+    }));
+    render(<EventFormDialog open onOpenChange={fechou} event={gravado} />);
+
+    fireEvent.click(within(screen.getByTestId('faixa-rascunho')).getByRole('button', { name: 'Retomar' }));
+
+    expect((screen.getByLabelText(/título/i) as HTMLInputElement).value).toBe('Título do rascunho');
+    // A confirmação do marketing, gravada depois do rascunho, continua lá.
+    expect(screen.getByTestId('combinados-da-cobertura')).toHaveTextContent(/marketing confirmado/i);
+  });
+
+  it('com a faixa do rascunho aberta, digitar não substitui o rascunho oferecido', async () => {
+    localStorage.setItem('evento-rascunho:u1:novo', JSON.stringify({ form: { title: 'Rascunho de ontem' }, em: new Date().toISOString() }));
+    abrir();
+    expect(screen.getByTestId('faixa-rascunho')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/título/i), { target: { value: 'Outra coisa' } });
+    await new Promise(r => setTimeout(r, 800));
+    expect(localStorage.getItem('evento-rascunho:u1:novo')).toContain('Rascunho de ontem');
+  });
+
+  it('desligar uma refeição e religar traz a tabelinha de volta', () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    preencher(); // liga Lanche
+    fireEvent.click(within(screen.getByTestId('comida-Lanche-tabela')).getByRole('button', { name: /adicionar alimento/i }));
+    fireEvent.change(screen.getByLabelText('Alimento 1 de Lanche'), { target: { value: 'Bolo de cenoura' } });
+
+    fireEvent.click(document.getElementById('comida-Nenhum')!);
+    expect(screen.queryByTestId('comida-Lanche-tabela')).toBeNull();
+    fireEvent.click(document.getElementById('comida-Nenhum')!);
+    fireEvent.click(screen.getByRole('switch', { name: 'Lanche' }));
+
+    expect((screen.getByLabelText('Alimento 1 de Lanche') as HTMLInputElement).value).toBe('Bolo de cenoura');
+  });
+});
