@@ -17,6 +17,18 @@ export interface Rascunho {
   form: Partial<AppEvent>;
   /** ISO de quando foi guardado. */
   em: string;
+  /**
+   * `updated_at` do evento quando o rascunho começou (edição). Se o evento
+   * mudou depois, "Retomar" reaplica só o que a pessoa alterou.
+   */
+  versao?: string | null;
+  /** O formulário como estava ao abrir: a base para saber o que ela alterou. */
+  base?: Partial<AppEvent>;
+}
+
+export interface ExtraDoRascunho {
+  versao?: string | null;
+  base?: Partial<AppEvent>;
 }
 
 const PREFIXO = 'evento-rascunho';
@@ -47,11 +59,11 @@ export function lerRascunho(chave: string): Rascunho | null {
   }
 }
 
-export function guardarRascunho(chave: string, form: Partial<AppEvent>, agora: Date = new Date()): void {
+export function guardarRascunho(chave: string, form: Partial<AppEvent>, agora: Date = new Date(), extra: ExtraDoRascunho = {}): void {
   const g = guardaSegura();
   if (!g) return;
   try {
-    g.setItem(chave, JSON.stringify({ form, em: agora.toISOString() } satisfies Rascunho));
+    g.setItem(chave, JSON.stringify({ form, em: agora.toISOString(), ...extra } satisfies Rascunho));
   } catch {
     // sem espaço ou bloqueado: segue sem rascunho
   }
@@ -73,6 +85,31 @@ export function apagarRascunho(chave: string): void {
  */
 export const rascunhoDiferente = (rascunho: Rascunho | null, inicial: Partial<AppEvent> | null): rascunho is Rascunho =>
   !!rascunho && JSON.stringify(rascunho.form) !== JSON.stringify(inicial ?? {});
+
+/**
+ * Retomar um rascunho de edição quando o evento mudou depois dele
+ * (varredura de 25/09/2026). Antes o rascunho substituía o formulário
+ * inteiro: a confirmação do marketing, o status e o que a administração
+ * tivesse editado voltavam ao que eram no dia do rascunho. Agora parte do
+ * evento como está e reaplica só os campos que a pessoa mexeu.
+ *
+ * Devolve o formulário a usar e se houve mescla (para avisar).
+ */
+export function formularioAoRetomar(
+  rascunho: Rascunho,
+  atual: Partial<AppEvent>,
+  versaoAtual: string | null | undefined,
+): { form: Partial<AppEvent>; mesclou: boolean } {
+  const mudou = !!rascunho.versao && !!versaoAtual && rascunho.versao !== versaoAtual;
+  if (!mudou || !rascunho.base) return { form: rascunho.form, mesclou: false };
+  const base = rascunho.base as Record<string, unknown>;
+  const dela = rascunho.form as Record<string, unknown>;
+  const form: Record<string, unknown> = { ...atual };
+  for (const k of Object.keys(dela)) {
+    if (JSON.stringify(dela[k]) !== JSON.stringify(base[k])) form[k] = dela[k];
+  }
+  return { form: form as Partial<AppEvent>, mesclou: true };
+}
 
 /** "hoje às 14:32" · "ontem às 09:10" · "em 20/09 às 18:05". */
 export function quandoFoiGuardado(em: string, agora: Date = new Date()): string {

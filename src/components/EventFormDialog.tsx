@@ -36,7 +36,7 @@ import { linkPublicoDoEvento, prefixoDoLinkPublico, proximoSlug } from '@/lib/ev
 import { descreverErroDeGravacao } from '@/lib/events/mensagemDeErro';
 import { contar, erroDeLimite, type CampoComLimite } from '@/lib/events/limites';
 import { apagarDoBalde, urlsDeArquivosDoEvento, urlsQueSairam, CAMPOS_DE_IMAGEM } from '@/lib/events/anexos';
-import { apagarRascunho, chaveDoRascunho, guardarRascunho, lerRascunho, quandoFoiGuardado, rascunhoDiferente, type Rascunho } from '@/lib/events/rascunho';
+import { apagarRascunho, chaveDoRascunho, formularioAoRetomar, guardarRascunho, lerRascunho, quandoFoiGuardado, rascunhoDiferente, type Rascunho } from '@/lib/events/rascunho';
 import { tituloEmTexto } from '@/lib/events/titulo';
 import { FROTA, TETO_DA_FROTA, apoiosPossiveis, errosDeTransporte, motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
 import { estadoDaCobertura } from '@/lib/events/cobertura';
@@ -207,6 +207,17 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
    */
   const chaveDoRascunhoAtual = chaveDoRascunho(user?.id, event?.id);
   const [rascunho, setRascunho] = useState<Rascunho | null>(null);
+  /** Versão do evento e formulário ao abrir: vão junto do rascunho. */
+  const extraDoRascunho = () => ({
+    versao: event?.updated_at ?? null,
+    base: JSON.parse(inicialRef.current || '{}') as Partial<AppEvent>,
+  });
+  /**
+   * Refeições desligadas nesta sessão, com a tabelinha que tinham: religar
+   * traz de volta (varredura de 25/09/2026). Antes, um toque em "Nenhum"
+   * apagava seis alimentos e o cardápio sem volta.
+   */
+  const refeicoesGuardadas = useRef(new Map<string, NonNullable<AppEvent['food_items']>[number]>());
   const [conflicts, setConflicts] = useState<AppEvent[]>([]);
   const [showConflictAlert, setShowConflictAlert] = useState(false);
   const [showBannerWarning, setShowBannerWarning] = useState(false);
@@ -368,6 +379,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       };
       setForm(aberto);
       inicialRef.current = JSON.stringify(aberto);
+      refeicoesGuardadas.current.clear();
       // Evento antigo com texto livre abre em "Outro local", com o texto.
       setOutroLocal(!!event.location && !localFixo(event.location));
       setArteAberta(temArte(event.marketing_items));
@@ -383,6 +395,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       const vazio = { ...emptyEvent(), unit: unidade, location: localDaUnidade(unidade), status: (isMarketing ? 'confirmado' : 'pendente') as EventStatus };
       setForm(vazio);
       inicialRef.current = JSON.stringify(vazio);
+      refeicoesGuardadas.current.clear();
       setOutroLocal(false);
       setArteAberta(false);
     }
@@ -431,21 +444,40 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
 
   // Autosave do rascunho: 600 ms depois da última mudança, enquanto aberto e
   // mexido. Sem mexer, nada é gravado — abrir e fechar não deixa rastro.
+  // Enquanto a faixa oferece um rascunho, não grava: senão o rascunho
+  // oferecido era substituído pelo que se digitou antes de escolher
+  // (varredura de 25/09/2026).
   useEffect(() => {
-    if (!open || !mexido || salvando) return;
-    const t = setTimeout(() => guardarRascunho(chaveDoRascunhoAtual, form), 600);
+    if (!open || !mexido || salvando || rascunho) return;
+    const t = setTimeout(() => guardarRascunho(chaveDoRascunhoAtual, form, new Date(), extraDoRascunho()), 600);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form, open, mexido, salvando, chaveDoRascunhoAtual]);
+  }, [form, open, mexido, salvando, chaveDoRascunhoAtual, rascunho]);
 
   const retomarRascunho = () => {
     if (!rascunho) return;
-    setForm(rascunho.form);
-    setOutroLocal(!!rascunho.form.location && !localFixo(rascunho.form.location));
-    setArteAberta(temArte(rascunho.form.marketing_items));
+    const atual = { ...(JSON.parse(inicialRef.current || '{}') as Partial<AppEvent>), ...form };
+    const { form: retomado, mesclou } = formularioAoRetomar(rascunho, atual, event?.updated_at);
+    setForm(retomado);
+    setOutroLocal(!!retomado.location && !localFixo(retomado.location));
+    setArteAberta(temArte(retomado.marketing_items));
     setRascunho(null);
+    if (mesclou) {
+      toast.warning('O evento mudou depois do seu rascunho', {
+        description: 'Voltaram só os campos que você tinha alterado. O resto está como o evento está agora.',
+      });
+    }
   };
+  /**
+   * Descartar o rascunho oferecido: os anexos que subiram naquela sessão e
+   * nunca foram gravados no evento ficavam no balde para sempre, públicos
+   * (varredura de 25/09/2026). Vão junto, como no "Descartar tudo".
+   */
   const descartarRascunho = () => {
+    if (rascunho) {
+      const orfaos = urlsQueSairam(rascunho.form, event);
+      if (orfaos.length > 0) void apagarDoBalde(orfaos);
+    }
     apagarRascunho(chaveDoRascunhoAtual);
     setRascunho(null);
   };
@@ -485,7 +517,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
    */
   const sairGuardando = () => {
     setConfirmarSaida(false);
-    guardarRascunho(chaveDoRascunhoAtual, form);
+    guardarRascunho(chaveDoRascunhoAtual, form, new Date(), extraDoRascunho());
     onOpenChange(false);
   };
 
@@ -761,14 +793,14 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
           gravado.marketing_request && gravado.marketing_coverage ? ' A presença do marketing será confirmada na resposta.' : ''
         }`,
       };
-      toast.success(mensagem.titulo, { description: mensagem.descricao });
+      // Só o pop-up: ele já diz o mesmo, e os dois juntos repetiam o texto.
       setSucesso({ evento: gravado, ...mensagem });
     } else {
       const mensagem = {
         titulo: isEditing ? 'Alterações salvas' : 'Evento criado',
         descricao: `“${tituloEmTexto(gravado.title)}”, ${quando} · ${eventUnitLabel(gravado.unit)}.${linkAjustado}`,
       };
-      toast.success(mensagem.titulo, { description: mensagem.descricao });
+      // Só o pop-up: ele já diz o mesmo, e os dois juntos repetiam o texto.
       // O pop-up com o checklist: para quem cria ou salva o evento da
       // unidade. A devolução e a aprovação do admin (`aviso`) não precisam.
       setSucesso({ evento: gravado, ...mensagem });
@@ -1497,7 +1529,13 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                         titulo="Vai ter comida? *"
                         opcoes={OPCOES_COMIDA}
                         valor={form.food_logistics || ''}
-                        onChange={v => setForm({ ...form, food_logistics: v, food_items: sincronizarItens(v, form.food_items, OPCOES_COMIDA) })}
+                        onChange={v => {
+                          // Quem sai leva a tabela para a gaveta; quem volta, a traz.
+                          const guardadas = refeicoesGuardadas.current;
+                          for (const i of form.food_items ?? []) if (i.item !== 'Nenhum' && (i.alimentos?.length || i.cardapio || i.detalhes)) guardadas.set(i.outro ? OUTRO : i.item, i);
+                          const conhecidas = [...guardadas.values(), ...(form.food_items ?? [])];
+                          setForm({ ...form, food_logistics: v, food_items: sincronizarItens(v, conhecidas, OPCOES_COMIDA) });
+                        }}
                         /* Por refeição, a tabelinha de alimentos (22/09/2026).
                            A refeição nasce com a tabela vazia, e é ela quem
                            diz "este é o modelo novo"; o texto de antes, se

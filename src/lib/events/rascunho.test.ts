@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { apagarRascunho, chaveDoRascunho, guardarRascunho, lerRascunho, quandoFoiGuardado, rascunhoDiferente } from './rascunho';
+import { apagarRascunho, chaveDoRascunho, guardarRascunho, lerRascunho, quandoFoiGuardado, rascunhoDiferente, formularioAoRetomar } from './rascunho';
 
 beforeEach(() => localStorage.clear());
 
@@ -38,5 +38,26 @@ describe('rascunho do formulário de evento', () => {
     expect(quandoFoiGuardado(new Date(2026, 8, 21, 9, 5).toISOString(), agora)).toBe('ontem às 09:05');
     expect(quandoFoiGuardado(new Date(2026, 8, 18, 18, 5).toISOString(), agora)).toBe('em 18/09 às 18:05');
     expect(quandoFoiGuardado('lixo', agora)).toBe('');
+  });
+});
+
+describe('retomar quando o evento mudou (varredura de 25/09/2026)', () => {
+  const base = { title: 'Festa', location: 'Unidade DIC', marketing_confirmed: null as boolean | null, status: 'pendente' as const };
+  const rascunho = { form: { ...base, title: 'Festa da Primavera' }, em: '2026-09-22T12:00:00Z', versao: 'v1', base };
+
+  it('o evento mudou: parte dele como está e reaplica só o que a pessoa alterou', () => {
+    const atual = { ...base, marketing_confirmed: true, status: 'confirmado' as const, location: 'Unidade Santana' };
+    const { form, mesclou } = formularioAoRetomar(rascunho, atual, 'v2');
+    expect(mesclou).toBe(true);
+    expect(form).toEqual({ ...atual, title: 'Festa da Primavera' });
+  });
+
+  it('o evento não mudou: o rascunho volta inteiro', () => {
+    expect(formularioAoRetomar(rascunho, { ...base }, 'v1')).toEqual({ form: rascunho.form, mesclou: false });
+  });
+
+  it('rascunho antigo, sem versão: volta inteiro, como antes', () => {
+    const velho = { form: { title: 'X' }, em: '2026-09-22T12:00:00Z' };
+    expect(formularioAoRetomar(velho, { title: 'Y' }, 'v2')).toEqual({ form: { title: 'X' }, mesclou: false });
   });
 });
