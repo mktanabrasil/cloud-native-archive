@@ -134,3 +134,17 @@ describe('enquanto carrega', () => {
     espiao.carregando = false;
   });
 });
+
+describe('a capa na lixeira (varredura de 25/09/2026)', () => {
+  it('evento sem arte mostra a foto da unidade, como a vitrine', () => {
+    espiao.eventos = [evento({ id: 'lixo-2', title: 'Festa no DIC', unit: 'DIC', location: 'Unidade DIC', deleted_at: '2026-08-20T12:00:00.000Z' })];
+    render(<LixeiraPage />);
+    expect(screen.getByTestId('capa-da-unidade')).toHaveAttribute('data-unidade', 'DIC');
+  });
+
+  it('evento só com a arte do banner mostra a arte, não o card chapado', () => {
+    espiao.eventos = [evento({ id: 'lixo-3', title: 'Com Banner', banner_image_desktop: 'https://exemplo/banner.jpg', deleted_at: '2026-08-20T12:00:00.000Z' })];
+    render(<LixeiraPage />);
+    expect(screen.getByRole('img', { name: 'Com Banner' })).toHaveAttribute('src', 'https://exemplo/banner.jpg');
+  });
+});

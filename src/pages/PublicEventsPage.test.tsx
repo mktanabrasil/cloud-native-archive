@@ -679,6 +679,25 @@ describe('embutida no site', () => {
     expect(screen.queryByRole('link', { name: /instagram/i })).toBeNull();
   });
 
+  it('sempre clara, mesmo com o aparelho no escuro (varredura de 25/09/2026)', () => {
+    const root = document.documentElement;
+    root.classList.add('dark');
+    const { unmount } = montar('/eventos?embed=true');
+
+    expect(root.dataset.temaForcado).toBe('light');
+    expect(root.classList.contains('dark')).toBe(false);
+    expect(root.classList.contains('light')).toBe(true);
+
+    unmount();
+    expect(root.dataset.temaForcado).toBeUndefined();
+    root.classList.remove('light');
+  });
+
+  it('fora do embed, não força tema nenhum', () => {
+    montar();
+    expect(document.documentElement.dataset.temaForcado).toBeUndefined();
+  });
+
   it('fora do embed, rodapé e convites continuam', () => {
     espiao.eventos = [];
     montar();
@@ -918,5 +937,19 @@ describe('endereço da unidade no evento público (22/09/2026)', () => {
     espiao.eventos = [evento({ id: 'e-ext', title: 'Reunião externa', location: 'Parque Ecológico', visibility: 'publico' })];
     montar();
     expect(screen.queryByTestId('endereco-card')).toBeNull();
+  });
+});
+
+describe('herói sem local (varredura de 25/09/2026)', () => {
+  it('não mostra o ícone de local sozinho', () => {
+    espiao.eventos = [evento({ id: 'h1', title: 'Sem Local', location: '', show_in_banner: true, banner_image_desktop: 'https://exemplo/b.jpg' })];
+    montar();
+    expect(screen.queryByTestId('local-heroi')).toBeNull();
+  });
+
+  it('com local, mostra', () => {
+    espiao.eventos = [evento({ id: 'h2', title: 'Com Local', location: 'Unidade DIC', show_in_banner: true, banner_image_desktop: 'https://exemplo/b.jpg' })];
+    montar();
+    expect(screen.getByTestId('local-heroi')).toHaveTextContent('Unidade DIC');
   });
 });

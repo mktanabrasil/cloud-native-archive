@@ -88,7 +88,9 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
             />
           ) : (
             /* Sem arte: a foto da unidade com a cor dela por cima (22/09/2026). */
-            <CapaDaUnidade evento={event} tamanho="detalhe" className="select-none" />
+            /* Sem título na capa: o h2 logo abaixo já o escreve, e o bloco sobe
+               48 px sobre a capa, então os dois se sobrepunham (varredura de 25/09). */
+            <CapaDaUnidade evento={event} comTitulo={false} prioridade className="select-none" />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
           <button 

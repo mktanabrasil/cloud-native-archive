@@ -5,6 +5,7 @@ import { CalendarDays, Clock, MapPin, RotateCcw, Search, Trash2 } from 'lucide-r
 import { useApp } from '@/contexts/AppContext';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { AppEvent, UNIT_BG_COLORS } from '@/types';
+import { CapaDaUnidade } from '@/components/events/CapaDaUnidade';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -92,26 +93,18 @@ export default function LixeiraPage() {
             {eventos.map(event => (
               <Card key={event.id} className="overflow-hidden border-border bg-card flex flex-col">
                 <div className="relative aspect-video overflow-hidden bg-muted">
-                  {event.banner_url_desktop || event.banner_url_mobile ? (
+                  {/* A mesma capa da vitrine: a arte (capa, banner) ou a foto da
+                      unidade. Antes era o card chapado antigo e ignorava o banner
+                      (varredura de 25/09/2026). */}
+                  {event.banner_url_desktop || event.banner_url_mobile || event.banner_image_desktop ? (
                     <img
-                      src={event.banner_url_desktop || event.banner_url_mobile}
+                      src={event.banner_url_desktop || event.banner_url_mobile || event.banner_image_desktop}
                       alt={tituloEmTexto(event.title)}
+                      loading="lazy"
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div
-                      className="w-full h-full flex items-center justify-start p-6 text-left overflow-hidden"
-                      style={{ backgroundColor: event.custom_color || '#94a3b8' }}
-                    >
-                      <span
-                        className="font-bold text-white leading-[1.1] break-words uppercase select-none"
-                        style={{
-                          fontSize: event.title.length < 15 ? '2.5rem' : event.title.length < 30 ? '1.75rem' : event.title.length < 50 ? '1.25rem' : '1rem',
-                        }}
-                      >
-                        <TituloDoEvento texto={event.title} />
-                      </span>
-                    </div>
+                    <CapaDaUnidade evento={event} className="select-none" />
                   )}
                   <div className={`absolute top-0 left-0 h-1 w-full ${UNIT_BG_COLORS[event.unit]}`} />
                   <Badge className={`absolute top-3 left-3 ${UNIT_BG_COLORS[event.unit]} text-slate-900 border-none shadow-sm`}>
