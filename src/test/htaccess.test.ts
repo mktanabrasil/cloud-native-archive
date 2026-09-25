@@ -26,8 +26,19 @@ describe('public/.htaccess', () => {
     expect(r404).toBeLessThan(fallback);
   });
 
-  it('o index.html não fica em cache', () => {
-    expect(diretivas).toMatch(/<Files "index\.html">\s*Header set Cache-Control "no-cache"/);
+  it('o index.html e as páginas do cartão de enquete não ficam em cache', () => {
+    expect(diretivas).toContain('<FilesMatch "^(index|enquete|enquete-resultado)\\.html$">');
+    expect(diretivas).toMatch(/<FilesMatch "[^"]*">\s*Header set Cache-Control "no-cache"/);
+  });
+
+  it('as enquetes vão para as páginas com o próprio cartão de link, antes do fallback (25/09/2026)', () => {
+    const resultado = diretivas.indexOf('RewriteRule ^enquete/[^/]+/resultado/?$ /enquete-resultado.html [L]');
+    const voto = diretivas.indexOf('RewriteRule ^enquete/ /enquete.html [L]');
+    const fallback = diretivas.indexOf('RewriteRule . /index.html [L]');
+    expect(resultado).toBeGreaterThan(-1);
+    // O de acompanhamento vem antes: senão a regra geral de /enquete/ o pegaria.
+    expect(resultado).toBeLessThan(voto);
+    expect(voto).toBeLessThan(fallback);
   });
 
   it('traz os cabeçalhos básicos de segurança', () => {
