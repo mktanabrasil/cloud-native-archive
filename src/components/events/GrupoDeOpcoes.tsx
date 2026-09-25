@@ -123,7 +123,10 @@ export function GrupoDeOpcoes({
   const partes = valor.split(', ').filter((v) => v.trim());
   const marcados = partes.map((v) => v.trim());
   const escolhidos = marcados.filter((m) => opcoes.includes(m));
-  const texto = partes.find((p) => !opcoes.includes(p.trim())) ?? '';
+  // Todos os textos livres, na ordem, com o que a pessoa está digitando
+  // (inclusive ", " no fim). Antes era só o primeiro: o resto sumia no
+  // primeiro toque em qualquer interruptor (varredura de 25/09/2026).
+  const texto = valor.split(', ').filter((p) => !opcoes.includes(p.trim())).join(', ');
   const mostraOutro = outroAberto || texto !== '';
 
   // `custom` vai como veio: o espaço que a pessoa acabou de digitar precisa

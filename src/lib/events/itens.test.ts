@@ -82,3 +82,26 @@ describe('equipamentos (22/09/2026)', () => {
     expect(pistaDoEstoque('Som')).toBe('');
   });
 });
+
+describe('textos livres de evento antigo (varredura de 25/09/2026)', () => {
+  it('um item antigo sem a marca "outro" mantém o detalhe', () => {
+    const r = sincronizarItens('Som, Notebook', [{ item: 'Som', detalhes: '' }, { item: 'Notebook', detalhes: '2 da sala' }], OPCOES_EQUIP);
+    expect(r).toEqual([{ item: 'Som', detalhes: '' }, { item: 'Notebook', detalhes: '2 da sala', outro: true }]);
+  });
+
+  it('dois textos livres viram um "Outro" só, com os dois nomes e os dois detalhes', () => {
+    const r = sincronizarItens('Som, Notebook, Extensão', [
+      { item: 'Notebook', detalhes: '2 da sala' },
+      { item: 'Extensão', detalhes: '10 m' },
+    ], OPCOES_EQUIP);
+    expect(r[1]).toEqual({ item: 'Notebook, Extensão', detalhes: 'Notebook: 2 da sala · Extensão: 10 m', outro: true });
+    // A string gravada continua a mesma
+    expect(paraTexto(r)).toBe('Som, Notebook, Extensão');
+  });
+
+  it('depois de tocado, o "Outro" guarda o próprio detalhe pela chave de sempre', () => {
+    const a = sincronizarItens('Som, Notebook, Extensão', [], OPCOES_EQUIP);
+    const b = comDetalhe(a, OUTRO, 'da secretaria');
+    expect(sincronizarItens('Som, Notebook, Extensão', b, OPCOES_EQUIP)[1].detalhes).toBe('da secretaria');
+  });
+});
