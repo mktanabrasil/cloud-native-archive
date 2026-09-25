@@ -54,6 +54,17 @@ export default function AppLayout() {
   // não tem o que oferecer, e o botão flutuante brigaria com as formas.
   const { isGate: isEntryGate, entering: gateJustClosed } = useEntryGateTransition();
   const isMobile = useIsMobile();
+  // Com seis itens o menu de cima precisa de uns 1100 px. Abaixo disso ele
+  // vira o menu lateral do celular, em vez de quebrar linha ou esconder item.
+  const [menuCompacto, setMenuCompacto] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1099px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1099px)');
+    const mudar = () => setMenuCompacto(mq.matches);
+    mudar();
+    mq.addEventListener('change', mudar);
+    return () => mq.removeEventListener('change', mudar);
+  }, []);
+  const menuLateral = isMobile || menuCompacto;
   const isCleanView = isEmbedded || hideLoginParam || hideFooterParam || hideHeaderParam || hideTitleParam || isEmbedParam;
 
   const NavContent = ({ onClick }: { onClick?: () => void }) => (
@@ -81,14 +92,17 @@ export default function AppLayout() {
             to={`${item.to}${location.search}`}
             onClick={onClick}
             className={cn(
-              "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+              // Uma linha só, sempre: com seis itens, "Jornal Institucional" e
+              // "Mercado Solidário" quebravam em duas e o cabeçalho entortava.
+              // Abaixo de 1280 px o ícone sai e o respiro encolhe, para caber.
+              "flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-2 py-2 text-sm font-medium transition-colors xl:px-3",
               active
                 ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground",
-              isMobile && "px-4 py-3 text-base"
+              onClick && "px-4 py-3 text-base"
             )}
           >
-            <item.icon className="h-4 w-4" />
+            <item.icon className={cn("h-4 w-4 shrink-0", !onClick && "hidden xl:block")} />
             <span>{item.label}</span>
           </Link>
         );
@@ -107,7 +121,7 @@ export default function AppLayout() {
           gateJustClosed && "ana-bar-entering"
         )}>
           <div className="flex h-16 w-full items-center gap-4 px-4 lg:px-8">
-            {isMobile && (
+            {menuLateral && (
               <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                 <SheetTrigger asChild>
                   {/* 44px de alvo no mobile; o `size="icon"` sozinho dá 40 */}
@@ -152,8 +166,8 @@ export default function AppLayout() {
               </span>
             </Link>
 
-            {!isMobile && (
-              <nav className="flex items-center gap-1 flex-1">
+            {!menuLateral && (
+              <nav className="flex min-w-0 flex-1 items-center gap-0.5 xl:gap-1">
                 <NavContent />
               </nav>
             )}
@@ -162,7 +176,7 @@ export default function AppLayout() {
               {isAuthenticated ? (
                 <>
                   <div className="flex flex-col items-end hidden md:flex">
-                    <span className="text-xs font-semibold text-foreground">{userName}</span>
+                    <span className="max-w-[180px] truncate text-xs font-semibold text-foreground">{userName}</span>
                     <span className="text-[10px] text-muted-foreground truncate max-w-[150px]">{unit || user?.email}</span>
                   </div>
                   {!isMobile && (
