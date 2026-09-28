@@ -17,10 +17,14 @@ import { ROTAS_DO_CANDIDATO, ehCandidato, emailValido, entrarComoCandidato, mens
  * avião pousa na parada coral e "altos." dá um pulinho. O formulário chega
  * pela direita no computador e fica embaixo da frase no celular.
  *
- * Quem entrar aqui com conta da equipe vai para o app, não para a área do
- * candidato: a mesma porta serve às duas contas sem prender ninguém.
+ * Quem entrar aqui com conta da equipe é mandado para o login da equipe.
+ *
+ * Desde 28/09/2026 é também a porta de /vagas para quem chega sem conta
+ * (`comoPorta`): o login vem primeiro, com "Ver as vagas sem entrar" para
+ * quem só quer olhar. E a frase ficou maior no computador (opção B do
+ * mockup): até 1120 px, com o cartão encostado na margem direita.
  */
-export default function EntrarCandidatoPage() {
+export default function EntrarCandidatoPage({ comoPorta = false, aoVerVagas }: { comoPorta?: boolean; aoVerVagas?: () => void } = {}) {
   useTituloDaAba('Entrar · Trabalhe Conosco ANA Brasil');
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -61,7 +65,7 @@ export default function EntrarCandidatoPage() {
 
   return (
     <MolduraDaConta atalho={<Link to={ROTAS_DO_CANDIDATO.criarConta} className="text-foreground hover:text-primary">Criar conta</Link>}>
-      <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-[minmax(0,1fr)] content-center items-center gap-8 px-4 pb-10 pt-2 sm:px-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-12 lg:px-12">
+      <div className="grid w-full flex-1 grid-cols-[minmax(0,1fr)] content-center items-center gap-8 px-4 pb-10 pt-2 sm:px-8 lg:grid-cols-[minmax(0,1120px)_420px] lg:justify-between lg:gap-16 lg:px-12 xl:px-16 2xl:px-24">
         <div className="flex flex-col gap-6">
           <div className="mx-auto w-full max-w-[380px] lg:max-w-none">
             <FraseEmEscada key={largura} estreito={largura === 'estreito'} />
@@ -105,6 +109,11 @@ export default function EntrarCandidatoPage() {
             <Link to="/login" className="hover:text-foreground">Equipe ANA</Link>
           </p>
           <p className="text-center text-sm text-muted-foreground">Ainda não tem conta? <Link to={ROTAS_DO_CANDIDATO.criarConta} className="font-semibold text-primary hover:underline">Criar em um minuto</Link></p>
+          {comoPorta && (
+            <button type="button" onClick={aoVerVagas} className="mx-auto text-sm font-semibold text-foreground underline-offset-4 hover:underline">
+              Ver as vagas sem entrar →
+            </button>
+          )}
         </form>
       </div>
     </MolduraDaConta>

@@ -35,6 +35,8 @@ const abrir = (url: string) => render(
 );
 
 beforeEach(() => {
+  // Estes testes são da vitrine: o visitante já escolheu "ver as vagas sem entrar".
+  sessionStorage.setItem('vagas-ver-sem-entrar', '1');
   espiao.falha = false;
   espiao.rh = false;
   espiao.usuario = null;
@@ -152,5 +154,39 @@ describe('topo das vagas conforme quem olha (PR 6)', () => {
     expect(minha).toHaveAttribute('href', '/vagas/minha-area');
     expect(minha).toHaveTextContent('L');
     expect(screen.queryByRole('link', { name: 'Entrar' })).not.toBeInTheDocument();
+  });
+});
+
+describe('a porta de /vagas (28/09/2026, caminho 1)', () => {
+  it('visitante que abre /vagas cai no login, e pode ver as vagas sem entrar', async () => {
+    sessionStorage.clear();
+    abrir('/vagas');
+    expect(screen.getByRole('heading', { name: 'Entrar' })).toBeInTheDocument();
+    expect(screen.queryByText(/3 vagas abertas/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Ver as vagas sem entrar/ }));
+    expect(await screen.findByText(/3 vagas abertas/)).toBeInTheDocument();
+    expect(sessionStorage.getItem('vagas-ver-sem-entrar')).toBe('1');
+  });
+
+  it('link com filtro abre as vagas direto, e limpar o filtro não volta para a porta', async () => {
+    sessionStorage.clear();
+    abrir('/vagas?area=educacao');
+    expect(await screen.findByRole('link', { name: /Professor de Educação Infantil/ })).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole('region', { name: 'Vagas abertas' })).getByRole('button', { name: /Todas/ }));
+    expect(await screen.findAllByRole('link', { name: /Auxiliar Administrativo/ })).toHaveLength(1);
+    expect(screen.queryByRole('heading', { name: 'Entrar' })).not.toBeInTheDocument();
+  });
+
+  it('quem tem conta vê a vitrine direto', async () => {
+    sessionStorage.clear();
+    espiao.usuario = { email: 'leo@exemplo.com', user_metadata: { conta: 'candidato', name: 'Leonardo' } };
+    abrir('/vagas');
+    expect(await screen.findByText(/3 vagas abertas/)).toBeInTheDocument();
+  });
+
+  it('link de uma vaga abre a vaga, sem porta', async () => {
+    sessionStorage.clear();
+    abrir('/vagas/educador-social-de-musica');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Educador Social de Música' })).toBeInTheDocument();
   });
 });

@@ -94,6 +94,20 @@ export async function pedirNovaSenha(email: string): Promise<void> {
   if (error) throw error;
 }
 
+/**
+ * A porta de /vagas (28/09/2026, caminho 1): quem chega sem conta vê o login
+ * primeiro e pode escolher "Ver as vagas sem entrar". A escolha vale até
+ * fechar o navegador, para quem navega entre as vagas não voltar à porta a
+ * cada clique. Sem armazenamento (aba anônima bloqueada), vale só nesta tela.
+ */
+const CHAVE_VER_SEM_ENTRAR = 'vagas-ver-sem-entrar';
+export function escolheuVerSemEntrar(): boolean {
+  try { return sessionStorage.getItem(CHAVE_VER_SEM_ENTRAR) === '1'; } catch { return false; }
+}
+export function lembrarVerSemEntrar(): void {
+  try { sessionStorage.setItem(CHAVE_VER_SEM_ENTRAR, '1'); } catch { /* segue sem lembrar */ }
+}
+
 /** Primeiro nome, para o "Olá, Leonardo". */
 export const primeiroNome = (u: Pick<User, 'user_metadata' | 'email'> | null | undefined): string =>
   String(u?.user_metadata?.name ?? u?.email?.split('@')[0] ?? '').trim().split(/\s+/)[0] ?? '';
