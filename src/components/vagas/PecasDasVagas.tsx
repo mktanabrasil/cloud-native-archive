@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, BookOpen, Briefcase, Clock, Home, MapPin } from 'lucide-react';
-import { useUserRole } from '@/hooks/useUserRole';
+import { useAuth } from '@/contexts/AuthContext';
+import { ROTAS_DO_CANDIDATO, ehCandidato, primeiroNome } from '@/lib/vagas/conta';
 import InstitutionalFooterBar from '@/components/news/InstitutionalFooterBar';
 import { RodapePublico } from '@/components/events/RodapePublico';
 import { ROTULO_DA_AREA, ROTULO_DA_CONTRATACAO, ROTULO_DA_MODALIDADE, type Area, type Vaga } from '@/lib/vagas/modelo';
@@ -67,9 +68,15 @@ export function CartaoDaVaga({ vaga }: { vaga: Vaga }) {
   );
 }
 
-/** Topo das páginas públicas de vagas: a marca leva à vitrine. */
+/**
+ * Topo das páginas públicas de vagas: a marca leva à vitrine. À direita, o
+ * que cabe a quem está olhando: o visitante entra ou cria conta; o candidato
+ * vai para a área dele; a equipe (RH ou não) volta para o app.
+ */
 export function TopoDasVagas() {
-  const { isRh } = useUserRole();
+  const { user, isAuthenticated } = useAuth();
+  const candidato = isAuthenticated && ehCandidato(user);
+  const equipe = isAuthenticated && !candidato;
   return (
     <header className="border-b border-border bg-background">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
@@ -77,9 +84,19 @@ export function TopoDasVagas() {
           <img src="/logo.png" alt="" width={32} height={32} className="rounded-lg" />
           <span className="text-lg lowercase tracking-tight">anabrasil</span>
         </Link>
-        {isRh
-          ? <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-primary"><ArrowLeft className="h-4 w-4" aria-hidden /> Voltar ao app</Link>
-          : <Link to="/vagas" className="text-sm font-semibold text-foreground hover:text-primary">Vagas</Link>}
+        {equipe ? (
+          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground hover:text-primary"><ArrowLeft className="h-4 w-4" aria-hidden /> Voltar ao app</Link>
+        ) : candidato ? (
+          <Link to={ROTAS_DO_CANDIDATO.minhaArea} className="inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:text-primary">
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-[#81E2CF] text-sm font-bold text-[#1F2322]" aria-hidden>{primeiroNome(user).slice(0, 1).toUpperCase() || '·'}</span>
+            Minha área
+          </Link>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Link to={ROTAS_DO_CANDIDATO.entrar} className="inline-flex h-9 items-center rounded-lg px-3 text-sm font-semibold text-foreground hover:bg-muted">Entrar</Link>
+            <Link to={ROTAS_DO_CANDIDATO.criarConta} className="inline-flex h-9 items-center rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90">Criar conta</Link>
+          </div>
+        )}
       </div>
     </header>
   );

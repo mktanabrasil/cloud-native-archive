@@ -1,5 +1,5 @@
 import type { DadosDaVaga } from './api';
-import { ROTULO_DA_AREA, proximoCodigo, slugDaVaga, slugLivre, type StatusDaVaga, type Vaga } from './modelo';
+import { ENDERECOS_RESERVADOS, ROTULO_DA_AREA, proximoCodigo, slugDaVaga, slugLivre, type StatusDaVaga, type Vaga } from './modelo';
 import type { VagaDaSemente } from './semente';
 import { procurarTermos, type Achado } from './termos';
 
@@ -39,7 +39,7 @@ export function dadosDaImportacao(
   existentes: Array<Pick<Vaga, 'slug' | 'codigo'>>,
   ano: number = new Date().getFullYear(),
 ): DadosDaVaga[] {
-  const slugs = existentes.map(e => e.slug);
+  const slugs: string[] = [...existentes.map(e => e.slug), ...ENDERECOS_RESERVADOS];
   const codigos = existentes.map(e => e.codigo);
   return itens.map(s => {
     const base = slugDaVaga(s.titulo);

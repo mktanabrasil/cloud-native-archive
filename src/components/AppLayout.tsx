@@ -24,6 +24,7 @@ import TestModeBanner, { TestModeTrigger } from '@/components/TestModeBanner';
 import logoImg from '@/assets/logo.png';
 import { ThemeToggle } from './ThemeToggle';
 import { navItems } from '@/config/navigation';
+import { ehCandidato } from '@/lib/vagas/conta';
 
 export default function AppLayout() {
   const [isFirstRender, setIsFirstRender] = useState(true);
@@ -46,7 +47,9 @@ export default function AppLayout() {
     setShowLoginLocal(!hideLoginParam);
   }, [hideLoginParam]);
   
-  const { isAuthenticated, signOut, user } = useAuth();
+  const { isAuthenticated: temSessao, signOut, user } = useAuth();
+  // Conta de candidato (Trabalhe Conosco) vê o app como visitante: sem menu da equipe.
+  const isAuthenticated = temSessao && !ehCandidato(user);
   const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh } = useUserRole();
   const { eligible: betaEligible, rawEnabled: betaOn, toggleBeta } = useBetaPreference();
   const isEmbedded = useIsEmbedded();

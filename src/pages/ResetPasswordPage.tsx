@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { KeyRound, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ROTAS_DO_CANDIDATO, ehCandidato } from '@/lib/vagas/conta';
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
   AlertDialogDescription, AlertDialogFooter, AlertDialogAction,
@@ -29,12 +30,13 @@ export default function ResetPasswordPage() {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password });
+    const { data, error } = await supabase.auth.updateUser({ password });
     if (error) {
       setPopup({ title: 'Erro', message: error.message, type: 'error' });
     } else {
       setPopup({ title: 'Senha alterada!', message: 'Sua senha foi redefinida com sucesso. Você será redirecionado.', type: 'success' });
-      setTimeout(() => navigate('/'), 2000);
+      // Candidato do Trabalhe Conosco volta para a área dele, não para o app da equipe.
+      setTimeout(() => navigate(ehCandidato(data?.user) ? ROTAS_DO_CANDIDATO.minhaArea : '/'), 2000);
     }
     setLoading(false);
   };
