@@ -202,3 +202,46 @@ describe('o cartão da vaga (modelo 1, versão B, 28/09/2026)', () => {
   });
 });
 
+describe('grade ou lista, e os programas no fim (28/09/2026)', () => {
+  const comProgramas = () => {
+    espiao.vagas.push(
+      vaga({ slug: 'jovem-aprendiz', titulo: 'Jovem Aprendiz', area: 'social', contratacao: 'aprendiz', aprendizagem: true }),
+      vaga({ slug: 'vagas-pcd', titulo: 'Vagas para Pessoas com Deficiência', area: 'social', afirmativa_pcd: true }),
+    );
+  };
+
+  it('Jovem Aprendiz e PcD vão para "Programas para todos", no fim, com os ícones oficiais', async () => {
+    comProgramas();
+    abrir('/vagas');
+    const bloco = await screen.findByRole('region', { name: 'Programas para todos' });
+    const nomes = within(bloco).getAllByRole('link').map(l => l.querySelector('h3')?.textContent);
+    expect(nomes).toEqual(['Jovem Aprendiz', 'Vagas para Pessoas com Deficiência']);
+    expect(within(bloco).getByText('Lei da Aprendizagem (Lei 10.097/2000)')).toBeInTheDocument();
+    expect(bloco.querySelector('img[src="/vagas/acessibilidade.jpg"]')).not.toBeNull();
+    // e não aparecem entre as vagas comuns
+    const todos = screen.getAllByRole('link', { name: /Jovem Aprendiz/ });
+    expect(todos).toHaveLength(1);
+  });
+
+  it('o botão Lista troca a vista e a escolha fica guardada', async () => {
+    localStorage.removeItem('vagas-vista');
+    abrir('/vagas');
+    await screen.findByText(/3 vagas abertas/);
+    expect(screen.getByRole('button', { name: 'Grade' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Lista' }));
+    expect(screen.getByRole('button', { name: 'Lista' })).toHaveAttribute('aria-pressed', 'true');
+    expect(localStorage.getItem('vagas-vista')).toBe('lista');
+    // na lista, sem a faixa com a frase
+    const cartao = screen.getByRole('link', { name: /Educador Social de Música/ });
+    expect(cartao).not.toHaveTextContent('Requisito:');
+    localStorage.removeItem('vagas-vista');
+  });
+
+  it('os filtros têm ícone', async () => {
+    abrir('/vagas');
+    await screen.findByText(/3 vagas abertas/);
+    const filtros = screen.getByRole('group', { name: 'Filtros' });
+    within(filtros).getAllByRole('button').forEach(b => expect(b.querySelector('svg')).not.toBeNull());
+  });
+});
+

@@ -59,3 +59,34 @@ export function enderecoDoFiltro(f: FiltroDaVitrine): URLSearchParams {
   if (f.busca.trim()) p.set('q', f.busca.trim());
   return p;
 }
+
+/**
+ * Programas por lei (28/09/2026): Jovem Aprendiz e a vaga afirmativa para
+ * pessoas com deficiência vão no fim da vitrine, separados, com os ícones
+ * oficiais. Uma vaga comum que só está "aberta a PcD" continua entre as
+ * demais: programa é a vaga de aprendizagem ou a vaga afirmativa geral.
+ */
+export type Programa = 'aprendiz' | 'pcd';
+
+export function programaDaVaga(v: Pick<Vaga, 'titulo' | 'contratacao' | 'aprendizagem' | 'afirmativa_pcd'>): Programa | null {
+  if (v.contratacao === 'aprendiz' || v.aprendizagem) return 'aprendiz';
+  if (v.afirmativa_pcd && /defici[eê]ncia|\bpcd\b/i.test(v.titulo)) return 'pcd';
+  return null;
+}
+
+/** As vagas comuns primeiro; os programas depois, Jovem Aprendiz antes de PcD. */
+export function separarProgramas<T extends Pick<Vaga, 'titulo' | 'contratacao' | 'aprendizagem' | 'afirmativa_pcd'>>(lista: T[]): { comuns: T[]; programas: T[] } {
+  const ordem: Record<Programa, number> = { aprendiz: 0, pcd: 1 };
+  const programas = lista.filter(v => programaDaVaga(v)).sort((a, b) => ordem[programaDaVaga(a)!] - ordem[programaDaVaga(b)!]);
+  return { comuns: lista.filter(v => !programaDaVaga(v)), programas };
+}
+
+/** Grade ou lista: a escolha fica no aparelho (sem armazenamento, volta à grade). */
+export type Vista = 'grade' | 'lista';
+const CHAVE_VISTA = 'vagas-vista';
+export function vistaGuardada(): Vista {
+  try { return localStorage.getItem(CHAVE_VISTA) === 'lista' ? 'lista' : 'grade'; } catch { return 'grade'; }
+}
+export function guardarVista(v: Vista): void {
+  try { localStorage.setItem(CHAVE_VISTA, v); } catch { /* segue sem guardar */ }
+}
