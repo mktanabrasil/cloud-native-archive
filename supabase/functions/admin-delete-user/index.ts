@@ -72,7 +72,12 @@ Deno.serve(async (req) => {
 
     if (deleteErr) {
       console.error('Erro ao excluir usuário:', deleteErr);
-      return new Response(JSON.stringify({ error: 'Não foi possível excluir o usuário.' }), {
+      // "Database error deleting user" = outra tabela ainda aponta para a conta (28/09/2026).
+      const travada = /database error/i.test(deleteErr.message ?? '');
+      const motivo = travada
+        ? 'Não foi possível excluir: há registros no banco ligados a esta conta. Fale com o suporte do app.'
+        : `Não foi possível excluir o usuário (${deleteErr.message}).`;
+      return new Response(JSON.stringify({ error: motivo }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
