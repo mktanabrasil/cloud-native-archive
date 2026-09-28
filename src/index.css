@@ -258,6 +258,82 @@
   animation: ana-bar-down 300ms 180ms cubic-bezier(0.33, 1, 0.68, 1) both;
 }
 
+/* --- Trabalhe Conosco: login e cadastro (mockups 04 e 05, 25/09/2026) ---
+   A frase sobe a escada, um degrau por vez; o formulário chega depois; a
+   pergunta do cadastro sai para cima e a próxima entra por baixo. Mesma regra
+   da porta de entrada: o estado inicial vem do fill-mode, nunca de um
+   opacity: 0 escrito à mão. */
+
+@keyframes vg-degrau {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes vg-chega-do-lado {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes vg-pulo {
+  0%   { transform: none; }
+  40%  { transform: translateY(-10px) scale(1.08); }
+  100% { transform: none; }
+}
+@keyframes vg-pergunta-entra {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes vg-selo {
+  from { transform: scale(0) rotate(-20deg); }
+  to   { transform: none; }
+}
+
+.vg-degrau {
+  transform-box: fill-box;
+  animation: vg-degrau 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(150ms + var(--vg-i, 0) * 260ms);
+}
+.vg-chega-do-lado { animation: vg-chega-do-lado 700ms 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.vg-sobe {
+  animation: vg-pergunta-entra 500ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--vg-i, 0) * 70ms);
+}
+.vg-pulo { transform-box: fill-box; transform-origin: 50% 80%; animation: vg-pulo 600ms cubic-bezier(0.3, 1.6, 0.4, 1); }
+.vg-pergunta { animation: vg-pergunta-entra 450ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.vg-selo { animation: vg-selo 600ms cubic-bezier(0.3, 1.6, 0.4, 1) both; }
+
+/* A linha de voo do login: a tampa da cor do fundo sai de cima da linha
+   (pathLength=1), as paradas acendem quando o avião passa, e "altos." entra
+   com a escada e dá o pulinho quando o avião pousa. */
+@keyframes vg-traca {
+  from { stroke-dashoffset: 0; }
+  to   { stroke-dashoffset: -1; }
+}
+@keyframes vg-acende {
+  0%   { transform: scale(0); }
+  60%  { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+.vg-acende { transform-box: fill-box; transform-origin: center; animation: vg-acende 400ms cubic-bezier(0.3, 1.6, 0.4, 1) both; }
+.vg-pulo-depois {
+  transform-box: fill-box;
+  transform-origin: 50% 80%;
+  animation:
+    vg-degrau 700ms cubic-bezier(0.2, 0.8, 0.2, 1) calc(150ms + var(--vg-i, 0) * 260ms) both,
+    vg-pulo 600ms cubic-bezier(0.3, 1.6, 0.4, 1) 2.65s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vg-degrau,
+  .vg-chega-do-lado,
+  .vg-sobe,
+  .vg-pulo,
+  .vg-pergunta,
+  .vg-selo,
+  .vg-acende,
+  .vg-pulo-depois {
+    animation: none !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ana-enter-fio,
   .ana-enter-brand,

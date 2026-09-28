@@ -129,10 +129,16 @@ export function slugDaVaga(titulo: string): string {
     .replace(/-+$/, '');
 }
 
-/** O slug livre mais próximo: acrescenta -2, -3… se já existir. */
+/**
+ * Endereços de /vagas que são telas do candidato (PR 6, 28/09/2026) e por
+ * isso não podem virar endereço de vaga: /vagas/entrar é o login, não uma vaga.
+ */
+export const ENDERECOS_RESERVADOS = ['entrar', 'criar-conta', 'recuperar-senha', 'minha-area', 'privacidade'] as const;
+
+/** O slug livre mais próximo: acrescenta -2, -3… se já existir ou for reservado. */
 export function slugLivre(titulo: string, existentes: Iterable<string>): string {
   const base = slugDaVaga(titulo) || 'vaga';
-  const usados = new Set(existentes);
+  const usados = new Set<string>([...existentes, ...ENDERECOS_RESERVADOS]);
   if (!usados.has(base)) return base;
   for (let n = 2; ; n++) if (!usados.has(`${base}-${n}`)) return `${base}-${n}`;
 }

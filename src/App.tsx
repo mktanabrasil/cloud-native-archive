@@ -32,6 +32,12 @@ import EnqueteResultadoPage from "./pages/EnqueteResultadoPage";
 import TransparencyPublicPage from "./pages/TransparencyPublicPage";
 import VagasPage from "./pages/VagasPage";
 import VagaPage from "./pages/VagaPage";
+import EntrarCandidatoPage from "./pages/EntrarCandidatoPage";
+import CriarContaCandidatoPage from "./pages/CriarContaCandidatoPage";
+import RecuperarSenhaCandidatoPage from "./pages/RecuperarSenhaCandidatoPage";
+import MinhaAreaCandidatoPage from "./pages/MinhaAreaCandidatoPage";
+import PrivacidadeCandidatoPage from "./pages/PrivacidadeCandidatoPage";
+import { ROTAS_DO_CANDIDATO, ehCandidato } from "@/lib/vagas/conta";
 import NotFound from "./pages/NotFound";
 import EmailPreview from "./pages/EmailPreview";
 import AdminToolboxPage from "./pages/AdminToolboxPage";
@@ -42,12 +48,14 @@ import OAuthConsent from "./pages/OAuthConsent";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
   const [searchParams] = useSearchParams();
   const isEmbed = searchParams.get('embed') === 'true';
 
   if (loading) return null;
   if (!isAuthenticated && !isEmbed) return <Navigate to="/login" replace />;
+  // Conta de candidato (Trabalhe Conosco) não é equipe: vai para a área dela.
+  if (isAuthenticated && ehCandidato(user)) return <Navigate to={ROTAS_DO_CANDIDATO.minhaArea} replace />;
   return <>{children}</>;
 }
 
@@ -128,6 +136,12 @@ const App = () => (
                 <Route path="/enquete/:slug/resultado" element={<EnqueteResultadoPage />} />
                 {/* Trabalhe Conosco (fase 1, 25/09/2026): vitrine pública das vagas, fora da barra do app. */}
                 <Route path="/vagas" element={<VagasPage />} />
+                {/* Conta do candidato (fase 2, PR 6, 28/09/2026). Endereços fixos antes do :slug, e reservados em ENDERECOS_RESERVADOS. */}
+                <Route path={ROTAS_DO_CANDIDATO.entrar} element={<EntrarCandidatoPage />} />
+                <Route path={ROTAS_DO_CANDIDATO.criarConta} element={<CriarContaCandidatoPage />} />
+                <Route path={ROTAS_DO_CANDIDATO.recuperarSenha} element={<RecuperarSenhaCandidatoPage />} />
+                <Route path={ROTAS_DO_CANDIDATO.minhaArea} element={<MinhaAreaCandidatoPage />} />
+                <Route path={ROTAS_DO_CANDIDATO.privacidade} element={<PrivacidadeCandidatoPage />} />
                 <Route path="/vagas/:slug" element={<VagaPage />} />
                 <Route path="/portal-transparencia-publico" element={<TransparencyPublicPage />} />
                 <Route element={<AppLayout />}>

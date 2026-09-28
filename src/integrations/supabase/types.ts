@@ -677,6 +677,36 @@ export type Database = {
         }
         Relationships: []
       }
+      candidatos: {
+        Row: {
+          aceite_termos_em: string | null
+          aceite_termos_versao: string | null
+          created_at: string
+          email: string
+          nome: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          aceite_termos_em?: string | null
+          aceite_termos_versao?: string | null
+          created_at?: string
+          email: string
+          nome: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          aceite_termos_em?: string | null
+          aceite_termos_versao?: string | null
+          created_at?: string
+          email?: string
+          nome?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       enquetes: {
         Row: {
           created_at: string
