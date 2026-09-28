@@ -27,6 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 import BulkActionBar from '@/components/BulkActionBar';
 import PageHeader from '@/components/PageHeader';
 import { supabase } from '@/integrations/supabase/client';
+import { mensagemDaFuncao } from '@/lib/erroDaFuncao';
 import { useNavigate } from 'react-router-dom';
 import PageGuide from '@/components/PageGuide';
 
@@ -262,8 +263,8 @@ export default function UsersPage() {
       if (bulkDelete) {
         const ids = Array.from(selectedUsers);
         let successCount = 0;
-        let hasError = false;
-        
+        const falhas: string[] = [];
+                
         for (const id of ids) {
           const isDbUser = dbUsers.some(u => u.user_id === id);
           if (isDbUser) {
@@ -271,8 +272,9 @@ export default function UsersPage() {
               body: { userId: id }
             });
             if (error || (data as any)?.error) {
-              console.error('Erro ao excluir usuário:', id, error || (data as any)?.error);
-              hasError = true;
+              const motivo = await mensagemDaFuncao(error, data, 'Falha ao excluir usuário.');
+              console.error('Erro ao excluir usuário:', id, motivo);
+              falhas.push(`${dbUsers.find(u => u.user_id === id)?.name ?? id}: ${motivo}`);
             } else {
               successCount++;
             }
@@ -290,10 +292,10 @@ export default function UsersPage() {
           });
           refetch();
         }
-        if (hasError) {
-          toast({ 
-            title: 'Alguns erros ocorreram', 
-            description: 'Alguns usuários não puderam ser excluídos. Verifique se você tem permissão ou se o usuário ainda existe.',
+        if (falhas.length) {
+          toast({
+            title: falhas.length === 1 ? 'Um usuário não foi excluído' : `${falhas.length} usuários não foram excluídos`,
+            description: falhas.join(' · '),
             variant: 'destructive'
           });
         }
@@ -307,10 +309,10 @@ export default function UsersPage() {
           });
           
           if (error || (data as any)?.error) {
-            toast({ 
-              title: 'Erro ao excluir', 
-              description: (data as any)?.error || error?.message || 'Falha ao excluir usuário.', 
-              variant: 'destructive' 
+            toast({
+              title: 'Erro ao excluir',
+              description: await mensagemDaFuncao(error, data, 'Falha ao excluir usuário.'),
+              variant: 'destructive'
             });
           } else {
             toast({ 
