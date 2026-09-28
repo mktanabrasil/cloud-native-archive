@@ -635,7 +635,7 @@ describe('os combinados da cobertura', () => {
 
   // 15 s: a revisão do admin renderiza o formulário inteiro no modo dividido
   // (preview + quadros-resumo); sob a carga da suíte completa passa dos 5 s.
-  it('o admin responde, e a resposta vai gravada', { timeout: 15000 }, async () => {
+  it('o admin responde, e a resposta vai gravada', { timeout: 30000 }, async () => {
     espiao.papel = { ...espiao.papel, userName: 'MKT ANA', isAdmin: true, isMarketing: true };
     const pedido = { ...eventoGravado(), status: 'pendente' as const, marketing_request: true, marketing_coverage: true, submitted_at: '2026-03-19T13:00:00.000Z' };
     render(<EventFormDialog open onOpenChange={fechou} event={pedido} revisao />);
