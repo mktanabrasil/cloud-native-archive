@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, X } from 'lucide-react';
+import { Accessibility, GraduationCap, LayoutGrid, List, Search, X, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
@@ -10,6 +10,7 @@ import { escolheuVerSemEntrar, lembrarVerSemEntrar } from '@/lib/vagas/conta';
 import EntrarCandidatoPage from './EntrarCandidatoPage';
 import { GestaoDeVagas } from '@/components/vagas/GestaoDeVagas';
 import { CartaoDaVaga, COR_DA_AREA, ICONE_DA_AREA, MolduraDasVagas } from '@/components/vagas/PecasDasVagas';
+import { guardarVista, separarProgramas, vistaGuardada, type Vista } from '@/lib/vagas/vitrine';
 import { listarVagasPublicadas } from '@/lib/vagas/api';
 import { ROTULO_DA_AREA, type Area, type Vaga } from '@/lib/vagas/modelo';
 import { contagemPorArea, enderecoDoFiltro, filtrarVagas, filtroDoEndereco, vagasNoPlural, type FiltroDaVitrine } from '@/lib/vagas/vitrine';
@@ -70,6 +71,9 @@ function Vitrine() {
   const [erro, setErro] = useState(false);
   const [tentativa, setTentativa] = useState(0);
   const [busca, setBusca] = useState(filtro.busca);
+  // Grade ou lista (28/09/2026): a escolha fica guardada no aparelho.
+  const [vista, setVista] = useState<Vista>(vistaGuardada);
+  const trocarVista = (v: Vista) => { setVista(v); guardarVista(v); };
 
   useEffect(() => {
     let vivo = true;
@@ -82,20 +86,24 @@ function Vitrine() {
 
   const mudar = (f: Partial<FiltroDaVitrine>) => setParams(enderecoDoFiltro({ ...filtro, ...f }), { replace: true });
   const lista = useMemo(() => (vagas ? filtrarVagas(vagas, filtro) : []), [vagas, filtro]);
+  // Jovem Aprendiz e PcD vão no fim, separados (28/09/2026).
+  const { comuns, programas } = useMemo(() => separarProgramas(lista), [lista]);
   const areas = useMemo(() => (vagas ? contagemPorArea(vagas) : []), [vagas]);
   const temFiltro = filtro.area !== null || filtro.especial !== null || filtro.busca !== '';
   const total = vagas?.length ?? 0;
 
-  const chip = (ativo: boolean, rotulo: string, aoClicar: () => void) => (
+  const chip = (ativo: boolean, rotulo: string, Icone: LucideIcon, aoClicar: () => void) => (
     <button
+      key={rotulo}
       type="button"
       aria-pressed={ativo}
       onClick={aoClicar}
-      className={`h-9 rounded-full px-3.5 text-sm font-medium transition active:scale-95 ${ativo ? 'bg-foreground text-background' : 'bg-muted text-foreground hover:bg-muted/70'}`}
+      className={`inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 text-sm font-medium transition active:scale-95 ${ativo ? 'bg-foreground text-background' : 'bg-muted text-foreground hover:bg-muted/70'}`}
     >
-      {rotulo}
+      <Icone className="h-4 w-4" aria-hidden />{rotulo}
     </button>
   );
+  const grade = vista === 'lista' ? 'grid grid-cols-[minmax(0,1fr)] gap-2.5' : 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
 
   return (
     <>
@@ -138,11 +146,22 @@ function Vitrine() {
 
       <section className="mx-auto flex max-w-6xl flex-col gap-4 px-4 pb-12 sm:px-6" aria-label="Vagas abertas">
         {total > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
-            {chip(filtro.area === null && filtro.especial === null, `Todas · ${total}`, () => mudar({ area: null, especial: null }))}
-            {areas.map(({ area }) => chip(filtro.area === area, ROTULO_DA_AREA[area], () => mudar({ area: filtro.area === area ? null : area })))}
-            {vagas!.some(v => v.aprendizagem || v.contratacao === 'aprendiz') && chip(filtro.especial === 'aprendiz', 'Jovem Aprendiz', () => mudar({ especial: filtro.especial === 'aprendiz' ? null : 'aprendiz' }))}
-            {vagas!.some(v => v.afirmativa_pcd) && chip(filtro.especial === 'pcd', 'Vagas afirmativas PcD', () => mudar({ especial: filtro.especial === 'pcd' ? null : 'pcd' }))}
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            {/* No celular os filtros rolam de lado com o dedo, em vez de quebrar em várias linhas. */}
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden" role="group" aria-label="Filtros">
+              {chip(filtro.area === null && filtro.especial === null, `Todas · ${total}`, LayoutGrid, () => mudar({ area: null, especial: null }))}
+              {areas.map(({ area }) => chip(filtro.area === area, ROTULO_DA_AREA[area], ICONE_DA_AREA[area], () => mudar({ area: filtro.area === area ? null : area })))}
+              {vagas!.some(v => v.aprendizagem || v.contratacao === 'aprendiz') && chip(filtro.especial === 'aprendiz', 'Jovem Aprendiz', GraduationCap, () => mudar({ especial: filtro.especial === 'aprendiz' ? null : 'aprendiz' }))}
+              {vagas!.some(v => v.afirmativa_pcd) && chip(filtro.especial === 'pcd', 'Vagas afirmativas PcD', Accessibility, () => mudar({ especial: filtro.especial === 'pcd' ? null : 'pcd' }))}
+            </div>
+            <div className="inline-flex shrink-0 self-end rounded-xl bg-muted p-[3px] lg:self-auto" role="group" aria-label="Ver as vagas como">
+              {([['grade', 'Grade', LayoutGrid], ['lista', 'Lista', List]] as const).map(([v, rotulo, Icone]) => (
+                <button key={v} type="button" aria-pressed={vista === v} onClick={() => trocarVista(v)}
+                  className={`inline-flex h-9 items-center gap-1.5 rounded-[9px] px-3 text-[13px] font-semibold transition ${vista === v ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                  <Icone className="h-[17px] w-[17px]" aria-hidden />{rotulo}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -167,7 +186,14 @@ function Vitrine() {
         ) : (
           <>
             {temFiltro && <p className="text-sm text-muted-foreground" aria-live="polite">{vagasNoPlural(lista.length)}{filtro.busca ? ` para "${filtro.busca}"` : ''}</p>}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{lista.map(v => <CartaoDaVaga key={v.id} vaga={v} />)}</div>
+            {comuns.length > 0 && <div className={grade}>{comuns.map(v => <CartaoDaVaga key={v.id} vaga={v} vista={vista} />)}</div>}
+            {programas.length > 0 && (
+              <section aria-label="Programas para todos" className={`flex flex-col gap-1.5 ${comuns.length ? 'mt-4 border-t border-border pt-6' : ''}`}>
+                <h2 className="text-lg font-bold">Programas para todos</h2>
+                <p className="mb-2 text-sm text-muted-foreground">Vagas garantidas por lei, com inscrição própria.</p>
+                <div className={grade}>{programas.map(v => <CartaoDaVaga key={v.id} vaga={v} vista={vista} />)}</div>
+              </section>
+            )}
           </>
         )}
       </section>

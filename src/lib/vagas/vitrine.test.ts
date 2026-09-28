@@ -48,3 +48,16 @@ describe('leitura da linha do banco', () => {
     expect(v.beneficios).toEqual([]);
   });
 });
+
+describe('programas por lei (28/09/2026)', () => {
+  it('Jovem Aprendiz e a vaga afirmativa geral são programas; vaga comum aberta a PcD, não', async () => {
+    const { programaDaVaga, separarProgramas } = await import('./vitrine');
+    const ja = paraVaga({ id: 'ja', slug: 'jovem-aprendiz', titulo: 'Jovem Aprendiz', area: 'social', contratacao: 'aprendiz', aprendizagem: true });
+    const pcd = paraVaga({ id: 'p', slug: 'pcd', titulo: 'Vagas para Pessoas com Deficiência', area: 'social', afirmativa_pcd: true });
+    const prof = paraVaga({ id: 'pr', slug: 'prof', titulo: 'Professor de Educação Infantil', area: 'educacao', afirmativa_pcd: true });
+    expect([programaDaVaga(ja), programaDaVaga(pcd), programaDaVaga(prof)]).toEqual(['aprendiz', 'pcd', null]);
+    const { comuns, programas } = separarProgramas([pcd, prof, ja]);
+    expect(comuns.map(v => v.id)).toEqual(['pr']);
+    expect(programas.map(v => v.id)).toEqual(['ja', 'p']);
+  });
+});
