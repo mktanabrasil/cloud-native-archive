@@ -310,6 +310,53 @@
 .vg-acende { transform-box: fill-box; transform-origin: center; animation: vg-acende 400ms cubic-bezier(0.3, 1.6, 0.4, 1) both; }
 /* Em grupos (<g>), não no <text>: animado direto, o texto do SVG deixava no
    Chrome uma linha fina atravessando a tela inteira (28/09/2026). */
+/* O pouso do login (28/09/2026): a parada ainda não alcançada fica escondida;
+   no pouso, a onda se espalha, o quadrado verde cresce girando (de losango a
+   reto, com um quique) e o avião assenta. O verde só existe depois da chegada. */
+.vg-apagada { transform-box: fill-box; transform-origin: center; transform: scale(0); }
+@keyframes vg-onda {
+  0%   { opacity: 0.9; transform: scale(0.2); }
+  100% { opacity: 0;   transform: scale(1.9); }
+}
+@keyframes vg-gira {
+  0%   { transform: scale(0.19) rotate(45deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+@keyframes vg-assenta {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(0.82); }
+  70%  { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+.vg-onda    { transform-box: fill-box; transform-origin: center; animation: vg-onda 800ms cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+.vg-gira    { transform-box: fill-box; transform-origin: center; animation: vg-gira 750ms cubic-bezier(0.3, 1.45, 0.45, 1) 40ms both; }
+.vg-assenta { transform-box: fill-box; transform-origin: center; animation: vg-assenta 500ms cubic-bezier(0.3, 1.6, 0.4, 1) both; }
+
+/* As páginas de vagas são brancas de verdade no tema claro (pedido de 28/09);
+   --vg-fundo é a cor que a tampa da linha de voo usa para "apagar" o traço. */
+.vg-fundo { --vg-fundo: #FFFFFF; background-color: #FFFFFF; }
+.dark .vg-fundo { --vg-fundo: hsl(var(--background)); background-color: hsl(var(--background)); }
+
+/* O ícone do cartão de vaga se mexe ao passar o mouse, cada trabalho do seu jeito. */
+@keyframes vg-quica   { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
+@keyframes vg-danca   { 0%, 100% { transform: translate(0, 0) rotate(0); } 25% { transform: translate(-2px, -4px) rotate(-10deg); } 75% { transform: translate(2px, -4px) rotate(10deg); } }
+@keyframes vg-pula    { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
+@keyframes vg-balanca { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-14deg); } 50% { transform: rotate(10deg); } 75% { transform: rotate(-5deg); } }
+@keyframes vg-aperta  { 0%, 100% { transform: rotate(0); } 30% { transform: rotate(-35deg); } 60% { transform: rotate(15deg); } }
+@keyframes vg-folheia { 0%, 100% { transform: scaleX(1); } 40% { transform: scaleX(0.55); } }
+@keyframes vg-joga    { 0%, 100% { transform: translateY(0) rotate(0); } 45% { transform: translateY(-9px) rotate(-18deg); } }
+@keyframes vg-brilha  { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.18) rotate(12deg); } }
+@keyframes vg-gira-ic { 0% { transform: rotate(0); } 100% { transform: rotate(360deg); } }
+.vg-cartao:hover .vg-ico, .vg-cartao:focus-visible .vg-ico { animation: vg-quica 450ms cubic-bezier(0.3, 1.6, 0.4, 1); }
+.vg-cartao:hover [data-mov="danca"] svg, .vg-cartao:focus-visible [data-mov="danca"] svg { animation: vg-danca 800ms ease-in-out; }
+.vg-cartao:hover [data-mov="pula"] svg, .vg-cartao:focus-visible [data-mov="pula"] svg { animation: vg-pula 600ms cubic-bezier(0.3, 1.6, 0.4, 1); }
+.vg-cartao:hover [data-mov="balanca"] svg, .vg-cartao:focus-visible [data-mov="balanca"] svg { animation: vg-balanca 700ms ease-in-out; }
+.vg-cartao:hover [data-mov="aperta"] svg, .vg-cartao:focus-visible [data-mov="aperta"] svg { animation: vg-aperta 700ms ease-in-out; }
+.vg-cartao:hover [data-mov="folheia"] svg, .vg-cartao:focus-visible [data-mov="folheia"] svg { animation: vg-folheia 700ms ease-in-out; }
+.vg-cartao:hover [data-mov="joga"] svg, .vg-cartao:focus-visible [data-mov="joga"] svg { animation: vg-joga 800ms cubic-bezier(0.3, 1.4, 0.4, 1); }
+.vg-cartao:hover [data-mov="brilha"] svg, .vg-cartao:focus-visible [data-mov="brilha"] svg { animation: vg-brilha 700ms ease-in-out; }
+.vg-cartao:hover [data-mov="gira"] svg, .vg-cartao:focus-visible [data-mov="gira"] svg { animation: vg-gira-ic 800ms cubic-bezier(0.3, 1, 0.4, 1); }
+
 .vg-degrau-g { animation: vg-degrau 700ms cubic-bezier(0.2, 0.8, 0.2, 1) calc(150ms + var(--vg-i, 0) * 260ms) both; }
 .vg-pulo-g { transform-box: fill-box; transform-origin: 50% 80%; animation: vg-pulo 600ms cubic-bezier(0.3, 1.6, 0.4, 1) 2.65s; }
 
@@ -321,7 +368,12 @@
   .vg-selo,
   .vg-acende,
   .vg-degrau-g,
-  .vg-pulo-g {
+  .vg-pulo-g,
+  .vg-onda,
+  .vg-gira,
+  .vg-assenta,
+  .vg-cartao .vg-ico,
+  .vg-cartao .vg-ico svg {
     animation: none !important;
   }
 }

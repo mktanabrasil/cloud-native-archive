@@ -10,7 +10,7 @@ import InstitutionalFooterBar from '@/components/news/InstitutionalFooterBar';
  */
 export function MolduraDaConta({ atalho, children }: { atalho: ReactNode; children: ReactNode }) {
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-background text-foreground">
+    <div className="vg-fundo relative flex min-h-screen flex-col overflow-hidden text-foreground">
       <header className="relative z-10 flex h-16 items-center justify-between px-4 sm:px-8 lg:px-12">
         <Link to="/vagas" className="flex items-center gap-2.5 font-bold text-foreground">
           <img src="/logo.png" alt="" width={32} height={32} className="rounded-lg" />

@@ -1,35 +1,47 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useReduzMovimento } from '@/hooks/useReduzMovimento';
+import { AVIAO_CLARO, AVIAO_DO_LOGO_D, AVIAO_NO_QUADRADO, CANTO_DO_QUADRADO, VERDE_DO_LOGO, curvaDoVoo, transformDoAviao } from './aviaoDoLogo';
 
 /**
- * A linha de voo do Trabalhe Conosco (mockups 04, 05 e 05b; animação aprovada
- * na demonstração de 25/09/2026). O avião do logotipo percorre uma trajetória
- * tracejada; as paradas acendem nas cores da ANA; a última é sempre coral,
- * porque o avião já é verde-água e sumia sobre uma parada verde.
+ * A linha de voo do Trabalhe Conosco (mockups 04, 05 e 05b).
  *
- * Tudo em SVG, no espaço do viewBox: escala com a largura sem desalinhar
- * palavra, linha e avião. Quem pede menos movimento vê o fim, parado.
+ * Login (28/09/2026, depois de onze mockups): o avião do logotipo voa sozinho,
+ * preenchido e sem fundo, pela linha tracejada; cada parada acende quando ele
+ * passa; a última é verde. Só quando ele chega nela o pouso acontece: sai uma
+ * onda, o quadrado verde cresce girando por trás dele, o avião assenta e
+ * clareia, e o que fica é o logotipo da ANA.
+ *
+ * O voo e o pouso andam no MESMO relógio (requestAnimationFrame): com o voo
+ * em SMIL e o pouso num temporizador, os dois se desencontravam e o verde
+ * aparecia antes da hora. E o quadrado verde nem existe no desenho até o
+ * pouso: não fica escondido esperando, é criado na chegada.
+ *
+ * Quem pede menos movimento vê o fim, parado: o logotipo na última parada.
  */
 
 const AREIA = '#F5DFBB';
 const AMARELO = '#FBCE00';
 const AZUL = '#01ADFF';
 const CORAL = '#F37964';
+/** O logotipo inteiro (com o quadrado verde), usado no cadastro, que sobe de parada em parada. */
 const AVIAO = '/logo.png';
+
+const DECOLAGEM_MS = 700;
+const VOO_MS = 1900;
 
 // --- Login: "inspirar voos mais altos." em escada ------------------------------
 
 const ESCADA = {
   largo: {
-    vb: '0 0 860 540', fonte: 92,
+    vb: '0 0 860 540', fonte: 92, bolinha: 8, quadrado: 84,
     d: 'M 20 500 C 160 500, 190 340, 300 300 S 480 200, 560 120 S 720 30, 810 30',
-    paradas: [[20, 500, AREIA], [300, 300, AMARELO], [560, 120, AZUL], [810, 30, CORAL]] as const,
+    paradas: [[20, 500, AREIA], [300, 300, AMARELO], [560, 120, AZUL], [810, 30, VERDE_DO_LOGO]] as const,
     palavras: [['inspirar', 0, 530], ['voos', 150, 350], ['mais', 250, 170]] as const,
   },
   estreito: {
-    vb: '0 0 358 230', fonte: 46,
+    vb: '0 0 358 230', fonte: 46, bolinha: 6, quadrado: 52,
     d: 'M 8 215 C 80 215, 110 150, 170 130 S 280 80, 340 36',
-    paradas: [[8, 215, AREIA], [170, 130, AMARELO], [340, 36, CORAL]] as const,
+    paradas: [[8, 215, AREIA], [170, 130, AMARELO], [340, 36, VERDE_DO_LOGO]] as const,
     palavras: [['inspirar', 0, 110], ['voos', 56, 160], ['mais', 112, 210]] as const,
   },
 };
@@ -56,9 +68,14 @@ export function FraseEmEscada({ estreito = false }: { estreito?: boolean }) {
   const e = estreito ? ESCADA.estreito : ESCADA.largo;
   const reduz = useReduzMovimento();
   const trilha = useRef<SVGPathElement>(null);
+  const voa = useRef<SVGGElement>(null);
   const mais = useRef<SVGTextElement>(null);
   const [xAltos, setXAltos] = useState<number | null>(null);
-  const [atrasos, setAtrasos] = useState<number[]>(e.paradas.map((_, i) => i / (e.paradas.length - 1)));
+  // Quantas paradas o avião já passou, e se já pousou.
+  const [acesas, setAcesas] = useState(reduz ? e.paradas.length : 0);
+  const [pousou, setPousou] = useState(reduz);
+  const [voando, setVoando] = useState(reduz);
+  const [px, py] = e.paradas[e.paradas.length - 1];
 
   // "altos." logo depois de "mais", medido na fonte que carregou.
   useLayoutEffect(() => {
@@ -71,23 +88,55 @@ export function FraseEmEscada({ estreito = false }: { estreito?: boolean }) {
     medir();
     document.fonts?.ready.then(medir).catch(() => { /* fica a medida da fonte de reserva */ });
   }, [e]);
-  useEffect(() => { setAtrasos(fracoes(trilha.current, e.paradas)); }, [e]);
 
-  const VOO_INICIO = 0.7, VOO_DURACAO = 1.9;
-  const [px, py] = e.paradas[e.paradas.length - 1];
-  const tamAviao = estreito ? 40 : 48;
+  // O relógio único: decola, voa pela linha, acende as paradas na passagem e, só na chegada, pousa.
+  useEffect(() => {
+    const path = trilha.current;
+    const g = voa.current;
+    const por = (x: number, y: number) => g?.setAttribute('transform', `translate(${x} ${y})`);
+    if (reduz || !mede(path)) {
+      por(px, py); setAcesas(e.paradas.length); setVoando(true); setPousou(true);
+      return;
+    }
+    const len = path.getTotalLength();
+    const fr = fracoes(path, e.paradas);
+    const inicio = path.getPointAtLength(0);
+    por(inicio.x, inicio.y); setAcesas(0); setPousou(false); setVoando(false);
+    let quadro = 0;
+    let ultimas = 0;
+    const espera = window.setTimeout(() => {
+      setVoando(true);
+      const t0 = performance.now();
+      const passo = (t: number) => {
+        const k = Math.min(1, (t - t0) / VOO_MS);
+        const avanco = curvaDoVoo(k);
+        const p = path.getPointAtLength(len * avanco);
+        por(p.x, p.y);
+        const passadas = fr.filter(f => avanco >= f - 0.004).length;
+        if (passadas !== ultimas) { ultimas = passadas; setAcesas(passadas); }
+        if (k < 1) quadro = requestAnimationFrame(passo);
+        else { por(px, py); setAcesas(e.paradas.length); setPousou(true); }
+      };
+      quadro = requestAnimationFrame(passo);
+    }, DECOLAGEM_MS);
+    return () => { window.clearTimeout(espera); cancelAnimationFrame(quadro); };
+  }, [e, reduz, px, py]);
+
+  const Q = e.quadrado;
+  const larguraDoAviao = Q * AVIAO_NO_QUADRADO;
+  const transformAviao = useMemo(() => transformDoAviao(larguraDoAviao), [larguraDoAviao]);
 
   return (
     <svg viewBox={e.vb} className="h-auto w-full overflow-visible" role="img" aria-label="inspirar voos mais altos.">
       <path ref={trilha} d={e.d} fill="none" stroke="hsl(var(--muted-foreground) / 0.45)" strokeWidth={estreito ? 2 : 2.5} strokeDasharray="7 9" strokeLinecap="round" />
       {/* Tampa da cor do fundo: sai de cima da linha, e ela parece se desenhar. */}
       {!reduz && (
-        <path d={e.d} fill="none" stroke="hsl(var(--background))" strokeWidth={10} pathLength={1}
-          style={{ strokeDasharray: '1 1', animation: `vg-traca ${VOO_DURACAO}s cubic-bezier(.45,0,.2,1) ${VOO_INICIO}s both` }} />
+        <path d={e.d} fill="none" stroke="var(--vg-fundo, hsl(var(--background)))" strokeWidth={10} pathLength={1}
+          style={{ strokeDasharray: '1 1', animation: `vg-traca ${VOO_MS / 1000}s cubic-bezier(.45,0,.2,1) ${DECOLAGEM_MS / 1000}s both` }} />
       )}
       {e.paradas.map(([cx, cy, cor], i) => (
-        <circle key={i} cx={cx} cy={cy} r={estreito ? 6 : 8} fill={cor} className={reduz ? undefined : 'vg-acende'}
-          style={reduz ? undefined : { animationDelay: `${VOO_INICIO + atrasos[i] * VOO_DURACAO}s` }} />
+        <circle key={i} cx={cx} cy={cy} r={e.bolinha} fill={cor} data-parada={i}
+          className={i < acesas ? (reduz ? undefined : 'vg-acende') : 'vg-apagada'} />
       ))}
       {/* A animação fica nos <g>, nunca no <text>: animado direto, o texto
           deixava no Chrome uma linha fina atravessando a tela (28/09/2026). */}
@@ -108,14 +157,19 @@ export function FraseEmEscada({ estreito = false }: { estreito?: boolean }) {
           </g>
         </g>
       )}
-      {reduz ? (
-        <image href={AVIAO} x={px - tamAviao / 2} y={py - tamAviao - 4} width={tamAviao} height={tamAviao} />
-      ) : (
-        <image href={AVIAO} x={-tamAviao / 2} y={-tamAviao - 4} width={tamAviao} height={tamAviao} opacity={0}>
-          <animate attributeName="opacity" from="0" to="1" begin={`${VOO_INICIO}s`} dur="0.3s" fill="freeze" />
-          <animateMotion path={e.d} begin={`${VOO_INICIO}s`} dur={`${VOO_DURACAO}s`} fill="freeze" calcMode="spline" keyPoints="0;1" keyTimes="0;1" keySplines="0.45 0 0.2 1" />
-        </image>
+      {/* O pouso: só existe depois que o avião chega. Vem antes do avião no desenho, para ficar por trás dele. */}
+      {pousou && (
+        <g transform={`translate(${px} ${py})`} data-testid="pouso">
+          {!reduz && <circle r={Q / 2} fill="none" stroke={VERDE_DO_LOGO} strokeWidth={3} className="vg-onda" />}
+          <rect x={-Q / 2} y={-Q / 2} width={Q} height={Q} rx={Q * CANTO_DO_QUADRADO} fill={VERDE_DO_LOGO} className={reduz ? undefined : 'vg-gira'} />
+        </g>
       )}
+      {/* O avião: só vetor, preenchido pela cor; o relógio acima o leva pela linha. */}
+      <g ref={voa} opacity={voando ? 1 : 0} data-testid="aviao">
+        <g className={pousou && !reduz ? 'vg-assenta' : undefined}>
+          <path d={AVIAO_DO_LOGO_D} transform={transformAviao} fill={pousou ? AVIAO_CLARO : 'hsl(var(--foreground))'} style={{ transition: 'fill .3s ease .12s' }} />
+        </g>
+      </g>
     </svg>
   );
 }
