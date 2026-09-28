@@ -217,7 +217,7 @@ describe('grade ou lista, e os programas no fim (28/09/2026)', () => {
     const nomes = within(bloco).getAllByRole('link').map(l => l.querySelector('h3')?.textContent);
     expect(nomes).toEqual(['Jovem Aprendiz', 'Vagas para Pessoas com Deficiência']);
     expect(within(bloco).getByText('Lei da Aprendizagem (Lei 10.097/2000)')).toBeInTheDocument();
-    expect(bloco.querySelector('img[src="/vagas/acessibilidade.jpg"]')).not.toBeNull();
+    expect(bloco.querySelector('img[src="/icones-vagas/acessibilidade.jpg"]')).not.toBeNull();
     // e não aparecem entre as vagas comuns
     const todos = screen.getAllByRole('link', { name: /Jovem Aprendiz/ });
     expect(todos).toHaveLength(1);

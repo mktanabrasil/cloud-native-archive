@@ -77,11 +77,11 @@ export function Etiqueta({ children }: { children: ReactNode }) {
  */
 export const PROGRAMAS: Record<Programa, { rotulo: string; icone: typeof Home; imagem: string; alt: string; lei: string; frase: string }> = {
   aprendiz: {
-    rotulo: 'Programa', icone: GraduationCap, imagem: '/vagas/jovem-aprendiz.png', alt: 'Jovem Aprendiz Paulista',
+    rotulo: 'Programa', icone: GraduationCap, imagem: '/icones-vagas/jovem-aprendiz.png', alt: 'Jovem Aprendiz Paulista',
     lei: 'Lei da Aprendizagem (Lei 10.097/2000)', frase: 'O primeiro emprego com formação, de 14 a 24 anos.',
   },
   pcd: {
-    rotulo: 'Vaga afirmativa', icone: Accessibility, imagem: '/vagas/acessibilidade.jpg', alt: 'Símbolos de acessibilidade: física, intelectual, auditiva e visual',
+    rotulo: 'Vaga afirmativa', icone: Accessibility, imagem: '/icones-vagas/acessibilidade.jpg', alt: 'Símbolos de acessibilidade: física, intelectual, auditiva e visual',
     lei: 'Lei de Cotas (Lei 8.213/1991, art. 93)', frase: 'Para pessoas com deficiência física, intelectual, auditiva ou visual.',
   },
 };
