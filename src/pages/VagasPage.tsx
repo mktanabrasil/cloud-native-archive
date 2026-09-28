@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useAuth } from '@/contexts/AuthContext';
+import { escolheuVerSemEntrar, lembrarVerSemEntrar } from '@/lib/vagas/conta';
+import EntrarCandidatoPage from './EntrarCandidatoPage';
 import { GestaoDeVagas } from '@/components/vagas/GestaoDeVagas';
 import { CartaoDaVaga, COR_DA_AREA, ICONE_DA_AREA, MolduraDasVagas } from '@/components/vagas/PecasDasVagas';
 import { listarVagasPublicadas } from '@/lib/vagas/api';
@@ -21,7 +24,9 @@ import { contagemPorArea, enderecoDoFiltro, filtrarVagas, filtroDoEndereco, vaga
  */
 export default function VagasPage() {
   const { isRh } = useUserRole();
+  const { isAuthenticated, loading } = useAuth();
   const [params, setParams] = useSearchParams();
+  const [semEntrar, setSemEntrar] = useState(escolheuVerSemEntrar);
   const gestao = isRh && params.get('tela') === 'gestao';
   useTituloDaAba(gestao ? 'Gestão de vagas · ANA Brasil' : 'Trabalhe Conosco · ANA Brasil');
   // RH e admin veem as duas abas; o público só a vitrine, sem aba nenhuma.
@@ -42,6 +47,19 @@ export default function VagasPage() {
       </div>
     </nav>
   ) : null;
+  // A porta (28/09/2026): /vagas puro, sem conta e sem ter escolhido olhar,
+  // abre o login. Link com busca ou filtro (?area=educacao) e link de vaga
+  // abrem direto: quem mandou o link quer que a pessoa veja aquilo.
+  const porta = !loading && !isAuthenticated && !semEntrar && params.toString() === '';
+  // Quem chegou por link com filtro já está vendo as vagas: limpar o filtro
+  // depois (tocar em "Todas") não pode jogá-lo de volta na porta.
+  useEffect(() => {
+    if (!loading && !isAuthenticated && !semEntrar && !porta) { lembrarVerSemEntrar(); setSemEntrar(true); }
+  }, [loading, isAuthenticated, semEntrar, porta]);
+  if (loading) return null;
+  if (porta) {
+    return <EntrarCandidatoPage comoPorta aoVerVagas={() => { lembrarVerSemEntrar(); setSemEntrar(true); }} />;
+  }
   return <MolduraDasVagas abas={abas}>{gestao ? <GestaoDeVagas /> : <Vitrine />}</MolduraDasVagas>;
 }
 

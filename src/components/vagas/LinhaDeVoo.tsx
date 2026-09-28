@@ -89,17 +89,24 @@ export function FraseEmEscada({ estreito = false }: { estreito?: boolean }) {
         <circle key={i} cx={cx} cy={cy} r={estreito ? 6 : 8} fill={cor} className={reduz ? undefined : 'vg-acende'}
           style={reduz ? undefined : { animationDelay: `${VOO_INICIO + atrasos[i] * VOO_DURACAO}s` }} />
       ))}
+      {/* A animação fica nos <g>, nunca no <text>: animado direto, o texto
+          deixava no Chrome uma linha fina atravessando a tela (28/09/2026). */}
       {e.palavras.map(([t, x, y], i) => (
-        <text key={t} ref={i === 2 ? mais : undefined} x={x} y={y} className={reduz ? undefined : 'vg-degrau'} style={{ ['--vg-i' as string]: i }}
-          fill="hsl(var(--foreground))" fontFamily="Poppins, system-ui, sans-serif" fontWeight={700} fontSize={e.fonte} letterSpacing="-0.04em">
-          {t}
-        </text>
+        <g key={t} className={reduz ? undefined : 'vg-degrau-g'} style={{ ['--vg-i' as string]: i }}>
+          <text ref={i === 2 ? mais : undefined} x={x} y={y}
+            fill="hsl(var(--foreground))" fontFamily="Poppins, system-ui, sans-serif" fontWeight={700} fontSize={e.fonte} letterSpacing="-0.04em">
+            {t}
+          </text>
+        </g>
       ))}
       {xAltos !== null && (
-        <text x={xAltos} y={e.palavras[2][2]} fill={CORAL} fontFamily="Poppins, system-ui, sans-serif" fontWeight={700} fontSize={e.fonte} letterSpacing="-0.04em"
-          className={reduz ? undefined : 'vg-degrau vg-pulo-depois'} style={{ ['--vg-i' as string]: 2 }}>
-          altos.
-        </text>
+        <g className={reduz ? undefined : 'vg-degrau-g'} style={{ ['--vg-i' as string]: 2 }}>
+          <g className={reduz ? undefined : 'vg-pulo-g'}>
+            <text x={xAltos} y={e.palavras[2][2]} fill={CORAL} fontFamily="Poppins, system-ui, sans-serif" fontWeight={700} fontSize={e.fonte} letterSpacing="-0.04em">
+              altos.
+            </text>
+          </g>
+        </g>
       )}
       {reduz ? (
         <image href={AVIAO} x={px - tamAviao / 2} y={py - tamAviao - 4} width={tamAviao} height={tamAviao} />
