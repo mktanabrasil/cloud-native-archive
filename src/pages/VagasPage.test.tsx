@@ -190,3 +190,15 @@ describe('a porta de /vagas (28/09/2026, caminho 1)', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Educador Social de Música' })).toBeInTheDocument();
   });
 });
+
+describe('o cartão da vaga (modelo 1, versão B, 28/09/2026)', () => {
+  it('mostra o ícone do trabalho, que se mexe do jeito dele, e a frase do que a vaga pede', async () => {
+    abrir('/vagas');
+    const cartao = await screen.findByRole('link', { name: /Educador Social de Música/ });
+    expect(cartao).toHaveClass('vg-cartao');
+    expect(cartao.querySelector('[data-mov="danca"]')).not.toBeNull();
+    expect(cartao).toHaveTextContent('Requisito: Ensino Médio completo');
+    expect(cartao).toHaveTextContent('Aberta');
+  });
+});
+
