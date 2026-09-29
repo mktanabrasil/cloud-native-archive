@@ -9,7 +9,7 @@ import { AVIAO_CLARO, AVIAO_DO_LOGO_D, AVIAO_NO_QUADRADO, CANTO_DO_QUADRADO, VER
  * claro e sem fundo, por cima das letras, pela linha tracejada; cada parada acende quando ele
  * passa; a última é verde. Só quando ele chega nela o pouso acontece: sai uma
  * onda, o quadrado verde cresce girando por trás dele, o avião assenta
- * (perde o contorno do voo), e o que fica é o logotipo da ANA.
+ * no lugar, e o que fica é o logotipo da ANA.
  *
  * O voo e o pouso andam no MESMO relógio (requestAnimationFrame): com o voo
  * em SMIL e o pouso num temporizador, os dois se desencontravam e o verde
@@ -164,14 +164,11 @@ export function FraseEmEscada({ estreito = false }: { estreito?: boolean }) {
           <rect x={-Q / 2} y={-Q / 2} width={Q} height={Q} rx={Q * CANTO_DO_QUADRADO} fill={VERDE_DO_LOGO} className={reduz ? undefined : 'vg-gira'} />
         </g>
       )}
-      {/* O avião: só vetor, claro desde a decolagem (29/09/2026), e o último do
-          desenho, para passar por cima das letras. No fundo branco o claro sumiria:
-          um contorno fino o segura no voo e sai no pouso, quando o verde o recorta. */}
+      {/* O avião: só vetor, claro desde a decolagem e sem contorno (29/09/2026), e o
+          último do desenho, para passar por cima das letras. */}
       <g ref={voa} opacity={voando ? 1 : 0} data-testid="aviao">
         <g className={pousou && !reduz ? 'vg-assenta' : undefined}>
-          <path d={AVIAO_DO_LOGO_D} transform={transformAviao} fill={AVIAO_CLARO}
-            stroke="hsl(var(--foreground) / 0.55)" strokeWidth={1.5} strokeLinejoin="round" vectorEffect="non-scaling-stroke"
-            strokeOpacity={pousou ? 0 : 1} style={{ transition: 'stroke-opacity .3s ease .12s' }} />
+          <path d={AVIAO_DO_LOGO_D} transform={transformAviao} fill={AVIAO_CLARO} />
         </g>
       </g>
     </svg>
