@@ -4,7 +4,7 @@ import { act, render, screen } from '@testing-library/react';
 const reduz = vi.hoisted(() => ({ valor: false }));
 vi.mock('@/hooks/useReduzMovimento', () => ({ useReduzMovimento: () => reduz.valor }));
 
-const { FraseEmEscada } = await import('./LinhaDeVoo');
+const { FraseEmEscada, LinhaDePassos } = await import('./LinhaDeVoo');
 
 /**
  * O pouso do login (28/09/2026): o quadrado verde só pode existir depois que
@@ -100,5 +100,30 @@ describe('o pouso do login', () => {
     expect(pouso()).not.toBeNull();
     expect(pouso()!.querySelector('.vg-onda')).toBeNull();
     expect(screen.getByTestId('aviao')).toHaveAttribute('opacity', '1');
+  });
+});
+
+describe('o avião do cadastro (29/09/2026)', () => {
+  it('é o avião claro do login, e só pousa na última parada depois de a conta ser criada', () => {
+    const { rerender } = render(<LinhaDePassos atual={2} />);
+    avancar(700);
+    expect(screen.getByTestId('aviao').querySelector('path')).toHaveAttribute('fill', '#F0EEE4');
+    expect(document.querySelector('image')).toBeNull();
+    expect(pouso()).toBeNull();
+
+    rerender(<LinhaDePassos atual={2} concluido />);
+    avancar(700);
+    expect(pouso()).not.toBeNull();
+    expect(pouso()!.querySelector('rect')).toHaveAttribute('fill', '#81E2CF');
+    expect(document.querySelector('circle[data-parada="2"]')).toHaveAttribute('fill', '#81E2CF');
+  });
+
+  it('concluir antes da última parada: voa até ela, e o verde só nasce na chegada', () => {
+    const { rerender } = render(<LinhaDePassos atual={0} />);
+    rerender(<LinhaDePassos atual={0} concluido />);
+    avancar(300);
+    expect(pouso()).toBeNull();
+    avancar(400);
+    expect(pouso()).not.toBeNull();
   });
 });

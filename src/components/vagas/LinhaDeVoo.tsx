@@ -23,8 +23,6 @@ const AREIA = '#F5DFBB';
 const AMARELO = '#FBCE00';
 const AZUL = '#01ADFF';
 const CORAL = '#F37964';
-/** O logotipo inteiro (com o quadrado verde), usado no cadastro, que sobe de parada em parada. */
-const AVIAO = '/logo.png';
 
 const DECOLAGEM_MS = 700;
 const VOO_MS = 1900;
@@ -178,31 +176,40 @@ export function FraseEmEscada({ estreito = false }: { estreito?: boolean }) {
 // --- Cadastro: três paradas, o avião sobe a cada resposta ------------------------
 
 const PASSOS_D = 'M 30 150 C 110 150, 140 110, 200 95 S 330 60, 380 30';
-const PASSOS_PARADAS: ReadonlyArray<readonly [number, number, string]> = [[30, 150, CORAL], [200, 95, AMARELO], [380, 30, AZUL]];
+const PASSOS_PARADAS: ReadonlyArray<readonly [number, number, string]> = [[30, 150, CORAL], [200, 95, AMARELO], [380, 30, VERDE_DO_LOGO]];
+const PASSOS_QUADRADO = 44;
 
 /**
- * `atual` = parada em que o avião está (0, 1 ou 2); `concluido` = passou da
- * última: o avião decola e some. Paradas já alcançadas acendem na cor delas.
+ * `atual` = parada em que o avião está (0, 1 ou 2); `concluido` = a conta foi
+ * criada. Paradas já alcançadas acendem na cor delas; a última é verde.
+ *
+ * O mesmo avião do login (29/09/2026): só vetor, claro, por cima de tudo. Ao
+ * concluir, ele vai até a última parada e pousa como lá: a onda, o quadrado
+ * verde crescendo por trás dele, e fica o logotipo da ANA.
  */
 export function LinhaDePassos({ atual, concluido = false }: { atual: number; concluido?: boolean }) {
   const reduz = useReduzMovimento();
   const trilha = useRef<SVGPathElement>(null);
   const [pos, setPos] = useState<{ x: number; y: number }>({ x: PASSOS_PARADAS[0][0], y: PASSOS_PARADAS[0][1] });
+  const [chegou, setChegou] = useState(false);
   const fr = useRef<number[]>([0, 0.5, 1]);
   const kAtual = useRef(0);
+  const ultima = PASSOS_PARADAS.length - 1;
+  const i = concluido ? ultima : Math.min(atual, ultima);
 
   useEffect(() => { fr.current = fracoes(trilha.current, PASSOS_PARADAS); }, []);
 
-  // Voa pela linha (não em reta) até a parada nova, em 600 ms.
+  // Voa pela linha (não em reta) até a parada nova, em 600 ms; na última, com a conta criada, pousa.
   useEffect(() => {
     const path = trilha.current;
-    const i = Math.min(atual, PASSOS_PARADAS.length - 1);
+    setChegou(false);
+    const pronto = () => setChegou(i === ultima);
     // Sem medida da linha: o avião vai direto para a parada.
-    if (!mede(path)) { setPos({ x: PASSOS_PARADAS[i][0], y: PASSOS_PARADAS[i][1] }); return; }
+    if (!mede(path)) { setPos({ x: PASSOS_PARADAS[i][0], y: PASSOS_PARADAS[i][1] }); pronto(); return; }
     const len = path.getTotalLength();
     const alvo = fr.current[i];
     const de = kAtual.current;
-    if (reduz || de === alvo) { const p = path.getPointAtLength(len * alvo); setPos({ x: p.x, y: p.y }); kAtual.current = alvo; return; }
+    if (reduz || de === alvo) { const p = path.getPointAtLength(len * alvo); setPos({ x: p.x, y: p.y }); kAtual.current = alvo; pronto(); return; }
     let quadro = 0;
     const t0 = performance.now();
     const passo = (t: number) => {
@@ -210,28 +217,37 @@ export function LinhaDePassos({ atual, concluido = false }: { atual: number; con
       const s = k < 0.5 ? 4 * k ** 3 : 1 - (-2 * k + 2) ** 3 / 2;
       const p = path.getPointAtLength(len * (de + (alvo - de) * s));
       setPos({ x: p.x, y: p.y });
-      if (k < 1) quadro = requestAnimationFrame(passo); else kAtual.current = alvo;
+      if (k < 1) quadro = requestAnimationFrame(passo); else { kAtual.current = alvo; pronto(); }
     };
     quadro = requestAnimationFrame(passo);
     return () => cancelAnimationFrame(quadro);
-  }, [atual, reduz]);
+  }, [i, ultima, reduz]);
+
+  const pousou = concluido && chegou;
+  const Q = PASSOS_QUADRADO;
+  const transformAviao = useMemo(() => transformDoAviao(Q * AVIAO_NO_QUADRADO), [Q]);
+  const [px, py] = PASSOS_PARADAS[ultima];
 
   return (
     <svg viewBox="0 0 410 190" className="h-auto w-full max-w-[520px] overflow-visible" aria-hidden="true">
       <path ref={trilha} d={PASSOS_D} fill="none" stroke="hsl(var(--muted-foreground) / 0.45)" strokeWidth={2} strokeDasharray="6 8" strokeLinecap="round" />
-      {PASSOS_PARADAS.map(([cx, cy, cor], i) => {
-        const acesa = i <= atual || concluido;
+      {PASSOS_PARADAS.map(([cx, cy, cor], n) => {
+        const acesa = n <= i;
         return (
-          <circle key={i} cx={cx} cy={cy} r={acesa ? 9 : 7} fill={acesa ? cor : 'hsl(var(--background))'} stroke={acesa ? cor : 'hsl(var(--muted-foreground) / 0.45)'} strokeWidth={2}
+          <circle key={n} cx={cx} cy={cy} r={acesa ? 9 : 7} fill={acesa ? cor : 'hsl(var(--background))'} stroke={acesa ? cor : 'hsl(var(--muted-foreground) / 0.45)'} strokeWidth={2} data-parada={n}
             style={{ transition: reduz ? undefined : 'r .35s cubic-bezier(.3,1.6,.4,1), fill .3s ease, stroke .3s ease' }} />
         );
       })}
-      <g style={{
-        transform: concluido ? `translate(${pos.x + 90}px, ${pos.y - 80}px)` : `translate(${pos.x}px, ${pos.y}px)`,
-        opacity: concluido ? 0 : 1,
-        transition: concluido && !reduz ? 'transform .7s cubic-bezier(.45,0,.2,1), opacity .7s ease' : undefined,
-      }}>
-        <image href={AVIAO} x={-22} y={-50} width={44} height={44} style={{ filter: 'drop-shadow(0 4px 8px rgba(31,35,34,.2))' }} />
+      {pousou && (
+        <g transform={`translate(${px} ${py})`} data-testid="pouso">
+          {!reduz && <circle r={Q / 2} fill="none" stroke={VERDE_DO_LOGO} strokeWidth={3} className="vg-onda" />}
+          <rect x={-Q / 2} y={-Q / 2} width={Q} height={Q} rx={Q * CANTO_DO_QUADRADO} fill={VERDE_DO_LOGO} className={reduz ? undefined : 'vg-gira'} />
+        </g>
+      )}
+      <g transform={`translate(${pos.x} ${pos.y})`} data-testid="aviao">
+        <g className={pousou && !reduz ? 'vg-assenta' : undefined}>
+          <path d={AVIAO_DO_LOGO_D} transform={transformAviao} fill={AVIAO_CLARO} />
+        </g>
       </g>
     </svg>
   );
