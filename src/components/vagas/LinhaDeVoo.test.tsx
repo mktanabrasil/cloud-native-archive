@@ -77,6 +77,17 @@ describe('o pouso do login', () => {
     expect(screen.getByTestId('aviao').querySelector('path')).toHaveAttribute('fill', '#F0EEE4');
   });
 
+  it('o avião já voa claro, com contorno, e é o último do desenho: passa por cima das letras', () => {
+    const { container } = render(<FraseEmEscada />);
+    avancar(1000);
+    const aviao = screen.getByTestId('aviao');
+    expect(aviao.querySelector('path')).toHaveAttribute('fill', '#F0EEE4');
+    expect(aviao.querySelector('path')).toHaveAttribute('stroke-opacity', '1');
+    expect(container.querySelector('svg')!.lastElementChild).toBe(aviao);
+    avancar(2000);
+    expect(aviao.querySelector('path')).toHaveAttribute('stroke-opacity', '0');
+  });
+
   it('as paradas acendem em ordem, conforme o avião passa', () => {
     render(<FraseEmEscada />);
     const vistas: number[] = [];
