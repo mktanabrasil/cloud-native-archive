@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  Plus, Copy, Trash2, Pencil, Lock, Loader2, Newspaper, Search, Sparkles, GraduationCap, AlertTriangle, Archive, ArchiveRestore } from 'lucide-react';
+  Plus, Copy, Trash2, Pencil, Lock, Loader2, Newspaper, Search, Sparkles, GraduationCap, AlertTriangle, Archive, ArchiveRestore, FilePlus2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,7 @@ import { JournalEditor } from '@/components/journal/JournalEditor';
 import { JournalPageView, A4_W, A4_H } from '@/components/journal/JournalPageView';
 import { UnitBadge } from '@/components/journal/UnitBadge';
 import { JournalImportDialog } from '@/components/journal/JournalImportDialog';
+import { JournalEsbocoDialog } from '@/components/journal/JournalEsbocoDialog';
 import { SeletorDeMes } from '@/components/journal/SeletorDeMes';
 import { formatarMes, mesAtual, ordenarMeses } from '@/lib/journal/mesDaEdicao';
 import { resumirImportacao } from '@/lib/journal/importar';
@@ -172,6 +173,7 @@ export default function JournalPage() {
   const [creating, setCreating] = useState(false);
   /** Diálogo de criar a partir de um arquivo da unidade. */
   const [importing, setImporting] = useState(false);
+  const [deEsboco, setDeEsboco] = useState(false);
   /** Tutorial da listagem: abre sozinho no primeiro acesso, e pelo botão depois. */
   const [tutorial, setTutorial] = useState(false);
   const tutoriais = useTutoriaisVistos();
@@ -347,6 +349,12 @@ export default function JournalPage() {
             {IMPORTACAO_LIBERADA && (
               <Button variant="outline" onClick={() => setImporting(true)}>
                 <Sparkles className="mr-1.5 h-4 w-4" /> Começar de um arquivo
+              </Button>
+            )}
+            {/* Só a comunicação: o esboço sai da pasta "Jornal - Esboço" do marketing (05/10/2026). */}
+            {isMarketing && (
+              <Button variant="outline" onClick={() => setDeEsboco(true)}>
+                <FilePlus2 className="mr-1.5 h-4 w-4" /> Criar a partir de esboço
               </Button>
             )}
             <Button variant="outline" onClick={() => setTutorial(true)} data-tutorial="ajuda">
@@ -746,6 +754,29 @@ export default function JournalPage() {
         onFechar={() => setTutorial(false)}
         onVisto={tutoriais.marcarVisto}
       />
+
+      {isMarketing && (
+        <JournalEsbocoDialog
+          aberto={deEsboco}
+          onAberto={setDeEsboco}
+          sugerirNome={suggestName}
+          onCriar={async (dados) => {
+            const criado = await create({
+              name: dados.name,
+              unitId: dados.unitId,
+              profileUnit: profileUnitForNewsUnit(dados.unitId),
+              referenceMonth: dados.referenceMonth,
+              status: 'rascunho',
+              pages: dados.pages,
+            });
+            if (!criado) return null;
+            // O fundo não entra na criação; vai logo em seguida, como o editor faz.
+            if (dados.paper !== 'off_white') await save(criado.id, { paper: dados.paper });
+            return criado.id;
+          }}
+          onPronto={(journalId) => setEditingId(journalId)}
+        />
+      )}
 
       <JournalImportDialog
         aberto={importing}

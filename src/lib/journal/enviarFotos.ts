@@ -18,21 +18,45 @@ import { caminhoDaFoto } from './caminhoDaFoto';
 /** Quantos envios ao mesmo tempo. Vinte de uma vez sufoca conexão de escola. */
 const SIMULTANEOS = 4;
 
-async function enviarUma(foto: FotoMedida): Promise<FotoMedida> {
-  if (!foto.recorte) return foto;
-
+/** Sobe um JPEG e devolve o endereço público, ou null se o envio falhou. */
+async function enviarJpeg(arquivo: Blob): Promise<string | null> {
   try {
     const caminho = caminhoDaFoto('jpg');
     const { error } = await supabase.storage
       .from('event-attachments')
-      .upload(caminho, foto.recorte, { contentType: 'image/jpeg', upsert: false });
+      .upload(caminho, arquivo, { contentType: 'image/jpeg', upsert: false });
     if (error) throw error;
 
     const { data } = supabase.storage.from('event-attachments').getPublicUrl(caminho);
-    return { ...foto, url: data.publicUrl };
+    return data.publicUrl;
   } catch {
-    return foto;
+    return null;
   }
+}
+
+async function enviarUma(foto: FotoMedida): Promise<FotoMedida> {
+  if (!foto.recorte) return foto;
+  const url = await enviarJpeg(foto.recorte);
+  return url ? { ...foto, url } : foto;
+}
+
+/**
+ * Sobe os JPEGs de um esboço (05/10/2026), em lotes, na ordem dada. Cada
+ * posição volta com o endereço, ou null para a foto que não subiu.
+ * `deveParar` é olhado entre um lote e outro.
+ */
+export async function enviarJpegs(
+  arquivos: Blob[],
+  aoProgredir?: (enviadas: number, total: number) => void,
+  deveParar?: () => boolean,
+): Promise<Array<string | null>> {
+  const enderecos: Array<string | null> = [];
+  for (let i = 0; i < arquivos.length; i += SIMULTANEOS) {
+    if (deveParar?.()) break;
+    enderecos.push(...(await Promise.all(arquivos.slice(i, i + SIMULTANEOS).map(enviarJpeg))));
+    aoProgredir?.(enderecos.length, arquivos.length);
+  }
+  return enderecos;
 }
 
 /**
