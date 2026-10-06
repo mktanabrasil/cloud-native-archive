@@ -119,16 +119,19 @@ describe('o avião do cadastro (29/09/2026)', () => {
     expect(screen.getByTestId('aviao').querySelector('path')).toHaveAttribute('fill', '#F0EEE4');
   });
 
-  it('a parada só ganha a cor quando o avião chega nela (06/10/2026)', () => {
+  it('embaixo do avião a parada fica vazia; só ganha a cor depois que ele passa (06/10/2026)', () => {
     const { rerender } = render(<LinhaDePassos atual={0} />);
     avancar(100);
-    const cor = () => document.querySelector('circle[data-parada="1"]')!.getAttribute('fill');
-    expect(cor()).toBe('hsl(var(--background))');
+    const cor = (n: number) => document.querySelector(`circle[data-parada="${n}"]`)!.getAttribute('fill');
+    expect(cor(0)).toBe('hsl(var(--background))');   // o avião está nela
     rerender(<LinhaDePassos atual={1} />);
-    avancar(300);   // no meio do voo
-    expect(cor()).toBe('hsl(var(--background))');
-    avancar(400);   // chegou
-    expect(cor()).toBe('#FBCE00');
+    avancar(700);   // chegou na segunda
+    expect(cor(0)).toBe('#F37964');                  // passou: coral
+    expect(cor(1)).toBe('hsl(var(--background))');   // está nela: vazia
+    rerender(<LinhaDePassos atual={1} concluido />);
+    avancar(700);   // pousou na última
+    expect(cor(1)).toBe('#FBCE00');
+    expect(cor(2)).toBe('#81E2CF');
   });
 
   it('concluir antes da última parada: voa até ela, e o verde só nasce na chegada', () => {
