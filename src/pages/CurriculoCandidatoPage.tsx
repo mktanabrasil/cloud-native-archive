@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import { MolduraDaConta } from '@/components/vagas/MolduraDaConta';
+import { AbasDoCandidato } from '@/components/vagas/AbasDoCandidato';
 import { ROTAS_DO_CANDIDATO, ehCandidato } from '@/lib/vagas/conta';
 import {
   CURRICULO_MAX_MB, carregarPerfil, conferirCurriculo, enviarCurriculo, linkDoCurriculo, removerCurriculo, tamanhoLegivel,
@@ -159,6 +160,7 @@ export default function CurriculoCandidatoPage() {
 
         {erro && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-900 dark:bg-red-950/60 dark:text-red-100">{erro}</p>}
       </div>
+      <AbasDoCandidato />
     </MolduraDaConta>
   );
 }

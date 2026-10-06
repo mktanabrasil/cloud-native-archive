@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, MailCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -32,6 +32,10 @@ const PERGUNTAS: Record<Etapa, { titulo: string; pergunta: string; dica: string 
 export default function CriarContaCandidatoPage() {
   useTituloDaAba('Criar conta · Trabalhe Conosco ANA Brasil');
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  // Veio de "Candidatar-se": no fim, o botão principal volta para a candidatura.
+  const volta = (params.get('volta') ?? '').startsWith('/vagas/') ? params.get('volta')! : null;
+  const entrar = volta ? `${ROTAS_DO_CANDIDATO.entrar}?volta=${encodeURIComponent(volta)}` : ROTAS_DO_CANDIDATO.entrar;
   const { user, isAuthenticated, loading } = useAuth();
   const [etapa, setEtapa] = useState<Etapa>(0);
   const [nome, setNome] = useState('');
@@ -49,8 +53,8 @@ export default function CriarContaCandidatoPage() {
 
   // Quem já é candidato e está logado não precisa criar outra conta.
   useEffect(() => {
-    if (!loading && isAuthenticated && ehCandidato(user) && fim === null && !criandoAgora.current) navigate(ROTAS_DO_CANDIDATO.minhaArea, { replace: true });
-  }, [loading, isAuthenticated, user, fim, navigate]);
+    if (!loading && isAuthenticated && ehCandidato(user) && fim === null && !criandoAgora.current) navigate(volta ?? ROTAS_DO_CANDIDATO.minhaArea, { replace: true });
+  }, [loading, isAuthenticated, user, fim, navigate, volta]);
 
   // O foco acompanha a pergunta, para seguir só no teclado.
   useEffect(() => { campo.current?.focus(); }, [etapa]);
@@ -89,7 +93,7 @@ export default function CriarContaCandidatoPage() {
   const primeiro = nome.trim().split(/\s+/)[0];
 
   return (
-    <MolduraDaConta atalho={<Link to={ROTAS_DO_CANDIDATO.entrar} className="text-foreground hover:text-primary">Já tenho conta</Link>}>
+    <MolduraDaConta atalho={<Link to={entrar} className="text-foreground hover:text-primary">Já tenho conta</Link>}>
       <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-[minmax(0,1fr)] content-center items-center gap-6 px-4 pb-10 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,500px)] lg:gap-12 lg:px-12">
         <div className="flex flex-col gap-4 lg:gap-6">
           <span className="text-xs font-semibold uppercase tracking-wider text-emerald-800 dark:text-emerald-300" aria-live="polite">
@@ -111,7 +115,9 @@ export default function CriarContaCandidatoPage() {
                 <h2 className="text-2xl font-bold">Tudo pronto.</h2>
                 <p className="text-muted-foreground">Agora é só escolher uma vaga.</p>
                 <div className="flex flex-wrap gap-2">
-                  <Button asChild className="h-12 rounded-xl px-6"><Link to="/vagas">Ver vagas <ArrowRight className="h-4 w-4" /></Link></Button>
+                  {volta
+                    ? <Button asChild className="h-12 rounded-xl px-6"><Link to={volta}>Continuar a candidatura <ArrowRight className="h-4 w-4" /></Link></Button>
+                    : <Button asChild className="h-12 rounded-xl px-6"><Link to="/vagas">Ver vagas <ArrowRight className="h-4 w-4" /></Link></Button>}
                   <Button asChild variant="outline" className="h-12 rounded-xl px-6"><Link to={ROTAS_DO_CANDIDATO.minhaArea}>Minha área</Link></Button>
                 </div>
               </>
@@ -119,7 +125,7 @@ export default function CriarContaCandidatoPage() {
               <>
                 <h2 className="text-2xl font-bold">Confira sua caixa de entrada.</h2>
                 <p className="text-muted-foreground">Mandamos um link para <b className="text-foreground">{email.trim()}</b>. Toque nele para ativar a conta. Se não chegar em alguns minutos, olhe o spam.</p>
-                <Button asChild variant="outline" className="h-12 rounded-xl px-6"><Link to={ROTAS_DO_CANDIDATO.entrar}>Já confirmei, quero entrar</Link></Button>
+                <Button asChild variant="outline" className="h-12 rounded-xl px-6"><Link to={entrar}>Já confirmei, quero entrar</Link></Button>
               </>
             )}
           </div>

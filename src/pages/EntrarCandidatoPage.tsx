@@ -36,6 +36,8 @@ export default function EntrarCandidatoPage({ comoPorta = false, aoVerVagas }: {
   const [erro, setErro] = useState<string | null>(null);
   const [entrando, setEntrando] = useState(false);
   const destino = params.get('volta') || ROTAS_DO_CANDIDATO.minhaArea;
+  // Quem vem de uma vaga e ainda não tem conta leva a volta junto para o cadastro.
+  const criarConta = params.get('volta') ? `${ROTAS_DO_CANDIDATO.criarConta}?volta=${encodeURIComponent(params.get('volta')!)}` : ROTAS_DO_CANDIDATO.criarConta;
 
   // Já tem sessão de candidato: vai direto.
   useEffect(() => {
@@ -64,7 +66,7 @@ export default function EntrarCandidatoPage({ comoPorta = false, aoVerVagas }: {
   }
 
   return (
-    <MolduraDaConta atalho={<Link to={ROTAS_DO_CANDIDATO.criarConta} className="text-foreground hover:text-primary">Criar conta</Link>}>
+    <MolduraDaConta atalho={<Link to={criarConta} className="text-foreground hover:text-primary">Criar conta</Link>}>
       <div className="grid w-full flex-1 grid-cols-[minmax(0,1fr)] content-center items-center gap-8 px-4 pb-10 pt-2 sm:px-8 lg:grid-cols-[minmax(0,1120px)_420px] lg:justify-between lg:gap-16 lg:px-12 xl:px-16 2xl:px-24">
         <div className="flex flex-col gap-6">
           <div className="mx-auto w-full max-w-[380px] lg:max-w-none">
@@ -108,7 +110,7 @@ export default function EntrarCandidatoPage({ comoPorta = false, aoVerVagas }: {
             <span className="inline-flex items-center gap-1.5"><Lock className="h-3.5 w-3.5" aria-hidden /> Conexão protegida</span>
             <Link to="/login" className="hover:text-foreground">Equipe ANA</Link>
           </p>
-          <p className="text-center text-sm text-muted-foreground">Ainda não tem conta? <Link to={ROTAS_DO_CANDIDATO.criarConta} className="font-semibold text-primary hover:underline">Criar em um minuto</Link></p>
+          <p className="text-center text-sm text-muted-foreground">Ainda não tem conta? <Link to={criarConta} className="font-semibold text-primary hover:underline">Criar em um minuto</Link></p>
           {comoPorta && (
             <button type="button" onClick={aoVerVagas} className="mx-auto text-sm font-semibold text-foreground underline-offset-4 hover:underline">
               Ver as vagas sem entrar →

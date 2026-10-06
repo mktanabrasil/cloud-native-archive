@@ -114,20 +114,20 @@ describe('abas do RH', () => {
 });
 
 describe('página da vaga', () => {
-  it('mostra requisitos, diferencial, benefícios e o Forms no botão', async () => {
+  it('mostra requisitos, diferencial, benefícios e leva à candidatura no app (06/10/2026)', async () => {
     abrir('/vagas/educador-social-de-musica');
     expect(await screen.findByRole('heading', { level: 1, name: 'Educador Social de Música' })).toBeInTheDocument();
     expect(screen.getByText('Ensino Médio completo')).toBeInTheDocument();
     expect(screen.getByText('Diferencial: Formação em música')).toBeInTheDocument();
     expect(screen.getByText('Vale-transporte')).toBeInTheDocument();
     const botao = screen.getByRole('link', { name: /Candidatar-se/ });
-    expect(botao).toHaveAttribute('href', 'https://forms.gle/abc');
-    expect(botao).toHaveAttribute('target', '_blank');
+    expect(botao).toHaveAttribute('href', '/vagas/educador-social-de-musica/candidatar');
+    expect(botao).not.toHaveAttribute('target');
   });
 
-  it('sem Forms, o botão avisa que as inscrições abrem em breve', async () => {
+  it('sem Forms, a candidatura também é pelo app', async () => {
     abrir('/vagas/professor-de-educacao-infantil');
-    expect(await screen.findByRole('button', { name: 'Inscrições em breve' })).toBeDisabled();
+    expect(await screen.findByRole('link', { name: /Candidatar-se/ })).toHaveAttribute('href', '/vagas/professor-de-educacao-infantil/candidatar');
     expect(screen.getByText(/Vaga afirmativa para pessoas com deficiência/)).toBeInTheDocument();
   });
 

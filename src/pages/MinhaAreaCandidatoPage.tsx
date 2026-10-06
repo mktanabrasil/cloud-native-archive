@@ -7,13 +7,16 @@ import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import { MolduraDasVagas } from '@/components/vagas/PecasDasVagas';
 import { ROTAS_DO_CANDIDATO, ehCandidato, primeiroNome } from '@/lib/vagas/conta';
 import { carregarPerfil, completude, passosQueFaltam, type Perfil } from '@/lib/vagas/perfil';
+import { dataEHora, minhasCandidaturas, type Candidatura } from '@/lib/vagas/candidatura';
+import { AbasDoCandidato } from '@/components/vagas/AbasDoCandidato';
+import { EtapasDaCandidatura } from '@/components/vagas/EtapasDaCandidatura';
 
 /**
  * /vagas/minha-area — a área do candidato (mockups 08, M11 e o do PR 7, de
  * 06/10/2026). Dois blocos grandes: Meu perfil, com o anel do quanto está
  * pronto, e Currículo. Embaixo, só os passos que faltam, cada um abrindo
- * direto no passo. As candidaturas chegam no PR 8; até lá a inscrição de
- * cada vaga segue pelo formulário dela, e a tela diz isso.
+ * direto no passo. Desde o PR 8 as candidaturas vêm no topo, cada uma com a
+ * linha das etapas; no celular, a barra de abas fica embaixo.
  */
 
 function Anel({ pct }: { pct: number }) {
@@ -33,11 +36,13 @@ export default function MinhaAreaCandidatoPage() {
   const nome = primeiroNome(user);
   useTituloDaAba('Minha área · Trabalhe Conosco ANA Brasil');
   const [dados, setDados] = useState<{ perfil: Perfil; exps: number } | null>(null);
+  const [candidaturas, setCandidaturas] = useState<Candidatura[] | null>(null);
 
   const idDoCandidato = user && ehCandidato(user) ? user.id : null;
   useEffect(() => {
     if (!idDoCandidato) return;
     carregarPerfil(idDoCandidato).then(({ perfil, experiencias }) => setDados({ perfil, exps: experiencias.length })).catch(() => setDados(null));
+    minhasCandidaturas(idDoCandidato).then(setCandidaturas).catch(() => setCandidaturas([]));
   }, [idDoCandidato]);
 
   if (loading) return null;
@@ -53,6 +58,33 @@ export default function MinhaAreaCandidatoPage() {
     <MolduraDasVagas>
       <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10 sm:px-6">
         <h1 className="vg-pergunta text-[30px] font-bold leading-tight sm:text-[38px]">Olá, {nome}.</h1>
+
+        <section aria-label="Minhas candidaturas" className="flex flex-col gap-3">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Minhas candidaturas</span>
+          {candidaturas === null ? null : candidaturas.length === 0 ? (
+            <div className="flex flex-col gap-3 rounded-[20px] bg-muted/60 p-5">
+              <p className="flex items-center gap-2 font-semibold"><Briefcase className="h-4 w-4" aria-hidden /> Nenhuma candidatura ainda.</p>
+              <Button asChild className="h-12 self-start rounded-xl px-6"><Link to="/vagas">Ver vagas abertas <ArrowRight className="h-4 w-4" /></Link></Button>
+            </div>
+          ) : (
+            <ul className="flex flex-col gap-2.5">
+              {candidaturas.map((c) => (
+                <li key={c.id}>
+                  <Link to={`${ROTAS_DO_CANDIDATO.minhaArea}/${c.id}`} className="flex flex-col gap-2.5 rounded-2xl bg-muted/60 p-4 hover:bg-muted" data-testid="candidatura">
+                    <span className="flex items-start justify-between gap-3">
+                      <span className="min-w-0">
+                        <b className="block truncate">{c.vaga?.titulo ?? 'Vaga encerrada'}</b>
+                        <span className="text-xs text-muted-foreground">Protocolo {c.protocolo} · {dataEHora(c.created_at).split(',')[0]}{c.retirada_em ? ' · retirada' : ''}</span>
+                      </span>
+                      <ChevronRight className="h-5 w-5 shrink-0" aria-hidden />
+                    </span>
+                    <EtapasDaCandidatura etapa={c.etapa} retirada={!!c.retirada_em} />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <Link to={pct === 100 ? ROTAS_DO_CANDIDATO.meuPerfil : `${ROTAS_DO_CANDIDATO.meuPerfil}${primeiroQueFalta ? `?passo=${primeiroQueFalta}` : ''}`}
@@ -87,11 +119,6 @@ export default function MinhaAreaCandidatoPage() {
           </ul>
         )}
 
-        <div className="flex flex-col gap-3 rounded-[20px] bg-muted/60 p-5 sm:p-6">
-          <p className="flex items-center gap-2 font-semibold"><Briefcase className="h-4 w-4" aria-hidden /> Por enquanto, a inscrição de cada vaga continua pelo formulário dela.</p>
-          <p className="text-sm text-muted-foreground">Abra a vaga e toque em Candidatar-se. Logo a candidatura vai ser feita aqui mesmo, com o seu perfil já preenchido.</p>
-          <Button asChild className="mt-1 h-12 self-start rounded-xl px-6"><Link to="/vagas">Ver vagas abertas <ArrowRight className="h-4 w-4" /></Link></Button>
-        </div>
 
         <div className="flex flex-wrap items-center gap-4 border-t border-border pt-4 text-sm">
           <Link to={ROTAS_DO_CANDIDATO.privacidade} className="text-muted-foreground hover:text-foreground">Privacidade e dados</Link>
@@ -99,6 +126,7 @@ export default function MinhaAreaCandidatoPage() {
           <Button variant="ghost" onClick={() => signOut()}><LogOut className="h-4 w-4" /> Sair</Button>
         </div>
       </div>
+      <AbasDoCandidato />
     </MolduraDasVagas>
   );
 }

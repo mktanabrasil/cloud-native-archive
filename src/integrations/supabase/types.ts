@@ -677,6 +677,63 @@ export type Database = {
         }
         Relationships: []
       }
+      candidaturas: {
+        Row: {
+          confirmacao_enviada_em: string | null
+          created_at: string
+          curriculo_caminho: string | null
+          curriculo_nome: string | null
+          etapa: string
+          id: string
+          motivo_retirada: string | null
+          origem: string | null
+          perfil: Json
+          protocolo: string
+          requisitos: Json
+          respostas: Json
+          retirada_em: string | null
+          updated_at: string
+          user_id: string
+          vaga_id: string
+        }
+        Insert: {
+          confirmacao_enviada_em?: string | null
+          created_at?: string
+          curriculo_caminho?: string | null
+          curriculo_nome?: string | null
+          etapa?: string
+          id?: string
+          motivo_retirada?: string | null
+          origem?: string | null
+          perfil: Json
+          protocolo?: string
+          requisitos?: Json
+          respostas?: Json
+          retirada_em?: string | null
+          updated_at?: string
+          user_id: string
+          vaga_id: string
+        }
+        Update: {
+          confirmacao_enviada_em?: string | null
+          created_at?: string
+          curriculo_caminho?: string | null
+          curriculo_nome?: string | null
+          etapa?: string
+          id?: string
+          motivo_retirada?: string | null
+          origem?: string | null
+          perfil?: Json
+          protocolo?: string
+          requisitos?: Json
+          respostas?: Json
+          retirada_em?: string | null
+          updated_at?: string
+          user_id?: string
+          vaga_id?: string
+        }
+        Relationships: []
+      }
       candidato_experiencias: {
         Row: {
           atual: boolean
@@ -1107,6 +1164,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      retirar_candidatura: {
+        Args: { p_id: string; p_motivo?: string }
+        Returns: undefined
+      }
       can_manage_unit: { Args: { target_unit: string }; Returns: boolean }
       check_audit_log_access: { Args: { log_unit: string }; Returns: boolean }
       check_is_admin: { Args: { _uid: string }; Returns: boolean }
