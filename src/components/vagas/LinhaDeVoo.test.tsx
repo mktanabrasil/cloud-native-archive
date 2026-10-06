@@ -119,6 +119,18 @@ describe('o avião do cadastro (29/09/2026)', () => {
     expect(screen.getByTestId('aviao').querySelector('path')).toHaveAttribute('fill', '#F0EEE4');
   });
 
+  it('a parada só ganha a cor quando o avião chega nela (06/10/2026)', () => {
+    const { rerender } = render(<LinhaDePassos atual={0} />);
+    avancar(100);
+    const cor = () => document.querySelector('circle[data-parada="1"]')!.getAttribute('fill');
+    expect(cor()).toBe('hsl(var(--background))');
+    rerender(<LinhaDePassos atual={1} />);
+    avancar(300);   // no meio do voo
+    expect(cor()).toBe('hsl(var(--background))');
+    avancar(400);   // chegou
+    expect(cor()).toBe('#FBCE00');
+  });
+
   it('concluir antes da última parada: voa até ela, e o verde só nasce na chegada', () => {
     const { rerender } = render(<LinhaDePassos atual={0} />);
     rerender(<LinhaDePassos atual={0} concluido />);
