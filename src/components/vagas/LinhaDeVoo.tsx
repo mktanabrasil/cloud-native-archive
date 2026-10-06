@@ -194,9 +194,6 @@ export function LinhaDePassos({ atual, concluido = false }: { atual: number; con
   const trilha = useRef<SVGPathElement>(null);
   const [pos, setPos] = useState<{ x: number; y: number }>({ x: PASSOS_PARADAS[0][0], y: PASSOS_PARADAS[0][1] });
   const [chegou, setChegou] = useState(false);
-  // A última parada em que o avião de fato chegou: a cor de cada parada só
-  // acende quando ele passa por ela (06/10/2026), não quando o passo muda.
-  const [alcancada, setAlcancada] = useState(0);
   const fr = useRef<number[]>([0, 0.5, 1]);
   const kAtual = useRef(0);
   const ultima = PASSOS_PARADAS.length - 1;
@@ -208,7 +205,7 @@ export function LinhaDePassos({ atual, concluido = false }: { atual: number; con
   useEffect(() => {
     const path = trilha.current;
     setChegou(false);
-    const pronto = () => { setChegou(i === ultima); setAlcancada(i); };
+    const pronto = () => setChegou(i === ultima);
     // Sem medida da linha: o avião vai direto para a parada.
     if (!mede(path)) { setPos({ x: PASSOS_PARADAS[i][0], y: PASSOS_PARADAS[i][1] }); pronto(); return; }
     const len = path.getTotalLength();
@@ -237,7 +234,9 @@ export function LinhaDePassos({ atual, concluido = false }: { atual: number; con
     <svg viewBox="0 0 410 190" className="h-auto w-full max-w-[520px] overflow-visible" aria-hidden="true">
       <path ref={trilha} d={PASSOS_D} fill="none" stroke="hsl(var(--muted-foreground) / 0.45)" strokeWidth={2} strokeDasharray="6 8" strokeLinecap="round" />
       {PASSOS_PARADAS.map(([cx, cy, cor], n) => {
-        const acesa = n <= alcancada;
+        // Embaixo do avião a parada fica vazia; ela só ganha a cor depois que ele
+        // passa (06/10/2026). A última acende no pouso, junto com o verde.
+        const acesa = n < i || (n === ultima && pousou);
         return (
           <circle key={n} cx={cx} cy={cy} r={acesa ? 9 : 7} fill={acesa ? cor : 'hsl(var(--background))'} stroke={acesa ? cor : 'hsl(var(--muted-foreground) / 0.45)'} strokeWidth={2} data-parada={n}
             style={{ transition: reduz ? undefined : 'r .35s cubic-bezier(.3,1.6,.4,1), fill .3s ease, stroke .3s ease' }} />
@@ -292,7 +291,7 @@ export function PassosComAviao({ total, atual, concluidos }: { total: number; at
       {Array.from({ length: total }, (_, i) => i).map((i) => (
         <circle key={i} cx={x(i)} cy={14} r={6} data-parada={i} data-feita={concluidos[i] ? 'sim' : 'nao'}
           fill={i === atual ? 'transparent' : concluidos[i] || i < atual ? VERDE_DO_LOGO : 'hsl(var(--muted))'}
-          style={{ transition: reduz ? undefined : 'fill .3s ease .55s' }} />
+          style={{ transition: reduz ? undefined : 'fill .3s ease .1s' }} />
       ))}
       <g style={{ transform: `translate(${x(atual)}px, 14px)`, transition: reduz ? undefined : 'transform .6s cubic-bezier(.45,0,.2,1)' }} data-testid="aviao-do-perfil">
         <path d={AVIAO_DO_LOGO_D} transform={transformAviao} fill={AVIAO_CLARO} />
