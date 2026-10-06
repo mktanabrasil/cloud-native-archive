@@ -104,10 +104,10 @@ describe('o pouso do login', () => {
 });
 
 describe('o avião do cadastro (29/09/2026)', () => {
-  it('é o avião claro do login, e só pousa na última parada depois de a conta ser criada', () => {
+  it('voa escuro, só pousa na última parada depois de a conta ser criada, e clareia no pouso', () => {
     const { rerender } = render(<LinhaDePassos atual={2} />);
     avancar(700);
-    expect(screen.getByTestId('aviao').querySelector('path')).toHaveAttribute('fill', '#F0EEE4');
+    expect(screen.getByTestId('aviao').querySelector('path')).toHaveAttribute('fill', 'hsl(var(--foreground))');
     expect(document.querySelector('image')).toBeNull();
     expect(pouso()).toBeNull();
 
@@ -116,6 +116,7 @@ describe('o avião do cadastro (29/09/2026)', () => {
     expect(pouso()).not.toBeNull();
     expect(pouso()!.querySelector('rect')).toHaveAttribute('fill', '#81E2CF');
     expect(document.querySelector('circle[data-parada="2"]')).toHaveAttribute('fill', '#81E2CF');
+    expect(screen.getByTestId('aviao').querySelector('path')).toHaveAttribute('fill', '#F0EEE4');
   });
 
   it('concluir antes da última parada: voa até ela, e o verde só nasce na chegada', () => {

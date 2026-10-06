@@ -177,14 +177,16 @@ export function FraseEmEscada({ estreito = false }: { estreito?: boolean }) {
 
 const PASSOS_D = 'M 30 150 C 110 150, 140 110, 200 95 S 330 60, 380 30';
 const PASSOS_PARADAS: ReadonlyArray<readonly [number, number, string]> = [[30, 150, CORAL], [200, 95, AMARELO], [380, 30, VERDE_DO_LOGO]];
-const PASSOS_QUADRADO = 44;
+// 64 (06/10/2026): com 44, no celular o avião ficava menor que a bolinha da parada.
+const PASSOS_QUADRADO = 64;
 
 /**
  * `atual` = parada em que o avião está (0, 1 ou 2); `concluido` = a conta foi
  * criada. Paradas já alcançadas acendem na cor delas; a última é verde.
  *
- * O mesmo avião do login (29/09/2026): só vetor, claro, por cima de tudo. Ao
- * concluir, ele vai até a última parada e pousa como lá: a onda, o quadrado
+ * O avião do login em vetor, por cima de tudo. Aqui ele voa ESCURO (06/10/2026:
+ * o claro sumia no fundo branco do celular) e clareia no pouso: ao concluir,
+ * ele vai até a última parada e pousa como no login, com a onda e o quadrado
  * verde crescendo por trás dele, e fica o logotipo da ANA.
  */
 export function LinhaDePassos({ atual, concluido = false }: { atual: number; concluido?: boolean }) {
@@ -246,7 +248,8 @@ export function LinhaDePassos({ atual, concluido = false }: { atual: number; con
       )}
       <g transform={`translate(${pos.x} ${pos.y})`} data-testid="aviao">
         <g className={pousou && !reduz ? 'vg-assenta' : undefined}>
-          <path d={AVIAO_DO_LOGO_D} transform={transformAviao} fill={AVIAO_CLARO} />
+          <path d={AVIAO_DO_LOGO_D} transform={transformAviao} fill={pousou ? AVIAO_CLARO : 'hsl(var(--foreground))'}
+            style={{ transition: reduz ? undefined : 'fill .3s ease .12s' }} />
         </g>
       </g>
     </svg>
