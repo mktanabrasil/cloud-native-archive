@@ -58,7 +58,7 @@ describe('Meu perfil em 5 passos', () => {
 
     continuar();
     expect(await screen.findByRole('alert')).toHaveTextContent('data de nascimento');
-    digitar(/Nome completo/, 'Leonardo Alves da Silva');
+    digitar(/Nome completo/, 'leonardo alves da silva');
     digitar(/Data de nascimento/, '1999-03-14');
     continuar();
 
@@ -66,10 +66,11 @@ describe('Meu perfil em 5 passos', () => {
     expect(banco.salvos[0]).toMatchObject({ nome: 'Leonardo Alves da Silva', nascimento: '1999-03-14' });
     digitar(/WhatsApp/, '19991234567');
     expect(screen.getByLabelText(/WhatsApp/)).toHaveValue('(19) 99123-4567');
-    digitar(/Cidade/, 'Campinas/SP');
+    digitar(/Cidade/, 'campinas/sp');
     continuar();
-
     expect(await screen.findByRole('heading', { name: 'Até onde você estudou?' })).toBeInTheDocument();
+    expect(banco.salvos[1]).toMatchObject({ cidade: 'Campinas/SP' });
+
     fireEvent.click(screen.getByRole('button', { name: 'Médio completo' }));
     continuar();
 

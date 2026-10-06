@@ -10,6 +10,7 @@ import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import { PassosComAviao } from '@/components/vagas/LinhaDeVoo';
 import { MolduraDaConta } from '@/components/vagas/MolduraDaConta';
 import { ROTAS_DO_CANDIDATO, ehCandidato } from '@/lib/vagas/conta';
+import { comMaiusculas } from '@/lib/vagas/maiusculas';
 import {
   ESCOLARIDADES, PASSOS_DO_PERFIL, PERFIL_VAZIO, TURNOS, apagarExperiencia, carregarPerfil, mascararWhatsapp,
   passosCompletos, periodo, salvarExperiencia, salvarPerfil, whatsappValido,
@@ -28,6 +29,9 @@ const ULTIMO = PASSOS_DO_PERFIL.length - 1;
 const PERGUNTAS = ['Sobre você', 'Como falamos com você?', 'Até onde você estudou?', 'Onde você já trabalhou?', 'Quando você pode trabalhar?'];
 
 type RascunhoExp = Omit<Experiencia, 'id'> & { id?: string };
+/** Campos que ganham maiúsculas automáticas ao salvar (06/10/2026); `true` = nome de pessoa. */
+const AJEITAR: Partial<Record<keyof Perfil, boolean>> = { nome: true, nome_social: true, cidade: false, bairro: false, curso: false };
+
 const EXP_VAZIA: RascunhoExp = { funcao: '', onde: '', inicio: '', fim: '', atual: false, descricao: '' };
 
 function idadeValida(data: string): boolean {
@@ -116,9 +120,14 @@ export default function MeuPerfilCandidatoPage() {
     try {
       // Nascimento inválido não vai ao banco (seria recusado); o resto do passo vai.
       const campos = { ...camposDoPasso(n), ...extra };
+      for (const [k, pessoa] of Object.entries(AJEITAR) as Array<[keyof Perfil, boolean]>) {
+        const v = campos[k];
+        if (typeof v === 'string') (campos as Record<string, unknown>)[k] = comMaiusculas(v, { pessoa });
+      }
       if ('nascimento' in campos && campos.nascimento && !idadeValida(campos.nascimento)) delete campos.nascimento;
       if ('nome' in campos && !campos.nome?.trim()) delete campos.nome;
       await salvarPerfil(userId, campos);
+      setPerfil((p) => ({ ...p, ...campos }));
       setSalvo(true);
       return true;
     } catch {
@@ -157,7 +166,7 @@ export default function MeuPerfilCandidatoPage() {
     if (!rascunho.atual && rascunho.fim! < rascunho.inicio) { setErro('A saída não pode vir antes do início.'); return; }
     setSalvando(true);
     try {
-      const salva = await salvarExperiencia(userId, rascunho);
+      const salva = await salvarExperiencia(userId, { ...rascunho, funcao: comMaiusculas(rascunho.funcao), onde: comMaiusculas(rascunho.onde) });
       setExps((l) => [salva, ...l.filter((x) => x.id !== salva.id)].sort((a, b) => b.inicio.localeCompare(a.inicio)));
       if (perfil.sem_experiencia) { muda('sem_experiencia', false); await salvarPerfil(userId, { sem_experiencia: false }); }
       setRascunho(null); setErro(null); setSalvo(true);
