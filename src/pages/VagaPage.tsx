@@ -14,8 +14,9 @@ import { ROTULO_DA_AREA, ROTULO_DA_CONTRATACAO, ROTULO_DA_MODALIDADE, type Vaga 
  *
  * O banco só entrega a vaga publicada: a encerrada, a pausada e o endereço
  * errado chegam iguais, como "não encontrada", e mostram a mesma tela, que
- * leva para as vagas abertas em vez de um erro. "Candidatar-se" abre o
- * Forms da vaga (`link_externo`) até a fase 2 trazer a candidatura para cá.
+ * leva para as vagas abertas em vez de um erro. "Candidatar-se" leva à
+ * candidatura no app (PR 8, 06/10/2026: todas as vagas de uma vez); o link
+ * do Forms (`link_externo`) fica guardado no banco, sem botão.
  */
 export default function VagaPage() {
   const { slug = '' } = useParams();
@@ -111,16 +112,12 @@ export default function VagaPage() {
 
           <aside className="flex flex-col gap-3.5 lg:sticky lg:top-4">
             <div className="flex flex-col gap-3 rounded-[18px] bg-muted/60 p-5">
-              {vaga.link_externo ? (
-                <Button asChild className="h-14 rounded-2xl text-base">
-                  <a href={vaga.link_externo} target="_blank" rel="noopener noreferrer">Candidatar-se <ArrowRight className="h-5 w-5" /></a>
-                </Button>
-              ) : (
-                <Button disabled className="h-14 rounded-2xl text-base">Inscrições em breve</Button>
-              )}
+              <Button asChild className="h-14 rounded-2xl text-base">
+                <Link to={`/vagas/${vaga.slug}/candidatar`}>Candidatar-se <ArrowRight className="h-5 w-5" /></Link>
+              </Button>
               <Button variant="outline" className="h-11 rounded-xl" onClick={() => compartilhar(vaga)}><Share2 className="h-4 w-4" /> Compartilhar</Button>
               <ol className="mt-1 flex flex-col gap-2.5 border-t border-border pt-3">
-                {[['Você se candidata', 'pelo formulário da vaga'], ['A equipe analisa', 'o seu perfil'], ['Entrevista', 'se avançar'], ['Resultado', 'por e-mail ou telefone']].map(([t, d], i) => (
+                {[['Você se candidata', 'aqui mesmo, em poucos minutos'], ['A equipe analisa', 'o seu perfil'], ['Entrevista', 'se avançar'], ['Resultado', 'por e-mail ou telefone']].map(([t, d], i) => (
                   <li key={t} className="flex items-center gap-3">
                     <span className={`grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full text-[13px] font-bold ${i === 0 ? 'bg-[#81E2CF] text-[#1F2322]' : 'bg-background text-foreground'}`}>{i + 1}</span>
                     <span className="text-sm"><b>{t}</b><br /><span className="text-xs text-muted-foreground">{d}</span></span>

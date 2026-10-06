@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import { PassosComAviao } from '@/components/vagas/LinhaDeVoo';
 import { MolduraDaConta } from '@/components/vagas/MolduraDaConta';
+import { AbasDoCandidato } from '@/components/vagas/AbasDoCandidato';
 import { ROTAS_DO_CANDIDATO, ehCandidato } from '@/lib/vagas/conta';
 import { comMaiusculas } from '@/lib/vagas/maiusculas';
 import {
@@ -76,8 +77,10 @@ export default function MeuPerfilCandidatoPage() {
   const [rascunho, setRascunho] = useState<RascunhoExp | null>(null);
   const [pronto, setPronto] = useState(false);
 
+  // Veio de uma candidatura (?volta=/vagas/<slug>/candidatar): dá para voltar a ela.
+  const volta = (params.get('volta') ?? '').startsWith('/vagas/') ? params.get('volta')! : null;
   const passo = Math.min(ULTIMO, Math.max(0, Number(params.get('passo') ?? 0) || 0));
-  const irPara = (n: number) => { setErro(null); setParams(n ? { passo: String(n) } : {}, { replace: true }); };
+  const irPara = (n: number) => { setErro(null); setParams({ ...(n ? { passo: String(n) } : {}), ...(volta ? { volta } : {}) }, { replace: true }); };
 
   const idDoCandidato = user && ehCandidato(user) ? user.id : null;
   useEffect(() => {
@@ -150,7 +153,7 @@ export default function MeuPerfilCandidatoPage() {
   }
 
   async function depois() {
-    if (await gravar(passo)) navigate(ROTAS_DO_CANDIDATO.minhaArea);
+    if (await gravar(passo)) navigate(volta ?? ROTAS_DO_CANDIDATO.minhaArea);
   }
 
   async function semExperiencia() {
@@ -188,6 +191,7 @@ export default function MeuPerfilCandidatoPage() {
   return (
     <MolduraDaConta atalho={<Link to={ROTAS_DO_CANDIDATO.minhaArea} className="text-foreground hover:text-primary">Minha área</Link>}>
       <div className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5 px-4 pb-10 pt-2 sm:px-6">
+        {volta && !pronto && <Link to={volta} className="self-start text-sm font-semibold text-sky-700 hover:underline dark:text-sky-400">‹ Voltar para a candidatura</Link>}
         <div className="flex flex-col gap-2">
           <PassosComAviao total={PASSOS_DO_PERFIL.length} atual={pronto ? ULTIMO : passo} concluidos={pronto ? feitos.map(() => true) : feitos} />
           <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -202,7 +206,8 @@ export default function MeuPerfilCandidatoPage() {
             <h1 className="text-[28px] font-bold leading-tight">Perfil pronto.</h1>
             <p className="text-muted-foreground">Você pode mudar qualquer resposta quando quiser.</p>
             <div className="flex flex-wrap gap-2">
-              <Button asChild className="h-12 rounded-xl px-6"><Link to={ROTAS_DO_CANDIDATO.curriculo}>Enviar currículo <ArrowRight className="h-4 w-4" /></Link></Button>
+              {volta && <Button asChild className="h-12 rounded-xl px-6"><Link to={volta}>Voltar para a candidatura <ArrowRight className="h-4 w-4" /></Link></Button>}
+              <Button asChild variant={volta ? 'outline' : 'default'} className="h-12 rounded-xl px-6"><Link to={ROTAS_DO_CANDIDATO.curriculo}>Enviar currículo <ArrowRight className="h-4 w-4" /></Link></Button>
               <Button asChild variant="outline" className="h-12 rounded-xl px-6"><Link to={ROTAS_DO_CANDIDATO.minhaArea}>Minha área</Link></Button>
             </div>
           </div>
@@ -334,6 +339,7 @@ export default function MeuPerfilCandidatoPage() {
           </form>
         )}
       </div>
+      <AbasDoCandidato />
     </MolduraDaConta>
   );
 }
