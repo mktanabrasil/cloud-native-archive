@@ -1,5 +1,6 @@
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { comMaiusculas } from './maiusculas';
 
 /**
  * A conta do candidato (Trabalhe Conosco, fase 2, PR 6 — 28/09/2026).
@@ -59,7 +60,7 @@ export async function criarContaDeCandidato(nome: string, email: string, senha: 
     password: senha,
     options: {
       emailRedirectTo: `${window.location.origin}${ROTAS_DO_CANDIDATO.minhaArea}`,
-      data: { conta: 'candidato', name: nome.trim().replace(/\s+/g, ' ') },
+      data: { conta: 'candidato', name: comMaiusculas(nome, { pessoa: true }) },
     },
   });
   if (error) throw error;
