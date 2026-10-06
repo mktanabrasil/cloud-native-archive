@@ -37,6 +37,8 @@ import CriarContaCandidatoPage from "./pages/CriarContaCandidatoPage";
 import RecuperarSenhaCandidatoPage from "./pages/RecuperarSenhaCandidatoPage";
 import MinhaAreaCandidatoPage from "./pages/MinhaAreaCandidatoPage";
 import PrivacidadeCandidatoPage from "./pages/PrivacidadeCandidatoPage";
+import MeuPerfilCandidatoPage from "./pages/MeuPerfilCandidatoPage";
+import CurriculoCandidatoPage from "./pages/CurriculoCandidatoPage";
 import { ROTAS_DO_CANDIDATO, ehCandidato } from "@/lib/vagas/conta";
 import NotFound from "./pages/NotFound";
 import EmailPreview from "./pages/EmailPreview";
@@ -142,6 +144,8 @@ const App = () => (
                 <Route path={ROTAS_DO_CANDIDATO.recuperarSenha} element={<RecuperarSenhaCandidatoPage />} />
                 <Route path={ROTAS_DO_CANDIDATO.minhaArea} element={<MinhaAreaCandidatoPage />} />
                 <Route path={ROTAS_DO_CANDIDATO.privacidade} element={<PrivacidadeCandidatoPage />} />
+                <Route path={ROTAS_DO_CANDIDATO.meuPerfil} element={<MeuPerfilCandidatoPage />} />
+                <Route path={ROTAS_DO_CANDIDATO.curriculo} element={<CurriculoCandidatoPage />} />
                 <Route path="/vagas/:slug" element={<VagaPage />} />
                 <Route path="/portal-transparencia-publico" element={<TransparencyPublicPage />} />
                 <Route element={<AppLayout />}>

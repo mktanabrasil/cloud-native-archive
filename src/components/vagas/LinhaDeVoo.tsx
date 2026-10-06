@@ -264,3 +264,33 @@ export function useLarguraDaEscada(): 'largo' | 'estreito' {
   }, []);
   return useMemo(() => (largo ? 'largo' : 'estreito'), [largo]);
 }
+
+// --- Perfil: a linha reta dos passos, com o avião na parada atual -----------------
+
+/**
+ * Os passos do Meu perfil (mockup de 06/10/2026). Uma linha reta tracejada;
+ * no lugar da parada atual vai o avião claro do logotipo, sem fundo, e as
+ * paradas por onde ele já passou ficam verdes. Trocar de passo faz o avião
+ * deslizar até a nova parada (sem animação para quem pede menos movimento).
+ */
+export function PassosComAviao({ total, atual, concluidos }: { total: number; atual: number; concluidos: boolean[] }) {
+  const reduz = useReduzMovimento();
+  const L = 300, M = 14;
+  const x = (i: number) => M + ((L - 2 * M) * i) / Math.max(1, total - 1);
+  const largura = 30;
+  const transformAviao = useMemo(() => transformDoAviao(largura), []);
+  return (
+    <svg viewBox={`0 0 ${L} 28`} className="h-auto w-full max-w-[420px] overflow-visible" role="img" aria-label={`Passo ${atual + 1} de ${total}`} data-testid="passos-do-perfil">
+      <line x1={M} x2={L - M} y1={14} y2={14} stroke="hsl(var(--muted-foreground) / 0.35)" strokeWidth={2} strokeDasharray="5 6" strokeLinecap="round" />
+      <line x1={M} x2={x(atual)} y1={14} y2={14} stroke={VERDE_DO_LOGO} strokeWidth={2} strokeDasharray="5 6" strokeLinecap="round" />
+      {Array.from({ length: total }, (_, i) => i).map((i) => (
+        <circle key={i} cx={x(i)} cy={14} r={6} data-parada={i} data-feita={concluidos[i] ? 'sim' : 'nao'}
+          fill={i === atual ? 'transparent' : concluidos[i] || i < atual ? VERDE_DO_LOGO : 'hsl(var(--muted))'}
+          style={{ transition: reduz ? undefined : 'fill .3s ease .25s' }} />
+      ))}
+      <g style={{ transform: `translate(${x(atual)}px, 14px)`, transition: reduz ? undefined : 'transform .6s cubic-bezier(.45,0,.2,1)' }} data-testid="aviao-do-perfil">
+        <path d={AVIAO_DO_LOGO_D} transform={transformAviao} fill={AVIAO_CLARO} />
+      </g>
+    </svg>
+  );
+}
