@@ -677,10 +677,65 @@ export type Database = {
         }
         Relationships: []
       }
+      candidato_experiencias: {
+        Row: {
+          atual: boolean
+          created_at: string
+          descricao: string | null
+          fim: string | null
+          funcao: string
+          id: string
+          inicio: string
+          onde: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          atual?: boolean
+          created_at?: string
+          descricao?: string | null
+          fim?: string | null
+          funcao: string
+          id?: string
+          inicio: string
+          onde: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          atual?: boolean
+          created_at?: string
+          descricao?: string | null
+          fim?: string | null
+          funcao?: string
+          id?: string
+          inicio?: string
+          onde?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       candidatos: {
         Row: {
           aceite_termos_em: string | null
           aceite_termos_versao: string | null
+          nome_social: string | null
+          nascimento: string | null
+          whatsapp: string | null
+          cidade: string | null
+          bairro: string | null
+          escolaridade: string | null
+          curso: string | null
+          cursos_livres: string | null
+          sem_experiencia: boolean
+          disponibilidade: string[]
+          acessibilidade: string | null
+          perfil_concluido_em: string | null
+          curriculo_caminho: string | null
+          curriculo_nome: string | null
+          curriculo_tamanho: number | null
+          curriculo_enviado_em: string | null
           created_at: string
           email: string
           nome: string
@@ -690,6 +745,22 @@ export type Database = {
         Insert: {
           aceite_termos_em?: string | null
           aceite_termos_versao?: string | null
+          nome_social?: string | null
+          nascimento?: string | null
+          whatsapp?: string | null
+          cidade?: string | null
+          bairro?: string | null
+          escolaridade?: string | null
+          curso?: string | null
+          cursos_livres?: string | null
+          sem_experiencia?: boolean
+          disponibilidade?: string[]
+          acessibilidade?: string | null
+          perfil_concluido_em?: string | null
+          curriculo_caminho?: string | null
+          curriculo_nome?: string | null
+          curriculo_tamanho?: number | null
+          curriculo_enviado_em?: string | null
           created_at?: string
           email: string
           nome: string
@@ -699,6 +770,22 @@ export type Database = {
         Update: {
           aceite_termos_em?: string | null
           aceite_termos_versao?: string | null
+          nome_social?: string | null
+          nascimento?: string | null
+          whatsapp?: string | null
+          cidade?: string | null
+          bairro?: string | null
+          escolaridade?: string | null
+          curso?: string | null
+          cursos_livres?: string | null
+          sem_experiencia?: boolean
+          disponibilidade?: string[]
+          acessibilidade?: string | null
+          perfil_concluido_em?: string | null
+          curriculo_caminho?: string | null
+          curriculo_nome?: string | null
+          curriculo_tamanho?: number | null
+          curriculo_enviado_em?: string | null
           created_at?: string
           email?: string
           nome?: string

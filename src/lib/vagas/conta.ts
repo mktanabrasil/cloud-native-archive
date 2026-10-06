@@ -16,6 +16,8 @@ export const ROTAS_DO_CANDIDATO = {
   criarConta: '/vagas/criar-conta',
   recuperarSenha: '/vagas/recuperar-senha',
   minhaArea: '/vagas/minha-area',
+  meuPerfil: '/vagas/meu-perfil',
+  curriculo: '/vagas/curriculo',
   privacidade: '/vagas/privacidade',
 } as const;
 
