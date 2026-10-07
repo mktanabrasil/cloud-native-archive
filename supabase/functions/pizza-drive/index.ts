@@ -1,6 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import * as PDFLib from 'npm:pdf-lib@1.17.1';
-import fontkit from 'npm:@pdf-lib/fontkit@1.1.1';
 import { montarPdf } from './pdf.ts';
 
 addEventListener('unhandledrejection', (e) => { console.error('[pizza-drive] promessa solta:', e.reason); e.preventDefault(); });
@@ -41,7 +40,8 @@ const DRIVE_COMPARTILHADO = 'Setor Marketing';
 /** O id do Drive compartilhado Setor Marketing (da barra de endereço, 07/10/2026). A busca pelo nome fica de reserva. */
 const DRIVE_COMPARTILHADO_ID = '0APNkRBP8bmw_Uk9PVA';
 const PASTA_RAIZ = 'Pizza da Alegria 2026';
-const POR_VEZ = 12;
+// Poucas por chamada: o servidor encerra a função que passa do tempo (07/10/2026).
+const POR_VEZ = 4;
 const PRECO = 50;
 
 const SABORES: Record<string, string> = { marguerita: 'Marguerita', frango: 'Frango', calabresa: 'Calabresa fatiada', mucarela: 'Muçarela', lombo: 'Lombo', napolitana: 'Napolitana' };
@@ -137,22 +137,10 @@ async function acharDrive(token: string): Promise<{ id: string | null; vistos?: 
 
 // --- PDF ----------------------------------------------------------------------------------
 
-let fontes: { regular: Uint8Array | null; negrito: Uint8Array | null } | null = null;
-async function carregarFontes() {
-  if (fontes) return fontes;
-  try {
-    const [r, b] = await Promise.all(['400', '700'].map(async (p) => {
-      const x = await fetch(`https://cdn.jsdelivr.net/fontsource/fonts/poppins@latest/latin-${p}-normal.ttf`);
-      if (!x.ok) throw new Error(String(x.status));
-      return new Uint8Array(await x.arrayBuffer());
-    }));
-    fontes = { regular: r, negrito: b };
-  } catch (e) {
-    console.error('[pizza-drive] sem Poppins, vai Helvetica:', e);
-    fontes = { regular: null, negrito: null };
-  }
-  return fontes;
-}
+// Fonte padrão do PDF (Helvetica): a Poppins pelo fontkit estourava o tempo
+// da função no servidor (07/10/2026, "early termination" no registro) e o PDF
+// não saía. A Helvetica tem os acentos do português e fica quase igual.
+const SEM_FONTE_EXTRA = { regular: null, negrito: null };
 
 const quando = (iso: string) => {
   const d = new Date(iso);
@@ -190,12 +178,11 @@ async function copiarUma(admin: Admin, token: string, c: Conexao, linha: any, ca
 
   const nomePdf = `${linha.numero} · ${limpo(linha.nome)}.pdf`;
   if (!(await procurar(token, c.drive_id, pessoa, nomePdf, false))) {
-    const f = await carregarFontes();
     const sabores = Object.entries(linha.sabores ?? {})
       .filter(([, q]) => Number(q) > 0)
       .sort(([a], [b]) => Object.keys(SABORES).indexOf(a) - Object.keys(SABORES).indexOf(b))
       .map(([k, q]) => ({ sabor: SABORES[k] ?? k, qtd: Number(q) }));
-    const pdf = await montarPdf(PDFLib, { ...f, fontkit }, {
+    const pdf = await montarPdf(PDFLib, SEM_FONTE_EXTRA, {
       numero: linha.numero, quando: quando(linha.created_at), nome: linha.nome, unidade: linha.unidade_nome,
       area: AREAS[linha.area] ?? linha.area, sabores, preco: PRECO, forma: FORMAS[linha.forma] ?? linha.forma,
       dinheiro: linha.forma === 'dinheiro', comprovante, retirada: 'Na unidade · sexta, 04/12/2026',
