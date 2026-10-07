@@ -374,6 +374,66 @@ export type Database = {
         }
         Relationships: []
       }
+      pizza_confirmacoes: {
+        Row: {
+          area: string
+          comprovante_caminho: string | null
+          comprovante_nome: string | null
+          created_at: string
+          drive_copiado_em: string | null
+          forma: string
+          id: string
+          nome: string
+          numero: string
+          quantidade: number
+          retirada: boolean
+          retirada_em: string | null
+          sabores: Json
+          total: number
+          unidade_id: string
+          unidade_nome: string
+          updated_at: string
+        }
+        Insert: {
+          area: string
+          comprovante_caminho?: string | null
+          comprovante_nome?: string | null
+          created_at?: string
+          drive_copiado_em?: string | null
+          forma: string
+          id?: string
+          nome: string
+          numero: string
+          quantidade: number
+          retirada?: boolean
+          retirada_em?: string | null
+          sabores: Json
+          total: number
+          unidade_id: string
+          unidade_nome: string
+          updated_at?: string
+        }
+        Update: {
+          area?: string
+          comprovante_caminho?: string | null
+          comprovante_nome?: string | null
+          created_at?: string
+          drive_copiado_em?: string | null
+          forma?: string
+          id?: string
+          nome?: string
+          numero?: string
+          quantidade?: number
+          retirada?: boolean
+          retirada_em?: string | null
+          sabores?: Json
+          total?: number
+          unidade_id?: string
+          unidade_nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           bond_type: string | null
@@ -1164,6 +1224,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      confirmar_pizza: {
+        Args: { p_nome: string; p_unidade_id: string; p_unidade_nome: string; p_area: string; p_sabores: Json; p_forma: string; p_comprovante?: string; p_comprovante_nome?: string }
+        Returns: string
+      }
+      pode_ver_pizza: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
       retirar_candidatura: {
         Args: { p_id: string; p_motivo?: string }
         Returns: undefined

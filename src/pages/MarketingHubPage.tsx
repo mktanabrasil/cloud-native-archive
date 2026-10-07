@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { History, BookOpen, FileSearch, LayoutDashboard, Lock, BarChart3 } from 'lucide-react';
+import { History, BookOpen, FileSearch, LayoutDashboard, Lock, BarChart3, Pizza } from 'lucide-react';
+import { PainelDaPizza } from '@/components/pizza/PainelDaPizza';
 import EnquetesPage from '@/pages/EnquetesPage';
 import { useUserRole } from '@/hooks/useUserRole';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -14,6 +15,7 @@ const tabs = [
   { value: 'transparencia', label: 'Portal Transparência', icon: FileSearch, Component: TransparencyPage },
   { value: 'widgets', label: 'Widgets', icon: LayoutDashboard, Component: AdminToolboxPage },
   { value: 'enquetes', label: 'Enquetes', icon: BarChart3, Component: EnquetesPage },
+  { value: 'pizza', label: 'Pizza da Alegria', icon: Pizza, Component: PainelDaPizza },
 ];
 
 export default function MarketingHubPage() {
