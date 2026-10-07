@@ -135,6 +135,14 @@ async function acharDrive(token: string): Promise<{ id: string | null; vistos?: 
   return achado ? { id: achado.id } : { id: null, vistos: todos.map((d) => d.name).join(', ') };
 }
 
+/** Troca o conteúdo de um arquivo que já existe (o PDF, quando o desenho muda). */
+async function substituir(token: string, id: string, tipo: string, bytes: Uint8Array): Promise<void> {
+  const r = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=media&supportsAllDrives=true`, {
+    method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': tipo }, body: bytes,
+  });
+  if (!r.ok) throw new ErroGoogle(r.status, `substituir ${r.status}: ${(await r.text()).slice(0, 200)}`);
+}
+
 // --- PDF ----------------------------------------------------------------------------------
 
 // Fonte padrão do PDF (Helvetica): a Poppins pelo fontkit estourava o tempo
@@ -177,7 +185,9 @@ async function copiarUma(admin: Admin, token: string, c: Conexao, linha: any, ca
   }
 
   const nomePdf = `${linha.numero} · ${limpo(linha.nome)}.pdf`;
-  if (!(await procurar(token, c.drive_id, pessoa, nomePdf, false))) {
+  // O PDF é sempre refeito: se já existe (cópia refeita), o conteúdo é trocado
+  // no mesmo arquivo, sem duplicar. O comprovante, não: esse nunca muda.
+  {
     const sabores = Object.entries(linha.sabores ?? {})
       .filter(([, q]) => Number(q) > 0)
       .sort(([a], [b]) => Object.keys(SABORES).indexOf(a) - Object.keys(SABORES).indexOf(b))
@@ -187,7 +197,9 @@ async function copiarUma(admin: Admin, token: string, c: Conexao, linha: any, ca
       area: AREAS[linha.area] ?? linha.area, sabores, preco: PRECO, forma: FORMAS[linha.forma] ?? linha.forma,
       dinheiro: linha.forma === 'dinheiro', comprovante, retirada: 'Na unidade · sexta, 04/12/2026',
     });
-    await subir(token, pessoa, nomePdf, 'application/pdf', pdf);
+    const existente = await procurar(token, c.drive_id, pessoa, nomePdf, false);
+    if (existente) await substituir(token, existente, 'application/pdf', pdf);
+    else await subir(token, pessoa, nomePdf, 'application/pdf', pdf);
   }
 }
 
