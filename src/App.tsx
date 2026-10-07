@@ -41,6 +41,8 @@ import MeuPerfilCandidatoPage from "./pages/MeuPerfilCandidatoPage";
 import CurriculoCandidatoPage from "./pages/CurriculoCandidatoPage";
 import CandidaturaPage from "./pages/CandidaturaPage";
 import CandidaturaDetalhePage from "./pages/CandidaturaDetalhePage";
+import PizzaConfirmacaoPage from "./pages/PizzaConfirmacaoPage";
+import PizzaPainelPage from "./pages/PizzaPainelPage";
 import { ROTAS_DO_CANDIDATO, ehCandidato } from "@/lib/vagas/conta";
 import NotFound from "./pages/NotFound";
 import EmailPreview from "./pages/EmailPreview";
@@ -136,6 +138,7 @@ const App = () => (
                 <Route path="/mercado-solidario-publico" element={<MercadoSolidarioPublicPage />} />
                 {/* Enquetes (23/09/2026): votar e acompanhar são públicos, fora
                     da barra do app, como a vitrine embutida. */}
+                <Route path="/pizza-da-alegria" element={<PizzaConfirmacaoPage />} />
                 <Route path="/enquete/:slug" element={<EnquetePublicaPage />} />
                 <Route path="/enquete/:slug/resultado" element={<EnqueteResultadoPage />} />
                 {/* Trabalhe Conosco (fase 1, 25/09/2026): vitrine pública das vagas, fora da barra do app. */}
@@ -180,6 +183,9 @@ const App = () => (
                     <JournalRoute><JournalPage /></JournalRoute>
                   } />
 
+                  <Route path="/pizza-da-alegria/painel" element={
+                    <ProtectedRoute><PizzaPainelPage /></ProtectedRoute>
+                  } />
                   <Route path="/marketing" element={
                     <ProtectedRoute><MarketingHubPage /></ProtectedRoute>
                   } />
