@@ -6,6 +6,8 @@ const banco = vi.hoisted(() => ({
   enviados: [] as Array<Record<string, unknown>>,
   lista: [] as Array<Record<string, unknown>>,
   retiradas: [] as Array<[string, boolean]>,
+  copias: 0,
+  drive: [] as Array<Record<string, unknown>>,
   papel: { isMarketing: true, bondType: null as string | null, isActive: true, loading: false },
 }));
 
@@ -18,13 +20,15 @@ vi.mock('@/lib/pizza/api', () => ({
   listarConfirmacoes: async () => banco.lista,
   marcarRetirada: async (id: string, v: boolean) => { banco.retiradas.push([id, v]); },
   linkDoComprovante: async () => 'https://x',
+  pedirCopiaParaODrive: () => { banco.copias++; },
+  chamarDrive: async (c: Record<string, unknown>) => { banco.drive.push(c); return c.estado ? { oauth_configurado: true, pode_conectar: banco.papel.isMarketing, conexao: null, pendentes: 2, com_erro: 0 } : { url: 'https://accounts.google.com/x' }; },
 }));
 
 const { default: Confirmacao } = await import('./PizzaConfirmacaoPage');
 const { PainelDaPizza } = await import('@/components/pizza/PainelDaPizza');
 
 beforeEach(() => {
-  banco.enviados = []; banco.lista = []; banco.retiradas = [];
+  banco.enviados = []; banco.lista = []; banco.retiradas = []; banco.copias = 0; banco.drive = [];
   banco.papel = { isMarketing: true, bondType: null, isActive: true, loading: false };
 });
 
@@ -53,6 +57,7 @@ describe('formulário de confirmação', () => {
 
     expect(await screen.findByRole('heading', { name: 'Confirmação enviada' })).toBeInTheDocument();
     expect(screen.getByTestId('numero')).toHaveTextContent('PZ-0137');
+    expect(banco.copias).toBe(1); // pede a cópia para o Drive logo depois do envio
     expect(banco.enviados[0]).toMatchObject({ nome: 'maria aparecida souza', unidadeId: 'cei-anisio-spinola', forma: 'pix', quantidades: { marguerita: 1, calabresa: 2 } });
   });
 
@@ -79,6 +84,12 @@ describe('formulário de confirmação', () => {
 const CONF = (o: Record<string, unknown>) => ({ id: 'c', numero: 'PZ-0001', nome: 'Maria', unidade_id: 'ana-dic', unidade_nome: 'ANA DIC', area: 'social', sabores: { lombo: 1 }, quantidade: 1, total: 50, forma: 'pix', comprovante_caminho: 'envios/a.jpg', comprovante_nome: 'a.jpg', retirada: false, created_at: '2026-10-07T17:00:00Z', ...o });
 
 describe('painel', () => {
+  it('mostra o Drive: comunicação conecta; ADM só vê', async () => {
+    render(<MemoryRouter><PainelDaPizza /></MemoryRouter>);
+    expect(await screen.findByRole('button', { name: /Conectar Google Drive/ })).toBeInTheDocument();
+    expect(within(screen.getByTestId('drive')).getByText(/Ainda não conectado/)).toBeInTheDocument();
+  });
+
   it('soma, filtra por unidade e marca a retirada', async () => {
     banco.lista = [
       CONF({ id: '1', numero: 'PZ-0002', sabores: { calabresa: 2 }, quantidade: 2, total: 100 }),

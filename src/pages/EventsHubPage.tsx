@@ -43,6 +43,9 @@ export default function EventsHubPage() {
   useEffect(() => {
     const retorno = retornoDoGoogle(window.location.search);
     if (retorno) navigate(`/usuarios?tab=agenda&code=${encodeURIComponent(retorno.code)}&state=${encodeURIComponent(retorno.state)}`, { replace: true });
+    // A conexão do Drive da Pizza da Alegria (07/10/2026) volta pelo mesmo caminho.
+    const p = new URLSearchParams(window.location.search);
+    if (p.get('code') && p.get('state')?.startsWith('drive:')) navigate(`/pizza-da-alegria/painel?code=${encodeURIComponent(p.get('code')!)}&state=${encodeURIComponent(p.get('state')!)}`, { replace: true });
   }, [navigate]);
 
   const pedida = searchParams.get('tela');
