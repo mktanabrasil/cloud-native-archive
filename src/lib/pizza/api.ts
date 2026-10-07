@@ -64,6 +64,31 @@ export async function marcarRetirada(id: string, retirada: boolean): Promise<voi
   if (error) throw error;
 }
 
+/** Pede a cópia das pendentes para o Drive (parte 2). Sem esperar: o Drive é extra. */
+export function pedirCopiaParaODrive(): void {
+  void supabase.functions.invoke('pizza-drive', { body: {} }).catch(() => { /* o painel mostra as pendentes */ });
+}
+
+export interface EstadoDoDrive {
+  oauth_configurado: boolean;
+  pode_conectar: boolean;
+  conexao: { google_email: string; pasta_link: string; conectado_por: string | null; conectado_em: string; erro: string | null } | null;
+  pendentes: number;
+  com_erro: number;
+}
+
+/** Chama a função do Drive como a pessoa logada, com a mensagem de erro dela. */
+export async function chamarDrive<T>(corpo: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('pizza-drive', { body: corpo });
+  if (error) {
+    const ctx = (error as { context?: Response }).context;
+    const msg = ctx && typeof ctx.json === 'function' ? (await ctx.json().catch(() => null))?.error : null;
+    throw new Error(msg || error.message);
+  }
+  if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
+  return data as T;
+}
+
 /** Endereço temporário (5 min) para abrir o comprovante. */
 export async function linkDoComprovante(caminho: string): Promise<string> {
   const { data, error } = await supabase.storage.from('pizza-comprovantes').createSignedUrl(caminho, 300);

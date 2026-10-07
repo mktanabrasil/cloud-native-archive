@@ -8,6 +8,7 @@ import { baixarArquivo } from '@/lib/enquetes/planilha';
 import { linkDoComprovante, listarConfirmacoes, marcarRetirada, type Confirmacao } from '@/lib/pizza/api';
 import { FORMAS, ROTULO_DA_AREA, SABORES, reais, resumoDosSabores, rotuloDaForma } from '@/lib/pizza/modelo';
 import { csvDasConfirmacoes, nomeDaPlanilha } from '@/lib/pizza/planilha';
+import { DriveDaPizza } from './DriveDaPizza';
 
 /**
  * O painel da Pizza da Alegria (mockup de 07/10/2026): só ADM (vínculo
@@ -99,6 +100,8 @@ export function PainelDaPizza() {
           <Button size="sm" disabled={!vistas.length} onClick={() => baixarArquivo(csvDasConfirmacoes(vistas), nomeDaPlanilha(unidade))}><Download className="h-4 w-4" /> Baixar planilha</Button>
         </div>
       </div>
+
+      <DriveDaPizza />
 
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por unidade">
         <Button size="sm" variant={unidade === null ? 'default' : 'secondary'} className="h-8 rounded-full" onClick={() => setUnidade(null)}>Todas as unidades</Button>

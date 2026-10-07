@@ -3,7 +3,7 @@ import { Camera, Check, FileUp, Minus, Plus, X } from 'lucide-react';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import InstitutionalFooterBar from '@/components/news/InstitutionalFooterBar';
 import { findNewsUnit } from '@/lib/news/units';
-import { enviarConfirmacao } from '@/lib/pizza/api';
+import { enviarConfirmacao, pedirCopiaParaODrive } from '@/lib/pizza/api';
 import {
   FORMAS, RETIRADA, ROTULO_DA_AREA, SABORES, UNIDADES_POR_AREA, comprovanteObrigatorio, encerrado, mensagemDoErro,
   problemaDoArquivo, problemaDoEnvio, reais, resumoDosSabores, totalDePizzas, valor,
@@ -68,6 +68,7 @@ export default function PizzaConfirmacaoPage() {
     setEnviando(true); setErro(null);
     try {
       const numero = await enviarConfirmacao({ nome, unidadeId: unidade, quantidades: qtd, forma: forma!, comprovante });
+      pedirCopiaParaODrive();
       setFeito({ numero, resumo: resumoDosSabores(qtd as Record<string, number>), total: valor(pizzas), forma: FORMAS.find(([k]) => k === forma)?.[1] ?? '', unidade: u?.name ?? '' });
       window.scrollTo?.({ top: 0 });
     } catch (e) {
