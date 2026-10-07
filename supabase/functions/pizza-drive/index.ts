@@ -38,6 +38,8 @@ const OAUTH_CLIENT_ID = Deno.env.get('GOOGLE_OAUTH_CLIENT_ID') || '';
 const OAUTH_CLIENT_SECRET = Deno.env.get('GOOGLE_OAUTH_CLIENT_SECRET') || '';
 const ESCOPO = 'https://www.googleapis.com/auth/drive';
 const DRIVE_COMPARTILHADO = 'Setor Marketing';
+/** O id do Drive compartilhado Setor Marketing (da barra de endereço, 07/10/2026). A busca pelo nome fica de reserva. */
+const DRIVE_COMPARTILHADO_ID = '0APNkRBP8bmw_Uk9PVA';
 const PASTA_RAIZ = 'Pizza da Alegria 2026';
 const POR_VEZ = 12;
 const PRECO = 50;
@@ -115,6 +117,22 @@ async function subir(token: string, pai: string, nome: string, tipo: string, byt
     method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${fronteira}` }, body: corpo,
   });
   if (!r.ok) throw new ErroGoogle(r.status, `upload ${r.status}: ${(await r.text()).slice(0, 200)}`);
+}
+
+/**
+ * Acha o Setor Marketing: primeiro pelo id; se não der, varre os Drives
+ * compartilhados da conta comparando o nome sem acento, caixa e espaço.
+ */
+async function acharDrive(token: string): Promise<{ id: string | null; vistos?: string }> {
+  try {
+    const d = await google(token, 'GET', `/drives/${DRIVE_COMPARTILHADO_ID}?fields=id,name`);
+    if (d?.id) return { id: d.id };
+  } catch (e) { console.error('[pizza-drive] drives.get falhou:', e instanceof Error ? e.message : e); }
+  const norm = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/s+/g, ' ').trim().toLowerCase();
+  const lista = await google(token, 'GET', '/drives?pageSize=100&fields=drives(id,name)');
+  const todos = (lista?.drives ?? []) as Array<{ id: string; name: string }>;
+  const achado = todos.find((d) => norm(d.name) === norm(DRIVE_COMPARTILHADO));
+  return achado ? { id: achado.id } : { id: null, vistos: todos.map((d) => d.name).join(', ') };
 }
 
 // --- PDF ----------------------------------------------------------------------------------
@@ -287,9 +305,8 @@ Deno.serve(async (req) => {
       const token = j.access_token as string;
       const sobre = await google(token, 'GET', '/about?fields=user(emailAddress)');
       const email = sobre?.user?.emailAddress ?? '';
-      const drives = await google(token, 'GET', `/drives?${new URLSearchParams({ q: `name = '${aspas(DRIVE_COMPARTILHADO)}'`, pageSize: '5', fields: 'drives(id,name)' })}`);
-      const drive = drives?.drives?.[0];
-      if (!drive) return json({ error: `A conta ${email} não enxerga o Drive compartilhado "${DRIVE_COMPARTILHADO}". Conecte com uma conta que seja membro dele.` }, 400);
+      const drive = await acharDrive(token);
+      if (!drive.id) return json({ error: `A conta ${email} não enxerga o Drive compartilhado "${DRIVE_COMPARTILHADO}". Drives que ela vê: ${drive.vistos || 'nenhum'}.` }, 400);
       const pasta = await pastaFilha(token, drive.id, drive.id, PASTA_RAIZ, new Map());
       const { error } = await admin.from('pizza_drive_conexao').upsert({
         id: 1, refresh_token: j.refresh_token, google_email: email, drive_id: drive.id, pasta_id: pasta,
