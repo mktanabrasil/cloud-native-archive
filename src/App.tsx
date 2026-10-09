@@ -41,6 +41,8 @@ import MeuPerfilCandidatoPage from "./pages/MeuPerfilCandidatoPage";
 import CurriculoCandidatoPage from "./pages/CurriculoCandidatoPage";
 import CandidaturaPage from "./pages/CandidaturaPage";
 import CandidaturaDetalhePage from "./pages/CandidaturaDetalhePage";
+import CandidatosDaVagaPage from "./pages/CandidatosDaVagaPage";
+import FichaDoCandidatoPage from "./pages/FichaDoCandidatoPage";
 import PizzaConfirmacaoPage from "./pages/PizzaConfirmacaoPage";
 import PizzaPainelPage from "./pages/PizzaPainelPage";
 import { ROTAS_DO_CANDIDATO, ehCandidato } from "@/lib/vagas/conta";
@@ -153,6 +155,8 @@ const App = () => (
                 <Route path={ROTAS_DO_CANDIDATO.curriculo} element={<CurriculoCandidatoPage />} />
                 <Route path={`${ROTAS_DO_CANDIDATO.minhaArea}/:id`} element={<CandidaturaDetalhePage />} />
                 <Route path="/vagas/:slug/candidatar" element={<CandidaturaPage />} />
+                <Route path="/vagas/:slug/candidatos" element={<CandidatosDaVagaPage />} />
+                <Route path="/vagas/:slug/candidatos/:id" element={<FichaDoCandidatoPage />} />
                 <Route path="/vagas/:slug" element={<VagaPage />} />
                 <Route path="/portal-transparencia-publico" element={<TransparencyPublicPage />} />
                 <Route element={<AppLayout />}>

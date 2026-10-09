@@ -8,7 +8,7 @@ import { AbasDoCandidato } from '@/components/vagas/AbasDoCandidato';
 import { EtapasDaCandidatura } from '@/components/vagas/EtapasDaCandidatura';
 import { MolduraDaConta } from '@/components/vagas/MolduraDaConta';
 import { ROTAS_DO_CANDIDATO, ehCandidato } from '@/lib/vagas/conta';
-import { ETAPAS, dataEHora, minhasCandidaturas, retirarCandidatura, type Candidatura } from '@/lib/vagas/candidatura';
+import { dataEHora, rotuloDaEtapa, minhasCandidaturas, retirarCandidatura, type Candidatura } from '@/lib/vagas/candidatura';
 
 /**
  * /vagas/minha-area/:id — uma candidatura (mockup do PR 8, 06/10/2026):
@@ -49,7 +49,7 @@ export default function CandidaturaDetalhePage() {
   }
 
   const atalho = <Link to={ROTAS_DO_CANDIDATO.minhaArea} className="text-foreground hover:text-primary">Minha área</Link>;
-  const rotuloDaEtapa = c ? ETAPAS.find(([k]) => k === c.etapa)?.[1] : '';
+  const etapaVisivel = c ? rotuloDaEtapa(c.etapa, c.resultado) : '';
 
   return (
     <MolduraDaConta atalho={atalho}>
@@ -66,9 +66,9 @@ export default function CandidaturaDetalhePage() {
               <span className="text-sm text-muted-foreground">Protocolo <b className="tabular-nums text-foreground">{c.protocolo}</b> · enviada em {dataEHora(c.created_at)}</span>
             </div>
             <span className={`self-start rounded-full px-3 py-1 text-xs font-semibold ${c.retirada_em ? 'bg-muted text-muted-foreground' : 'bg-sky-50 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300'}`}>
-              {c.retirada_em ? 'Retirada' : rotuloDaEtapa}
+              {c.retirada_em ? 'Retirada' : etapaVisivel}
             </span>
-            <EtapasDaCandidatura etapa={c.etapa} retirada={!!c.retirada_em} />
+            <EtapasDaCandidatura etapa={c.etapa} resultado={c.resultado} retirada={!!c.retirada_em} />
 
             {c.retirada_em ? (
               <p className="rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">

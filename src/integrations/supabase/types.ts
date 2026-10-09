@@ -739,7 +739,10 @@ export type Database = {
       }
       candidaturas: {
         Row: {
+          aberta_em: string | null
           confirmacao_enviada_em: string | null
+          etapa_avisada: string | null
+          resultado: string | null
           created_at: string
           curriculo_caminho: string | null
           curriculo_nome: string | null
@@ -757,7 +760,10 @@ export type Database = {
           vaga_id: string
         }
         Insert: {
+          aberta_em?: string | null
           confirmacao_enviada_em?: string | null
+          etapa_avisada?: string | null
+          resultado?: string | null
           created_at?: string
           curriculo_caminho?: string | null
           curriculo_nome?: string | null
@@ -775,7 +781,10 @@ export type Database = {
           vaga_id: string
         }
         Update: {
+          aberta_em?: string | null
           confirmacao_enviada_em?: string | null
+          etapa_avisada?: string | null
+          resultado?: string | null
           created_at?: string
           curriculo_caminho?: string | null
           curriculo_nome?: string | null
@@ -791,6 +800,57 @@ export type Database = {
           updated_at?: string
           user_id?: string
           vaga_id?: string
+        }
+        Relationships: []
+      }
+      candidatura_historico: {
+        Row: {
+          acao: string
+          candidatura_id: string
+          de: string | null
+          em: string
+          id: string
+          para: string | null
+          por: string | null
+        }
+        Insert: {
+          acao: string
+          candidatura_id: string
+          de?: string | null
+          em?: string
+          id?: string
+          para?: string | null
+          por?: string | null
+        }
+        Update: {
+          acao?: string
+          candidatura_id?: string
+          de?: string | null
+          em?: string
+          id?: string
+          para?: string | null
+          por?: string | null
+        }
+        Relationships: []
+      }
+      candidatura_observacoes: {
+        Row: {
+          atualizado_por: string | null
+          candidatura_id: string
+          texto: string
+          updated_at: string
+        }
+        Insert: {
+          atualizado_por?: string | null
+          candidatura_id: string
+          texto?: string
+          updated_at?: string
+        }
+        Update: {
+          atualizado_por?: string | null
+          candidatura_id?: string
+          texto?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1224,6 +1284,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      abrir_candidatura: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
+      mover_candidatura: {
+        Args: { p_id: string; p_etapa: string; p_resultado?: string }
+        Returns: boolean
+      }
       confirmar_pizza: {
         Args: { p_nome: string; p_unidade_id: string; p_unidade_nome: string; p_area: string; p_sabores: Json; p_forma: string; p_comprovante?: string; p_comprovante_nome?: string }
         Returns: string

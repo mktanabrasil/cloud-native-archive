@@ -20,6 +20,15 @@ export const ETAPAS = [
 ] as const;
 export type Etapa = (typeof ETAPAS)[number][0];
 
+export type Resultado = 'aprovado' | 'nao_selecionado';
+
+/** O nome da etapa como o candidato vê: no fim, o resultado (decisão de 09/10/2026). */
+export function rotuloDaEtapa(etapa: Etapa, resultado: Resultado | null): string {
+  if (etapa === 'resultado' && resultado === 'aprovado') return 'Aprovado';
+  if (etapa === 'resultado' && resultado === 'nao_selecionado') return 'Não selecionado';
+  return ETAPAS.find(([k]) => k === etapa)?.[1] ?? 'Recebida';
+}
+
 export const ORIGENS = ['Instagram', 'Site da ANA', 'Indicação', 'Unidade', 'Outro'] as const;
 
 export type Resposta = string | string[];
@@ -36,6 +45,7 @@ export interface Candidatura {
   protocolo: string;
   vaga_id: string;
   etapa: Etapa;
+  resultado: Resultado | null;
   perfil: Record<string, unknown>;
   requisitos: Array<{ texto: string; atende: boolean }>;
   respostas: RespostaGravada[];
@@ -64,11 +74,12 @@ export function copiaDoPerfil(p: Perfil, experiencias: Experiencia[], email: str
   };
 }
 
-const paraCandidatura = (l: Record<string, unknown>): Candidatura => ({
+export const paraCandidatura = (l: Record<string, unknown>): Candidatura => ({
   id: String(l.id),
   protocolo: String(l.protocolo),
   vaga_id: String(l.vaga_id),
   etapa: (ETAPAS.some(([k]) => k === l.etapa) ? l.etapa : 'recebida') as Etapa,
+  resultado: l.resultado === 'aprovado' || l.resultado === 'nao_selecionado' ? l.resultado : null,
   perfil: (l.perfil as Record<string, unknown>) ?? {},
   requisitos: Array.isArray(l.requisitos) ? (l.requisitos as Candidatura['requisitos']) : [],
   respostas: Array.isArray(l.respostas) ? (l.respostas as RespostaGravada[]) : [],
@@ -80,7 +91,7 @@ const paraCandidatura = (l: Record<string, unknown>): Candidatura => ({
   vaga: (l.vagas as Candidatura['vaga']) ?? null,
 });
 
-const COLUNAS = 'id, protocolo, vaga_id, etapa, perfil, requisitos, respostas, origem, curriculo_caminho, curriculo_nome, retirada_em, created_at, vagas(titulo, slug, area)';
+const COLUNAS = 'id, protocolo, vaga_id, etapa, resultado, perfil, requisitos, respostas, origem, curriculo_caminho, curriculo_nome, retirada_em, created_at, vagas(titulo, slug, area)';
 
 export async function minhasCandidaturas(userId: string): Promise<Candidatura[]> {
   const { data, error } = await supabase.from('candidaturas').select(COLUNAS).eq('user_id', userId).order('created_at', { ascending: false });

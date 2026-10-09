@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Copy, Download, ExternalLink, MoreHorizontal, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { Copy, Download, ExternalLink, MoreHorizontal, Pencil, Plus, Search, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,6 +10,7 @@ import { ImportarVagasDialog } from './ImportarVagasDialog';
 import { apagarVaga, listarTodasAsVagas, mensagemDoErro, mudarStatus } from '@/lib/vagas/api';
 import { PROXIMOS_STATUS, ROTULO_DO_STATUS, STATUS_DA_VAGA, type StatusDaVaga, type Vaga } from '@/lib/vagas/modelo';
 import { casaComBusca } from '@/lib/vagas/vitrine';
+import { contagemPorVaga } from '@/lib/vagas/rh';
 import { format } from 'date-fns';
 
 /**
@@ -49,6 +50,9 @@ export function GestaoDeVagas() {
   const [form, setForm] = useState<{ modo: ModoDaVaga; vaga: Vaga | null } | null>(null);
   const [apagando, setApagando] = useState<string | null>(null);
   const [importando, setImportando] = useState(false);
+  // Candidatos por vaga (PR 9, 09/10/2026): total e os que ninguém abriu.
+  const [candidatos, setCandidatos] = useState<Map<string, { total: number; novos: number }>>(new Map());
+  useEffect(() => { contagemPorVaga().then(setCandidatos).catch(() => setCandidatos(new Map())); }, []);
 
   const carregar = useCallback(() => {
     setErro(false);
@@ -145,7 +149,6 @@ export function GestaoDeVagas() {
                 <p className="text-xs text-muted-foreground">
                   {v.publicada_em ? `Publicada em ${format(new Date(v.publicada_em), 'dd/MM/yyyy')}` : 'Nunca publicada'}
                   {v.prazo ? ` · prazo ${format(new Date(v.prazo), 'dd/MM')}` : ''}
-                  {!v.link_externo ? ' · sem formulário' : ''}
                 </p>
               </div>
               {apagando === v.id ? (
@@ -156,6 +159,12 @@ export function GestaoDeVagas() {
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5">
+                  <Button size="sm" variant={candidatos.get(v.id)?.total ? 'default' : 'outline'} asChild>
+                    <Link to={`/vagas/${v.slug}/candidatos`} data-testid={`candidatos-${v.slug}`}>
+                      <Users className="h-3.5 w-3.5" /> {candidatos.get(v.id)?.total ?? 0}
+                      {!!candidatos.get(v.id)?.novos && <span className="rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white">{candidatos.get(v.id)!.novos} {candidatos.get(v.id)!.novos === 1 ? 'novo' : 'novos'}</span>}
+                    </Link>
+                  </Button>
                   <Button size="sm" variant="outline" onClick={() => setForm({ modo: 'editar', vaga: v })}><Pencil className="h-3.5 w-3.5" /> Editar</Button>
                   {v.status === 'publicada' && (
                     <Button size="sm" variant="ghost" asChild><Link to={`/vagas/${v.slug}`} target="_blank" aria-label={`Ver ${v.titulo} no portal`}><ExternalLink className="h-4 w-4" /></Link></Button>
