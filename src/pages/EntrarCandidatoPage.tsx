@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, Lock, User as Pessoa, Clock, ShieldCheck } from 'lucide-react';
@@ -53,9 +54,11 @@ export default function EntrarCandidatoPage({ comoPorta = false, aoVerVagas }: {
       const u = await entrarComoCandidato(email, senha);
       if (!ehCandidato(u)) {
         // Conta da equipe passa pelo login da equipe, que confere conta desativada e pedido pendente.
+        // Vai direto para lá com o aviso (09/10/2026): na porta de /vagas a tela se remontava ao
+        // sair da sessão e a mensagem sumia, parecendo que o login não fazia nada.
         await supabase.auth.signOut();
-        setErro('Essa é uma conta da equipe da ANA. Entre pela página da equipe.');
-        setEntrando(false);
+        toast.info('Essa é uma conta da equipe da ANA', { description: 'Entre por aqui, no login da equipe.' });
+        navigate('/login', { replace: true });
         return;
       }
       navigate(destino, { replace: true });
@@ -102,7 +105,7 @@ export default function EntrarCandidatoPage({ comoPorta = false, aoVerVagas }: {
             </div>
           </div>
           <div className="flex justify-end"><Link to={ROTAS_DO_CANDIDATO.recuperarSenha} className="text-sm text-primary hover:underline">Esqueci a senha</Link></div>
-          {erro && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-900 dark:bg-red-950/60 dark:text-red-100">{erro}{erro.includes('equipe') && <> <Link to="/login" className="font-semibold underline">Ir para a página da equipe</Link></>}</p>}
+          {erro && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-900 dark:bg-red-950/60 dark:text-red-100">{erro}</p>}
           <Button type="submit" disabled={entrando} className="group h-14 rounded-[14px] text-base">
             {entrando ? 'Entrando…' : <>Entrar <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" /></>}
           </Button>
