@@ -15,7 +15,8 @@ const espiao = vi.hoisted(() => ({
 // O Checkbox do Radix mede o próprio tamanho; o jsdom não tem ResizeObserver.
 globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
 
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
+const avisos = vi.hoisted(() => ({ info: [] as string[] }));
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), info: (t: string) => { avisos.info.push(t); } } }));
 vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ isRh: false }) }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: espiao.usuario, isAuthenticated: espiao.usuario !== null, loading: false, signOut: vi.fn() }) }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: { auth: { signOut: async () => { espiao.saidas++; } } } }));
@@ -41,6 +42,7 @@ const abrir = (url: string) => render(
       <Route path="/vagas/entrar" element={<Entrar />} />
       <Route path="/vagas/recuperar-senha" element={<Recuperar />} />
       <Route path="/vagas/minha-area" element={<MinhaArea />} />
+      <Route path="/login" element={<p>Login da equipe</p>} />
       <Route path="/" element={<p>app da equipe</p>} />
     </Routes>
   </MemoryRouter>,
@@ -115,9 +117,10 @@ describe('entrar', () => {
     fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: 'mkt@anabrasil.org' } });
     fireEvent.change(screen.getByLabelText('Senha'), { target: { value: 'qualquer1' } });
     fireEvent.click(screen.getByRole('button', { name: /^Entrar/ }));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/conta da equipe/);
+    // Vai direto para o login da equipe, com o aviso (09/10/2026: na porta de /vagas a mensagem sumia).
+    expect(await screen.findByText('Login da equipe')).toBeInTheDocument();
     expect(espiao.saidas).toBe(1);
-    expect(screen.getByRole('link', { name: 'Ir para a página da equipe' })).toHaveAttribute('href', '/login');
+    expect(avisos.info).toEqual(['Essa é uma conta da equipe da ANA']);
   });
 });
 
