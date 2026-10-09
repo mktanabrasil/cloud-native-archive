@@ -78,7 +78,7 @@ export default function MinhaAreaCandidatoPage() {
                       </span>
                       <ChevronRight className="h-5 w-5 shrink-0" aria-hidden />
                     </span>
-                    <EtapasDaCandidatura etapa={c.etapa} retirada={!!c.retirada_em} />
+                    <EtapasDaCandidatura etapa={c.etapa} resultado={c.resultado} retirada={!!c.retirada_em} />
                   </Link>
                 </li>
               ))}
