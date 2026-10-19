@@ -8,6 +8,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/contexts/AuthContext';
 import { escolheuVerSemEntrar, lembrarVerSemEntrar } from '@/lib/vagas/conta';
 import EntrarCandidatoPage from './EntrarCandidatoPage';
+import { PainelDoRh } from '@/components/vagas/PainelDoRh';
 import { GestaoDeVagas } from '@/components/vagas/GestaoDeVagas';
 import { CartaoDaVaga, COR_DA_AREA, ICONE_DA_AREA, MolduraDasVagas } from '@/components/vagas/PecasDasVagas';
 import { guardarVista, separarProgramas, vistaGuardada, type Vista } from '@/lib/vagas/vitrine';
@@ -28,19 +29,23 @@ export default function VagasPage() {
   const { isAuthenticated, loading } = useAuth();
   const [params, setParams] = useSearchParams();
   const [semEntrar, setSemEntrar] = useState(escolheuVerSemEntrar);
-  const gestao = isRh && params.get('tela') === 'gestao';
-  useTituloDaAba(gestao ? 'Gestão de vagas · ANA Brasil' : 'Trabalhe Conosco · ANA Brasil');
-  // RH e admin veem as duas abas; o público só a vitrine, sem aba nenhuma.
+  // Para o RH, /vagas puro abre o Painel (decisão de 19/10/2026); o portal fica em ?tela=portal.
+  const tela: 'painel' | 'gestao' | 'portal' = !isRh ? 'portal'
+    : params.get('tela') === 'gestao' ? 'gestao'
+      : params.get('tela') === 'portal' || (params.toString() !== '' && !params.get('tela')) ? 'portal' : 'painel';
+  const gestao = tela === 'gestao';
+  useTituloDaAba(tela === 'gestao' ? 'Gestão de vagas · ANA Brasil' : tela === 'painel' ? 'Painel do RH · ANA Brasil' : 'Trabalhe Conosco · ANA Brasil');
+  // RH e admin veem as três abas; o público só a vitrine, sem aba nenhuma.
   const abas = isRh ? (
-    <nav aria-label="Vagas: portal e gestão" className="border-b border-border bg-muted/40">
+    <nav aria-label="Vagas: painel, gestão e portal" className="border-b border-border bg-muted/40">
       <div className="mx-auto flex max-w-6xl gap-1 px-4 sm:px-6">
-        {([['Portal', false], ['Gestão', true]] as const).map(([rotulo, g]) => (
+        {([['Painel', 'painel'], ['Gestão', 'gestao'], ['Portal', 'portal']] as const).map(([rotulo, t]) => (
           <button
             key={rotulo}
             type="button"
-            aria-current={gestao === g ? 'page' : undefined}
-            onClick={() => setParams(g ? new URLSearchParams('tela=gestao') : new URLSearchParams(), { replace: true })}
-            className={`-mb-px border-b-2 px-3 py-2.5 text-sm font-semibold ${gestao === g ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+            aria-current={tela === t ? 'page' : undefined}
+            onClick={() => setParams(t === 'painel' ? new URLSearchParams() : new URLSearchParams(`tela=${t}`), { replace: true })}
+            className={`-mb-px border-b-2 px-3 py-2.5 text-sm font-semibold ${tela === t ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
           >
             {rotulo}
           </button>
@@ -61,7 +66,7 @@ export default function VagasPage() {
   if (porta) {
     return <EntrarCandidatoPage comoPorta aoVerVagas={() => { lembrarVerSemEntrar(); setSemEntrar(true); }} />;
   }
-  return <MolduraDasVagas abas={abas}>{gestao ? <GestaoDeVagas /> : <Vitrine />}</MolduraDasVagas>;
+  return <MolduraDasVagas abas={abas}>{gestao ? <GestaoDeVagas /> : tela === 'painel' ? <PainelDoRh /> : <Vitrine />}</MolduraDasVagas>;
 }
 
 function Vitrine() {
@@ -84,7 +89,9 @@ function Vitrine() {
     return () => { vivo = false; };
   }, [tentativa]);
 
-  const mudar = (f: Partial<FiltroDaVitrine>) => setParams(enderecoDoFiltro({ ...filtro, ...f }), { replace: true });
+  // Quem é RH está em ?tela=portal: filtrar não pode jogá-lo de volta no Painel.
+  const manterTela = (p: URLSearchParams) => { if (params.get('tela') === 'portal') p.set('tela', 'portal'); return p; };
+  const mudar = (f: Partial<FiltroDaVitrine>) => setParams(manterTela(enderecoDoFiltro({ ...filtro, ...f })), { replace: true });
   const lista = useMemo(() => (vagas ? filtrarVagas(vagas, filtro) : []), [vagas, filtro]);
   // Jovem Aprendiz e PcD vão no fim, separados (28/09/2026).
   const { comuns, programas } = useMemo(() => separarProgramas(lista), [lista]);
@@ -181,7 +188,7 @@ function Vitrine() {
           <Vazio
             titulo={filtro.busca ? `Nada encontrado para "${filtro.busca}".` : 'Nenhuma vaga com esses filtros.'}
             texto="Tente outra palavra ou veja todas as vagas."
-            acao={<Button variant="outline" onClick={() => { setBusca(''); setParams(new URLSearchParams(), { replace: true }); }}>Ver todas as vagas</Button>}
+            acao={<Button variant="outline" onClick={() => { setBusca(''); setParams(manterTela(new URLSearchParams()), { replace: true }); }}>Ver todas as vagas</Button>}
           />
         ) : (
           <>

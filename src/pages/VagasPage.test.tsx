@@ -8,6 +8,7 @@ const espiao = vi.hoisted(() => ({ vagas: [] as Vaga[], falha: false, rh: false,
 vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ isRh: espiao.rh }) }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: espiao.usuario, isAuthenticated: espiao.usuario !== null, loading: false, signOut: vi.fn() }) }));
 vi.mock('@/components/vagas/GestaoDeVagas', () => ({ GestaoDeVagas: () => <p>painel da gestão</p> }));
+vi.mock('@/components/vagas/PainelDoRh', () => ({ PainelDoRh: () => <p>painel do rh</p> }));
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/lib/vagas/api', async () => {
@@ -245,3 +246,15 @@ describe('grade ou lista, e os programas no fim (28/09/2026)', () => {
   });
 });
 
+describe('abas do RH (19/10/2026)', () => {
+  it('RH abre no Painel; Portal fica em ?tela=portal e não volta ao Painel ao filtrar', async () => {
+    espiao.rh = true;
+    espiao.usuario = { email: 'rh@anabrasil.org', user_metadata: { name: 'RH' } };
+    abrir('/vagas');
+    expect(screen.getByText('painel do rh')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Portal' }));
+    expect(screen.queryByText('painel do rh')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Gestão' }));
+    expect(screen.getByText('painel da gestão')).toBeInTheDocument();
+  });
+});

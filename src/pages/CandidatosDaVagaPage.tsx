@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Download, Lock, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import { MolduraDasVagas } from '@/components/vagas/PecasDasVagas';
+import { QuadroDeCandidatos } from '@/components/vagas/QuadroDeCandidatos';
 import { baixarArquivo } from '@/lib/enquetes/planilha';
 import { ETAPAS, rotuloDaEtapa, type Etapa } from '@/lib/vagas/candidatura';
 import type { Vaga } from '@/lib/vagas/modelo';
 import {
-  buscarVagaDoRh, candidatosDaVaga, csvDosCandidatos, escolaridadeDe, experienciasDe, iniciais, lugarDe, nomeDoCandidato,
+  buscarVagaDoRh, candidatosDaVaga, csvDosCandidatos, estaParado, ultimaMudanca, escolaridadeDe, experienciasDe, iniciais, lugarDe, nomeDoCandidato,
   type CandidaturaRh,
 } from '@/lib/vagas/rh';
 
@@ -45,6 +46,14 @@ export default function CandidatosDaVagaPage() {
   const [filtro, setFiltro] = useState<Filtro>('todas');
   const [busca, setBusca] = useState('');
   const [erro, setErro] = useState(false);
+  // Quadro ou lista (decisão de 19/10/2026: abre no quadro; o app lembra a escolha).
+  const [vista, setVista] = useState<'quadro' | 'lista'>(() => { try { return localStorage.getItem('vagas-rh-vista') === 'lista' ? 'lista' : 'quadro'; } catch { return 'quadro'; } });
+  const escolherVista = (v: 'quadro' | 'lista') => { setVista(v); setFiltro('todas'); try { localStorage.setItem('vagas-rh-vista', v); } catch { /* segue */ } };
+  // ?ver=novos|parados: vindo do "Pede atenção" do Painel.
+  const [params, setParams] = useSearchParams();
+  const ver = params.get('ver') === 'novos' || params.get('ver') === 'parados' ? params.get('ver') as 'novos' | 'parados' : null;
+  const [desde, setDesde] = useState<Map<string, string>>(new Map());
+  const [versao, setVersao] = useState(0);
   useTituloDaAba(`${vaga?.titulo ? `Candidatos · ${vaga.titulo}` : 'Candidatos'} · Trabalhe Conosco`);
 
   useEffect(() => {
@@ -53,10 +62,19 @@ export default function CandidatosDaVagaPage() {
       try {
         const v = await buscarVagaDoRh(slug);
         setVaga(v);
-        if (v) setLista(await candidatosDaVaga(v.id));
+        if (v) {
+          const l = await candidatosDaVaga(v.id);
+          setLista(l);
+          setDesde(await ultimaMudanca(l.map((c) => c.id)).catch(() => new Map()));
+        }
       } catch { setErro(true); setLista([]); }
     })();
-  }, [isRh, slug]);
+  }, [isRh, slug, versao]);
+
+  const comVer = useMemo(() => (lista ?? []).filter((c) =>
+    ver === 'novos' ? !c.aberta_em && !c.retirada_em
+      : ver === 'parados' ? !c.retirada_em && c.etapa !== 'resultado' && !!c.aberta_em && estaParado(desde.get(c.id))
+        : true), [lista, ver, desde]);
 
   const contagem = useMemo(() => {
     const l = lista ?? [];
@@ -70,10 +88,10 @@ export default function CandidatosDaVagaPage() {
 
   const vistas = useMemo(() => {
     const termo = semAcento(busca.trim());
-    return (lista ?? [])
+    return comVer
       .filter((c) => (filtro === 'retiradas' ? !!c.retirada_em : !c.retirada_em && (filtro === 'todas' || c.etapa === filtro)))
       .filter((c) => !termo || semAcento(`${nomeDoCandidato(c)} ${lugarDe(c)}`).includes(termo));
-  }, [lista, filtro, busca]);
+  }, [comVer, filtro, busca]);
 
   if (loading) return null;
   if (!isRh) {
@@ -109,14 +127,27 @@ export default function CandidatosDaVagaPage() {
               </div>
             </div>
 
+            {ver && (
+              <p className="flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950/50 dark:text-amber-100">
+                Mostrando só os {ver === 'novos' ? 'novos (ninguém abriu)' : 'parados há 10+ dias'}.
+                <button type="button" className="font-semibold underline" onClick={() => { const p = new URLSearchParams(params); p.delete('ver'); setParams(p, { replace: true }); }}>Ver todos</button>
+              </p>
+            )}
+
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por etapa">
+              <div className="inline-flex rounded-xl bg-muted p-1" role="group" aria-label="Quadro ou lista">
+                {(['quadro', 'lista'] as const).map((v) => (
+                  <button key={v} type="button" aria-pressed={vista === v} onClick={() => escolherVista(v)}
+                    className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${vista === v ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}>{v === 'quadro' ? 'Quadro' : 'Lista'}</button>
+                ))}
+              </div>
+              {vista === 'lista' && <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por etapa">
                 {filtros.map(([k, r]) => (
                   <Button key={k} size="sm" variant={filtro === k ? 'default' : 'secondary'} className="h-8 rounded-full" onClick={() => setFiltro(k)}>
                     {r}<span className="opacity-60">{contagem[k] ?? 0}</span>
                   </Button>
                 ))}
-              </div>
+              </div>}
               <label className="relative w-full sm:w-72">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input aria-label="Buscar por nome ou cidade" placeholder="Buscar por nome ou cidade" className="pl-9" value={busca} onChange={(e) => setBusca(e.target.value)} />
@@ -127,6 +158,8 @@ export default function CandidatosDaVagaPage() {
 
             {lista === null ? (
               <p className="text-sm text-muted-foreground">Carregando…</p>
+            ) : vista === 'quadro' ? (
+              <QuadroDeCandidatos slug={slug} lista={vistas} desde={desde} aoMudar={() => setVersao((n) => n + 1)} />
             ) : vistas.length === 0 ? (
               <p className="rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">{(lista ?? []).length ? 'Ninguém nesta etapa.' : 'Ninguém se candidatou ainda.'}</p>
             ) : (
