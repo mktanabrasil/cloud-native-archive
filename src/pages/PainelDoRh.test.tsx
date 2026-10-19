@@ -30,6 +30,8 @@ vi.mock('@/lib/vagas/rh', async () => {
     candidatosDaVaga: async () => banco.lista.map(conv),
     umaCandidatura: async (id: string) => { const l = banco.lista.find((x) => x.id === id); return l ? conv(l) : null; },
     abrirCandidatura: async () => {},
+    ultimaMudanca: async () => new Map([['c2', '2026-01-01T00:00:00Z']]),
+    montarPainel: async () => ({ vagasAbertas: 39, porArea: { social: 23, educacao: 15, administracao: 1 }, candidaturas: 5, paraTriar: 2, emEntrevista: 1, aprovados: 0, porColuna: { recebida: 2, analise: 1, entrevista: 1, aprovado: 0, nao_selecionado: 0, retiradas: 1 }, atencao: [{ vaga: { id: 'v1', slug: 'educador', titulo: 'Educador Social de Música' }, tipo: 'novos', quantidade: 2, detalhe: '2 novos' }] }),
     historico: async () => [{ acao: 'enviada', de: null, para: 'recebida', por: 'candidato', em: '2026-10-09T12:00:00Z' }],
     lerObservacoes: async () => '',
     salvarObservacoes: async (_: string, t: string) => { banco.obs.push(t); },
@@ -71,6 +73,7 @@ beforeEach(() => {
 describe('candidatos da vaga', () => {
   it('lista, conta por etapa, filtra e busca', async () => {
     abrir('/vagas/educador/candidatos');
+    fireEvent.click(await screen.findByRole('button', { name: 'Lista' }));
     expect(await screen.findAllByTestId('candidato')).toHaveLength(2);
     expect(screen.getByRole('button', { name: /Todas\s*2/ })).toBeInTheDocument();
     expect(screen.getByText('novo')).toBeInTheDocument();
@@ -141,5 +144,49 @@ describe('regras do painel', () => {
     const linhas = csvDosCandidatos([{ ...C({}), aberta_em: null } as never]).replace('﻿', '').trim().split('\r\n');
     expect(linhas[0]).toMatch(/^Protocolo;Enviada;Nome;WhatsApp;E-mail;Cidade;Bairro;Formação;Experiências;Requisitos marcados;Currículo;Etapa;Retirada$/);
     expect(linhas[1]).toMatch(/2026-000418;.*;Leonardo Garbo Rodrigues;\(19\) 99355-8242;leo@x\.com;Campinas\/SP;Vila Costa e Silva;Superior completo;1;1 de 2;sim;Recebida;não$/);
+  });
+});
+
+describe('quadro em colunas (19/10/2026)', () => {
+  beforeEach(() => { try { localStorage.removeItem('vagas-rh-vista'); } catch { /* */ } });
+
+  it('abre no quadro, sem as retiradas, com selos novo e parado', async () => {
+    abrir('/vagas/educador/candidatos');
+    const quadro = await screen.findByTestId('quadro');
+    expect(within(within(quadro).getByRole('region', { name: 'Recebida' })).getByText('Leonardo Garbo Rodrigues')).toBeInTheDocument();
+    expect(within(within(quadro).getByRole('region', { name: 'Análise' })).getByText('Ana Paula Ribeiro')).toBeInTheDocument();
+    expect(within(quadro).queryByText('Bruno Tavares')).toBeNull();
+    expect(within(quadro).getByText('novo')).toBeInTheDocument();
+    expect(within(quadro).getByText('parado')).toBeInTheDocument();
+  });
+
+  it('arrastar para Análise move direto; para Não selecionado pede confirmação', async () => {
+    abrir('/vagas/educador/candidatos');
+    const quadro = await screen.findByTestId('quadro');
+    const dados = { getData: () => 'c1', setData: () => {} };
+    fireEvent.drop(within(quadro).getByRole('region', { name: 'Análise' }), { dataTransfer: dados });
+    await waitFor(() => expect(banco.movidos).toEqual([['c1', 'analise', null]]));
+    fireEvent.drop(within(await screen.findByTestId('quadro')).getByRole('region', { name: 'Não selecionado' }), { dataTransfer: { getData: () => 'c2', setData: () => {} } });
+    const dialogo = await screen.findByRole('alertdialog');
+    expect(dialogo).toHaveTextContent('Marcar Ana Paula Ribeiro como não selecionado?');
+    expect(banco.movidos).toHaveLength(1);
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Marcar e avisar' }));
+    await waitFor(() => expect(banco.movidos).toEqual([['c1', 'analise', null], ['c2', 'resultado', 'nao_selecionado']]));
+  });
+
+  it('?ver=novos mostra só quem ninguém abriu', async () => {
+    abrir('/vagas/educador/candidatos?ver=novos');
+    expect(await screen.findByText(/Mostrando só os novos/)).toBeInTheDocument();
+    expect(screen.getAllByTestId('cartao')).toHaveLength(1);
+  });
+});
+
+describe('Painel do RH', () => {
+  it('números e o que pede atenção, com link para a vaga filtrada', async () => {
+    const { PainelDoRh } = await import('@/components/vagas/PainelDoRh');
+    render(<MemoryRouter><PainelDoRh /></MemoryRouter>);
+    expect(await screen.findByTestId('kpi-Para triar')).toHaveTextContent('2');
+    expect(screen.getByTestId('kpi-Vagas abertas')).toHaveTextContent('39');
+    expect(screen.getByRole('link', { name: /Educador Social de Música/ })).toHaveAttribute('href', '/vagas/educador/candidatos?ver=novos');
   });
 });

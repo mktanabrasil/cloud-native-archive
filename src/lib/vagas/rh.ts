@@ -147,3 +147,94 @@ export function csvDosCandidatos(lista: CandidaturaRh[]): string {
   ].map(campo).join(';'));
   return '﻿' + [cab.join(';'), ...linhas].join('\r\n') + '\r\n';
 }
+
+// --- Painel do RH e quadro (passo 2 do roteiro, decisões de 19/10/2026) ---------------
+
+/** Dias sem mudar de etapa para contar como "parado" (decisão: 10). */
+export const DIAS_PARADO = 10;
+
+/** Última vez que cada candidatura entrou na etapa atual (envio ou mudança), pelo histórico. */
+export async function ultimaMudanca(ids: string[]): Promise<Map<string, string>> {
+  const m = new Map<string, string>();
+  if (!ids.length) return m;
+  const { data, error } = await supabase.from('candidatura_historico').select('candidatura_id, em').in('acao', ['enviada', 'etapa']).in('candidatura_id', ids);
+  if (error) throw error;
+  for (const l of data ?? []) if (!m.has(l.candidatura_id) || m.get(l.candidatura_id)! < l.em) m.set(l.candidatura_id, l.em);
+  return m;
+}
+
+export const estaParado = (desde: string | undefined, agora = Date.now()) => !!desde && agora - new Date(desde).getTime() >= DIAS_PARADO * 864e5;
+
+/** A coluna do quadro de uma candidatura (Aprovado e Não selecionado são colunas próprias). */
+export type Coluna = 'recebida' | 'analise' | 'entrevista' | 'aprovado' | 'nao_selecionado';
+export const COLUNAS_DO_QUADRO: Array<[Coluna, string]> = [['recebida', 'Recebida'], ['analise', 'Análise'], ['entrevista', 'Entrevista'], ['aprovado', 'Aprovado'], ['nao_selecionado', 'Não selecionado']];
+export const colunaDe = (c: Pick<Candidatura, 'etapa' | 'resultado'>): Coluna => (c.etapa === 'resultado' ? (c.resultado === 'aprovado' ? 'aprovado' : 'nao_selecionado') : c.etapa);
+export const destinoDaColuna = (col: Coluna): { etapa: Etapa; resultado: Resultado | null } =>
+  col === 'aprovado' ? { etapa: 'resultado', resultado: 'aprovado' } : col === 'nao_selecionado' ? { etapa: 'resultado', resultado: 'nao_selecionado' } : { etapa: col, resultado: null };
+/** Soltar nestas pede confirmação: são as que mandam notícia definitiva (decisão de 19/10/2026). */
+export const colunaPedeConfirmacao = (col: Coluna) => col === 'aprovado' || col === 'nao_selecionado';
+
+export interface Painel {
+  vagasAbertas: number;
+  porArea: Record<string, number>;
+  candidaturas: number;
+  paraTriar: number;
+  emEntrevista: number;
+  aprovados: number;
+  porColuna: Record<Coluna | 'retiradas', number>;
+  atencao: Array<{ vaga: Pick<Vaga, 'id' | 'slug' | 'titulo'>; tipo: 'novos' | 'parados' | 'sem_candidatos'; quantidade: number; detalhe: string }>;
+}
+
+/**
+ * Os números do Painel. `dias` nulo = tudo. Volumes, não pessoas: nada de
+ * recorte por característica de quem se candidatou.
+ */
+export async function montarPainel(dias: number | null, area: string | null, agora = Date.now()): Promise<Painel> {
+  const [{ data: vs, error: e1 }, { data: cs, error: e2 }] = await Promise.all([
+    supabase.from('vagas').select('id, slug, titulo, area, status, publicada_em'),
+    supabase.from('candidaturas').select('id, vaga_id, etapa, resultado, aberta_em, retirada_em, created_at'),
+  ]);
+  if (e1) throw e1;
+  if (e2) throw e2;
+  const vagas = (vs ?? []).filter((v) => !area || v.area === area);
+  const idsDasVagas = new Set(vagas.map((v) => v.id));
+  const desde = dias === null ? 0 : agora - dias * 864e5;
+  const todas = (cs ?? []).filter((c) => idsDasVagas.has(c.vaga_id));
+  const doPeriodo = todas.filter((c) => new Date(c.created_at).getTime() >= desde);
+  const ativas = todas.filter((c) => !c.retirada_em);
+  const mudou = await ultimaMudanca(ativas.map((c) => c.id)).catch(() => new Map<string, string>());
+
+  const abertas = vagas.filter((v) => v.status === 'publicada');
+  const porArea: Record<string, number> = {};
+  abertas.forEach((v) => { porArea[v.area] = (porArea[v.area] ?? 0) + 1; });
+
+  const porColuna = { recebida: 0, analise: 0, entrevista: 0, aprovado: 0, nao_selecionado: 0, retiradas: 0 } as Painel['porColuna'];
+  doPeriodo.forEach((c) => { if (c.retirada_em) porColuna.retiradas++; else porColuna[colunaDe(c as Pick<Candidatura, 'etapa' | 'resultado'>)]++; });
+
+  const atencao: Painel['atencao'] = [];
+  for (const v of abertas) {
+    const daVaga = ativas.filter((c) => c.vaga_id === v.id);
+    const novos = daVaga.filter((c) => !c.aberta_em);
+    if (novos.length) {
+      const maisAntigo = Math.max(...novos.map((c) => Math.floor((agora - new Date(c.created_at).getTime()) / 864e5)));
+      atencao.push({ vaga: v, tipo: 'novos', quantidade: novos.length, detalhe: `${novos.length} ${novos.length === 1 ? 'novo' : 'novos'}${maisAntigo > 0 ? ` · o mais antigo há ${maisAntigo} ${maisAntigo === 1 ? 'dia' : 'dias'}` : ''}` });
+    }
+    const parados = daVaga.filter((c) => c.etapa !== 'resultado' && c.aberta_em && estaParado(mudou.get(c.id), agora));
+    if (parados.length) atencao.push({ vaga: v, tipo: 'parados', quantidade: parados.length, detalhe: `${parados.length} sem mudar de etapa há ${DIAS_PARADO}+ dias` });
+    const abertaHa = v.publicada_em ? Math.floor((agora - new Date(v.publicada_em).getTime()) / 864e5) : 0;
+    if (!daVaga.length && abertaHa >= 14) atencao.push({ vaga: v, tipo: 'sem_candidatos', quantidade: 0, detalhe: `aberta há ${abertaHa} dias, nenhuma candidatura` });
+  }
+  const ordem = { novos: 0, parados: 1, sem_candidatos: 2 };
+  atencao.sort((a, b) => ordem[a.tipo] - ordem[b.tipo] || b.quantidade - a.quantidade);
+
+  return {
+    vagasAbertas: abertas.length,
+    porArea,
+    candidaturas: doPeriodo.length,
+    paraTriar: ativas.filter((c) => !c.aberta_em).length,
+    emEntrevista: ativas.filter((c) => c.etapa === 'entrevista').length,
+    aprovados: doPeriodo.filter((c) => !c.retirada_em && c.etapa === 'resultado' && c.resultado === 'aprovado').length,
+    porColuna,
+    atencao,
+  };
+}
