@@ -15,6 +15,10 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: v
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'rh1', email: 'carla@anabrasil.org', user_metadata: {} }, isAuthenticated: true, loading: false, signOut: vi.fn() }) }));
 vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ isRh: banco.rh, loading: false, userName: 'Carla' }) }));
+vi.mock('@/lib/vagas/perfil', async () => {
+  const real = await vi.importActual<typeof import('@/lib/vagas/perfil')>('@/lib/vagas/perfil');
+  return { ...real, linkDoCurriculo: async () => 'https://arquivos/cv.pdf' };
+});
 vi.mock('@/lib/vagas/rh', async () => {
   const real = await vi.importActual<typeof import('@/lib/vagas/rh')>('@/lib/vagas/rh');
   const { paraVaga } = await vi.importActual<typeof import('@/lib/vagas/api')>('@/lib/vagas/api');
@@ -92,7 +96,11 @@ describe('ficha', () => {
     expect(await screen.findByRole('heading', { name: 'Leonardo Garbo Rodrigues' })).toBeInTheDocument();
     expect(screen.getByText('Percussão com latas')).toBeInTheDocument();
     expect(screen.getByText('Instagram')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Abrir cv.pdf/ })).toBeInTheDocument();
+    // O currículo abre dentro da ficha, na aba própria (19/10/2026).
+    fireEvent.click(screen.getByRole('tab', { name: 'Currículo' }));
+    expect(await screen.findByTitle('Currículo: cv.pdf')).toHaveAttribute('src', 'https://arquivos/cv.pdf');
+    fireEvent.click(screen.getByRole('tab', { name: 'Histórico' }));
+    expect(screen.getByTestId('historico')).toHaveTextContent('Enviada pelo candidato');
 
     fireEvent.click(screen.getByRole('button', { name: /Mover para Análise/ }));
     await screen.findByRole('button', { name: /Mover para Entrevista/ });

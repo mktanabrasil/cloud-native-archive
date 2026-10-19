@@ -160,7 +160,10 @@ describe('evento que já passou', () => {
   });
 
   it('evento futuro não tem o selo', () => {
-    montar();
+    // Data relativa a hoje: a do exemplo (10/10/2026) virou passado e o teste caiu (19/10/2026).
+    const amanha = new Date(Date.now() + 864e5);
+    const depois = new Date(amanha.getTime() + 8 * 3600e3);
+    render(<EventDetailDialog open onOpenChange={() => {}} event={{ ...evento, start_datetime: amanha.toISOString(), end_datetime: depois.toISOString() }} />);
     expect(screen.queryByText('Já aconteceu')).toBeNull();
   });
 });

@@ -137,8 +137,21 @@ export function GestaoDeVagas() {
       ) : lista.length === 0 ? (
         <p className="rounded-2xl bg-muted/60 p-6 text-sm text-muted-foreground">Nenhuma vaga com esse filtro.</p>
       ) : (
-        <ul className="divide-y divide-border rounded-2xl border border-border bg-card">
-          {lista.map(v => (
+        <div className="flex flex-col gap-2">
+          {[
+            ['Com candidatos novos', lista.filter(v => !!candidatos.get(v.id)?.novos)],
+            ['Demais vagas', lista.filter(v => !candidatos.get(v.id)?.novos)],
+          ].map(([titulo, grupo]) => {
+            const vagasDoGrupo = grupo as Vaga[];
+            const temNovos = lista.some(v => !!candidatos.get(v.id)?.novos);
+            if (!vagasDoGrupo.length || (!temNovos && titulo === 'Com candidatos novos')) return null;
+            const destaque = titulo === 'Com candidatos novos';
+            return (
+              <section key={titulo as string} aria-label={titulo as string} className="flex flex-col gap-2">
+                {/* As vagas com candidato que ninguém abriu sobem (19/10/2026): a do teste estava lá embaixo. */}
+                {temNovos && <h3 className="mt-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">{titulo as string} · {vagasDoGrupo.length}</h3>}
+        <ul className={`divide-y divide-border rounded-2xl border border-border ${destaque ? 'bg-red-50/60 dark:bg-red-950/20' : 'bg-card'}`}>
+          {vagasDoGrupo.map(v => (
             <li key={v.id} className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:gap-4 sm:px-4" data-testid={`linha-${v.slug}`}>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -187,6 +200,10 @@ export function GestaoDeVagas() {
             </li>
           ))}
         </ul>
+              </section>
+            );
+          })}
+        </div>
       )}
 
       <ImportarVagasDialog

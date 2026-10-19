@@ -30,6 +30,37 @@ function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode
   return <div className="grid grid-cols-[130px_minmax(0,1fr)] gap-2 text-sm"><span className="text-muted-foreground">{rotulo}</span><b className="font-semibold">{children}</b></div>;
 }
 
+/**
+ * O currículo aberto dentro da ficha (19/10/2026): PDF num quadro com
+ * rolagem, foto como imagem; o endereço é temporário (5 min), pedido ao
+ * abrir a aba. "Abrir em outra aba" e "Baixar" para quem prefere.
+ */
+function CurriculoNaFicha({ caminho, nome }: { caminho: string | null; nome: string | null }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [falhou, setFalhou] = useState(false);
+  useEffect(() => {
+    if (!caminho) return;
+    linkDoCurriculo(caminho).then(setUrl).catch(() => setFalhou(true));
+  }, [caminho]);
+  if (!caminho) return <p className="rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">Não enviou currículo.</p>;
+  if (falhou) return <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-900 dark:bg-red-950/60 dark:text-red-100">Não consegui abrir o currículo. Recarregue a página.</p>;
+  if (!url) return <p className="text-sm text-muted-foreground">Abrindo o currículo…</p>;
+  const ePdf = /.pdf$/i.test(caminho);
+  return (
+    <div className="flex flex-col gap-2">
+      {ePdf
+        ? <iframe title={`Currículo: ${nome ?? 'arquivo'}`} src={url} className="h-[70vh] min-h-[420px] w-full rounded-xl border border-border bg-muted/40" />
+        : <img src={url} alt={`Currículo: ${nome ?? 'foto'}`} className="max-h-[75vh] w-full rounded-xl border border-border object-contain" />}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="min-w-0 max-w-full truncate text-xs text-muted-foreground" title={nome ?? undefined}><FileText className="mr-1 inline h-3.5 w-3.5" />{nome ?? 'currículo'}</span>
+        <span className="flex-1" />
+        <Button asChild variant="outline" size="sm"><a href={url} target="_blank" rel="noopener noreferrer">Abrir em outra aba</a></Button>
+        <Button asChild variant="outline" size="sm"><a href={url} download={nome ?? undefined}>Baixar</a></Button>
+      </div>
+    </div>
+  );
+}
+
 export default function FichaDoCandidatoPage() {
   const { slug = '', id = '' } = useParams();
   const { user } = useAuth();
@@ -39,6 +70,7 @@ export default function FichaDoCandidatoPage() {
   const [obsSalva, setObsSalva] = useState<'salvo' | 'salvando' | null>(null);
   const [hist, setHist] = useState<Movimento[]>([]);
   const [ocupado, setOcupado] = useState(false);
+  const [aba, setAba] = useState<'candidatura' | 'curriculo' | 'historico'>('candidatura');
   const temporizador = useRef<number>();
   const nome = c ? nomeDoCandidato(c) : '';
   useTituloDaAba(`${nome || 'Candidato'} · Trabalhe Conosco`);
@@ -96,13 +128,6 @@ export default function FichaDoCandidatoPage() {
     }, 800);
   }
 
-  async function abrirCurriculo() {
-    if (!c?.curriculo_caminho) return;
-    const aba = window.open('', '_blank');
-    try { const url = await linkDoCurriculo(c.curriculo_caminho); if (aba) aba.location.href = url; else window.location.href = url; }
-    catch { aba?.close(); toast.error('Não consegui abrir o currículo.'); }
-  }
-
   const passos = c ? proximosPassos(c) : null;
   const disponibilidade = c && Array.isArray(c.perfil.disponibilidade) ? (c.perfil.disponibilidade as string[]).map((t) => TURNOS.find(([k]) => k === t)?.[1] ?? t).join(', ') : '';
 
@@ -122,6 +147,22 @@ export default function FichaDoCandidatoPage() {
                 </div>
               </div>
 
+              <div role="tablist" aria-label="Partes da ficha" className="flex gap-1 border-b border-border">
+                {([['candidatura', 'Candidatura'], ['curriculo', 'Currículo'], ['historico', 'Histórico']] as const).map(([k, rot]) => (
+                  <button key={k} type="button" role="tab" aria-selected={aba === k} onClick={() => setAba(k)}
+                    className={`-mb-px border-b-2 px-3.5 py-2 text-sm font-semibold ${aba === k ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>{rot}</button>
+                ))}
+              </div>
+
+              {aba === 'curriculo' && <CurriculoNaFicha caminho={c.curriculo_caminho} nome={c.curriculo_nome} />}
+
+              {aba === 'historico' && (
+                <ol className="flex flex-col gap-1.5 text-sm text-muted-foreground" data-testid="historico">
+                  {hist.map((m, k) => <li key={k}><span className="tabular-nums">{dataEHora(m.em)}</span> · {textoDoMovimento(m)}</li>)}
+                </ol>
+              )}
+
+              {aba === 'candidatura' && (<>
               <section className="flex flex-col gap-2">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Perfil enviado</h2>
                 {txt(c.perfil.nome_social) && <Linha rotulo="Nome completo">{txt(c.perfil.nome)}</Linha>}
@@ -160,6 +201,7 @@ export default function FichaDoCandidatoPage() {
                 ))}
                 {c.origem && <div className="rounded-xl bg-muted/60 p-3 text-sm"><b className="block text-xs font-semibold text-muted-foreground">Como ficou sabendo da vaga</b>{c.origem}</div>}
               </section>
+              </>)}
             </div>
 
             <aside className="flex flex-col gap-3 rounded-2xl bg-muted/60 p-4">
@@ -175,9 +217,10 @@ export default function FichaDoCandidatoPage() {
                         {passos.avancar.rotulo} <ArrowRight className="h-4 w-4" />
                       </Button>
                     )}
-                    <div className="flex gap-2">
-                      {passos?.voltar && <Button variant="outline" size="sm" className="flex-1" disabled={ocupado} onClick={() => mover(passos.voltar!.etapa, null)}><ArrowLeft className="h-4 w-4" /> {passos.voltar.rotulo}</Button>}
-                      {passos?.podeRecusar && <Button variant="outline" size="sm" className="flex-1 text-red-700 dark:text-red-400" disabled={ocupado} onClick={() => mover('resultado', 'nao_selecionado')}><X className="h-4 w-4" /> Não seguir</Button>}
+                    {/* Um embaixo do outro (19/10/2026): lado a lado estouravam a coluna. */}
+                    <div className="grid gap-2">
+                      {passos?.voltar && <Button variant="outline" size="sm" disabled={ocupado} onClick={() => mover(passos.voltar!.etapa, null)}><ArrowLeft className="h-4 w-4" /> {passos.voltar.rotulo}</Button>}
+                      {passos?.podeRecusar && <Button variant="outline" size="sm" className="text-red-700 dark:text-red-400" disabled={ocupado} onClick={() => mover('resultado', 'nao_selecionado')}><X className="h-4 w-4" /> Não seguir</Button>}
                     </div>
                     <p className="text-[11px] text-muted-foreground">Avançar e “Não seguir” avisam o candidato por e-mail. Voltar não avisa.</p>
                   </>
@@ -185,23 +228,10 @@ export default function FichaDoCandidatoPage() {
               </div>
 
               <div className="flex flex-col gap-2 rounded-xl bg-background p-3.5">
-                <b className="text-sm">Currículo</b>
-                {c.curriculo_caminho ? (
-                  <Button variant="outline" size="sm" onClick={abrirCurriculo}><FileText className="h-4 w-4" /> Abrir {c.curriculo_nome ?? 'currículo'}</Button>
-                ) : <span className="text-sm text-muted-foreground">Não enviou currículo.</span>}
-              </div>
-
-              <div className="flex flex-col gap-2 rounded-xl bg-background p-3.5">
                 <div className="flex items-center justify-between"><b className="text-sm">Observações do RH</b><span className="text-[11px] text-muted-foreground">{obsSalva === 'salvando' ? 'Salvando…' : obsSalva === 'salvo' ? 'Salvo' : 'Só a equipe vê'}</span></div>
                 <Textarea aria-label="Observações do RH" rows={4} maxLength={4000} value={obs} onChange={(e) => mudarObs(e.target.value)} placeholder="Ex.: ligar quinta à tarde." />
               </div>
 
-              <div className="flex flex-col gap-1.5 rounded-xl bg-background p-3.5">
-                <b className="text-sm">Histórico</b>
-                <ol className="flex flex-col gap-1 text-xs text-muted-foreground" data-testid="historico">
-                  {hist.map((m, i) => <li key={i}><span className="tabular-nums">{dataEHora(m.em)}</span> · {textoDoMovimento(m)}</li>)}
-                </ol>
-              </div>
             </aside>
           </div>
         )}
