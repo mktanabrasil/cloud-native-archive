@@ -13,6 +13,8 @@ const espiao = vi.hoisted(() => ({
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'u-rh' } }) }));
+const contagem = vi.hoisted(() => ({ mapa: new Map<string, { total: number; novos: number }>() }));
+vi.mock('@/lib/vagas/rh', () => ({ contagemPorVaga: async () => contagem.mapa }));
 vi.mock('@/lib/vagas/api', async () => {
   const real = await vi.importActual<typeof import('@/lib/vagas/api')>('@/lib/vagas/api');
   return {
@@ -140,5 +142,18 @@ describe('gestão de vagas', () => {
     expect(espiao.criadas.every(c => c.status === 'publicada')).toBe(true);
     expect(new Set(espiao.criadas.map(c => c.slug)).size).toBe(39);
     expect(await screen.findByText('Auxiliar de Serviços Gerais')).toBeInTheDocument();
+  });
+});
+
+describe('vagas com candidatos novos no topo (19/10/2026)', () => {
+  it('agrupa as que têm alguém que ninguém abriu', async () => {
+    espiao.vagas = [vaga({ slug: 'porteiro', titulo: 'Porteiro', area: 'educacao', status: 'publicada', codigo: 'EDU-2026-015' }), vaga({ slug: 'zelador', titulo: 'Zelador', area: 'educacao', status: 'publicada', codigo: 'EDU-2026-013' })];
+    contagem.mapa = new Map([['zelador', { total: 2, novos: 1 }], ['porteiro', { total: 3, novos: 0 }]]);
+    abrir();
+    const topo = await screen.findByRole('region', { name: 'Com candidatos novos' });
+    expect(within(topo).getByText('Zelador')).toBeInTheDocument();
+    expect(within(topo).getByText('1 novo')).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Demais vagas' })).getByText('Porteiro')).toBeInTheDocument();
+    contagem.mapa = new Map();
   });
 });
