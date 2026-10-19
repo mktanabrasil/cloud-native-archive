@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Download, Lock, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import { MolduraDasVagas } from '@/components/vagas/PecasDasVagas';
@@ -11,7 +12,7 @@ import { baixarArquivo } from '@/lib/enquetes/planilha';
 import { ETAPAS, rotuloDaEtapa, type Etapa } from '@/lib/vagas/candidatura';
 import type { Vaga } from '@/lib/vagas/modelo';
 import {
-  buscarVagaDoRh, candidatosDaVaga, csvDosCandidatos, estaParado, ultimaMudanca, escolaridadeDe, experienciasDe, iniciais, lugarDe, nomeDoCandidato,
+  buscarVagaDoRh, candidatosDaVaga, semAcento, csvDosCandidatos, estaParado, ultimaMudanca, escolaridadeDe, experienciasDe, iniciais, lugarDe, nomeDoCandidato,
   type CandidaturaRh,
 } from '@/lib/vagas/rh';
 
@@ -35,12 +36,12 @@ const quando = (iso: string) => {
   return dias <= 0 ? 'hoje' : dias === 1 ? 'ontem' : `há ${dias} dias`;
 };
 
-export const semAcento = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 export default function CandidatosDaVagaPage() {
   const { slug = '' } = useParams();
   const navigate = useNavigate();
   const { isRh, loading } = useUserRole();
+  const { user } = useAuth();
   const [vaga, setVaga] = useState<Vaga | null | undefined>(undefined);
   const [lista, setLista] = useState<CandidaturaRh[] | null>(null);
   const [filtro, setFiltro] = useState<Filtro>('todas');
@@ -57,7 +58,8 @@ export default function CandidatosDaVagaPage() {
   useTituloDaAba(`${vaga?.titulo ? `Candidatos · ${vaga.titulo}` : 'Candidatos'} · Trabalhe Conosco`);
 
   useEffect(() => {
-    if (!isRh) return;
+    // O responsável pelo processo também entra (passo 3): o banco só entrega a vaga se for dele.
+    if (!user?.id) return;
     (async () => {
       try {
         const v = await buscarVagaDoRh(slug);
@@ -69,7 +71,7 @@ export default function CandidatosDaVagaPage() {
         }
       } catch { setErro(true); setLista([]); }
     })();
-  }, [isRh, slug, versao]);
+  }, [user?.id, slug, versao]);
 
   const comVer = useMemo(() => (lista ?? []).filter((c) =>
     ver === 'novos' ? !c.aberta_em && !c.retirada_em
@@ -94,13 +96,14 @@ export default function CandidatosDaVagaPage() {
   }, [comVer, filtro, busca]);
 
   if (loading) return null;
-  if (!isRh) {
+  const permitido = isRh || (!!vaga && vaga.responsavel_id === user?.id);
+  if (!permitido && vaga !== undefined) {
     return (
       <MolduraDasVagas>
         <div className="mx-auto flex max-w-md flex-col items-center gap-3 px-4 py-20 text-center">
           <Lock className="h-10 w-10 text-muted-foreground" />
           <h1 className="text-lg font-semibold">Acesso restrito</h1>
-          <p className="text-sm text-muted-foreground">Os candidatos são do RH.</p>
+          <p className="text-sm text-muted-foreground">Os candidatos são do RH e de quem é responsável pelo processo.</p>
         </div>
       </MolduraDasVagas>
     );
@@ -111,7 +114,7 @@ export default function CandidatosDaVagaPage() {
   return (
     <MolduraDasVagas>
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6 sm:px-6">
-        <Link to="/vagas?tela=gestao" className="flex items-center gap-1 self-start text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> Gestão de vagas</Link>
+        <Link to={isRh ? "/vagas?tela=processos" : "/vagas"} className="flex items-center gap-1 self-start text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> {isRh ? "Processos" : "Meus processos"}</Link>
         {vaga === null ? (
           <p className="text-muted-foreground">Vaga não encontrada.</p>
         ) : (
@@ -159,7 +162,7 @@ export default function CandidatosDaVagaPage() {
             {lista === null ? (
               <p className="text-sm text-muted-foreground">Carregando…</p>
             ) : vista === 'quadro' ? (
-              <QuadroDeCandidatos slug={slug} lista={vistas} desde={desde} aoMudar={() => setVersao((n) => n + 1)} />
+              <QuadroDeCandidatos slug={slug} lista={vistas} desde={desde} podeFechar={isRh} aoMudar={() => setVersao((n) => n + 1)} />
             ) : vistas.length === 0 ? (
               <p className="rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">{(lista ?? []).length ? 'Ninguém nesta etapa.' : 'Ninguém se candidatou ainda.'}</p>
             ) : (

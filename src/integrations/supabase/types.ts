@@ -1114,6 +1114,7 @@ export type Database = {
           link_externo: string | null
           modalidade: string
           prazo: string | null
+          prazo_processo: string | null
           publicada_em: string | null
           requisitos: Json
           responsabilidades: Json
@@ -1144,6 +1145,7 @@ export type Database = {
           link_externo?: string | null
           modalidade?: string
           prazo?: string | null
+          prazo_processo?: string | null
           publicada_em?: string | null
           requisitos?: Json
           responsabilidades?: Json
@@ -1174,6 +1176,7 @@ export type Database = {
           link_externo?: string | null
           modalidade?: string
           prazo?: string | null
+          prazo_processo?: string | null
           publicada_em?: string | null
           requisitos?: Json
           responsabilidades?: Json
@@ -1284,6 +1287,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      equipe_para_responsavel: {
+        Args: Record<PropertyKey, never>
+        Returns: { user_id: string; nome: string; email: string | null; unidade: string | null }[]
+      }
+      responsavel_pela_candidatura: {
+        Args: { _candidatura_id: string; _user_id: string }
+        Returns: boolean
+      }
+      responsavel_pela_vaga: {
+        Args: { _vaga_id: string; _user_id: string }
+        Returns: boolean
+      }
+      sou_responsavel_por_alguma_vaga: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       abrir_candidatura: {
         Args: { p_id: string }
         Returns: undefined

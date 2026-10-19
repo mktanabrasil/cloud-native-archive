@@ -74,7 +74,7 @@ function avisoDeEtapa(etapa: string, resultado: string | null, nome: string, vag
   return null;
 }
 
-function html(m: Mensagem, link: string): string {
+function html(m: Mensagem, link: string, botao = 'Acompanhar candidatura'): string {
   const destaque = m.destaque ? `
   <div style="background:#E6F8F3;border-radius:14px;padding:16px;text-align:center;margin:0 0 18px">
     <div style="font-size:12px;color:#555">${esc(m.destaque.rotulo)}</div>
@@ -87,17 +87,17 @@ function html(m: Mensagem, link: string): string {
   <h1 style="font-size:22px;margin:0 0 12px;${m.cor ? `background:${m.cor};padding:14px 16px;border-radius:14px;` : ''}">${esc(m.titulo)}</h1>
   ${m.paragrafos.map((p) => `<p style="margin:0 0 12px;color:#333;line-height:1.55">${esc(p)}</p>`).join('\n  ')}
   ${destaque}
-  <a href="${esc(link)}" style="display:inline-block;background:#1F2322;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:12px;margin-top:6px">Acompanhar candidatura</a>
-  <p style="margin:26px 0 0;font-size:12px;color:#777">Você recebeu este e-mail porque se candidatou pelo Trabalhe Conosco da ANA Brasil.</p>
+  <a href="${esc(link)}" style="display:inline-block;background:#1F2322;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:12px;margin-top:6px">${esc(botao)}</a>
+  <p style="margin:26px 0 0;font-size:12px;color:#777">Trabalhe Conosco · ANA Brasil</p>
 </div>
 <div style="height:6px;background:linear-gradient(90deg,#F5DFBB 0 20%,#FBCE00 20% 40%,#F37964 40% 60%,#81E2CF 60% 80%,#01ADFF 80% 100%)"></div>
 </body></html>`;
 }
 
-const texto = (m: Mensagem, link: string) =>
-  [m.titulo, '', ...m.paragrafos, ...(m.destaque ? ['', `${m.destaque.rotulo}: ${m.destaque.valor} (${m.destaque.rodape})`] : []), '', `Acompanhar: ${link}`, ''].join('\n');
+const texto = (m: Mensagem, link: string, botao = 'Acompanhar') =>
+  [m.titulo, '', ...m.paragrafos, ...(m.destaque ? ['', `${m.destaque.rotulo}: ${m.destaque.valor} (${m.destaque.rodape})`] : []), '', `${botao}: ${link}`, ''].join('\n');
 
-async function enviar(para: string, m: Mensagem, link: string): Promise<void> {
+async function enviar(para: string, m: Mensagem, link: string, botao?: string): Promise<void> {
   const porta = Number(Deno.env.get('SMTP_PORT') || 587);
   const tlsEnv = Deno.env.get('SMTP_TLS');
   const tlsDireto = tlsEnv ? tlsEnv !== 'false' : porta === 465;
@@ -111,7 +111,7 @@ async function enviar(para: string, m: Mensagem, link: string): Promise<void> {
   const remetente = Deno.env.get('VAGAS_REMETENTE') || `ANA Brasil · Trabalhe Conosco <${usuario}>`;
   const transporte = nodemailer.createTransport(smtp);
   try {
-    await transporte.sendMail({ from: remetente, to: para, subject: m.assunto, text: texto(m, link), html: html(m, link) });
+    await transporte.sendMail({ from: remetente, to: para, subject: m.assunto, text: texto(m, link, botao), html: html(m, link, botao) });
   } finally {
     transporte.close();
   }
@@ -131,8 +131,33 @@ Deno.serve(async (req) => {
   const { data: quem, error: erroDeQuem } = await userClient.auth.getUser(auth.replace('Bearer ', ''));
   if (erroDeQuem || !quem?.user) return json({ error: 'Não autorizado.' }, 401);
 
-  let corpo: { candidatura_id?: string; aviso?: boolean } = {};
+  let corpo: { candidatura_id?: string; aviso?: boolean; responsavel_vaga_id?: string } = {};
   try { corpo = await req.json(); } catch { /* corpo vazio */ }
+
+  // 3. Responsável nomeado (passo 3, 19/10/2026): só o RH pede; vai para o responsável da vaga.
+  if (corpo.responsavel_vaga_id) {
+    const { data: ehRh } = await userClient.rpc('is_rh_or_admin', { _user_id: quem.user.id });
+    if (!ehRh) return json({ error: 'Só o RH nomeia responsável.' }, 403);
+    const adm = createClient(SUPABASE_URL, SERVICE);
+    const { data: v } = await adm.from('vagas').select('id, slug, titulo, codigo, responsavel_id, prazo_processo').eq('id', String(corpo.responsavel_vaga_id)).maybeSingle();
+    if (!v?.responsavel_id) return json({ error: 'Vaga sem responsável.' }, 404);
+    const { data: resp } = await adm.auth.admin.getUserById(v.responsavel_id);
+    if (!resp?.user?.email) return json({ error: 'Responsável sem e-mail.' }, 404);
+    const { data: perfilResp } = await adm.from('profiles').select('name').eq('user_id', v.responsavel_id).maybeSingle();
+    const primeiro = String(perfilResp?.name || resp.user.email).split(/[\s@]/)[0];
+    const prazo = v.prazo_processo ? ` O prazo do processo é ${String(v.prazo_processo).split('-').reverse().join('/')}.` : '';
+    const m: Mensagem = {
+      assunto: `Você é responsável pelo processo · ${v.titulo}`,
+      titulo: `${primeiro}, você é responsável por um processo seletivo.`,
+      paragrafos: [
+        `O RH nomeou você responsável pelo processo ${v.titulo} (${v.codigo}).${prazo}`,
+        'No app, os candidatos aparecem em Vagas › Meus processos: você abre as fichas, vê o currículo e move até a entrevista. O resultado final fica com o RH.',
+      ],
+    };
+    try { await enviar(resp.user.email, m, `${SITE}/vagas/${v.slug}/candidatos`, 'Abrir o processo'); }
+    catch (e) { return json({ error: (e instanceof Error ? e.message : String(e)).slice(0, 300) }, 502); }
+    return json({ enviado: true });
+  }
   const id = String(corpo.candidatura_id ?? '');
   if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ error: 'candidatura_id inválido.' }, 400);
 
@@ -158,7 +183,9 @@ Deno.serve(async (req) => {
   try {
     if (corpo.aviso) {
       const { data: rh } = await userClient.rpc('is_rh_or_admin', { _user_id: quem.user.id });
-      if (!rh) return json({ error: 'Só o RH avisa o candidato.' }, 403);
+      // O responsável pelo processo também move (até Entrevista) e avisa (passo 3, 19/10/2026).
+      const { data: responsavel } = rh ? { data: false } : await userClient.rpc('responsavel_pela_candidatura', { _candidatura_id: c.id, _user_id: quem.user.id });
+      if (!rh && !responsavel) return json({ error: 'Só o RH ou o responsável pelo processo avisa o candidato.' }, 403);
       if (c.retirada_em) return json({ enviado: false, motivo: 'retirada' });
       const marca = `${c.etapa}${c.resultado ? ':' + c.resultado : ''}`;
       if (c.etapa_avisada === marca) return json({ enviado: false, motivo: 'já avisado' });

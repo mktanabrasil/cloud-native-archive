@@ -16,7 +16,7 @@ import {
  * Não selecionado pede confirmação (notícia definitiva). No celular, onde não
  * há arrastar, cada cartão tem "Mover para". Retiradas ficam fora do quadro.
  */
-export function QuadroDeCandidatos({ slug, lista, desde, aoMudar }: { slug: string; lista: CandidaturaRh[]; desde: Map<string, string>; aoMudar: () => void }) {
+export function QuadroDeCandidatos({ slug, lista, desde, aoMudar, podeFechar = true }: { slug: string; lista: CandidaturaRh[]; desde: Map<string, string>; aoMudar: () => void; podeFechar?: boolean }) {
   const navigate = useNavigate();
   const [arrastando, setArrastando] = useState<string | null>(null);
   const [sobre, setSobre] = useState<Coluna | null>(null);
@@ -37,8 +37,11 @@ export function QuadroDeCandidatos({ slug, lista, desde, aoMudar }: { slug: stri
     }
   }
 
+  // Quem não é RH não entra nem sai do resultado (passo 3, 19/10/2026).
+  const fechada = (col: Coluna) => !podeFechar && (col === 'aprovado' || col === 'nao_selecionado');
   const pedir = (c: CandidaturaRh, col: Coluna) => {
     if (colunaDe(c) === col) return;
+    if (fechada(col) || fechada(colunaDe(c))) { toast.info('O resultado fica com o RH.'); return; }
     if (colunaPedeConfirmacao(col)) setPendente({ c, col }); else void mover(c, col);
   };
 
@@ -60,8 +63,9 @@ export function QuadroDeCandidatos({ slug, lista, desde, aoMudar }: { slug: stri
               onDragOver={(e) => { e.preventDefault(); setSobre(col); }} onDragLeave={() => setSobre((s) => (s === col ? null : s))} onDrop={soltar(col)}
               className={`flex min-h-[360px] snap-start flex-col gap-2 rounded-2xl p-2.5 transition-colors ${sobre === col ? 'bg-emerald-50 ring-2 ring-dashed ring-emerald-600 dark:bg-emerald-950/40' : 'bg-muted/60'}`}>
               <h3 className="flex items-center justify-between px-1 text-[13px] font-semibold">{rot}<span className="font-normal text-muted-foreground">{daColuna.length}</span></h3>
+              {fechada(col) && <p className="px-1 text-[11px] text-muted-foreground">Só o RH move para cá.</p>}
               {daColuna.map((c) => (
-                <article key={c.id} draggable onDragStart={(e) => { e.dataTransfer.setData('text/plain', c.id); setArrastando(c.id); }} onDragEnd={() => setArrastando(null)}
+                <article key={c.id} draggable={!fechada(col)} onDragStart={(e) => { e.dataTransfer.setData('text/plain', c.id); setArrastando(c.id); }} onDragEnd={() => setArrastando(null)}
                   className={`flex cursor-grab flex-col gap-1 rounded-xl border border-border bg-background p-2.5 text-sm active:cursor-grabbing ${arrastando === c.id ? 'opacity-50' : ''} ${col === 'nao_selecionado' ? 'opacity-75' : ''}`}
                   data-testid="cartao">
                   <button type="button" onClick={() => navigate(`/vagas/${slug}/candidatos/${c.id}`)} className="text-left">
@@ -77,7 +81,7 @@ export function QuadroDeCandidatos({ slug, lista, desde, aoMudar }: { slug: stri
                   <label className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground sm:hidden">
                     Mover para
                     <select aria-label={`Mover ${nomeDoCandidato(c)} para`} value={col} onChange={(e) => pedir(c, e.target.value as Coluna)} className="min-w-0 flex-1 rounded-md border border-border bg-background px-1.5 py-1 text-xs text-foreground">
-                      {COLUNAS_DO_QUADRO.map(([k, r]) => <option key={k} value={k}>{r}</option>)}
+                      {COLUNAS_DO_QUADRO.filter(([k]) => !fechada(k) || k === col).map(([k, r]) => <option key={k} value={k}>{r}</option>)}
                     </select>
                   </label>
                 </article>

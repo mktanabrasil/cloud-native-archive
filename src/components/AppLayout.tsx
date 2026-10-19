@@ -24,9 +24,11 @@ import TestModeBanner, { TestModeTrigger } from '@/components/TestModeBanner';
 import logoImg from '@/assets/logo.png';
 import { ThemeToggle } from './ThemeToggle';
 import { navItems } from '@/config/navigation';
+import { useSouResponsavel } from '@/hooks/useSouResponsavel';
 import { ehCandidato } from '@/lib/vagas/conta';
 
 export default function AppLayout() {
+  const souResponsavel = useSouResponsavel();
   const [isFirstRender, setIsFirstRender] = useState(true);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -79,7 +81,8 @@ export default function AppLayout() {
         // Antes do `marketingOnly`: o Jornal tem regra própria, e a gestão de
         // unidade entra nele sem entrar nas outras páginas da comunicação.
         if (item.journalOnly) return canAccessJournal;
-        if (item.rhOnly) return isRh;
+        // RH, ou quem é responsável por algum processo (passo 3, 19/10/2026).
+        if (item.rhOnly) return isRh || souResponsavel;
         if (item.marketingOnly) return isMarketing;
         if (item.adminOnly) return isAdmin;
         if (item.managerOnly) return isAdmin || isManager;

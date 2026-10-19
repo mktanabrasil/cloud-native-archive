@@ -97,6 +97,8 @@ export interface Vaga {
   /** O Forms atual da vaga; sai na fase 2. */
   link_externo: string | null;
   responsavel_id: string | null;
+  /** Prazo do processo seletivo (passo 3, 19/10/2026); o `prazo` é o das inscrições. */
+  prazo_processo: string | null;
   versao: number;
   created_by: string | null;
   created_at: string;
