@@ -9,6 +9,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { escolheuVerSemEntrar, lembrarVerSemEntrar } from '@/lib/vagas/conta';
 import EntrarCandidatoPage from './EntrarCandidatoPage';
 import { PainelDoRh } from '@/components/vagas/PainelDoRh';
+import { ProcessosDoRh } from '@/components/vagas/ProcessosDoRh';
+import { MeusProcessos } from '@/components/vagas/MeusProcessos';
+import { useSouResponsavel } from '@/hooks/useSouResponsavel';
 import { GestaoDeVagas } from '@/components/vagas/GestaoDeVagas';
 import { CartaoDaVaga, COR_DA_AREA, ICONE_DA_AREA, MolduraDasVagas } from '@/components/vagas/PecasDasVagas';
 import { guardarVista, separarProgramas, vistaGuardada, type Vista } from '@/lib/vagas/vitrine';
@@ -26,25 +29,34 @@ import { contagemPorArea, enderecoDoFiltro, filtrarVagas, filtroDoEndereco, vaga
  */
 export default function VagasPage() {
   const { isRh } = useUserRole();
+  const souResponsavel = useSouResponsavel();
   const { isAuthenticated, loading } = useAuth();
   const [params, setParams] = useSearchParams();
   const [semEntrar, setSemEntrar] = useState(escolheuVerSemEntrar);
   // Para o RH, /vagas puro abre o Painel (decisão de 19/10/2026); o portal fica em ?tela=portal.
-  const tela: 'painel' | 'gestao' | 'portal' = !isRh ? 'portal'
-    : params.get('tela') === 'gestao' ? 'gestao'
-      : params.get('tela') === 'portal' || (params.toString() !== '' && !params.get('tela')) ? 'portal' : 'painel';
+  // Quem é responsável por um processo, sem ser RH, abre em "Meus processos" (passo 3, 19/10/2026).
+  const pedida = params.get('tela');
+  const portalPedido = pedida === 'portal' || (params.toString() !== '' && !pedida);
+  type Tela = 'painel' | 'processos' | 'gestao' | 'portal' | 'meus';
+  const tela: Tela = isRh
+    ? (pedida === 'gestao' ? 'gestao' : pedida === 'processos' ? 'processos' : portalPedido ? 'portal' : 'painel')
+    : souResponsavel ? (portalPedido ? 'portal' : 'meus') : 'portal';
   const gestao = tela === 'gestao';
-  useTituloDaAba(tela === 'gestao' ? 'Gestão de vagas · ANA Brasil' : tela === 'painel' ? 'Painel do RH · ANA Brasil' : 'Trabalhe Conosco · ANA Brasil');
-  // RH e admin veem as três abas; o público só a vitrine, sem aba nenhuma.
-  const abas = isRh ? (
-    <nav aria-label="Vagas: painel, gestão e portal" className="border-b border-border bg-muted/40">
+  useTituloDaAba(tela === 'gestao' ? 'Gestão de vagas · ANA Brasil' : tela === 'painel' ? 'Painel do RH · ANA Brasil' : tela === 'processos' ? 'Processos · ANA Brasil' : tela === 'meus' ? 'Meus processos · ANA Brasil' : 'Trabalhe Conosco · ANA Brasil');
+  // RH e admin veem quatro abas; o responsável, as dele; o público só a vitrine.
+  const opcoes: ReadonlyArray<readonly [string, Tela]> = isRh
+    ? [['Painel', 'painel'], ['Processos', 'processos'], ['Gestão', 'gestao'], ['Portal', 'portal']]
+    : souResponsavel ? [['Meus processos', 'meus'], ['Portal', 'portal']] : [];
+  const telaPadrao: Tela = isRh ? 'painel' : 'meus';
+  const abas = opcoes.length ? (
+    <nav aria-label="Vagas: abas" className="border-b border-border bg-muted/40">
       <div className="mx-auto flex max-w-6xl gap-1 px-4 sm:px-6">
-        {([['Painel', 'painel'], ['Gestão', 'gestao'], ['Portal', 'portal']] as const).map(([rotulo, t]) => (
+        {opcoes.map(([rotulo, t]) => (
           <button
             key={rotulo}
             type="button"
             aria-current={tela === t ? 'page' : undefined}
-            onClick={() => setParams(t === 'painel' ? new URLSearchParams() : new URLSearchParams(`tela=${t}`), { replace: true })}
+            onClick={() => setParams(t === telaPadrao ? new URLSearchParams() : new URLSearchParams(`tela=${t}`), { replace: true })}
             className={`-mb-px border-b-2 px-3 py-2.5 text-sm font-semibold ${tela === t ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
           >
             {rotulo}
@@ -66,7 +78,7 @@ export default function VagasPage() {
   if (porta) {
     return <EntrarCandidatoPage comoPorta aoVerVagas={() => { lembrarVerSemEntrar(); setSemEntrar(true); }} />;
   }
-  return <MolduraDasVagas abas={abas}>{gestao ? <GestaoDeVagas /> : tela === 'painel' ? <PainelDoRh /> : <Vitrine />}</MolduraDasVagas>;
+  return <MolduraDasVagas abas={abas}>{gestao ? <GestaoDeVagas /> : tela === 'painel' ? <PainelDoRh /> : tela === 'processos' ? <ProcessosDoRh /> : tela === 'meus' ? <MeusProcessos /> : <Vitrine />}</MolduraDasVagas>;
 }
 
 function Vitrine() {

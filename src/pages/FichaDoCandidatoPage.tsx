@@ -81,7 +81,8 @@ export default function FichaDoCandidatoPage() {
   };
 
   useEffect(() => {
-    if (!isRh) return;
+    // O responsável pelo processo também entra (passo 3): o banco só entrega a candidatura se for dele.
+    if (!user) return;
     (async () => {
       try {
         await abrirCandidatura(id).catch(() => null);
@@ -90,10 +91,10 @@ export default function FichaDoCandidatoPage() {
       } catch { setC(null); }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRh, id]);
+  }, [user?.id, id]);
 
   if (loading) return null;
-  if (!isRh) {
+  if (!isRh && c === null) {
     return (
       <MolduraDasVagas>
         <div className="mx-auto flex max-w-md flex-col items-center gap-3 px-4 py-20 text-center">
@@ -128,7 +129,7 @@ export default function FichaDoCandidatoPage() {
     }, 800);
   }
 
-  const passos = c ? proximosPassos(c) : null;
+  const passos = c ? proximosPassos(c, isRh) : null;
   const disponibilidade = c && Array.isArray(c.perfil.disponibilidade) ? (c.perfil.disponibilidade as string[]).map((t) => TURNOS.find(([k]) => k === t)?.[1] ?? t).join(', ') : '';
 
   return (
@@ -222,7 +223,7 @@ export default function FichaDoCandidatoPage() {
                       {passos?.voltar && <Button variant="outline" size="sm" disabled={ocupado} onClick={() => mover(passos.voltar!.etapa, null)}><ArrowLeft className="h-4 w-4" /> {passos.voltar.rotulo}</Button>}
                       {passos?.podeRecusar && <Button variant="outline" size="sm" className="text-red-700 dark:text-red-400" disabled={ocupado} onClick={() => mover('resultado', 'nao_selecionado')}><X className="h-4 w-4" /> Não seguir</Button>}
                     </div>
-                    <p className="text-[11px] text-muted-foreground">Avançar e “Não seguir” avisam o candidato por e-mail. Voltar não avisa.</p>
+                    <p className="text-[11px] text-muted-foreground">{isRh ? 'Avançar e “Não seguir” avisam o candidato por e-mail. Voltar não avisa.' : 'Você move até a Entrevista; o resultado fica com o RH. Avançar avisa o candidato por e-mail.'}</p>
                   </>
                 )}
               </div>

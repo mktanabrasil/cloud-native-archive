@@ -8,6 +8,9 @@ const banco = vi.hoisted(() => ({
   avisar: true,
   obs: [] as string[],
   rh: true,
+  responsavel: null as string | null,
+  processos: [] as unknown[],
+  definidos: [] as Array<[string, string | null, string | null]>,
 }));
 
 globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
@@ -26,7 +29,10 @@ vi.mock('@/lib/vagas/rh', async () => {
   const conv = (l: Record<string, unknown>) => ({ ...paraCandidatura(l), aberta_em: (l.aberta_em as string) ?? null });
   return {
     ...real,
-    buscarVagaDoRh: async () => paraVaga({ id: 'v1', slug: 'educador', titulo: 'Educador Social de Música', codigo: 'SOC-2026-031', area: 'social', status: 'publicada' }),
+    buscarVagaDoRh: async () => paraVaga({ id: 'v1', slug: 'educador', titulo: 'Educador Social de Música', codigo: 'SOC-2026-031', area: 'social', status: 'publicada', responsavel_id: banco.responsavel }),
+    listarProcessos: async () => banco.processos,
+    equipe: async () => [{ user_id: 'p1', nome: 'Viviane Mattioli', email: 'adm@anabrasil.org', unidade: 'Administração' }, { user_id: 'p2', nome: 'Marcela Zaccarias', email: 'financeiro@anabrasil.org', unidade: null }],
+    definirResponsavel: async (v: { id: string }, resp: string | null, prazo: string | null) => { banco.definidos.push([v.id, resp, prazo]); return { avisou: !!resp, falhouAviso: false }; },
     candidatosDaVaga: async () => banco.lista.map(conv),
     umaCandidatura: async (id: string) => { const l = banco.lista.find((x) => x.id === id); return l ? conv(l) : null; },
     abrirCandidatura: async () => {},
@@ -67,7 +73,7 @@ const C = (o: Record<string, unknown>) => ({
 
 beforeEach(() => {
   banco.lista = [C({}), C({ id: 'c2', protocolo: '2026-000400', etapa: 'analise', aberta_em: '2026-10-08', perfil: { nome: 'Ana Paula Ribeiro', cidade: 'Campinas/SP', escolaridade: 'medio', experiencias: [] } }), C({ id: 'c3', protocolo: '2026-000390', retirada_em: '2026-10-08', perfil: { nome: 'Bruno Tavares' } })];
-  banco.movidos = []; banco.obs = []; banco.avisar = true; banco.rh = true;
+  banco.movidos = []; banco.obs = []; banco.avisar = true; banco.rh = true; banco.responsavel = null; banco.processos = []; banco.definidos = [];
 });
 
 describe('candidatos da vaga', () => {
@@ -89,7 +95,7 @@ describe('candidatos da vaga', () => {
   it('quem não é RH não vê', async () => {
     banco.rh = false;
     abrir('/vagas/educador/candidatos');
-    expect(screen.getByRole('heading', { name: 'Acesso restrito' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Acesso restrito' })).toBeInTheDocument();
   });
 });
 
@@ -188,5 +194,58 @@ describe('Painel do RH', () => {
     expect(await screen.findByTestId('kpi-Para triar')).toHaveTextContent('2');
     expect(screen.getByTestId('kpi-Vagas abertas')).toHaveTextContent('39');
     expect(screen.getByRole('link', { name: /Educador Social de Música/ })).toHaveAttribute('href', '/vagas/educador/candidatos?ver=novos');
+  });
+});
+
+describe('processos e responsáveis (19/10/2026)', () => {
+  const PROC = (o: Record<string, unknown>) => ({ porColuna: { recebida: 1, analise: 1, entrevista: 0, aprovado: 0, nao_selecionado: 0 }, novos: 1, parados: 0, abertoHa: 24, situacao: 'sem_responsavel', ...o });
+
+  it('o responsável (não RH) entra na vaga dele, sem fechar o resultado', async () => {
+    banco.rh = false; banco.responsavel = 'rh1';
+    abrir('/vagas/educador/candidatos');
+    const quadro = await screen.findByTestId('quadro');
+    expect(within(quadro).getAllByText('Só o RH move para cá.')).toHaveLength(2);
+    fireEvent.drop(within(quadro).getByRole('region', { name: 'Aprovado' }), { dataTransfer: { getData: () => 'c1', setData: () => {} } });
+    expect(banco.movidos).toEqual([]);
+  });
+
+  it('na ficha, o responsável vai até Entrevista e não vê Aprovar nem Não seguir', async () => {
+    banco.rh = false; banco.responsavel = 'rh1';
+    banco.lista[0].etapa = 'entrevista';
+    abrir('/vagas/educador/candidatos/c1');
+    expect(await screen.findByRole('heading', { name: 'Leonardo Garbo Rodrigues' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Aprovar/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Não seguir/ })).toBeNull();
+    expect(screen.getByRole('button', { name: /Voltar para Análise/ })).toBeInTheDocument();
+  });
+
+  it('Processos: sem responsável no topo; definir escolhe a pessoa e o prazo', async () => {
+    const { paraVaga } = await import('@/lib/vagas/api');
+    banco.processos = [
+      PROC({ vaga: paraVaga({ id: 'v2', slug: 'porteiro', titulo: 'Porteiro', area: 'educacao', status: 'publicada', codigo: 'EDU-2026-015', responsavel_id: 'p2' }), situacao: 'no_prazo' }),
+      PROC({ vaga: paraVaga({ id: 'v1', slug: 'aux', titulo: 'Auxiliar Administrativo', area: 'administracao', status: 'publicada', codigo: 'ADM-2026-001' }) }),
+    ];
+    const { ProcessosDoRh } = await import('@/components/vagas/ProcessosDoRh');
+    render(<MemoryRouter><ProcessosDoRh /></MemoryRouter>);
+    const linhas = await screen.findAllByTestId('processo');
+    expect(within(linhas[0]).getByText('Auxiliar Administrativo')).toBeInTheDocument();
+    expect(within(linhas[1]).getByText('Marcela Zaccarias')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Sem responsável\s*1/ })).toBeInTheDocument();
+    fireEvent.click(within(linhas[0]).getByRole('button', { name: 'Definir' }));
+    fireEvent.click(await screen.findByRole('option', { name: /Viviane Mattioli/ }));
+    fireEvent.change(screen.getByLabelText(/Prazo do processo/), { target: { value: '2026-11-15' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar e avisar' }));
+    await waitFor(() => expect(banco.definidos).toEqual([['v1', 'p1', '2026-11-15']]));
+  });
+
+  it('Meus processos mostra só os do responsável', async () => {
+    const { paraVaga } = await import('@/lib/vagas/api');
+    banco.processos = [PROC({ vaga: paraVaga({ id: 'v1', slug: 'aux', titulo: 'Auxiliar Administrativo', area: 'administracao', status: 'publicada', codigo: 'ADM-2026-001', responsavel_id: 'rh1', prazo_processo: '2026-11-15' }) }), PROC({ vaga: paraVaga({ id: 'v2', slug: 'x', titulo: 'Outra', area: 'social', status: 'publicada', codigo: 'X', responsavel_id: 'outra' }) })];
+    const { MeusProcessos } = await import('@/components/vagas/MeusProcessos');
+    render(<MemoryRouter><MeusProcessos /></MemoryRouter>);
+    const cartoes = await screen.findAllByTestId('meu-processo');
+    expect(cartoes).toHaveLength(1);
+    expect(cartoes[0]).toHaveTextContent('prazo 15/11');
+    expect(within(cartoes[0]).getByRole('link', { name: 'Abrir quadro' })).toHaveAttribute('href', '/vagas/aux/candidatos');
   });
 });

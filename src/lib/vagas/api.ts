@@ -34,6 +34,7 @@ export const paraVaga = (l: Record<string, unknown>): Vaga => ({
   prazo: (l.prazo as string | null) ?? null,
   link_externo: (l.link_externo as string | null) ?? null,
   responsavel_id: (l.responsavel_id as string | null) ?? null,
+  prazo_processo: (l.prazo_processo as string | null) ?? null,
   versao: Number(l.versao ?? 1),
   created_by: (l.created_by as string | null) ?? null,
   created_at: String(l.created_at ?? ''),
@@ -62,7 +63,7 @@ export async function buscarVaga(slug: string): Promise<Vaga | null> {
 
 
 /** Os campos que o formulário grava. O resto (datas, versão) o banco carimba. */
-export type DadosDaVaga = Omit<Vaga, 'id' | 'publicada_em' | 'encerrada_em' | 'responsavel_id' | 'versao' | 'created_by' | 'created_at' | 'updated_at'>;
+export type DadosDaVaga = Omit<Vaga, 'id' | 'publicada_em' | 'encerrada_em' | 'responsavel_id' | 'prazo_processo' | 'versao' | 'created_by' | 'created_at' | 'updated_at'>;
 
 /** Todas as vagas, de qualquer status, as últimas mexidas primeiro. */
 export async function listarTodasAsVagas(): Promise<Vaga[]> {

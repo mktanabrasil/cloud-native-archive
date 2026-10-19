@@ -59,22 +59,24 @@ export async function abrirCandidatura(id: string): Promise<void> {
 }
 
 /** Os passos possíveis a partir da etapa atual. */
-export function proximosPassos(c: Pick<Candidatura, 'etapa' | 'resultado' | 'retirada_em'>): {
+/** `podeFechar`: só o RH entra e sai do resultado (passo 3, 19/10/2026); o responsável vai até Entrevista. */
+export function proximosPassos(c: Pick<Candidatura, 'etapa' | 'resultado' | 'retirada_em'>, podeFechar = true): {
   avancar: { etapa: Etapa; resultado: Resultado | null; rotulo: string } | null;
   voltar: { etapa: Etapa; rotulo: string } | null;
   podeRecusar: boolean;
 } {
   if (c.retirada_em) return { avancar: null, voltar: null, podeRecusar: false };
+  if (!podeFechar && c.etapa === 'resultado') return { avancar: null, voltar: null, podeRecusar: false };
   const i = ETAPAS.findIndex(([k]) => k === c.etapa);
   const avancar = c.etapa === 'recebida' ? { etapa: 'analise' as Etapa, resultado: null, rotulo: 'Mover para Análise' }
     : c.etapa === 'analise' ? { etapa: 'entrevista' as Etapa, resultado: null, rotulo: 'Mover para Entrevista' }
-      : c.etapa === 'entrevista' ? { etapa: 'resultado' as Etapa, resultado: 'aprovado' as Resultado, rotulo: 'Aprovar' }
+      : c.etapa === 'entrevista' && podeFechar ? { etapa: 'resultado' as Etapa, resultado: 'aprovado' as Resultado, rotulo: 'Aprovar' }
         : null;
   const anterior = i > 0 ? ETAPAS[c.etapa === 'resultado' ? 2 : i - 1] : null;
   return {
     avancar,
     voltar: anterior ? { etapa: anterior[0], rotulo: `Voltar para ${anterior[1]}` } : null,
-    podeRecusar: !(c.etapa === 'resultado' && c.resultado === 'nao_selecionado'),
+    podeRecusar: podeFechar && !(c.etapa === 'resultado' && c.resultado === 'nao_selecionado'),
   };
 }
 
@@ -238,3 +240,76 @@ export async function montarPainel(dias: number | null, area: string | null, ago
     atencao,
   };
 }
+
+// --- Processos e responsáveis (passo 3 do roteiro, decisões de 19/10/2026) ----------
+// Qualquer pessoa ativa da equipe pode ser responsável; um por vaga; o
+// responsável que não é RH vai até Entrevista (o resultado é do RH); ao ser
+// nomeado, recebe e-mail.
+
+export interface PessoaDaEquipe { user_id: string; nome: string; email: string | null; unidade: string | null }
+
+export async function equipe(): Promise<PessoaDaEquipe[]> {
+  const { data, error } = await supabase.rpc('equipe_para_responsavel');
+  if (error) throw error;
+  return (data ?? []) as PessoaDaEquipe[];
+}
+
+/** Define (ou tira) o responsável e o prazo; avisa a pessoa quando muda o responsável. */
+export async function definirResponsavel(vaga: Pick<Vaga, 'id' | 'responsavel_id'>, responsavel: string | null, prazo: string | null): Promise<{ avisou: boolean; falhouAviso: boolean }> {
+  const { error } = await supabase.from('vagas').update({ responsavel_id: responsavel, prazo_processo: prazo || null }).eq('id', vaga.id);
+  if (error) throw error;
+  if (!responsavel || responsavel === vaga.responsavel_id) return { avisou: false, falhouAviso: false };
+  const { error: e2 } = await supabase.functions.invoke('candidatura-confirmacao', { body: { responsavel_vaga_id: vaga.id } });
+  return { avisou: true, falhouAviso: !!e2 };
+}
+
+export type Situacao = 'no_prazo' | 'triagem_lenta' | 'sem_responsavel' | 'prazo_vencido';
+
+export interface Processo {
+  vaga: Vaga;
+  porColuna: Record<Coluna, number>;
+  novos: number;
+  parados: number;
+  abertoHa: number;
+  situacao: Situacao;
+}
+
+/**
+ * Os processos: cada vaga com os candidatos por coluna, novos, parados e a
+ * situação. O RH vê todos; o responsável recebe só os dele (o banco filtra).
+ */
+export async function listarProcessos(agora = Date.now()): Promise<Processo[]> {
+  const [{ data: vs, error: e1 }, { data: cs, error: e2 }] = await Promise.all([
+    supabase.from('vagas').select('*'),
+    supabase.from('candidaturas').select('id, vaga_id, etapa, resultado, aberta_em, retirada_em'),
+  ]);
+  if (e1) throw e1;
+  if (e2) throw e2;
+  const ativas = (cs ?? []).filter((c) => !c.retirada_em);
+  const mudou = await ultimaMudanca(ativas.map((c) => c.id)).catch(() => new Map<string, string>());
+  return (vs ?? []).map((l) => {
+    const vaga = paraVaga(l as Record<string, unknown>);
+    const daVaga = ativas.filter((c) => c.vaga_id === vaga.id);
+    const porColuna = { recebida: 0, analise: 0, entrevista: 0, aprovado: 0, nao_selecionado: 0 } as Record<Coluna, number>;
+    daVaga.forEach((c) => { porColuna[colunaDe(c as Pick<Candidatura, 'etapa' | 'resultado'>)]++; });
+    const parados = daVaga.filter((c) => c.etapa !== 'resultado' && c.aberta_em && estaParado(mudou.get(c.id), agora)).length;
+    const abertoHa = vaga.publicada_em ? Math.max(0, Math.floor((agora - new Date(vaga.publicada_em).getTime()) / 864e5)) : 0;
+    const vencido = !!vaga.prazo_processo && new Date(`${vaga.prazo_processo}T23:59:59`).getTime() < agora;
+    const situacao: Situacao = !vaga.responsavel_id ? 'sem_responsavel' : vencido ? 'prazo_vencido' : parados > 0 ? 'triagem_lenta' : 'no_prazo';
+    return { vaga, porColuna, novos: daVaga.filter((c) => !c.aberta_em).length, parados, abertoHa, situacao };
+  });
+}
+
+export const ROTULO_DA_SITUACAO: Record<Situacao, string> = {
+  no_prazo: 'No prazo', triagem_lenta: 'Triagem lenta', sem_responsavel: 'Sem responsável', prazo_vencido: 'Prazo vencido',
+};
+
+/** O prazo cai nos próximos 7 dias (e ainda não venceu). */
+export const prazoEmBreve = (prazo: string | null, agora = Date.now()) => {
+  if (!prazo) return false;
+  const fim = new Date(`${prazo}T23:59:59`).getTime();
+  return fim >= agora && fim - agora <= 7 * 864e5;
+};
+
+/** Busca sem acento e sem caixa. */
+export const semAcento = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
