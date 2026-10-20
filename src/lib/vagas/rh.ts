@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { paraVaga } from './api';
 import { ETAPAS, paraCandidatura, rotuloDaEtapa, type Candidatura, type Etapa, type Resultado } from './candidatura';
 import { ESCOLARIDADES } from './perfil';
+import { respostasNaoLidas } from './mensagens';
 import type { Vaga } from './modelo';
 
 /**
@@ -122,6 +123,8 @@ export function textoDoMovimento(m: Movimento): string {
   if (m.acao === 'enviada') return 'Enviada pelo candidato';
   if (m.acao === 'aberta') return `Aberta por ${m.por ?? 'RH'}`;
   if (m.acao === 'retirada') return 'Retirada pelo candidato';
+  if (m.acao === 'mensagem') return `${m.para === 'convite' ? 'Convite para entrevista' : m.para === 'pergunta' ? 'Pergunta' : 'Mensagem'} enviada · ${m.por ?? 'RH'}`;
+  if (m.acao === 'resposta') return m.para === 'confirmada' ? 'Candidato confirmou presença' : m.para === 'nao_pode' ? 'Candidato não pode no horário' : 'Candidato respondeu';
   return `${rotuloDaMarca(m.de)} → ${rotuloDaMarca(m.para)} · ${m.por ?? 'RH'}`;
 }
 
@@ -184,7 +187,7 @@ export interface Painel {
   emEntrevista: number;
   aprovados: number;
   porColuna: Record<Coluna | 'retiradas', number>;
-  atencao: Array<{ vaga: Pick<Vaga, 'id' | 'slug' | 'titulo'>; tipo: 'novos' | 'parados' | 'sem_candidatos'; quantidade: number; detalhe: string }>;
+  atencao: Array<{ vaga: Pick<Vaga, 'id' | 'slug' | 'titulo'>; tipo: 'respostas' | 'novos' | 'parados' | 'sem_candidatos'; quantidade: number; detalhe: string }>;
 }
 
 /**
@@ -205,6 +208,7 @@ export async function montarPainel(dias: number | null, area: string | null, ago
   const doPeriodo = todas.filter((c) => new Date(c.created_at).getTime() >= desde);
   const ativas = todas.filter((c) => !c.retirada_em);
   const mudou = await ultimaMudanca(ativas.map((c) => c.id)).catch(() => new Map<string, string>());
+  const naoLidas = await respostasNaoLidas().catch(() => new Map<string, number>());
 
   const abertas = vagas.filter((v) => v.status === 'publicada');
   const porArea: Record<string, number> = {};
@@ -216,6 +220,8 @@ export async function montarPainel(dias: number | null, area: string | null, ago
   const atencao: Painel['atencao'] = [];
   for (const v of abertas) {
     const daVaga = ativas.filter((c) => c.vaga_id === v.id);
+    const responderam = daVaga.filter((c) => naoLidas.has(c.id)).length;
+    if (responderam) atencao.push({ vaga: v, tipo: 'respostas', quantidade: responderam, detalhe: `${responderam} ${responderam === 1 ? 'candidato respondeu' : 'candidatos responderam'}` });
     const novos = daVaga.filter((c) => !c.aberta_em);
     if (novos.length) {
       const maisAntigo = Math.max(...novos.map((c) => Math.floor((agora - new Date(c.created_at).getTime()) / 864e5)));
@@ -226,7 +232,7 @@ export async function montarPainel(dias: number | null, area: string | null, ago
     const abertaHa = v.publicada_em ? Math.floor((agora - new Date(v.publicada_em).getTime()) / 864e5) : 0;
     if (!daVaga.length && abertaHa >= 14) atencao.push({ vaga: v, tipo: 'sem_candidatos', quantidade: 0, detalhe: `aberta há ${abertaHa} dias, nenhuma candidatura` });
   }
-  const ordem = { novos: 0, parados: 1, sem_candidatos: 2 };
+  const ordem = { respostas: 0, novos: 1, parados: 2, sem_candidatos: 3 };
   atencao.sort((a, b) => ordem[a.tipo] - ordem[b.tipo] || b.quantidade - a.quantidade);
 
   return {

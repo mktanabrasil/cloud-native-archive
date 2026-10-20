@@ -833,6 +833,51 @@ export type Database = {
         }
         Relationships: []
       }
+      candidatura_mensagens: {
+        Row: {
+          autor: string
+          candidatura_id: string
+          created_at: string
+          email_enviado_em: string | null
+          entrevista: Json | null
+          id: string
+          lida_em: string | null
+          por: string | null
+          presenca: string | null
+          responde_a: string | null
+          texto: string
+          tipo: string
+        }
+        Insert: {
+          autor: string
+          candidatura_id: string
+          created_at?: string
+          email_enviado_em?: string | null
+          entrevista?: Json | null
+          id?: string
+          lida_em?: string | null
+          por?: string | null
+          presenca?: string | null
+          responde_a?: string | null
+          texto: string
+          tipo: string
+        }
+        Update: {
+          autor?: string
+          candidatura_id?: string
+          created_at?: string
+          email_enviado_em?: string | null
+          entrevista?: Json | null
+          id?: string
+          lida_em?: string | null
+          por?: string | null
+          presenca?: string | null
+          responde_a?: string | null
+          texto?: string
+          tipo?: string
+        }
+        Relationships: []
+      }
       candidatura_observacoes: {
         Row: {
           atualizado_por: string | null
@@ -895,6 +940,7 @@ export type Database = {
       }
       candidatos: {
         Row: {
+          avisos_vistos_em: string | null
           aceite_termos_em: string | null
           aceite_termos_versao: string | null
           nome_social: string | null
@@ -920,6 +966,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          avisos_vistos_em?: string | null
           aceite_termos_em?: string | null
           aceite_termos_versao?: string | null
           nome_social?: string | null
@@ -945,6 +992,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          avisos_vistos_em?: string | null
           aceite_termos_em?: string | null
           aceite_termos_versao?: string | null
           nome_social?: string | null
@@ -1287,6 +1335,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      enviar_mensagem: {
+        Args: { p_candidatura: string; p_tipo: string; p_texto: string; p_entrevista?: Json }
+        Returns: Json
+      }
+      responder_mensagem: {
+        Args: { p_mensagem: string; p_texto?: string; p_presenca?: string }
+        Returns: string
+      }
+      marcar_mensagens_lidas: {
+        Args: { p_candidatura: string }
+        Returns: undefined
+      }
+      meus_avisos: {
+        Args: Record<PropertyKey, never>
+        Returns: { candidatura_id: string; tipo: string; texto: string; vaga: string; em: string; novo: boolean }[]
+      }
+      marcar_avisos_vistos: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       equipe_para_responsavel: {
         Args: Record<PropertyKey, never>
         Returns: { user_id: string; nome: string; email: string | null; unidade: string | null }[]

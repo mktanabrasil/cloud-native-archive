@@ -16,7 +16,12 @@ addEventListener('error', (e) => { console.error('[candidatura-confirmacao] erro
  *    ou admin). Avisa a etapa atual (Análise, Entrevista, Aprovado ou Não
  *    selecionado) uma vez cada (`etapa_avisada`). Voltar etapa não chama.
  *
- * Nos dois casos o destinatário é sempre o e-mail da conta do candidato,
+ * 3. Responsável nomeado (passo 3, 19/10/2026): `{ responsavel_vaga_id }`.
+ * 4. Mensagem da equipe (passo 5, 20/10/2026): `{ mensagem_id }`, chamado
+ *    pelo RH ou pelo responsável logo depois de `enviar_mensagem`. Uma vez
+ *    por mensagem (`email_enviado_em`).
+ *
+ * Para o candidato, o destinatário é sempre o e-mail da conta do candidato,
  * lido pela chave de serviço; nunca um endereço vindo do pedido.
  *
  * Segredos (Coolify, os mesmos dos avisos de eventos): SMTP_HOST, SMTP_PORT,
@@ -131,8 +136,54 @@ Deno.serve(async (req) => {
   const { data: quem, error: erroDeQuem } = await userClient.auth.getUser(auth.replace('Bearer ', ''));
   if (erroDeQuem || !quem?.user) return json({ error: 'Não autorizado.' }, 401);
 
-  let corpo: { candidatura_id?: string; aviso?: boolean; responsavel_vaga_id?: string } = {};
+  let corpo: { candidatura_id?: string; aviso?: boolean; responsavel_vaga_id?: string; mensagem_id?: string } = {};
   try { corpo = await req.json(); } catch { /* corpo vazio */ }
+
+  // 4. Mensagem da equipe (passo 5, 20/10/2026): o texto inteiro vai no e-mail, com o botão para o app.
+  if (corpo.mensagem_id) {
+    const adm = createClient(SUPABASE_URL, SERVICE);
+    const { data: msg } = await adm
+      .from('candidatura_mensagens')
+      .select('id, candidatura_id, autor, tipo, texto, entrevista, email_enviado_em, candidaturas(id, user_id, protocolo, perfil, retirada_em, vagas(titulo))')
+      .eq('id', String(corpo.mensagem_id))
+      .maybeSingle();
+    if (!msg || msg.autor !== 'equipe') return json({ error: 'Mensagem não encontrada.' }, 404);
+    const { data: rh } = await userClient.rpc('is_rh_or_admin', { _user_id: quem.user.id });
+    const { data: responsavel } = rh ? { data: false } : await userClient.rpc('responsavel_pela_candidatura', { _candidatura_id: msg.candidatura_id, _user_id: quem.user.id });
+    if (!rh && !responsavel) return json({ error: 'Só o RH ou o responsável pelo processo escreve ao candidato.' }, 403);
+    if (msg.email_enviado_em) return json({ enviado: false, motivo: 'já enviado' });
+    const cand = msg.candidaturas as unknown as { id: string; user_id: string; protocolo: string; perfil: Record<string, unknown> | null; retirada_em: string | null; vagas: { titulo?: string } | null };
+    if (cand.retirada_em) return json({ enviado: false, motivo: 'retirada' });
+    const { data: dono } = await adm.auth.admin.getUserById(cand.user_id);
+    if (!dono?.user?.email) return json({ error: 'Candidato sem e-mail.' }, 404);
+    const primeiro = String(cand.perfil?.nome_social || cand.perfil?.nome || 'candidato').split(' ')[0];
+    const tituloDaVaga = String(cand.vagas?.titulo ?? 'Trabalhe Conosco');
+    const paragrafos = String(msg.texto).split(/\n+/).map((p) => p.trim()).filter(Boolean);
+    let m: Mensagem;
+    let botao: string;
+    if (msg.tipo === 'convite') {
+      const e = (msg.entrevista ?? {}) as { dia?: string; hora?: string; formato?: string; local?: string };
+      const dia = e.dia ? new Date(`${e.dia}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' }) : '';
+      m = {
+        assunto: `Convite para entrevista · ${tituloDaVaga}`,
+        titulo: `${primeiro}, você foi convidado(a) para uma entrevista.`,
+        paragrafos: [...paragrafos, 'Confirme sua presença pelo app (ou avise se não puder nesse horário).'],
+        destaque: { rotulo: 'Entrevista', valor: `${dia} às ${e.hora ?? ''}`, rodape: [e.formato === 'online' ? 'On-line' : e.formato === 'telefone' ? 'Por telefone' : 'Presencial', e.local].filter(Boolean).join(' · ') },
+        cor: '#E6F8F3',
+      };
+      botao = 'Confirmar presença';
+    } else if (msg.tipo === 'pergunta') {
+      m = { assunto: `O RH tem uma pergunta · ${tituloDaVaga}`, titulo: `${primeiro}, o RH precisa de uma informação.`, paragrafos: [...paragrafos, 'Responda pelo app, na sua candidatura.'] };
+      botao = 'Responder no app';
+    } else {
+      m = { assunto: `Mensagem do RH · ${tituloDaVaga}`, titulo: `${primeiro}, uma mensagem sobre sua candidatura.`, paragrafos };
+      botao = 'Abrir no app';
+    }
+    try { await enviar(dono.user.email, m, `${SITE}/vagas/minha-area/${cand.id}`, botao); }
+    catch (e) { return json({ error: (e instanceof Error ? e.message : String(e)).slice(0, 300) }, 502); }
+    await adm.from('candidatura_mensagens').update({ email_enviado_em: new Date().toISOString() }).eq('id', msg.id);
+    return json({ enviado: true });
+  }
 
   // 3. Responsável nomeado (passo 3, 19/10/2026): só o RH pede; vai para o responsável da vaga.
   if (corpo.responsavel_vaga_id) {

@@ -10,6 +10,8 @@ import { carregarPerfil, completude, passosQueFaltam, type Perfil } from '@/lib/
 import { dataEHora, minhasCandidaturas, type Candidatura } from '@/lib/vagas/candidatura';
 import { AbasDoCandidato } from '@/components/vagas/AbasDoCandidato';
 import { EtapasDaCandidatura } from '@/components/vagas/EtapasDaCandidatura';
+import { SinoDoCandidato } from '@/components/vagas/SinoDoCandidato';
+import { minhasMensagens, pendentesDoCandidato, type Mensagem } from '@/lib/vagas/mensagens';
 
 /**
  * /vagas/minha-area — a área do candidato (mockups 08, M11 e o do PR 7, de
@@ -31,18 +33,28 @@ function Anel({ pct }: { pct: number }) {
   );
 }
 
+/** O selo da candidatura na lista: "Responda ao RH" quando há convite ou pergunta esperando; "Nova mensagem" quando há o que ler. */
+function SeloDeMensagem({ lista }: { lista: Mensagem[] }) {
+  const pendentes = pendentesDoCandidato(lista);
+  if (pendentes.length) return <span className="mt-1 block w-fit rounded-full bg-[#FDE7E2] px-2.5 py-0.5 text-[11px] font-bold text-[#B23A25] dark:bg-[#3F2320] dark:text-[#FF9C88]">{pendentes.some((m) => m.tipo === 'convite') ? 'Convite para entrevista' : 'Responda ao RH'}</span>;
+  if (lista.some((m) => m.autor === 'equipe' && !m.lida_em)) return <span className="mt-1 block w-fit rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-bold text-sky-800 dark:bg-sky-950/60 dark:text-sky-300">Nova mensagem</span>;
+  return null;
+}
+
 export default function MinhaAreaCandidatoPage() {
   const { user, isAuthenticated, loading, signOut } = useAuth();
   const nome = primeiroNome(user);
   useTituloDaAba('Minha área · Trabalhe Conosco ANA Brasil');
   const [dados, setDados] = useState<{ perfil: Perfil; exps: number } | null>(null);
   const [candidaturas, setCandidaturas] = useState<Candidatura[] | null>(null);
+  const [mensagens, setMensagens] = useState<Mensagem[]>([]);
 
   const idDoCandidato = user && ehCandidato(user) ? user.id : null;
   useEffect(() => {
     if (!idDoCandidato) return;
     carregarPerfil(idDoCandidato).then(({ perfil, experiencias }) => setDados({ perfil, exps: experiencias.length })).catch(() => setDados(null));
     minhasCandidaturas(idDoCandidato).then(setCandidaturas).catch(() => setCandidaturas([]));
+    minhasMensagens().then(setMensagens).catch(() => setMensagens([]));
   }, [idDoCandidato]);
 
   if (loading) return null;
@@ -57,7 +69,10 @@ export default function MinhaAreaCandidatoPage() {
   return (
     <MolduraDasVagas>
       <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10 sm:px-6">
-        <h1 className="vg-pergunta text-[30px] font-bold leading-tight sm:text-[38px]">Olá, {nome}.</h1>
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="vg-pergunta text-[30px] font-bold leading-tight sm:text-[38px]">Olá, {nome}.</h1>
+          <SinoDoCandidato />
+        </div>
 
         <section aria-label="Minhas candidaturas" className="flex flex-col gap-3">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Minhas candidaturas</span>
@@ -75,6 +90,7 @@ export default function MinhaAreaCandidatoPage() {
                       <span className="min-w-0">
                         <b className="block truncate">{c.vaga?.titulo ?? 'Vaga encerrada'}</b>
                         <span className="text-xs text-muted-foreground">Protocolo {c.protocolo} · {dataEHora(c.created_at).split(',')[0]}{c.retirada_em ? ' · retirada' : ''}</span>
+                        {!c.retirada_em && <SeloDeMensagem lista={mensagens.filter((m) => m.candidatura_id === c.id)} />}
                       </span>
                       <ChevronRight className="h-5 w-5 shrink-0" aria-hidden />
                     </span>

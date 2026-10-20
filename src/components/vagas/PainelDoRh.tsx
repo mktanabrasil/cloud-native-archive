@@ -86,8 +86,8 @@ export function PainelDoRh() {
                       <Link to={a.tipo === 'sem_candidatos' ? `/vagas/${a.vaga.slug}` : `/vagas/${a.vaga.slug}/candidatos?ver=${a.tipo}`}
                         className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-xl bg-background px-3 py-2.5 text-sm hover:bg-background/70">
                         <span className="min-w-0"><b className="block truncate">{a.vaga.titulo}</b><span className="text-xs text-muted-foreground">{a.detalhe}</span></span>
-                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${a.tipo === 'novos' ? 'bg-red-50 text-red-800 dark:bg-red-950/60 dark:text-red-300' : 'bg-amber-50 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200'}`}>
-                          {a.tipo === 'novos' ? `${a.quantidade} ${a.quantidade === 1 ? 'novo' : 'novos'}` : a.tipo === 'parados' ? 'parados' : 'sem candidatos'}
+                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${a.tipo === 'respostas' ? 'bg-sky-50 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300' : a.tipo === 'novos' ? 'bg-red-50 text-red-800 dark:bg-red-950/60 dark:text-red-300' : 'bg-amber-50 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200'}`}>
+                          {a.tipo === 'respostas' ? 'respondeu' : a.tipo === 'novos' ? `${a.quantidade} ${a.quantidade === 1 ? 'novo' : 'novos'}` : a.tipo === 'parados' ? 'parados' : 'sem candidatos'}
                         </span>
                       </Link>
                     </li>

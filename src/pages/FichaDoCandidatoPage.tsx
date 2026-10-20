@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, FileText, Lock, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, FileText, Lock, Send, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,10 +9,12 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import { EtapasDaCandidatura } from '@/components/vagas/EtapasDaCandidatura';
 import { MolduraDasVagas } from '@/components/vagas/PecasDasVagas';
+import { ConversaDaFicha, EnviarMensagem } from '@/components/vagas/MensagensDaFicha';
+import { marcarLidas, mensagensDa, type Mensagem } from '@/lib/vagas/mensagens';
 import { dataEHora, rotuloDaEtapa, type Etapa, type Resultado } from '@/lib/vagas/candidatura';
 import { TURNOS, linkDoCurriculo, periodo } from '@/lib/vagas/perfil';
 import {
-  abrirCandidatura, escolaridadeDe, experienciasDe, historico, iniciais, lerObservacoes, lugarDe, moverCandidatura, nomeDoCandidato,
+  abrirCandidatura, buscarVagaDoRh, escolaridadeDe, experienciasDe, historico, iniciais, lerObservacoes, lugarDe, moverCandidatura, nomeDoCandidato,
   proximosPassos, salvarObservacoes, textoDoMovimento, umaCandidatura, type CandidaturaRh, type Movimento,
 } from '@/lib/vagas/rh';
 
@@ -70,14 +72,17 @@ export default function FichaDoCandidatoPage() {
   const [obsSalva, setObsSalva] = useState<'salvo' | 'salvando' | null>(null);
   const [hist, setHist] = useState<Movimento[]>([]);
   const [ocupado, setOcupado] = useState(false);
-  const [aba, setAba] = useState<'candidatura' | 'curriculo' | 'historico'>('candidatura');
+  const [aba, setAba] = useState<'candidatura' | 'curriculo' | 'mensagens' | 'historico'>('candidatura');
+  const [msgs, setMsgs] = useState<Mensagem[]>([]);
+  const [escrevendo, setEscrevendo] = useState(false);
+  const [tituloDaVaga, setTituloDaVaga] = useState('');
   const temporizador = useRef<number>();
   const nome = c ? nomeDoCandidato(c) : '';
   useTituloDaAba(`${nome || 'Candidato'} · Trabalhe Conosco`);
 
   const recarregar = async () => {
-    const [x, h] = await Promise.all([umaCandidatura(id), historico(id).catch(() => [])]);
-    setC(x); setHist(h);
+    const [x, h, ms] = await Promise.all([umaCandidatura(id), historico(id).catch(() => []), mensagensDa(id).catch(() => [])]);
+    setC(x); setHist(h); setMsgs(ms);
   };
 
   useEffect(() => {
@@ -88,10 +93,18 @@ export default function FichaDoCandidatoPage() {
         await abrirCandidatura(id).catch(() => null);
         await recarregar();
         setObs(await lerObservacoes(id).catch(() => ''));
+        buscarVagaDoRh(slug).then((v) => setTituloDaVaga(v?.titulo ?? '')).catch(() => null);
       } catch { setC(null); }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, id]);
+
+  // Abrir a aba de mensagens marca as respostas do candidato como lidas.
+  const naoLidas = msgs.filter((m) => m.autor === 'candidato' && !m.lida_em).length;
+  useEffect(() => {
+    if (aba !== 'mensagens' || !naoLidas) return;
+    marcarLidas(id).then(() => setMsgs((l) => l.map((m) => (m.autor === 'candidato' && !m.lida_em ? { ...m, lida_em: new Date().toISOString() } : m)))).catch(() => null);
+  }, [aba, naoLidas, id]);
 
   if (loading) return null;
   if (!isRh && c === null) {
@@ -149,13 +162,17 @@ export default function FichaDoCandidatoPage() {
               </div>
 
               <div role="tablist" aria-label="Partes da ficha" className="flex gap-1 border-b border-border">
-                {([['candidatura', 'Candidatura'], ['curriculo', 'Currículo'], ['historico', 'Histórico']] as const).map(([k, rot]) => (
+                {([['candidatura', 'Candidatura'], ['curriculo', 'Currículo'], ['mensagens', 'Mensagens'], ['historico', 'Histórico']] as const).map(([k, rot]) => (
                   <button key={k} type="button" role="tab" aria-selected={aba === k} onClick={() => setAba(k)}
-                    className={`-mb-px border-b-2 px-3.5 py-2 text-sm font-semibold ${aba === k ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>{rot}</button>
+                    className={`-mb-px border-b-2 px-3.5 py-2 text-sm font-semibold ${aba === k ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
+                    {rot}{k === 'mensagens' && naoLidas > 0 && <span className="ml-1.5 inline-grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#F26B4F] px-1 text-[10.5px] font-bold text-white" aria-label={`${naoLidas} não lidas`}>{naoLidas}</span>}
+                  </button>
                 ))}
               </div>
 
               {aba === 'curriculo' && <CurriculoNaFicha caminho={c.curriculo_caminho} nome={c.curriculo_nome} />}
+
+              {aba === 'mensagens' && <ConversaDaFicha lista={msgs} nome={nome} aoNova={c.retirada_em ? undefined : () => setEscrevendo(true)} />}
 
               {aba === 'historico' && (
                 <ol className="flex flex-col gap-1.5 text-sm text-muted-foreground" data-testid="historico">
@@ -228,12 +245,18 @@ export default function FichaDoCandidatoPage() {
                 )}
               </div>
 
+              {!c.retirada_em && (
+                <Button variant="outline" className="bg-background" onClick={() => setEscrevendo(true)}><Send className="h-4 w-4" /> Enviar mensagem</Button>
+              )}
+
               <div className="flex flex-col gap-2 rounded-xl bg-background p-3.5">
                 <div className="flex items-center justify-between"><b className="text-sm">Observações do RH</b><span className="text-[11px] text-muted-foreground">{obsSalva === 'salvando' ? 'Salvando…' : obsSalva === 'salvo' ? 'Salvo' : 'Só a equipe vê'}</span></div>
                 <Textarea aria-label="Observações do RH" rows={4} maxLength={4000} value={obs} onChange={(e) => mudarObs(e.target.value)} placeholder="Ex.: ligar quinta à tarde." />
               </div>
 
             </aside>
+            <EnviarMensagem aberto={escrevendo} aoFechar={() => setEscrevendo(false)} candidatura={c.id} nome={nome} vaga={tituloDaVaga || 'a vaga'} etapa={c.etapa}
+              aoEnviar={() => { recarregar(); setAba('mensagens'); }} />
           </div>
         )}
       </div>
