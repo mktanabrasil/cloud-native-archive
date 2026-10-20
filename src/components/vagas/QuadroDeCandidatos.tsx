@@ -16,7 +16,7 @@ import {
  * Não selecionado pede confirmação (notícia definitiva). No celular, onde não
  * há arrastar, cada cartão tem "Mover para". Retiradas ficam fora do quadro.
  */
-export function QuadroDeCandidatos({ slug, lista, desde, aoMudar, podeFechar = true }: { slug: string; lista: CandidaturaRh[]; desde: Map<string, string>; aoMudar: () => void; podeFechar?: boolean }) {
+export function QuadroDeCandidatos({ slug, lista, desde, aoMudar, podeFechar = true, naoLidas }: { slug: string; lista: CandidaturaRh[]; desde: Map<string, string>; aoMudar: () => void; podeFechar?: boolean; naoLidas?: Map<string, number> }) {
   const navigate = useNavigate();
   const [arrastando, setArrastando] = useState<string | null>(null);
   const [sobre, setSobre] = useState<Coluna | null>(null);
@@ -76,6 +76,7 @@ export function QuadroDeCandidatos({ slug, lista, desde, aoMudar, podeFechar = t
                     {c.requisitos.length > 0 && <span className="rounded bg-muted px-1.5 text-muted-foreground">{c.requisitos.filter((r) => r.atende).length} de {c.requisitos.length}</span>}
                     {c.curriculo_caminho && <span className="rounded bg-muted px-1.5 text-muted-foreground">currículo</span>}
                     {!c.aberta_em && <span className="rounded bg-red-50 px-1.5 font-bold text-red-800 dark:bg-red-950/60 dark:text-red-300">novo</span>}
+                    {naoLidas?.has(c.id) && <span className="rounded bg-sky-50 px-1.5 font-bold text-sky-800 dark:bg-sky-950/60 dark:text-sky-300">respondeu</span>}
                     {c.etapa !== 'resultado' && c.aberta_em && estaParado(desde.get(c.id)) && <span className="rounded bg-amber-50 px-1.5 font-bold text-amber-900 dark:bg-amber-950/60 dark:text-amber-200">parado</span>}
                   </div>
                   <label className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground sm:hidden">

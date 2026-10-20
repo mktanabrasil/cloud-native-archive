@@ -39,6 +39,7 @@ import MinhaAreaCandidatoPage from "./pages/MinhaAreaCandidatoPage";
 import PrivacidadeCandidatoPage from "./pages/PrivacidadeCandidatoPage";
 import MeuPerfilCandidatoPage from "./pages/MeuPerfilCandidatoPage";
 import CurriculoCandidatoPage from "./pages/CurriculoCandidatoPage";
+import AvisosCandidatoPage from "./pages/AvisosCandidatoPage";
 import CandidaturaPage from "./pages/CandidaturaPage";
 import CandidaturaDetalhePage from "./pages/CandidaturaDetalhePage";
 import CandidatosDaVagaPage from "./pages/CandidatosDaVagaPage";
@@ -153,6 +154,7 @@ const App = () => (
                 <Route path={ROTAS_DO_CANDIDATO.privacidade} element={<PrivacidadeCandidatoPage />} />
                 <Route path={ROTAS_DO_CANDIDATO.meuPerfil} element={<MeuPerfilCandidatoPage />} />
                 <Route path={ROTAS_DO_CANDIDATO.curriculo} element={<CurriculoCandidatoPage />} />
+                <Route path={ROTAS_DO_CANDIDATO.avisos} element={<AvisosCandidatoPage />} />
                 <Route path={`${ROTAS_DO_CANDIDATO.minhaArea}/:id`} element={<CandidaturaDetalhePage />} />
                 <Route path="/vagas/:slug/candidatar" element={<CandidaturaPage />} />
                 <Route path="/vagas/:slug/candidatos" element={<CandidatosDaVagaPage />} />

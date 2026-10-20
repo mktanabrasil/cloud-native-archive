@@ -15,6 +15,7 @@ import {
   buscarVagaDoRh, candidatosDaVaga, semAcento, csvDosCandidatos, estaParado, ultimaMudanca, escolaridadeDe, experienciasDe, iniciais, lugarDe, nomeDoCandidato,
   type CandidaturaRh,
 } from '@/lib/vagas/rh';
+import { respostasNaoLidas } from '@/lib/vagas/mensagens';
 
 /**
  * /vagas/:slug/candidatos — os candidatos de uma vaga, para o RH (PR 9,
@@ -50,9 +51,10 @@ export default function CandidatosDaVagaPage() {
   // Quadro ou lista (decisão de 19/10/2026: abre no quadro; o app lembra a escolha).
   const [vista, setVista] = useState<'quadro' | 'lista'>(() => { try { return localStorage.getItem('vagas-rh-vista') === 'lista' ? 'lista' : 'quadro'; } catch { return 'quadro'; } });
   const escolherVista = (v: 'quadro' | 'lista') => { setVista(v); setFiltro('todas'); try { localStorage.setItem('vagas-rh-vista', v); } catch { /* segue */ } };
-  // ?ver=novos|parados: vindo do "Pede atenção" do Painel.
+  // ?ver=novos|parados|respostas: vindo do "Pede atenção" do Painel.
   const [params, setParams] = useSearchParams();
-  const ver = params.get('ver') === 'novos' || params.get('ver') === 'parados' ? params.get('ver') as 'novos' | 'parados' : null;
+  const ver = (['novos', 'parados', 'respostas'] as const).find((v) => v === params.get('ver')) ?? null;
+  const [naoLidas, setNaoLidas] = useState<Map<string, number>>(new Map());
   const [desde, setDesde] = useState<Map<string, string>>(new Map());
   const [versao, setVersao] = useState(0);
   useTituloDaAba(`${vaga?.titulo ? `Candidatos · ${vaga.titulo}` : 'Candidatos'} · Trabalhe Conosco`);
@@ -68,6 +70,7 @@ export default function CandidatosDaVagaPage() {
           const l = await candidatosDaVaga(v.id);
           setLista(l);
           setDesde(await ultimaMudanca(l.map((c) => c.id)).catch(() => new Map()));
+          setNaoLidas(await respostasNaoLidas().catch(() => new Map()));
         }
       } catch { setErro(true); setLista([]); }
     })();
@@ -75,8 +78,9 @@ export default function CandidatosDaVagaPage() {
 
   const comVer = useMemo(() => (lista ?? []).filter((c) =>
     ver === 'novos' ? !c.aberta_em && !c.retirada_em
+      : ver === 'respostas' ? naoLidas.has(c.id)
       : ver === 'parados' ? !c.retirada_em && c.etapa !== 'resultado' && !!c.aberta_em && estaParado(desde.get(c.id))
-        : true), [lista, ver, desde]);
+        : true), [lista, ver, desde, naoLidas]);
 
   const contagem = useMemo(() => {
     const l = lista ?? [];
@@ -132,7 +136,7 @@ export default function CandidatosDaVagaPage() {
 
             {ver && (
               <p className="flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950/50 dark:text-amber-100">
-                Mostrando só os {ver === 'novos' ? 'novos (ninguém abriu)' : 'parados há 10+ dias'}.
+                Mostrando só {ver === 'novos' ? 'os novos (ninguém abriu)' : ver === 'respostas' ? 'quem respondeu e ainda não foi lido' : 'os parados há 10+ dias'}.
                 <button type="button" className="font-semibold underline" onClick={() => { const p = new URLSearchParams(params); p.delete('ver'); setParams(p, { replace: true }); }}>Ver todos</button>
               </p>
             )}
@@ -162,7 +166,7 @@ export default function CandidatosDaVagaPage() {
             {lista === null ? (
               <p className="text-sm text-muted-foreground">Carregando…</p>
             ) : vista === 'quadro' ? (
-              <QuadroDeCandidatos slug={slug} lista={vistas} desde={desde} podeFechar={isRh} aoMudar={() => setVersao((n) => n + 1)} />
+              <QuadroDeCandidatos slug={slug} lista={vistas} desde={desde} naoLidas={naoLidas} podeFechar={isRh} aoMudar={() => setVersao((n) => n + 1)} />
             ) : vistas.length === 0 ? (
               <p className="rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">{(lista ?? []).length ? 'Ninguém nesta etapa.' : 'Ninguém se candidatou ainda.'}</p>
             ) : (
@@ -190,6 +194,7 @@ export default function CandidatosDaVagaPage() {
                           <td className="p-3">
                             <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${c.retirada_em ? 'bg-muted text-muted-foreground' : COR_DA_ETAPA[c.etapa]}`}>{c.retirada_em ? 'Retirada' : rotuloDaEtapa(c.etapa, c.resultado)}</span>
                             {!c.aberta_em && !c.retirada_em && <span className="ml-1.5 rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-800 dark:bg-red-950/60 dark:text-red-300">novo</span>}
+                            {naoLidas.has(c.id) && <span className="ml-1.5 rounded-full bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-sky-800 dark:bg-sky-950/60 dark:text-sky-300">respondeu</span>}
                           </td>
                         </tr>
                       );

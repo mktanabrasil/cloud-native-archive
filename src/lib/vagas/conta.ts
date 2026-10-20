@@ -20,6 +20,7 @@ export const ROTAS_DO_CANDIDATO = {
   meuPerfil: '/vagas/meu-perfil',
   curriculo: '/vagas/curriculo',
   privacidade: '/vagas/privacidade',
+  avisos: '/vagas/avisos',
 } as const;
 
 /**

@@ -7,6 +7,8 @@ import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import { AbasDoCandidato } from '@/components/vagas/AbasDoCandidato';
 import { EtapasDaCandidatura } from '@/components/vagas/EtapasDaCandidatura';
 import { MolduraDaConta } from '@/components/vagas/MolduraDaConta';
+import { MensagensDoCandidato } from '@/components/vagas/MensagensDoCandidato';
+import { SinoDoCandidato } from '@/components/vagas/SinoDoCandidato';
 import { ROTAS_DO_CANDIDATO, ehCandidato } from '@/lib/vagas/conta';
 import { dataEHora, rotuloDaEtapa, minhasCandidaturas, retirarCandidatura, type Candidatura } from '@/lib/vagas/candidatura';
 
@@ -48,7 +50,7 @@ export default function CandidaturaDetalhePage() {
     }
   }
 
-  const atalho = <Link to={ROTAS_DO_CANDIDATO.minhaArea} className="text-foreground hover:text-primary">Minha área</Link>;
+  const atalho = <span className="flex items-center gap-3"><Link to={ROTAS_DO_CANDIDATO.minhaArea} className="text-foreground hover:text-primary">Minha área</Link><SinoDoCandidato /></span>;
   const etapaVisivel = c ? rotuloDaEtapa(c.etapa, c.resultado) : '';
 
   return (
@@ -69,6 +71,8 @@ export default function CandidaturaDetalhePage() {
               {c.retirada_em ? 'Retirada' : etapaVisivel}
             </span>
             <EtapasDaCandidatura etapa={c.etapa} resultado={c.resultado} retirada={!!c.retirada_em} />
+
+            <MensagensDoCandidato candidatura={c.id} retirada={!!c.retirada_em} />
 
             {c.retirada_em ? (
               <p className="rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">

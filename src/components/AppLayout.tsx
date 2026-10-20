@@ -25,6 +25,7 @@ import logoImg from '@/assets/logo.png';
 import { ThemeToggle } from './ThemeToggle';
 import { navItems } from '@/config/navigation';
 import { useSouResponsavel } from '@/hooks/useSouResponsavel';
+import { useAvisosDaEquipe } from '@/hooks/useAvisosDaEquipe';
 import { ehCandidato } from '@/lib/vagas/conta';
 
 export default function AppLayout() {
@@ -53,6 +54,8 @@ export default function AppLayout() {
   // Conta de candidato (Trabalhe Conosco) vê o app como visitante: sem menu da equipe.
   const isAuthenticated = temSessao && !ehCandidato(user);
   const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh } = useUserRole();
+  // A bolinha em "Vagas": novos + respostas não lidas (passo 5, 20/10/2026).
+  const avisosDeVagas = useAvisosDaEquipe(isRh || souResponsavel, location.pathname);
   const { eligible: betaEligible, rawEnabled: betaOn, toggleBeta } = useBetaPreference();
   const isEmbedded = useIsEmbedded();
   // Na porta de entrada a tela inteira é do card de acesso: sem sessão o menu
@@ -110,6 +113,9 @@ export default function AppLayout() {
           >
             <item.icon className={cn("h-4 w-4 shrink-0", !onClick && "hidden xl:block")} />
             <span>{item.label}</span>
+            {item.to === '/vagas' && avisosDeVagas > 0 && (
+              <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#F26B4F] px-1 text-[10.5px] font-bold text-white" aria-label={`${avisosDeVagas} para ver`}>{avisosDeVagas > 99 ? '99+' : avisosDeVagas}</span>
+            )}
           </Link>
         );
       })}

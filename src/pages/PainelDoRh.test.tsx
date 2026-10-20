@@ -14,7 +14,7 @@ const banco = vi.hoisted(() => ({
 }));
 
 globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
-vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() } }));
+vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() } }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'rh1', email: 'carla@anabrasil.org', user_metadata: {} }, isAuthenticated: true, loading: false, signOut: vi.fn() }) }));
 vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ isRh: banco.rh, loading: false, userName: 'Carla' }) }));
