@@ -79,6 +79,15 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
     imagemAlt: 'Pizza da Alegria, ANA Brasil: uma pizza para você, um Natal mais feliz para uma criança',
   },
   {
+    arquivo: 'voluntariado.html',
+    regra: 'RewriteRule ^voluntariado/?$ /voluntariado.html [L]',
+    titulo: 'Natal Feliz · Seja voluntário',
+    descricao: 'Inscreva-se para ajudar no Natal Feliz de 08/12. Escolha onde quer ajudar: inscrições até 15/11.',
+    // Provisória até a arte da campanha: a imagem do app.
+    imagem: '/og-app.jpg',
+    imagemAlt: 'Natal Feliz da ANA Brasil: seja voluntário',
+  },
+  {
     arquivo: 'vagas.html',
     regra: 'RewriteRule ^vagas(/|$) /vagas.html [L]',
     titulo: 'Trabalhe Conosco · ANA Brasil',

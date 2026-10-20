@@ -1370,11 +1370,54 @@ export type Database = {
         }
         Relationships: []
       }
+      voluntarios_natal: {
+        Row: {
+          area: string
+          created_at: string
+          id: string
+          nome: string
+          opcao1: string
+          opcao2: string | null
+          protocolo: string
+          unidade_id: string
+          unidade_nome: string
+          whatsapp: string
+        }
+        Insert: {
+          area: string
+          created_at?: string
+          id?: string
+          nome: string
+          opcao1: string
+          opcao2?: string | null
+          protocolo: string
+          unidade_id: string
+          unidade_nome: string
+          whatsapp: string
+        }
+        Update: {
+          area?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          opcao1?: string
+          opcao2?: string | null
+          protocolo?: string
+          unidade_id?: string
+          unidade_nome?: string
+          whatsapp?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      inscrever_voluntario: {
+        Args: { p_nome: string; p_whatsapp: string; p_unidade_id: string; p_unidade_nome: string; p_area: string; p_opcao1: string; p_opcao2?: string }
+        Returns: string
+      }
       registrar_acesso: {
         Args: { p_acao: string; p_candidatura?: string; p_vaga?: string; p_detalhe?: string }
         Returns: undefined

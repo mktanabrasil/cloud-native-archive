@@ -46,6 +46,7 @@ import CandidatosDaVagaPage from "./pages/CandidatosDaVagaPage";
 import FichaDoCandidatoPage from "./pages/FichaDoCandidatoPage";
 import PizzaConfirmacaoPage from "./pages/PizzaConfirmacaoPage";
 import PizzaPainelPage from "./pages/PizzaPainelPage";
+import VoluntariadoPage from "./pages/VoluntariadoPage";
 import { ROTAS_DO_CANDIDATO, ehCandidato } from "@/lib/vagas/conta";
 import NotFound from "./pages/NotFound";
 import EmailPreview from "./pages/EmailPreview";
@@ -142,6 +143,8 @@ const App = () => (
                 {/* Enquetes (23/09/2026): votar e acompanhar são públicos, fora
                     da barra do app, como a vitrine embutida. */}
                 <Route path="/pizza-da-alegria" element={<PizzaConfirmacaoPage />} />
+                {/* Voluntariado do Natal Feliz (20/10/2026): inscrição pública dos funcionários. */}
+                <Route path="/voluntariado" element={<VoluntariadoPage />} />
                 <Route path="/enquete/:slug" element={<EnquetePublicaPage />} />
                 <Route path="/enquete/:slug/resultado" element={<EnqueteResultadoPage />} />
                 {/* Trabalhe Conosco (fase 1, 25/09/2026): vitrine pública das vagas, fora da barra do app. */}
