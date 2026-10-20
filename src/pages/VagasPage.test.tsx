@@ -3,12 +3,14 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { Vaga } from '@/lib/vagas/modelo';
 
-const espiao = vi.hoisted(() => ({ vagas: [] as Vaga[], falha: false, rh: false, usuario: null as null | { email: string; user_metadata: Record<string, unknown> } }));
+const espiao = vi.hoisted(() => ({ vagas: [] as Vaga[], falha: false, rh: false, admin: false, usuario: null as null | { email: string; user_metadata: Record<string, unknown> } }));
 
-vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ isRh: espiao.rh }) }));
+vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ isRh: espiao.rh, isAdmin: espiao.admin }) }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: espiao.usuario, isAuthenticated: espiao.usuario !== null, loading: false, signOut: vi.fn() }) }));
 vi.mock('@/components/vagas/GestaoDeVagas', () => ({ GestaoDeVagas: () => <p>painel da gestão</p> }));
 vi.mock('@/components/vagas/PainelDoRh', () => ({ PainelDoRh: () => <p>painel do rh</p> }));
+vi.mock('@/components/vagas/RelatoriosDoRh', () => ({ RelatoriosDoRh: () => <p>relatórios do rh</p> }));
+vi.mock('@/components/vagas/AuditoriaDasVagas', () => ({ AuditoriaDasVagas: () => <p>auditoria das vagas</p> }));
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/lib/vagas/api', async () => {
@@ -40,6 +42,7 @@ beforeEach(() => {
   sessionStorage.setItem('vagas-ver-sem-entrar', '1');
   espiao.falha = false;
   espiao.rh = false;
+  espiao.admin = false;
   espiao.usuario = null;
   espiao.vagas = [
     vaga({ slug: 'educador-social-de-musica', titulo: 'Educador Social de Música', area: 'social', requisitos: ['Ensino Médio completo'], diferenciais: ['Formação em música'], beneficios: ['Vale-transporte'], link_externo: 'https://forms.gle/abc' }),
@@ -111,6 +114,22 @@ describe('abas do RH', () => {
     expect(screen.getByRole('link', { name: /Voltar ao app/ })).toHaveAttribute('href', '/');
     fireEvent.click(screen.getByRole('button', { name: 'Portal' }));
     expect(await screen.findByText(/3 vagas abertas/)).toBeInTheDocument();
+  });
+
+  it('Relatórios é do RH; Auditoria só aparece para administrador (20/10/2026)', async () => {
+    espiao.rh = true;
+    espiao.usuario = { email: 'rh@anabrasil.org', user_metadata: { name: 'RH' } };
+    const { unmount } = abrir('/vagas?tela=auditoria');
+    expect(screen.getByText('painel do rh')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Auditoria' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Relatórios' }));
+    expect(await screen.findByText('relatórios do rh')).toBeInTheDocument();
+    unmount();
+
+    espiao.admin = true;
+    abrir('/vagas?tela=auditoria');
+    expect(screen.getByText('auditoria das vagas')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Auditoria' })).toHaveAttribute('aria-current', 'page');
   });
 });
 

@@ -11,6 +11,7 @@ import { EtapasDaCandidatura } from '@/components/vagas/EtapasDaCandidatura';
 import { MolduraDasVagas } from '@/components/vagas/PecasDasVagas';
 import { ConversaDaFicha, EnviarMensagem } from '@/components/vagas/MensagensDaFicha';
 import { marcarLidas, mensagensDa, type Mensagem } from '@/lib/vagas/mensagens';
+import { registrarAcesso } from '@/lib/vagas/auditoria';
 import { dataEHora, rotuloDaEtapa, type Etapa, type Resultado } from '@/lib/vagas/candidatura';
 import { TURNOS, linkDoCurriculo, periodo } from '@/lib/vagas/perfil';
 import {
@@ -37,13 +38,14 @@ function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode
  * rolagem, foto como imagem; o endereço é temporário (5 min), pedido ao
  * abrir a aba. "Abrir em outra aba" e "Baixar" para quem prefere.
  */
-function CurriculoNaFicha({ caminho, nome }: { caminho: string | null; nome: string | null }) {
+function CurriculoNaFicha({ caminho, nome, candidatura }: { caminho: string | null; nome: string | null; candidatura: string }) {
   const [url, setUrl] = useState<string | null>(null);
   const [falhou, setFalhou] = useState(false);
   useEffect(() => {
     if (!caminho) return;
-    linkDoCurriculo(caminho).then(setUrl).catch(() => setFalhou(true));
-  }, [caminho]);
+    // Abrir o currículo fica na auditoria (passo 6, 20/10/2026).
+    linkDoCurriculo(caminho).then((u) => { setUrl(u); registrarAcesso('curriculo.aberto', { candidatura }); }).catch(() => setFalhou(true));
+  }, [caminho, candidatura]);
   if (!caminho) return <p className="rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">Não enviou currículo.</p>;
   if (falhou) return <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-900 dark:bg-red-950/60 dark:text-red-100">Não consegui abrir o currículo. Recarregue a página.</p>;
   if (!url) return <p className="text-sm text-muted-foreground">Abrindo o currículo…</p>;
@@ -91,6 +93,7 @@ export default function FichaDoCandidatoPage() {
     (async () => {
       try {
         await abrirCandidatura(id).catch(() => null);
+        registrarAcesso('ficha.aberta', { candidatura: id });
         await recarregar();
         setObs(await lerObservacoes(id).catch(() => ''));
         buscarVagaDoRh(slug).then((v) => setTituloDaVaga(v?.titulo ?? '')).catch(() => null);
@@ -170,7 +173,7 @@ export default function FichaDoCandidatoPage() {
                 ))}
               </div>
 
-              {aba === 'curriculo' && <CurriculoNaFicha caminho={c.curriculo_caminho} nome={c.curriculo_nome} />}
+              {aba === 'curriculo' && <CurriculoNaFicha caminho={c.curriculo_caminho} nome={c.curriculo_nome} candidatura={c.id} />}
 
               {aba === 'mensagens' && <ConversaDaFicha lista={msgs} nome={nome} aoNova={c.retirada_em ? undefined : () => setEscrevendo(true)} />}
 

@@ -16,6 +16,7 @@ import {
   type CandidaturaRh,
 } from '@/lib/vagas/rh';
 import { respostasNaoLidas } from '@/lib/vagas/mensagens';
+import { registrarAcesso } from '@/lib/vagas/auditoria';
 
 /**
  * /vagas/:slug/candidatos — os candidatos de uma vaga, para o RH (PR 9,
@@ -129,7 +130,8 @@ export default function CandidatosDaVagaPage() {
                 {vaga && <p className="text-sm text-muted-foreground">{vaga.codigo} · {contagem.todas} {contagem.todas === 1 ? 'candidato' : 'candidatos'}</p>}
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled={!vistas.length} onClick={() => baixarArquivo(csvDosCandidatos(vistas), `candidatos-${slug}.csv`)}><Download className="h-4 w-4" /> Baixar planilha</Button>
+                {/* A planilha tem nome, e-mail e WhatsApp: só o RH, e cada download fica na auditoria (passo 6, 20/10/2026). */}
+                {isRh && <Button variant="outline" size="sm" disabled={!vistas.length} onClick={() => { baixarArquivo(csvDosCandidatos(vistas), `candidatos-${slug}.csv`); if (vaga) registrarAcesso('planilha.baixada', { vaga: vaga.id, detalhe: `${vistas.length} ${vistas.length === 1 ? 'linha' : 'linhas'}` }); }}><Download className="h-4 w-4" /> Baixar planilha</Button>}
                 {vaga && <Button asChild variant="outline" size="sm"><Link to={`/vagas/${vaga.slug}`}>Ver a vaga</Link></Button>}
               </div>
             </div>

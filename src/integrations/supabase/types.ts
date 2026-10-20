@@ -1330,11 +1330,63 @@ export type Database = {
         }
         Relationships: []
       }
+      vagas_auditoria: {
+        Row: {
+          acao: string
+          candidatura_id: string | null
+          detalhe: string | null
+          em: string
+          id: number
+          papel: string | null
+          protocolo: string | null
+          quem: string | null
+          quem_nome: string | null
+          vaga_id: string | null
+          vaga_titulo: string | null
+        }
+        Insert: {
+          acao: string
+          candidatura_id?: string | null
+          detalhe?: string | null
+          em?: string
+          papel?: string | null
+          protocolo?: string | null
+          quem?: string | null
+          quem_nome?: string | null
+          vaga_id?: string | null
+          vaga_titulo?: string | null
+        }
+        Update: {
+          acao?: string
+          candidatura_id?: string | null
+          detalhe?: string | null
+          em?: string
+          papel?: string | null
+          protocolo?: string | null
+          quem?: string | null
+          quem_nome?: string | null
+          vaga_id?: string | null
+          vaga_titulo?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      registrar_acesso: {
+        Args: { p_acao: string; p_candidatura?: string; p_vaga?: string; p_detalhe?: string }
+        Returns: undefined
+      }
+      alertas_da_auditoria: {
+        Args: { p_dias?: number }
+        Returns: { quem: string; quem_nome: string | null; hora: string; quantidade: number; media_por_dia: number | null; vagas: string | null; conferido: boolean }[]
+      }
+      conferir_alerta: {
+        Args: { p_quem: string; p_hora: string }
+        Returns: undefined
+      }
       enviar_mensagem: {
         Args: { p_candidatura: string; p_tipo: string; p_texto: string; p_entrevista?: Json }
         Returns: Json
