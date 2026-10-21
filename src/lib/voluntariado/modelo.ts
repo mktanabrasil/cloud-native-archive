@@ -10,6 +10,14 @@
 
 import { UNIDADES_POR_AREA } from '@/lib/pizza/modelo';
 
+/**
+ * Os endereços (21/10/2026): cada campanha mora em /voluntariado/<campanha>.
+ * Os antigos (/voluntariado e /voluntariado/acompanhar/…) redirecionam para cá,
+ * porque o primeiro link já tinha sido divulgado.
+ */
+export const CAMINHO_DO_FORMULARIO = '/voluntariado/natalfeliz26';
+export const caminhoDoAoVivo = (codigo: string) => `${CAMINHO_DO_FORMULARIO}/acompanhar/${codigo}`;
+
 export const PRAZO = new Date('2026-11-16T00:00:00-03:00');
 export const DIA_DO_EVENTO = '08/12';
 export const ULTIMO_DIA = '15/11';

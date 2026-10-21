@@ -8,7 +8,7 @@ import {
 import { useUserRole } from '@/hooks/useUserRole';
 import { baixarArquivo } from '@/lib/enquetes/planilha';
 import { apagarInscricao, listarInscricoes, type Inscricao } from '@/lib/voluntariado/api';
-import { AREAS_DE_AJUDA, AREAS_FORA_DO_FORMULARIO, PRAZO, ULTIMO_DIA, rotuloDaAjuda, type AreaDeAjuda } from '@/lib/voluntariado/modelo';
+import { AREAS_DE_AJUDA, AREAS_FORA_DO_FORMULARIO, CAMINHO_DO_FORMULARIO, PRAZO, ULTIMO_DIA, rotuloDaAjuda, type AreaDeAjuda } from '@/lib/voluntariado/modelo';
 import { csvDasInscricoes, nomeDaPlanilha, whatsappLegivel } from '@/lib/voluntariado/planilha';
 import { PlanilhaDoGoogle } from './PlanilhaDoGoogle';
 import { AoVivoDaGestao } from './AoVivoDaGestao';
@@ -22,7 +22,7 @@ import { AoVivoDaGestao } from './AoVivoDaGestao';
  * Google que se atualiza sozinha (PlanilhaDoGoogle).
  */
 
-export const LINK_DO_FORMULARIO = 'https://app.anabrasil.org/voluntariado';
+export const LINK_DO_FORMULARIO = `https://app.anabrasil.org${CAMINHO_DO_FORMULARIO}`;
 
 export function PainelDoVoluntariado() {
   const { isMarketing, loading } = useUserRole();

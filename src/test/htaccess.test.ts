@@ -41,6 +41,19 @@ describe('public/.htaccess', () => {
     expect(voto).toBeLessThan(fallback);
   });
 
+  it('voluntariado: o endereço novo e os antigos caem no cartão certo (21/10/2026)', () => {
+    const regra = (destino: string) => {
+      const m = diretivas.match(new RegExp(`RewriteRule (\\S+) /${destino} \\[L\\]`));
+      expect(m, destino).not.toBeNull();
+      return new RegExp(m![1]);
+    };
+    const formulario = regra('voluntariado\\.html');
+    const aoVivo = regra('voluntariado-acompanhar\\.html');
+    for (const u of ['voluntariado', 'voluntariado/', 'voluntariado/natalfeliz26', 'voluntariado/natalfeliz26/']) expect(formulario.test(u), u).toBe(true);
+    expect(formulario.test('voluntariado/natalfeliz26/acompanhar/abc')).toBe(false);
+    for (const u of ['voluntariado/acompanhar/abc', 'voluntariado/natalfeliz26/acompanhar/abc']) expect(aoVivo.test(u), u).toBe(true);
+  });
+
   it('traz os cabeçalhos básicos de segurança', () => {
     expect(diretivas).toMatch(/X-Content-Type-Options "nosniff"/);
     expect(diretivas).toMatch(/Referrer-Policy "strict-origin-when-cross-origin"/);

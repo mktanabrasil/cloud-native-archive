@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import {
   ATUALIZA_A_CADA_MS, TROCA_DE_BLOCO_MS, calcularPainel, corDaUnidade, haQuanto, lerAcompanhamento,
   type Acompanhamento, type Painel,
 } from '@/lib/voluntariado/aoVivo';
+import { caminhoDoAoVivo } from '@/lib/voluntariado/modelo';
 
 /**
- * /voluntariado/acompanhar/:codigo — o painel ao vivo da gestão (mockup
+ * /voluntariado/natalfeliz26/acompanhar/:codigo — o painel ao vivo da gestão (mockup
  * aprovado e decisões de 21/10/2026). Link com código secreto, como o
  * acompanhamento da enquete; só lê. Faixa e números fixos no topo; embaixo,
  * os blocos passam sozinhos a cada 10 s, deslizando de lado (o mouse por
@@ -51,6 +52,12 @@ function PorDia({ p }: { p: Painel }) {
       )}
     </>
   );
+}
+
+/** O primeiro endereço do painel (/voluntariado/acompanhar/<código>) leva ao novo, com o mesmo código (21/10/2026). */
+export function AoVivoNoEnderecoNovo() {
+  const { codigo = '' } = useParams();
+  return <Navigate to={caminhoDoAoVivo(codigo)} replace />;
 }
 
 export default function VoluntariadoAoVivoPage() {
