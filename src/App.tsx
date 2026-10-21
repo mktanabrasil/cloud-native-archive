@@ -47,6 +47,7 @@ import FichaDoCandidatoPage from "./pages/FichaDoCandidatoPage";
 import PizzaConfirmacaoPage from "./pages/PizzaConfirmacaoPage";
 import PizzaPainelPage from "./pages/PizzaPainelPage";
 import VoluntariadoPage from "./pages/VoluntariadoPage";
+import VoluntariadoAoVivoPage from "./pages/VoluntariadoAoVivoPage";
 import { ROTAS_DO_CANDIDATO, ehCandidato } from "@/lib/vagas/conta";
 import NotFound from "./pages/NotFound";
 import EmailPreview from "./pages/EmailPreview";
@@ -145,6 +146,8 @@ const App = () => (
                 <Route path="/pizza-da-alegria" element={<PizzaConfirmacaoPage />} />
                 {/* Voluntariado do Natal Feliz (20/10/2026): inscrição pública dos funcionários. */}
                 <Route path="/voluntariado" element={<VoluntariadoPage />} />
+                {/* O painel ao vivo da gestão (21/10/2026): link com código secreto. */}
+                <Route path="/voluntariado/acompanhar/:codigo" element={<VoluntariadoAoVivoPage />} />
                 <Route path="/enquete/:slug" element={<EnquetePublicaPage />} />
                 <Route path="/enquete/:slug/resultado" element={<EnqueteResultadoPage />} />
                 {/* Trabalhe Conosco (fase 1, 25/09/2026): vitrine pública das vagas, fora da barra do app. */}

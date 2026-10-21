@@ -1475,11 +1475,44 @@ export type Database = {
         }
         Relationships: []
       }
+      voluntariado_config: {
+        Row: {
+          atualizado_em: string
+          codigo_acompanhamento: string
+          id: number
+          meta: number | null
+        }
+        Insert: {
+          atualizado_em?: string
+          codigo_acompanhamento: string
+          id?: number
+          meta?: number | null
+        }
+        Update: {
+          atualizado_em?: string
+          codigo_acompanhamento?: string
+          id?: number
+          meta?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      acompanhamento_do_voluntariado: {
+        Args: { p_codigo: string }
+        Returns: Json
+      }
+      trocar_codigo_do_voluntariado: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      definir_meta_do_voluntariado: {
+        Args: { p_meta: number | null }
+        Returns: undefined
+      }
       salvar_email_modelo: {
         Args: { p_chave: string; p_assunto: string; p_titulo: string; p_texto: string }
         Returns: undefined

@@ -11,6 +11,7 @@ import { apagarInscricao, listarInscricoes, type Inscricao } from '@/lib/volunta
 import { AREAS_DE_AJUDA, AREAS_FORA_DO_FORMULARIO, PRAZO, ULTIMO_DIA, rotuloDaAjuda, type AreaDeAjuda } from '@/lib/voluntariado/modelo';
 import { csvDasInscricoes, nomeDaPlanilha, whatsappLegivel } from '@/lib/voluntariado/planilha';
 import { PlanilhaDoGoogle } from './PlanilhaDoGoogle';
+import { AoVivoDaGestao } from './AoVivoDaGestao';
 
 /**
  * O painel do voluntariado do Natal Feliz (mockup aprovado em 20/10/2026):
@@ -91,6 +92,7 @@ export function PainelDoVoluntariado() {
       </div>
 
       <PlanilhaDoGoogle inscritos={(lista ?? []).length} />
+      <AoVivoDaGestao />
 
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por unidade">
         <Button size="sm" variant={unidade === null ? 'default' : 'secondary'} className="h-8 rounded-full" onClick={() => setUnidade(null)}>Todas as unidades</Button>
