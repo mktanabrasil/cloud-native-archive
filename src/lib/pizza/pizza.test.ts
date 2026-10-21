@@ -12,7 +12,9 @@ describe('Pizza da Alegria', () => {
     expect(areaDaUnidade(unidade('cei-anisio-spinola'))).toBe('educacao');
     expect(areaDaUnidade(unidade('ana-dic'))).toBe('social');
     const social = UNIDADES_POR_AREA.find((g) => g.area === 'social')!.unidades.map((u) => u.short);
-    expect(social).toEqual(expect.arrayContaining(['DIC', 'Nilópolis', 'Santana', 'Piauí', 'Oziel']));
+    expect(social).toEqual(expect.arrayContaining(['DIC', 'Nilópolis', 'Santana', 'Piauí']));
+    // A ANA Oziel saiu das campanhas em 21/10/2026.
+    expect(social).not.toContain('Oziel');
     expect(UNIDADES_POR_AREA.flatMap((g) => g.unidades).every((u) => u.active)).toBe(true);
   });
 

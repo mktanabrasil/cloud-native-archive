@@ -17,6 +17,10 @@ addEventListener('error', (e) => { console.error('[voluntariado-planilha] erro s
  * escopo drive, que também vale para a API do Sheets). Precisa da "Google
  * Sheets API" ativada no projeto do Google Cloud.
  *
+ * Cores (21/10/2026): cada linha chega com a cor da unidade em A:H e sem
+ * negrito (o Google copiava o formato do cabeçalho). As linhas que já
+ * estavam lá são acertadas uma vez (voluntariado_planilha.cores_em).
+ *
  * Quem chama:
  *  - o formulário público, logo depois de cada inscrição (sem login): só
  *    escreve o que está pendente, não devolve dado de ninguém;
@@ -46,6 +50,45 @@ const AJUDA: Record<string, string> = {
   limpeza_pre: 'Limpeza pré-evento', limpeza_durante: 'Limpeza durante o evento', limpeza_pos: 'Limpeza pós-evento',
   estacionamento: 'Estacionamento', seguranca: 'Segurança',
 };
+
+/** A cor de cada unidade (pelo nome, como vai na coluna E): Social em tons quentes, CEIs e GOE em frios. */
+const COR_DA_UNIDADE: Record<string, string> = {
+  'ANA Jardim Nilópolis': '#FFD9D2', 'ANA DIC': '#FFE5C2', 'ANA Jardim Santana': '#FFF2B8', 'ANA Piauí': '#F9D6E6',
+  'Grupo de Oração Esperança': '#E8DAF5',
+  'CEI Bem Querer Prof. Pierre Weil': '#D6ECFF', 'CEI Bem Querer Sen. João de Medeiros Calmon': '#CFF3EC',
+  'CEI Bem Querer Célia A. J. Velardi Gaspar': '#DDF2D0', 'CEI Bem Querer Rogério L. P. Santana': '#E3E7FF',
+  'CEI Bem Querer Prof. Anísio Spínola': '#D0F0F8', 'CEI Bem Querer Min. Gustavo Capanema': '#EAF5C8',
+  'CEI Bem Querer Gov. Leonel de Moura Brizola': '#F3E2D3', 'CEI Bem Querer Paulo Reglus Neves Freire': '#E0EAF0',
+  'CEI Bem Querer Mayara Masson Christofoletti': '#F6DDF0', 'CEI Bem Querer Profa. Renata Ferramola': '#D9F2E4',
+  'CEI Bem Querer Vandir Justino da Costa Dias': '#FBE7D7',
+};
+const SEM_COR = '#EEEEEE';
+
+const rgb = (hex: string) => ({ red: parseInt(hex.slice(1, 3), 16) / 255, green: parseInt(hex.slice(3, 5), 16) / 255, blue: parseInt(hex.slice(5, 7), 16) / 255 });
+
+/** Pinta as linhas (número da linha na planilha, 1 = cabeçalho) com a cor da unidade, sem negrito, de A a H. */
+async function pintar(token: string, planilha: string, linhas: Array<{ linha: number; unidade: string }>) {
+  if (!linhas.length) return;
+  const info = await google(token, 'GET', `https://sheets.googleapis.com/v4/spreadsheets/${planilha}?fields=sheets.properties.sheetId`);
+  const aba = info?.sheets?.[0]?.properties?.sheetId ?? 0;
+  await google(token, 'POST', `https://sheets.googleapis.com/v4/spreadsheets/${planilha}:batchUpdate`, {
+    requests: linhas.map(({ linha, unidade }) => ({
+      repeatCell: {
+        range: { sheetId: aba, startRowIndex: linha - 1, endRowIndex: linha, startColumnIndex: 0, endColumnIndex: 8 },
+        cell: { userEnteredFormat: { backgroundColor: rgb(COR_DA_UNIDADE[unidade.trim()] ?? SEM_COR), textFormat: { bold: false } } },
+        fields: 'userEnteredFormat(backgroundColor,textFormat.bold)',
+      },
+    })),
+  });
+}
+
+/** Uma vez só: acerta a cor das linhas que já estavam na planilha antes das cores. */
+async function acertarCoresAntigas(admin: Admin, token: string, planilha: string) {
+  const r = await google(token, 'GET', `https://sheets.googleapis.com/v4/spreadsheets/${planilha}/values/${encodeURIComponent('E2:E')}`);
+  const valores: string[][] = r?.values ?? [];
+  await pintar(token, planilha, valores.map((v, i) => ({ linha: i + 2, unidade: v?.[0] ?? '' })).filter((l) => l.unidade));
+  await admin.from('voluntariado_planilha').update({ cores_em: new Date().toISOString() }).eq('id', 1);
+}
 
 // deno-lint-ignore no-explicit-any
 type Admin = any;
@@ -95,10 +138,11 @@ const mensagem = (e: unknown) => {
 
 /** Escreve no fim da planilha as inscrições que ainda não estão lá. */
 async function enviarPendentes(admin: Admin): Promise<{ enviadas: number; pendentes: number; motivo?: string }> {
-  const { data: p } = await admin.from('voluntariado_planilha').select('planilha_id').eq('id', 1).maybeSingle();
+  const { data: p } = await admin.from('voluntariado_planilha').select('planilha_id, cores_em').eq('id', 1).maybeSingle();
   if (!p) return { enviadas: 0, pendentes: 0, motivo: 'planilha ainda não criada' };
   const g = await token(admin);
   if (!g) return { enviadas: 0, pendentes: 0, motivo: 'Drive não conectado' };
+  if (!p.cores_em) await acertarCoresAntigas(admin, g.token, p.planilha_id).catch((e) => console.error('[voluntariado-planilha] cores antigas:', mensagem(e)));
 
   // Prende as pendentes de uma vez (um UPDATE só): duas chamadas juntas não pegam a mesma.
   const limite = new Date(Date.now() - 2 * 60_000).toISOString();
@@ -115,9 +159,12 @@ async function enviarPendentes(admin: Admin): Promise<{ enviadas: number; penden
     const lista = ((presas ?? []) as any[]).sort((a, b) => a.created_at.localeCompare(b.created_at));
     if (lista.length) {
       try {
-        await google(g.token, 'POST',
+        const r = await google(g.token, 'POST',
           `https://sheets.googleapis.com/v4/spreadsheets/${p.planilha_id}/values/${encodeURIComponent('A:H')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
           { values: lista.map(linha) });
+        // Onde as linhas entraram ("'Inscrições'!A3:H5"): cada uma ganha a cor da unidade, sem o negrito do cabeçalho.
+        const primeira = Number(String(r?.updates?.updatedRange ?? '').match(/![A-Z]+(\d+)/)?.[1] ?? 0);
+        if (primeira) await pintar(g.token, p.planilha_id, lista.map((l, i) => ({ linha: primeira + i, unidade: l.unidade_nome }))).catch((e) => console.error('[voluntariado-planilha] cores:', mensagem(e)));
         await admin.from('voluntarios_natal').update({ planilha_em: new Date().toISOString(), planilha_tentando_em: null }).in('id', lista.map((l) => l.id));
         await admin.from('voluntariado_planilha').update({ erro: null }).eq('id', 1);
         enviadas = lista.length;
@@ -151,7 +198,7 @@ async function criar(admin: Admin, quem: string): Promise<string> {
       { updateDimensionProperties: { range: { sheetId: aba, dimension: 'COLUMNS', startIndex: 0, endIndex: 8 }, properties: { pixelSize: 170 }, fields: 'pixelSize' } },
     ],
   });
-  await admin.from('voluntariado_planilha').upsert({ id: 1, planilha_id: id, criada_por: quem, criada_em: new Date().toISOString(), erro: null });
+  await admin.from('voluntariado_planilha').upsert({ id: 1, planilha_id: id, criada_por: quem, criada_em: new Date().toISOString(), erro: null, cores_em: new Date().toISOString() });
   // Tudo o que já existe entra agora, do mais antigo ao mais novo.
   await admin.from('voluntarios_natal').update({ planilha_em: null, planilha_tentando_em: null }).not('id', 'is', null);
   return id;
