@@ -8,6 +8,8 @@
  * `inscrever_voluntario` do banco, que também sorteia o protocolo (VL-XXXXX).
  */
 
+import { UNIDADES_POR_AREA } from '@/lib/pizza/modelo';
+
 export const PRAZO = new Date('2026-11-16T00:00:00-03:00');
 export const DIA_DO_EVENTO = '08/12';
 export const ULTIMO_DIA = '15/11';
@@ -53,6 +55,24 @@ export const GRUPOS = [
 export type AreaDeAjuda = (typeof GRUPOS)[number]['areas'][number][0];
 export const AREAS_DE_AJUDA = GRUPOS.flatMap((g) => g.areas.map(([k, r, d]) => ({ chave: k as AreaDeAjuda, rotulo: r as string, descricao: d as string, grupo: g.grupo as string })));
 export const rotuloDaAjuda = (k: string | null) => AREAS_DE_AJUDA.find((a) => a.chave === k)?.rotulo ?? (k ?? '');
+
+/**
+ * Fora do formulário a pedido da coordenação (21/10/2026): a área Som e a
+ * unidade ANA Piauí. Continuam conhecidas (rótulo, planilha, painel), para
+ * quem já tiver se inscrito; só não aparecem mais para escolher.
+ */
+export const AREAS_FORA_DO_FORMULARIO: readonly string[] = ['som'];
+export const UNIDADES_FORA_DO_VOLUNTARIADO: readonly string[] = ['ana-piaui'];
+
+/** Os grupos do formulário, sem as áreas tiradas (e sem grupo vazio). */
+export const GRUPOS_DO_FORMULARIO = GRUPOS
+  .map((g) => ({ grupo: g.grupo as string, areas: g.areas.filter(([k]) => !AREAS_FORA_DO_FORMULARIO.includes(k)) as ReadonlyArray<readonly [AreaDeAjuda, string, string]> }))
+  .filter((g) => g.areas.length > 0);
+
+/** As unidades do formulário: as das campanhas, menos as tiradas do voluntariado. */
+export const UNIDADES_DO_VOLUNTARIADO = UNIDADES_POR_AREA
+  .map((g) => ({ ...g, unidades: g.unidades.filter((u) => !UNIDADES_FORA_DO_VOLUNTARIADO.includes(u.id)) }))
+  .filter((g) => g.unidades.length > 0);
 
 export const encerrado = (agora: Date = new Date()) => agora >= PRAZO;
 

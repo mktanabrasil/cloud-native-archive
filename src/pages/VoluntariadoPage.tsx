@@ -3,10 +3,10 @@ import { Check } from 'lucide-react';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import InstitutionalFooterBar from '@/components/news/InstitutionalFooterBar';
 import { findNewsUnit } from '@/lib/news/units';
-import { ROTULO_DA_AREA, UNIDADES_POR_AREA } from '@/lib/pizza/modelo';
+import { ROTULO_DA_AREA } from '@/lib/pizza/modelo';
 import { enviarParaAPlanilha, inscrever } from '@/lib/voluntariado/api';
 import {
-  DIA_DO_EVENTO, GRUPOS, SOBRE_O_EVENTO, ULTIMO_DIA, encerrado, mascaraDoWhatsapp, mensagemDoErro, problemaDaInscricao, rotuloDaAjuda, tocarArea,
+  DIA_DO_EVENTO, GRUPOS_DO_FORMULARIO, SOBRE_O_EVENTO, UNIDADES_DO_VOLUNTARIADO, ULTIMO_DIA, encerrado, mascaraDoWhatsapp, mensagemDoErro, problemaDaInscricao, rotuloDaAjuda, tocarArea,
   type AreaDeAjuda,
 } from '@/lib/voluntariado/modelo';
 
@@ -124,7 +124,7 @@ export default function VoluntariadoPage() {
               <label className="flex flex-col gap-1.5 text-sm font-semibold">Unidade em que você trabalha
                 <select className={campo} style={{ borderColor: COR.linha }} value={unidade} onChange={(e) => { setUnidade(e.target.value); setErro(null); }}>
                   <option value="">Escolha a unidade</option>
-                  {UNIDADES_POR_AREA.map(({ area, unidades }) => (
+                  {UNIDADES_DO_VOLUNTARIADO.map(({ area, unidades }) => (
                     <optgroup key={area} label={ROTULO_DA_AREA[area]}>
                       {unidades.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
                     </optgroup>
@@ -135,7 +135,7 @@ export default function VoluntariadoPage() {
 
             <Secao n={2} titulo="Onde você quer ajudar">
               <p className="-mt-1 text-[13px]" style={{ color: COR.mut }}>Toque na sua 1ª opção e, se quiser, numa 2ª.</p>
-              {GRUPOS.map((g) => (
+              {GRUPOS_DO_FORMULARIO.map((g) => (
                 <div key={g.grupo} className="flex flex-col gap-1.5">
                   <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: COR.mut }}>{g.grupo}</span>
                   {g.areas.map(([k, rotulo, descricao]) => {
