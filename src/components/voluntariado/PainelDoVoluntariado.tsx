@@ -8,7 +8,7 @@ import {
 import { useUserRole } from '@/hooks/useUserRole';
 import { baixarArquivo } from '@/lib/enquetes/planilha';
 import { apagarInscricao, listarInscricoes, type Inscricao } from '@/lib/voluntariado/api';
-import { AREAS_DE_AJUDA, PRAZO, ULTIMO_DIA, rotuloDaAjuda, type AreaDeAjuda } from '@/lib/voluntariado/modelo';
+import { AREAS_DE_AJUDA, AREAS_FORA_DO_FORMULARIO, PRAZO, ULTIMO_DIA, rotuloDaAjuda, type AreaDeAjuda } from '@/lib/voluntariado/modelo';
 import { csvDasInscricoes, nomeDaPlanilha, whatsappLegivel } from '@/lib/voluntariado/planilha';
 import { PlanilhaDoGoogle } from './PlanilhaDoGoogle';
 
@@ -58,7 +58,9 @@ export function PainelDoVoluntariado() {
     ...a,
     primeira: daUnidade.filter((i) => i.opcao1 === a.chave).length,
     segunda: daUnidade.filter((i) => i.opcao2 === a.chave).length,
-  }));
+  }))
+    // Área tirada do formulário (21/10/2026) só aparece se alguém já a escolheu.
+    .filter((a) => !AREAS_FORA_DO_FORMULARIO.includes(a.chave) || a.primeira + a.segunda > 0);
   const max = Math.max(1, ...porArea.map((a) => a.primeira));
   const vazias = porArea.filter((a) => a.primeira === 0).length;
   const dias = Math.max(0, Math.ceil((PRAZO.getTime() - Date.now()) / 864e5));

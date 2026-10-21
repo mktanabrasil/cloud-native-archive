@@ -36,7 +36,7 @@ vi.mock('@/lib/voluntariado/api', () => ({
 
 const { default: Voluntariado } = await import('./VoluntariadoPage');
 const { PainelDoVoluntariado } = await import('@/components/voluntariado/PainelDoVoluntariado');
-const { tocarArea, problemaDaInscricao, mascaraDoWhatsapp, digitosDoWhatsapp, AREAS_DE_AJUDA } = await import('@/lib/voluntariado/modelo');
+const { tocarArea, problemaDaInscricao, mascaraDoWhatsapp, digitosDoWhatsapp, AREAS_DE_AJUDA, GRUPOS_DO_FORMULARIO, UNIDADES_DO_VOLUNTARIADO } = await import('@/lib/voluntariado/modelo');
 const { csvDasInscricoes } = await import('@/lib/voluntariado/planilha');
 
 const I = (o: Record<string, unknown>) => ({ id: 'i1', protocolo: 'VL-7K2Q9', nome: 'Leonardo Garbo Rodrigues', whatsapp: '19993558242', unidade_id: 'santana', unidade_nome: 'Santana', area: 'social', opcao1: 'cozinha', opcao2: 'decoracao', created_at: '2026-10-20T15:00:00Z', ...o });
@@ -49,8 +49,12 @@ beforeEach(() => {
 });
 
 describe('regras', () => {
-  it('as 17 áreas, cada uma com uma frase curta', () => {
+  it('16 áreas no formulário (Som saiu em 21/10/2026), cada uma com uma frase curta', () => {
     expect(AREAS_DE_AJUDA).toHaveLength(17);
+    expect(GRUPOS_DO_FORMULARIO.flatMap((g) => g.areas.map(([k]) => k))).toHaveLength(16);
+    expect(GRUPOS_DO_FORMULARIO.flatMap((g) => g.areas.map(([k]) => k))).not.toContain('som');
+    expect(UNIDADES_DO_VOLUNTARIADO.flatMap((g) => g.unidades.map((u) => u.id))).not.toContain('ana-piaui');
+    expect(UNIDADES_DO_VOLUNTARIADO.flatMap((g) => g.unidades.map((u) => u.id))).toContain('ana-dic');
     expect(AREAS_DE_AJUDA.every((a) => a.descricao.length > 10 && a.descricao.length < 90)).toBe(true);
   });
 
@@ -120,6 +124,14 @@ describe('formulário', () => {
     expect(screen.getByText('Decoração')).toBeInTheDocument();
   });
 
+  it('sem a área Som e sem a ANA Piauí (21/10/2026)', () => {
+    render(<MemoryRouter><Voluntariado /></MemoryRouter>);
+    expect(screen.queryByRole('button', { name: /^Som/ })).toBeNull();
+    const opcoes = [...(screen.getByLabelText('Unidade em que você trabalha') as HTMLSelectElement).options].map((o) => o.textContent);
+    expect(opcoes).not.toContain('ANA Piauí');
+    expect(opcoes).toContain('ANA DIC');
+  });
+
   it('sem área, avisa e não envia', async () => {
     render(<MemoryRouter><Voluntariado /></MemoryRouter>);
     preencher();
@@ -132,7 +144,7 @@ describe('formulário', () => {
     banco.erro = 'ja_inscrito';
     render(<MemoryRouter><Voluntariado /></MemoryRouter>);
     preencher();
-    fireEvent.click(screen.getByRole('button', { name: /Som/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Projeção/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Enviar inscrição' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Este WhatsApp já está inscrito. Para mudar a área, fale com a equipe.');
   });
@@ -144,7 +156,7 @@ describe('painel', () => {
     render(<MemoryRouter><PainelDoVoluntariado /></MemoryRouter>);
     expect(await screen.findAllByTestId('inscricao')).toHaveLength(2);
     expect(screen.getByTestId('kpi-Inscritos')).toHaveTextContent('2');
-    expect(screen.getByTestId('kpi-Áreas sem ninguém')).toHaveTextContent('15');
+    expect(screen.getByTestId('kpi-Áreas sem ninguém')).toHaveTextContent('14');
     const decoracao = screen.getAllByTestId('barra-area').find((b) => b.textContent?.startsWith('Decoração'))!;
     expect(decoracao).toHaveTextContent('Decoração1 +1');
     fireEvent.click(decoracao);
@@ -164,6 +176,18 @@ describe('painel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Apagar VL-ABCDE' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Apagar' }));
     await waitFor(() => expect(banco.apagados).toEqual(['i2']));
+  });
+
+  it('a área Som some do painel, a não ser que alguém já a tenha escolhido', async () => {
+    banco.lista = [I({ opcao1: 'cozinha', opcao2: null })];
+    const { unmount } = render(<MemoryRouter><PainelDoVoluntariado /></MemoryRouter>);
+    await screen.findAllByTestId('inscricao');
+    expect(screen.getAllByTestId('barra-area').some((b) => b.textContent?.startsWith('Som'))).toBe(false);
+    unmount();
+    banco.lista = [I({ opcao1: 'som', opcao2: null })];
+    render(<MemoryRouter><PainelDoVoluntariado /></MemoryRouter>);
+    await screen.findAllByTestId('inscricao');
+    expect(screen.getAllByTestId('barra-area').some((b) => b.textContent?.startsWith('Som'))).toBe(true);
   });
 
   it('quem não é da comunicação não entra', () => {
