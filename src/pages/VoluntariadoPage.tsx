@@ -35,7 +35,7 @@ function Secao({ n, titulo, children }: { n: number; titulo: string; children: R
 const campo = 'h-12 w-full rounded-xl border-2 bg-white px-3 text-base text-[#24201B] outline-none focus:border-[#1E4D3A]';
 
 export default function VoluntariadoPage() {
-  useTituloDaAba('Natal Feliz · Seja voluntário');
+  useTituloDaAba('Natal Feliz · Dia do Voluntariado');
   const [nome, setNome] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [unidade, setUnidade] = useState('');
@@ -65,20 +65,24 @@ export default function VoluntariadoPage() {
     <div className="flex min-h-screen flex-col" style={{ background: COR.fundo, color: COR.tinta }}>
       <div className="mx-auto w-full max-w-[560px] flex-1">
         {/* Faixa provisória até a arte da campanha ficar pronta. */}
-        <div className="grid h-40 place-items-center text-center" style={{ background: `repeating-linear-gradient(135deg, ${COR.verde} 0 18px, ${COR.verde2} 18px 36px)`, color: COR.creme }} role="img" aria-label="Natal Feliz, ANA Brasil">
-          <div><b className="block text-3xl font-extrabold">Natal Feliz</b><span className="text-xs opacity-85">ANA Brasil · 2026</span></div>
+        <div className="grid h-40 place-items-center text-center" style={{ background: `repeating-linear-gradient(135deg, ${COR.verde} 0 18px, ${COR.verde2} 18px 36px)`, color: COR.creme }} role="img" aria-label="Dia do Voluntariado, Natal Feliz 2026, ANA Brasil">
+          <div>
+            <small className="block text-[11px] font-semibold uppercase tracking-[0.14em] opacity-85">Natal Feliz 2026</small>
+            <b className="block text-3xl font-extrabold leading-[1.05]">Dia do<br />Voluntariado</b>
+            <span className="text-xs opacity-85">ANA Brasil</span>
+          </div>
         </div>
         <div className="flex flex-col gap-0.5 px-5 py-3.5 text-white" style={{ background: COR.vermelho }}>
           {feito ? (
             <>
-              <b className="text-sm uppercase tracking-[0.06em]">Natal Feliz</b>
-              <span className="text-[13px] opacity-90">Obrigado por se oferecer!</span>
+              <b className="text-sm uppercase tracking-[0.06em]">Dia do Voluntariado</b>
+              <span className="text-[13px] opacity-90">Obrigado por fazer parte!</span>
             </>
           ) : (
             <>
               {/* A data do evento ao lado do título; as inscrições na linha de baixo (21/10/2026). */}
               <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                <b className="text-sm uppercase tracking-[0.06em]">Seja voluntário</b>
+                <b className="text-sm uppercase tracking-[0.06em]">Dia do Voluntariado</b>
                 <span className="rounded-full bg-white/20 px-2.5 py-px text-[12.5px] font-semibold" data-testid="dia-do-evento">{DIA_DO_EVENTO} · Natal Feliz</span>
               </span>
               <span className="text-[13px] opacity-90">Inscrições até {ULTIMO_DIA}</span>
@@ -94,6 +98,7 @@ export default function VoluntariadoPage() {
               <b className="text-3xl font-extrabold tracking-wide" style={{ color: COR.vermelhoEsc }} data-testid="protocolo">{feito.protocolo}</b>
               <span className="text-sm" style={{ color: COR.mut }}>Tire um print desta tela.</span>
             </div>
+            <p className="text-center text-[15px] font-semibold" style={{ color: COR.verde }} data-testid="agradecimento">Obrigado por fazer parte do Dia do Voluntariado! Você vai deixar o Natal de muitas famílias mais feliz. 💚</p>
             <dl className="grid gap-2 rounded-2xl border-[1.5px] bg-white p-4 text-sm" style={{ borderColor: COR.linha }}>
               {([['Nome', feito.nome], ['Unidade', feito.unidade], ['1ª opção', feito.opcao1], ...(feito.opcao2 ? [['2ª opção', feito.opcao2]] : []), ['Quando', DIA_DO_EVENTO]] as Array<[string, string]>).map(([r, v]) => (
                 <div key={r} className="flex justify-between gap-3"><dt style={{ color: COR.mut }}>{r}</dt><dd className="text-right font-semibold">{v}</dd></div>
@@ -110,9 +115,17 @@ export default function VoluntariadoPage() {
           </div>
         ) : (
           <form className="flex flex-col gap-7 px-5 py-6" onSubmit={(e) => { e.preventDefault(); enviar(); }} noValidate aria-label="Inscrição de voluntário">
-            <div className="-mb-2 rounded-2xl p-4 text-[13.5px] leading-relaxed" style={{ background: COR.verdeClaro, color: COR.verde }} data-testid="sobre-o-evento">
-              <b className="mb-1 block text-[15px]">{SOBRE_O_EVENTO.titulo}</b>
-              {SOBRE_O_EVENTO.texto}
+            {/* O convite (21/10/2026): para a Educação a ida é voluntária, então o formulário convida. */}
+            <div className="-mb-2 flex flex-col gap-2.5 rounded-[20px] p-4 text-[13.5px] leading-relaxed" style={{ background: COR.verdeClaro, color: COR.verde }} data-testid="sobre-o-evento">
+              <h2 className="text-[20px] font-bold leading-tight">{SOBRE_O_EVENTO.titulo}</h2>
+              <p>{SOBRE_O_EVENTO.texto}</p>
+              <p className="rounded-xl bg-white px-3 py-2.5 font-semibold" style={{ color: COR.vermelhoEsc }}>{SOBRE_O_EVENTO.destaque}</p>
+              <ul className="flex flex-col gap-1.5">
+                {SOBRE_O_EVENTO.selos.map((s) => (
+                  <li key={s} className="flex items-center gap-2 text-[13px] font-semibold"><span className="grid h-[18px] w-[18px] place-items-center rounded-md text-white" style={{ background: COR.verde2 }}><Check className="h-3 w-3" strokeWidth={3} /></span>{s}</li>
+                ))}
+              </ul>
+              <p className="font-bold">{SOBRE_O_EVENTO.chamada}</p>
             </div>
             <Secao n={1} titulo="Quem é você">
               <label className="flex flex-col gap-1.5 text-sm font-semibold">Nome completo

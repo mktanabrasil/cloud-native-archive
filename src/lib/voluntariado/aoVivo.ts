@@ -99,7 +99,8 @@ export function calcularPainel(a: Acompanhamento, agora = Date.now()): Painel {
   return {
     total: lista.length,
     hoje: lista.filter((i) => diaDe(i.created_at) === hojeDia).length,
-    unidades: { comInscritos: porUnidade.filter((u) => u.n > 0).length, total: Math.max(nomesDasUnidades.length, porUnidade.filter((u) => u.n > 0).length) },
+    // O total é a lista do formulário mais alguma de fora que já tenha inscrição.
+    unidades: { comInscritos: porUnidade.filter((u) => u.n > 0).length, total: porUnidade.length },
     areas: { cobertas: porArea.length - vazias.length, total: porArea.length },
     comSegunda: lista.filter((i) => i.opcao2).length,
     mediaPorDia,
