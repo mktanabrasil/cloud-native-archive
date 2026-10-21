@@ -10,13 +10,15 @@ import { baixarArquivo } from '@/lib/enquetes/planilha';
 import { apagarInscricao, listarInscricoes, type Inscricao } from '@/lib/voluntariado/api';
 import { AREAS_DE_AJUDA, PRAZO, ULTIMO_DIA, rotuloDaAjuda, type AreaDeAjuda } from '@/lib/voluntariado/modelo';
 import { csvDasInscricoes, nomeDaPlanilha, whatsappLegivel } from '@/lib/voluntariado/planilha';
+import { PlanilhaDoGoogle } from './PlanilhaDoGoogle';
 
 /**
  * O painel do voluntariado do Natal Feliz (mockup aprovado em 20/10/2026):
  * só administradores e comunicação, como a Pizza. Inscritos, áreas sem
  * ninguém, quantos em cada área pela 1ª opção, a lista com WhatsApp (para o
  * contato do termo de voluntariado), filtros por unidade e área, a planilha
- * e o apagar (teste ou desistência). Sem Drive: aqui não há arquivo.
+ * e o apagar (teste ou desistência). Desde 21/10/2026, também a planilha do
+ * Google que se atualiza sozinha (PlanilhaDoGoogle).
  */
 
 export const LINK_DO_FORMULARIO = 'https://app.anabrasil.org/voluntariado';
@@ -85,6 +87,8 @@ export function PainelDoVoluntariado() {
           <Button size="sm" disabled={!vistas.length} onClick={() => baixarArquivo(csvDasInscricoes(vistas), nomeDaPlanilha(unidade))}><Download className="h-4 w-4" /> Baixar planilha</Button>
         </div>
       </div>
+
+      <PlanilhaDoGoogle inscritos={(lista ?? []).length} />
 
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por unidade">
         <Button size="sm" variant={unidade === null ? 'default' : 'secondary'} className="h-8 rounded-full" onClick={() => setUnidade(null)}>Todas as unidades</Button>
