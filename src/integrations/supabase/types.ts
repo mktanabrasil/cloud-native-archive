@@ -1409,11 +1409,81 @@ export type Database = {
         }
         Relationships: []
       }
+      email_modelos: {
+        Row: {
+          assunto: string
+          atualizado_em: string | null
+          atualizado_por: string | null
+          chave: string
+          padrao_assunto: string
+          padrao_texto: string
+          padrao_titulo: string
+          texto: string
+          titulo: string
+        }
+        Insert: {
+          assunto: string
+          atualizado_em?: string | null
+          atualizado_por?: string | null
+          chave: string
+          padrao_assunto: string
+          padrao_texto: string
+          padrao_titulo: string
+          texto: string
+          titulo: string
+        }
+        Update: {
+          assunto?: string
+          atualizado_em?: string | null
+          atualizado_por?: string | null
+          chave?: string
+          padrao_assunto?: string
+          padrao_texto?: string
+          padrao_titulo?: string
+          texto?: string
+          titulo?: string
+        }
+        Relationships: []
+      }
+      email_modelos_versoes: {
+        Row: {
+          assunto: string
+          chave: string
+          em: string
+          id: number
+          por: string | null
+          texto: string
+          titulo: string
+        }
+        Insert: {
+          assunto: string
+          chave: string
+          em?: string
+          id?: number
+          por?: string | null
+          texto: string
+          titulo: string
+        }
+        Update: {
+          assunto?: string
+          chave?: string
+          em?: string
+          id?: number
+          por?: string | null
+          texto?: string
+          titulo?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      salvar_email_modelo: {
+        Args: { p_chave: string; p_assunto: string; p_titulo: string; p_texto: string }
+        Returns: undefined
+      }
       inscrever_voluntario: {
         Args: { p_nome: string; p_whatsapp: string; p_unidade_id: string; p_unidade_nome: string; p_area: string; p_opcao1: string; p_opcao2?: string }
         Returns: string

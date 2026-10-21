@@ -17,6 +17,9 @@ addEventListener('error', (e) => { console.error('[candidatura-confirmacao] erro
  *    selecionado) uma vez cada (`etapa_avisada`). Voltar etapa não chama.
  *
  * 3. Responsável nomeado (passo 3, 19/10/2026): `{ responsavel_vaga_id }`.
+ * 5. Teste de modelo (passo 7, 21/10/2026): `{ teste_modelo }`, só o RH;
+ *    manda a prévia com valores de exemplo para o e-mail de quem pediu.
+ *    Desde o passo 7, todos os textos vêm dos modelos (email_modelos).
  * 4. Mensagem da equipe (passo 5, 20/10/2026): `{ mensagem_id }`, chamado
  *    pelo RH ou pelo responsável logo depois de `enviar_mensagem`. Uma vez
  *    por mensagem (`email_enviado_em`).
@@ -43,41 +46,67 @@ const quando = (iso: string) =>
 
 interface Mensagem { assunto: string; titulo: string; paragrafos: string[]; destaque?: { rotulo: string; valor: string; rodape: string }; cor?: string }
 
-function confirmacao(nome: string, vaga: string, protocolo: string, enviadaEm: string): Mensagem {
+// --- Modelos de e-mail (passo 7, 21/10/2026) ------------------------------------------
+// O RH edita assunto, título e texto em Vagas › Modelos de e-mail (tabela
+// email_modelos); os campos entre chaves são trocados aqui. Se a linha não
+// existir, vale o texto embutido abaixo (o mesmo que a migração semeou).
+
+type ChaveDoModelo = 'confirmacao' | 'analise' | 'entrevista' | 'aprovado' | 'nao_selecionado' | 'convite' | 'pergunta' | 'recado' | 'responsavel';
+interface Texto { assunto: string; titulo: string; texto: string }
+
+const PADRAO: Record<ChaveDoModelo, Texto> = {
+  confirmacao: { assunto: 'Candidatura recebida · {vaga} · {protocolo}', titulo: 'Recebemos sua candidatura, {nome}.', texto: '{vaga}\n\nPróximos passos: o RH analisa as candidaturas. Se você avançar, avisamos pelo app e por e-mail.' },
+  analise: { assunto: 'Sua candidatura está em análise · {vaga}', titulo: '{nome}, sua candidatura está em análise.', texto: 'O RH começou a analisar a sua candidatura para {vaga} (protocolo {protocolo}).\n\nSe você avançar, avisamos por aqui de novo.' },
+  entrevista: { assunto: 'Você avançou para a entrevista · {vaga}', titulo: 'Boa notícia, {nome}: você avançou para a entrevista.', texto: 'Sua candidatura para {vaga} (protocolo {protocolo}) passou para a etapa de entrevista.\n\nO RH vai entrar em contato pelo WhatsApp do seu perfil para combinar dia e horário. Confira se o número está certo.' },
+  aprovado: { assunto: 'Você foi aprovado(a) · {vaga}', titulo: 'Parabéns, {nome}! Você foi aprovado(a).', texto: 'Você foi aprovado(a) no processo para {vaga} (protocolo {protocolo}).\n\nO RH vai entrar em contato com os próximos passos.' },
+  nao_selecionado: { assunto: 'Resultado da sua candidatura · {vaga}', titulo: '{nome}, obrigado por se candidatar.', texto: 'Desta vez você não foi selecionado(a) para {vaga} (protocolo {protocolo}).\n\nSeu perfil continua no Trabalhe Conosco, e você pode se candidatar a outras vagas quando quiser.' },
+  convite: { assunto: 'Convite para entrevista · {vaga}', titulo: '{nome}, você foi convidado(a) para uma entrevista.', texto: '{mensagem}\n\nConfirme sua presença pelo app (ou avise se não puder nesse horário).' },
+  pergunta: { assunto: 'O RH tem uma pergunta · {vaga}', titulo: '{nome}, o RH precisa de uma informação.', texto: '{mensagem}\n\nResponda pelo app, na sua candidatura.' },
+  recado: { assunto: 'Mensagem do RH · {vaga}', titulo: '{nome}, uma mensagem sobre sua candidatura.', texto: '{mensagem}' },
+  responsavel: { assunto: 'Você é responsável pelo processo · {vaga}', titulo: '{nome}, você é responsável por um processo seletivo.', texto: 'O RH nomeou você responsável pelo processo {vaga} ({codigo}). Prazo do processo: {prazo}.\n\nNo app, os candidatos aparecem em Vagas › Meus processos: você abre as fichas, vê o currículo e move até a entrevista. O resultado final fica com o RH.' },
+};
+/** Os modelos com o título em destaque (fundo verde-claro), como já eram. */
+const COM_COR: ChaveDoModelo[] = ['entrevista', 'aprovado', 'convite'];
+
+/** Troca {campo} pelo valor; campo desconhecido fica como está (a tela do RH não deixa salvar campo estranho). */
+const preencher = (t: string, v: Record<string, string>) => t.replace(/\{([a-z_]+)\}/g, (todo, c: string) => (c in v ? v[c] : todo));
+
+// deno-lint-ignore no-explicit-any
+async function lerModelo(admin: any, chave: ChaveDoModelo): Promise<Texto> {
+  const { data } = await admin.from('email_modelos').select('assunto, titulo, texto').eq('chave', chave).maybeSingle();
+  return data?.assunto && data?.titulo && data?.texto ? data as Texto : PADRAO[chave];
+}
+
+/** Monta a mensagem a partir do modelo (o salvo pelo RH ou o embutido). */
+function montar(chave: ChaveDoModelo, t: Texto, valores: Record<string, string>, destaque?: Mensagem['destaque']): Mensagem {
   return {
-    assunto: `Candidatura recebida · ${vaga} · ${protocolo}`,
-    titulo: `Recebemos sua candidatura, ${nome}.`,
-    paragrafos: [vaga, 'Próximos passos: o RH analisa as candidaturas. Se você avançar, avisamos pelo app e por e-mail.'],
-    destaque: { rotulo: 'Protocolo', valor: protocolo, rodape: `enviada em ${enviadaEm}` },
+    assunto: preencher(t.assunto, valores).replace(/\s+/g, ' ').trim(),
+    titulo: preencher(t.titulo, valores).trim(),
+    paragrafos: preencher(t.texto, valores).split(/\n+/).map((p) => p.trim()).filter(Boolean),
+    destaque,
+    cor: COM_COR.includes(chave) ? '#E6F8F3' : undefined,
   };
 }
 
-/** O aviso de cada etapa. Tom direto e cuidadoso, sem promessas que o RH não fez. */
-function avisoDeEtapa(etapa: string, resultado: string | null, nome: string, vaga: string, protocolo: string): Mensagem | null {
-  if (etapa === 'analise') return {
-    assunto: `Sua candidatura está em análise · ${vaga}`,
-    titulo: `${nome}, sua candidatura está em análise.`,
-    paragrafos: [`O RH começou a analisar a sua candidatura para ${vaga} (protocolo ${protocolo}).`, 'Se você avançar, avisamos por aqui de novo.'],
-  };
-  if (etapa === 'entrevista') return {
-    assunto: `Você avançou para a entrevista · ${vaga}`,
-    titulo: `Boa notícia, ${nome}: você avançou para a entrevista.`,
-    paragrafos: [`Sua candidatura para ${vaga} (protocolo ${protocolo}) passou para a etapa de entrevista.`, 'O RH vai entrar em contato pelo WhatsApp do seu perfil para combinar dia e horário. Confira se o número está certo.'],
-    cor: '#E6F8F3',
-  };
-  if (etapa === 'resultado' && resultado === 'aprovado') return {
-    assunto: `Você foi aprovado(a) · ${vaga}`,
-    titulo: `Parabéns, ${nome}! Você foi aprovado(a).`,
-    paragrafos: [`Você foi aprovado(a) no processo para ${vaga} (protocolo ${protocolo}).`, 'O RH vai entrar em contato com os próximos passos.'],
-    cor: '#E6F8F3',
-  };
-  if (etapa === 'resultado' && resultado === 'nao_selecionado') return {
-    assunto: `Resultado da sua candidatura · ${vaga}`,
-    titulo: `${nome}, obrigado por se candidatar.`,
-    paragrafos: [`Desta vez você não foi selecionado(a) para ${vaga} (protocolo ${protocolo}).`, 'Seu perfil continua no Trabalhe Conosco, e você pode se candidatar a outras vagas quando quiser.'],
-  };
+/** A chave do aviso de cada etapa (voltar não avisa; Recebida não tem aviso). */
+function chaveDaEtapa(etapa: string, resultado: string | null): ChaveDoModelo | null {
+  if (etapa === 'analise') return 'analise';
+  if (etapa === 'entrevista') return 'entrevista';
+  if (etapa === 'resultado' && resultado === 'aprovado') return 'aprovado';
+  if (etapa === 'resultado' && resultado === 'nao_selecionado') return 'nao_selecionado';
   return null;
 }
+
+/** Os valores de exemplo do "Mandar teste para mim" (os mesmos da prévia no app). */
+const EXEMPLO: Record<string, string> = {
+  nome: 'Leonardo', vaga: 'Educador Social de Música', protocolo: '2026-000418', data: '21/10/2026 09:42',
+  mensagem: 'Olá, Leonardo! Sua entrevista será no dia 24/10, às 14:00, na Sede. Leve um documento com foto.',
+  codigo: 'SOC-2026-031', prazo: '30/11/2026',
+};
+const BOTAO: Record<ChaveDoModelo, string> = {
+  confirmacao: 'Acompanhar candidatura', analise: 'Acompanhar candidatura', entrevista: 'Acompanhar candidatura', aprovado: 'Acompanhar candidatura',
+  nao_selecionado: 'Acompanhar candidatura', convite: 'Confirmar presença', pergunta: 'Responder no app', recado: 'Abrir no app', responsavel: 'Abrir o processo',
+};
 
 function html(m: Mensagem, link: string, botao = 'Acompanhar candidatura'): string {
   const destaque = m.destaque ? `
@@ -136,8 +165,26 @@ Deno.serve(async (req) => {
   const { data: quem, error: erroDeQuem } = await userClient.auth.getUser(auth.replace('Bearer ', ''));
   if (erroDeQuem || !quem?.user) return json({ error: 'Não autorizado.' }, 401);
 
-  let corpo: { candidatura_id?: string; aviso?: boolean; responsavel_vaga_id?: string; mensagem_id?: string } = {};
+  let corpo: { candidatura_id?: string; aviso?: boolean; responsavel_vaga_id?: string; mensagem_id?: string; teste_modelo?: Texto & { chave?: string } } = {};
   try { corpo = await req.json(); } catch { /* corpo vazio */ }
+
+  // 5. "Mandar teste para mim" (passo 7, 21/10/2026): só o RH; vai para o e-mail de quem pediu, com valores de exemplo.
+  if (corpo.teste_modelo) {
+    const { data: ehRh } = await userClient.rpc('is_rh_or_admin', { _user_id: quem.user.id });
+    if (!ehRh) return json({ error: 'Só o RH testa os modelos.' }, 403);
+    const t = corpo.teste_modelo;
+    const chave = String(t.chave ?? '') as ChaveDoModelo;
+    if (!(chave in PADRAO)) return json({ error: 'Modelo desconhecido.' }, 400);
+    const texto: Texto = { assunto: String(t.assunto ?? '').slice(0, 150), titulo: String(t.titulo ?? '').slice(0, 150), texto: String(t.texto ?? '').slice(0, 2000) };
+    if (!texto.assunto.trim() || !texto.titulo.trim() || !texto.texto.trim()) return json({ error: 'Assunto, título e texto não podem ficar vazios.' }, 400);
+    const destaque = chave === 'confirmacao' ? { rotulo: 'Protocolo', valor: EXEMPLO.protocolo, rodape: `enviada em ${EXEMPLO.data}` }
+      : chave === 'convite' ? { rotulo: 'Entrevista', valor: 'sexta-feira, 24/10 às 14:00', rodape: 'Presencial · Sede' } : undefined;
+    const m = montar(chave, texto, EXEMPLO, destaque);
+    m.assunto = `[Teste] ${m.assunto}`;
+    try { await enviar(quem.user.email!, m, `${SITE}/vagas`, BOTAO[chave]); }
+    catch (e) { return json({ error: (e instanceof Error ? e.message : String(e)).slice(0, 300) }, 502); }
+    return json({ enviado: true, para: quem.user.email });
+  }
 
   // 4. Mensagem da equipe (passo 5, 20/10/2026): o texto inteiro vai no e-mail, com o botão para o app.
   if (corpo.mensagem_id) {
@@ -158,28 +205,15 @@ Deno.serve(async (req) => {
     if (!dono?.user?.email) return json({ error: 'Candidato sem e-mail.' }, 404);
     const primeiro = String(cand.perfil?.nome_social || cand.perfil?.nome || 'candidato').split(' ')[0];
     const tituloDaVaga = String(cand.vagas?.titulo ?? 'Trabalhe Conosco');
-    const paragrafos = String(msg.texto).split(/\n+/).map((p) => p.trim()).filter(Boolean);
-    let m: Mensagem;
-    let botao: string;
+    const chave: ChaveDoModelo = msg.tipo === 'convite' ? 'convite' : msg.tipo === 'pergunta' ? 'pergunta' : 'recado';
+    let destaque: Mensagem['destaque'];
     if (msg.tipo === 'convite') {
       const e = (msg.entrevista ?? {}) as { dia?: string; hora?: string; formato?: string; local?: string };
       const dia = e.dia ? new Date(`${e.dia}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' }) : '';
-      m = {
-        assunto: `Convite para entrevista · ${tituloDaVaga}`,
-        titulo: `${primeiro}, você foi convidado(a) para uma entrevista.`,
-        paragrafos: [...paragrafos, 'Confirme sua presença pelo app (ou avise se não puder nesse horário).'],
-        destaque: { rotulo: 'Entrevista', valor: `${dia} às ${e.hora ?? ''}`, rodape: [e.formato === 'online' ? 'On-line' : e.formato === 'telefone' ? 'Por telefone' : 'Presencial', e.local].filter(Boolean).join(' · ') },
-        cor: '#E6F8F3',
-      };
-      botao = 'Confirmar presença';
-    } else if (msg.tipo === 'pergunta') {
-      m = { assunto: `O RH tem uma pergunta · ${tituloDaVaga}`, titulo: `${primeiro}, o RH precisa de uma informação.`, paragrafos: [...paragrafos, 'Responda pelo app, na sua candidatura.'] };
-      botao = 'Responder no app';
-    } else {
-      m = { assunto: `Mensagem do RH · ${tituloDaVaga}`, titulo: `${primeiro}, uma mensagem sobre sua candidatura.`, paragrafos };
-      botao = 'Abrir no app';
+      destaque = { rotulo: 'Entrevista', valor: `${dia} às ${e.hora ?? ''}`, rodape: [e.formato === 'online' ? 'On-line' : e.formato === 'telefone' ? 'Por telefone' : 'Presencial', e.local].filter(Boolean).join(' · ') };
     }
-    try { await enviar(dono.user.email, m, `${SITE}/vagas/minha-area/${cand.id}`, botao); }
+    const m = montar(chave, await lerModelo(adm, chave), { nome: primeiro, vaga: tituloDaVaga, mensagem: String(msg.texto) }, destaque);
+    try { await enviar(dono.user.email, m, `${SITE}/vagas/minha-area/${cand.id}`, BOTAO[chave]); }
     catch (e) { return json({ error: (e instanceof Error ? e.message : String(e)).slice(0, 300) }, 502); }
     await adm.from('candidatura_mensagens').update({ email_enviado_em: new Date().toISOString() }).eq('id', msg.id);
     return json({ enviado: true });
@@ -196,16 +230,9 @@ Deno.serve(async (req) => {
     if (!resp?.user?.email) return json({ error: 'Responsável sem e-mail.' }, 404);
     const { data: perfilResp } = await adm.from('profiles').select('name').eq('user_id', v.responsavel_id).maybeSingle();
     const primeiro = String(perfilResp?.name || resp.user.email).split(/[\s@]/)[0];
-    const prazo = v.prazo_processo ? ` O prazo do processo é ${String(v.prazo_processo).split('-').reverse().join('/')}.` : '';
-    const m: Mensagem = {
-      assunto: `Você é responsável pelo processo · ${v.titulo}`,
-      titulo: `${primeiro}, você é responsável por um processo seletivo.`,
-      paragrafos: [
-        `O RH nomeou você responsável pelo processo ${v.titulo} (${v.codigo}).${prazo}`,
-        'No app, os candidatos aparecem em Vagas › Meus processos: você abre as fichas, vê o currículo e move até a entrevista. O resultado final fica com o RH.',
-      ],
-    };
-    try { await enviar(resp.user.email, m, `${SITE}/vagas/${v.slug}/candidatos`, 'Abrir o processo'); }
+    const prazo = v.prazo_processo ? String(v.prazo_processo).split('-').reverse().join('/') : 'sem prazo definido';
+    const m = montar('responsavel', await lerModelo(adm, 'responsavel'), { nome: primeiro, vaga: String(v.titulo), codigo: String(v.codigo), prazo });
+    try { await enviar(resp.user.email, m, `${SITE}/vagas/${v.slug}/candidatos`, BOTAO.responsavel); }
     catch (e) { return json({ error: (e instanceof Error ? e.message : String(e)).slice(0, 300) }, 502); }
     return json({ enviado: true });
   }
@@ -240,16 +267,20 @@ Deno.serve(async (req) => {
       if (c.retirada_em) return json({ enviado: false, motivo: 'retirada' });
       const marca = `${c.etapa}${c.resultado ? ':' + c.resultado : ''}`;
       if (c.etapa_avisada === marca) return json({ enviado: false, motivo: 'já avisado' });
-      const m = avisoDeEtapa(c.etapa, c.resultado, nome, vaga, c.protocolo);
-      if (!m) return json({ enviado: false, motivo: 'etapa sem aviso' });
-      await enviar(para, m, link);
+      const chave = chaveDaEtapa(c.etapa, c.resultado);
+      if (!chave) return json({ enviado: false, motivo: 'etapa sem aviso' });
+      const m = montar(chave, await lerModelo(admin, chave), { nome, vaga, protocolo: c.protocolo });
+      await enviar(para, m, link, BOTAO[chave]);
       await admin.from('candidaturas').update({ etapa_avisada: marca }).eq('id', c.id);
       return json({ enviado: true });
     }
 
     if (c.user_id !== quem.user.id) return json({ error: 'Candidatura não encontrada.' }, 404);
     if (c.confirmacao_enviada_em) return json({ enviado: false, motivo: 'já enviado' });
-    await enviar(para, confirmacao(nome, vaga, c.protocolo, quando(c.created_at)), link);
+    const enviadaEm = quando(c.created_at);
+    const m = montar('confirmacao', await lerModelo(admin, 'confirmacao'), { nome, vaga, protocolo: c.protocolo, data: enviadaEm },
+      { rotulo: 'Protocolo', valor: c.protocolo, rodape: `enviada em ${enviadaEm}` });
+    await enviar(para, m, link, BOTAO.confirmacao);
     await admin.from('candidaturas').update({ confirmacao_enviada_em: new Date().toISOString() }).eq('id', c.id);
     return json({ enviado: true });
   } catch (e) {

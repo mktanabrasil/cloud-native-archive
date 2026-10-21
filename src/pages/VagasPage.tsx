@@ -15,6 +15,7 @@ import { useSouResponsavel } from '@/hooks/useSouResponsavel';
 import { GestaoDeVagas } from '@/components/vagas/GestaoDeVagas';
 import { RelatoriosDoRh } from '@/components/vagas/RelatoriosDoRh';
 import { AuditoriaDasVagas } from '@/components/vagas/AuditoriaDasVagas';
+import { ModelosDeEmail } from '@/components/vagas/ModelosDeEmail';
 import { CartaoDaVaga, COR_DA_AREA, ICONE_DA_AREA, MolduraDasVagas } from '@/components/vagas/PecasDasVagas';
 import { guardarVista, separarProgramas, vistaGuardada, type Vista } from '@/lib/vagas/vitrine';
 import { listarVagasPublicadas } from '@/lib/vagas/api';
@@ -39,16 +40,16 @@ export default function VagasPage() {
   // Quem é responsável por um processo, sem ser RH, abre em "Meus processos" (passo 3, 19/10/2026).
   const pedida = params.get('tela');
   const portalPedido = pedida === 'portal' || (params.toString() !== '' && !pedida);
-  type Tela = 'painel' | 'processos' | 'gestao' | 'relatorios' | 'auditoria' | 'portal' | 'meus';
+  type Tela = 'painel' | 'processos' | 'gestao' | 'relatorios' | 'emails' | 'auditoria' | 'portal' | 'meus';
   // Relatórios: só o RH; Auditoria: só administradores (passo 6, 20/10/2026).
   const tela: Tela = isRh
-    ? (pedida === 'gestao' ? 'gestao' : pedida === 'processos' ? 'processos' : pedida === 'relatorios' ? 'relatorios' : pedida === 'auditoria' && isAdmin ? 'auditoria' : portalPedido ? 'portal' : 'painel')
+    ? (pedida === 'gestao' ? 'gestao' : pedida === 'processos' ? 'processos' : pedida === 'relatorios' ? 'relatorios' : pedida === 'emails' ? 'emails' : pedida === 'auditoria' && isAdmin ? 'auditoria' : portalPedido ? 'portal' : 'painel')
     : souResponsavel ? (portalPedido ? 'portal' : 'meus') : 'portal';
   const gestao = tela === 'gestao';
-  useTituloDaAba(tela === 'relatorios' ? 'Relatórios · ANA Brasil' : tela === 'auditoria' ? 'Auditoria das vagas · ANA Brasil' : tela === 'gestao' ? 'Gestão de vagas · ANA Brasil' : tela === 'painel' ? 'Painel do RH · ANA Brasil' : tela === 'processos' ? 'Processos · ANA Brasil' : tela === 'meus' ? 'Meus processos · ANA Brasil' : 'Trabalhe Conosco · ANA Brasil');
+  useTituloDaAba(tela === 'emails' ? 'Modelos de e-mail · ANA Brasil' : tela === 'relatorios' ? 'Relatórios · ANA Brasil' : tela === 'auditoria' ? 'Auditoria das vagas · ANA Brasil' : tela === 'gestao' ? 'Gestão de vagas · ANA Brasil' : tela === 'painel' ? 'Painel do RH · ANA Brasil' : tela === 'processos' ? 'Processos · ANA Brasil' : tela === 'meus' ? 'Meus processos · ANA Brasil' : 'Trabalhe Conosco · ANA Brasil');
   // RH e admin veem quatro abas; o responsável, as dele; o público só a vitrine.
   const opcoes: ReadonlyArray<readonly [string, Tela]> = isRh
-    ? [['Painel', 'painel'], ['Processos', 'processos'], ['Gestão', 'gestao'], ['Relatórios', 'relatorios'], ...(isAdmin ? [['Auditoria', 'auditoria'] as const] : []), ['Portal', 'portal']]
+    ? [['Painel', 'painel'], ['Processos', 'processos'], ['Gestão', 'gestao'], ['Relatórios', 'relatorios'], ['Modelos de e-mail', 'emails'], ...(isAdmin ? [['Auditoria', 'auditoria'] as const] : []), ['Portal', 'portal']]
     : souResponsavel ? [['Meus processos', 'meus'], ['Portal', 'portal']] : [];
   const telaPadrao: Tela = isRh ? 'painel' : 'meus';
   const abas = opcoes.length ? (
@@ -81,7 +82,7 @@ export default function VagasPage() {
   if (porta) {
     return <EntrarCandidatoPage comoPorta aoVerVagas={() => { lembrarVerSemEntrar(); setSemEntrar(true); }} />;
   }
-  return <MolduraDasVagas abas={abas}>{gestao ? <GestaoDeVagas /> : tela === 'relatorios' ? <RelatoriosDoRh /> : tela === 'auditoria' ? <AuditoriaDasVagas /> : tela === 'painel' ? <PainelDoRh /> : tela === 'processos' ? <ProcessosDoRh /> : tela === 'meus' ? <MeusProcessos /> : <Vitrine />}</MolduraDasVagas>;
+  return <MolduraDasVagas abas={abas}>{gestao ? <GestaoDeVagas /> : tela === 'relatorios' ? <RelatoriosDoRh /> : tela === 'emails' ? <ModelosDeEmail /> : tela === 'auditoria' ? <AuditoriaDasVagas /> : tela === 'painel' ? <PainelDoRh /> : tela === 'processos' ? <ProcessosDoRh /> : tela === 'meus' ? <MeusProcessos /> : <Vitrine />}</MolduraDasVagas>;
 }
 
 function Vitrine() {
