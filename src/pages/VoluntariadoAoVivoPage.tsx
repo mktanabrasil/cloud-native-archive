@@ -62,7 +62,7 @@ export function AoVivoNoEnderecoNovo() {
 
 export default function VoluntariadoAoVivoPage() {
   const { codigo = '' } = useParams();
-  useTituloDaAba('Natal Feliz · Voluntariado ao vivo');
+  useTituloDaAba('Dia do Voluntariado · ao vivo');
   const [dados, setDados] = useState<Acompanhamento | null>(null);
   const [erro, setErro] = useState<'codigo' | 'rede' | null>(null);
   const [lidoEm, setLidoEm] = useState(Date.now());
@@ -131,7 +131,7 @@ export default function VoluntariadoAoVivoPage() {
       <div className="mx-auto grid max-w-[1400px] gap-3.5">
         <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-4 text-[#F6EEDF]" style={{ background: 'repeating-linear-gradient(135deg,#1E4D3A 0 16px,#2F6B52 16px 32px)' }}>
           <div>
-            <b className="text-2xl font-extrabold">Natal Feliz 2026 · Voluntariado</b>
+            <b className="text-2xl font-extrabold">Dia do Voluntariado · Natal Feliz 2026</b>
             <small className="block text-[13px] opacity-85">08/12 no Manaim · em parceria com a JNI · inscrições até 15/11</small>
           </div>
           <span className="flex items-center gap-2 rounded-full bg-black/25 px-3.5 py-1.5 text-[13px]" data-testid="ao-vivo">
@@ -201,7 +201,6 @@ export default function VoluntariadoAoVivoPage() {
                       </div>
                     ))}
                   </div>
-                  <span className="text-[13px] text-muted-foreground">Social {p.social} · Educação {p.educacao}</span>
                 </div>
 
                 <div className="grid min-h-[440px] flex-[0_0_100%] content-start gap-3 px-6 py-5" aria-hidden={atual !== 4}>

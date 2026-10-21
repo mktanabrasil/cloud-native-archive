@@ -23,9 +23,17 @@ export const DIA_DO_EVENTO = '08/12';
 export const ULTIMO_DIA = '15/11';
 
 /** O bloco antes da primeira pergunta (mockup aprovado em 21/10/2026). */
+/**
+ * O convite antes das perguntas (mockup "Dia do Voluntariado" aprovado em
+ * 21/10/2026): o formulário é para a Educação, para quem a ida é voluntária,
+ * então ele precisa convidar, não só registrar.
+ */
 export const SOBRE_O_EVENTO = {
-  titulo: 'Natal Feliz 2026 · Manaim',
-  texto: 'No dia 8 de dezembro, o Manaim recebe o Natal Feliz, em parceria com a JNI: um dia de celebração, solidariedade e união entre as unidades da ANA, para proporcionar às famílias que atendemos uma experiência inesquecível. Para isso acontecer, contamos com você!',
+  titulo: 'Neste Natal, seja o presente de alguém',
+  texto: 'No dia 8 de dezembro, o Manaim se transforma para receber o Natal Feliz, em parceria com a JNI. É o nosso Dia do Voluntariado: um dia de abraços, sorrisos, brincadeiras e presentes para as famílias que atendemos.',
+  destaque: 'A participação é voluntária, e é isso que torna o dia tão especial: quem vai, vai porque escolheu fazer a diferença.',
+  selos: ['Você escolhe onde quer ajudar', 'Leva menos de 2 minutos', 'A equipe te passa todas as informações'],
+  chamada: 'Vem com a gente fazer parte dessa história?',
 };
 
 export const GRUPOS = [
@@ -78,7 +86,11 @@ export const GRUPOS_DO_FORMULARIO = GRUPOS
   .filter((g) => g.areas.length > 0);
 
 /** As unidades do formulário: as das campanhas, menos as tiradas do voluntariado. */
+/** Só a Educação (GOE e CEIs): o Social vai ao Natal Feliz de qualquer jeito (21/10/2026). */
+export const AREAS_DO_VOLUNTARIADO: readonly string[] = ['educacao'];
+
 export const UNIDADES_DO_VOLUNTARIADO = UNIDADES_POR_AREA
+  .filter((g) => AREAS_DO_VOLUNTARIADO.includes(g.area))
   .map((g) => ({ ...g, unidades: g.unidades.filter((u) => !UNIDADES_FORA_DO_VOLUNTARIADO.includes(u.id)) }))
   .filter((g) => g.unidades.length > 0);
 

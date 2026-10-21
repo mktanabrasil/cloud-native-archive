@@ -37,8 +37,8 @@ const I = (nome: string, unidade: string, area: 'social' | 'educacao', o1: strin
 const BASE = [
   I('Leonardo Garbo', 'CEI Bem Querer Prof. Pierre Weil', 'educacao', 'cozinha', 'montagem', '2026-10-21T09:00:00-03:00'),
   I('Paulo Martins', 'Grupo de Oração Esperança', 'educacao', 'projecao', null, '2026-10-21T10:00:00-03:00'),
-  I('Marcos Souza', 'ANA DIC', 'social', 'cozinha', 'seguranca', '2026-10-27T09:00:00-03:00'),
-  I('Ana Paula', 'ANA DIC', 'social', 'recreacao_kids', null, '2026-10-28T14:59:00-03:00'),
+  I('Marcos Souza', 'CEI Bem Querer Prof. Anísio Spínola', 'educacao', 'cozinha', 'seguranca', '2026-10-27T09:00:00-03:00'),
+  I('Ana Paula', 'CEI Bem Querer Prof. Anísio Spínola', 'educacao', 'recreacao_kids', null, '2026-10-28T14:59:00-03:00'),
 ];
 const dados = (inscricoes = BASE, meta: number | null = null) => ({ meta, agora: new Date(AGORA).toISOString(), inscricoes });
 
@@ -51,7 +51,7 @@ describe('contas', () => {
   it('números do topo', () => {
     expect(p.total).toBe(4);
     expect(p.hoje).toBe(1);
-    expect(p.unidades).toEqual({ comInscritos: 3, total: 15 });
+    expect(p.unidades).toEqual({ comInscritos: 3, total: 12 }); // só a Educação: GOE + 11 CEIs (21/10/2026)
     expect(p.areas.total).toBe(16); // Som fora do formulário e ninguém o escolheu
     expect(p.areas.cobertas).toBe(3);
     expect(p.comSegunda).toBe(2);
@@ -71,7 +71,7 @@ describe('contas', () => {
     expect(p.porArea.find((a) => a.chave === 'montagem')).toMatchObject({ primeira: 0, segunda: 1 });
     expect(p.vazias).toContain('Montagem / Desmontagem');
     expect(p.matriz.colunas.map((c) => c.chave)).toEqual(['cozinha', 'projecao', 'recreacao_kids']);
-    expect(p.matriz.linhas.find((l) => l.nome === 'ANA DIC')!.valores).toEqual([1, 0, 1]);
+    expect(p.matriz.linhas.find((l) => l.nome === 'CEI Bem Querer Prof. Anísio Spínola')!.valores).toEqual([1, 0, 1]);
   });
 
   it('últimas: a mais nova primeiro, com as áreas', () => {
@@ -124,7 +124,7 @@ describe('a página', () => {
     expect(screen.getByTestId('trilho').style.transform).toBe('translateX(-200%)');
     fireEvent.click(screen.getByRole('button', { name: 'Próximo' }));
     expect(screen.getByTestId('trilho').style.transform).toBe('translateX(-300%)');
-    expect(screen.getAllByTestId('unidade')).toHaveLength(15);
+    expect(screen.getAllByTestId('unidade')).toHaveLength(12);
     expect(screen.queryByTestId('meta')).toBeNull();
   });
 

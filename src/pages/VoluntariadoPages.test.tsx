@@ -54,7 +54,11 @@ describe('regras', () => {
     expect(GRUPOS_DO_FORMULARIO.flatMap((g) => g.areas.map(([k]) => k))).toHaveLength(16);
     expect(GRUPOS_DO_FORMULARIO.flatMap((g) => g.areas.map(([k]) => k))).not.toContain('som');
     expect(UNIDADES_DO_VOLUNTARIADO.flatMap((g) => g.unidades.map((u) => u.id))).not.toContain('ana-piaui');
-    expect(UNIDADES_DO_VOLUNTARIADO.flatMap((g) => g.unidades.map((u) => u.id))).toContain('ana-dic');
+    // Só a Educação (21/10/2026): o GOE e as 11 CEIs; o Social sai.
+    const ids = UNIDADES_DO_VOLUNTARIADO.flatMap((g) => g.unidades.map((u) => u.id));
+    expect(ids).toHaveLength(12);
+    expect(ids).toContain('goe');
+    expect(ids).not.toContain('ana-dic');
     expect(AREAS_DE_AJUDA.every((a) => a.descricao.length > 10 && a.descricao.length < 90)).toBe(true);
   });
 
@@ -103,7 +107,9 @@ describe('formulário', () => {
     expect(screen.getByTestId('dia-do-evento')).toHaveTextContent('08/12 · Natal Feliz');
     expect(screen.getByText('Inscrições até 15/11')).toBeInTheDocument();
     const sobre = screen.getByTestId('sobre-o-evento');
-    expect(sobre).toHaveTextContent('Natal Feliz 2026 · Manaim');
+    expect(sobre).toHaveTextContent('Neste Natal, seja o presente de alguém');
+    expect(sobre).toHaveTextContent('quem vai, vai porque escolheu fazer a diferença');
+    expect(sobre).toHaveTextContent('Vem com a gente fazer parte dessa história?');
     expect(sobre).toHaveTextContent('em parceria com a JNI');
     expect(sobre.compareDocumentPosition(screen.getByLabelText('Nome completo')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     preencher();
@@ -120,6 +126,7 @@ describe('formulário', () => {
     // Logo depois de inscrever, pede para a linha entrar na planilha do Google (21/10/2026).
     expect(banco.planilhaPedida).toBe(1);
     expect(banco.enviados[0]).toMatchObject({ nome: 'leonardo garbo rodrigues', whatsapp: '(19) 99355-8242', opcao1: 'cozinha', opcao2: 'decoracao' });
+    expect(screen.getByTestId('agradecimento')).toHaveTextContent('Obrigado por fazer parte do Dia do Voluntariado!');
     expect(screen.getByTestId('proximos-passos')).toHaveTextContent('a equipe vai entrar em contato com você para a assinatura do termo de voluntariado e dará mais informações em breve');
     expect(screen.getByText('Decoração')).toBeInTheDocument();
   });
@@ -129,7 +136,8 @@ describe('formulário', () => {
     expect(screen.queryByRole('button', { name: /^Som/ })).toBeNull();
     const opcoes = [...(screen.getByLabelText('Unidade em que você trabalha') as HTMLSelectElement).options].map((o) => o.textContent);
     expect(opcoes).not.toContain('ANA Piauí');
-    expect(opcoes).toContain('ANA DIC');
+    expect(opcoes).not.toContain('ANA DIC');
+    expect(opcoes).toContain('Grupo de Oração Esperança');
   });
 
   it('sem área, avisa e não envia', async () => {
