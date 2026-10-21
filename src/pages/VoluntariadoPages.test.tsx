@@ -8,6 +8,9 @@ const banco = vi.hoisted(() => ({
   enviados: [] as Array<Record<string, unknown>>,
   lista: [] as Array<Record<string, unknown>>,
   apagados: [] as string[],
+  planilhaPedida: 0,
+  chamadas: [] as Array<Record<string, unknown>>,
+  estado: null as null | Record<string, unknown>,
   baixados: [] as string[],
   erro: null as string | null,
   papel: { isMarketing: true, loading: false },
@@ -22,6 +25,13 @@ vi.mock('@/lib/voluntariado/api', () => ({
   inscrever: async (d: Record<string, unknown>) => { if (banco.erro) throw new Error(banco.erro); banco.enviados.push(d); return 'VL-7K2Q9'; },
   listarInscricoes: async () => banco.lista,
   apagarInscricao: async (id: string) => { banco.apagados.push(id); },
+  enviarParaAPlanilha: () => { banco.planilhaPedida++; },
+  chamarPlanilha: async (c: Record<string, unknown>) => {
+    banco.chamadas.push(c);
+    if (c.estado) return banco.estado ?? { drive_conectado: true, google_email: 'contato@anabrasil.org', planilha: null, pendentes: 0 };
+    if (c.criar) { banco.estado = { drive_conectado: true, google_email: 'contato@anabrasil.org', planilha: { link: 'https://docs.google.com/spreadsheets/d/abc/edit', criada_por: 'mkt', criada_em: '2026-10-21T12:00:00Z', erro: null }, pendentes: 0 }; return { link: 'https://docs.google.com/spreadsheets/d/abc/edit', enviadas: 2 }; }
+    return { enviadas: 3, pendentes: 0 };
+  },
 }));
 
 const { default: Voluntariado } = await import('./VoluntariadoPage');
@@ -33,6 +43,8 @@ const I = (o: Record<string, unknown>) => ({ id: 'i1', protocolo: 'VL-7K2Q9', no
 
 beforeEach(() => {
   banco.enviados = []; banco.lista = []; banco.apagados = []; banco.baixados = []; banco.erro = null;
+  banco.planilhaPedida = 0; banco.chamadas = []; banco.estado = null;
+  window.open = vi.fn() as never;
   banco.papel = { isMarketing: true, loading: false };
 });
 
@@ -101,6 +113,8 @@ describe('formulário', () => {
     expect(screen.getByRole('button', { name: /^Decoração/ })).toHaveTextContent('2ª');
     fireEvent.click(screen.getByRole('button', { name: 'Enviar inscrição' }));
     expect(await screen.findByTestId('protocolo')).toHaveTextContent('VL-7K2Q9');
+    // Logo depois de inscrever, pede para a linha entrar na planilha do Google (21/10/2026).
+    expect(banco.planilhaPedida).toBe(1);
     expect(banco.enviados[0]).toMatchObject({ nome: 'leonardo garbo rodrigues', whatsapp: '(19) 99355-8242', opcao1: 'cozinha', opcao2: 'decoracao' });
     expect(screen.getByTestId('proximos-passos')).toHaveTextContent('a equipe vai entrar em contato com você para a assinatura do termo de voluntariado e dará mais informações em breve');
     expect(screen.getByText('Decoração')).toBeInTheDocument();
@@ -156,5 +170,32 @@ describe('painel', () => {
     banco.papel = { isMarketing: false, loading: false };
     render(<MemoryRouter><PainelDoVoluntariado /></MemoryRouter>);
     expect(screen.getByText('Acesso restrito')).toBeInTheDocument();
+  });
+});
+
+describe('planilha do Google (21/10/2026)', () => {
+  it('sem o Drive da Pizza conectado, explica o que fazer', async () => {
+    banco.estado = { drive_conectado: false, google_email: null, planilha: null, pendentes: 0 };
+    render(<MemoryRouter><PainelDoVoluntariado /></MemoryRouter>);
+    expect(await screen.findByTestId('planilha-google')).toHaveTextContent('conecte antes o Drive na aba Pizza da Alegria');
+  });
+
+  it('criar pede confirmação (apagar os testes antes) e abre a planilha', async () => {
+    banco.lista = [I({}), I({ id: 'i2', protocolo: 'VL-ABCDE' })];
+    render(<MemoryRouter><PainelDoVoluntariado /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: /Criar planilha do Google/ }));
+    expect(await screen.findByText('Criar a planilha com 2 inscrições?')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Criar planilha' }));
+    await waitFor(() => expect(banco.chamadas).toContainEqual({ criar: true }));
+    expect(window.open).toHaveBeenCalledWith('https://docs.google.com/spreadsheets/d/abc/edit', '_blank', 'noopener');
+    expect(await screen.findByRole('link', { name: /Abrir planilha do Google/ })).toHaveAttribute('href', 'https://docs.google.com/spreadsheets/d/abc/edit');
+  });
+
+  it('com pendentes ou erro, oferece "Enviar agora"', async () => {
+    banco.estado = { drive_conectado: true, google_email: 'contato@anabrasil.org', planilha: { link: 'https://docs.google.com/x', criada_por: 'mkt', criada_em: '2026-10-21T12:00:00Z', erro: null }, pendentes: 3 };
+    render(<MemoryRouter><PainelDoVoluntariado /></MemoryRouter>);
+    expect(await screen.findByTestId('planilha-google')).toHaveTextContent('3 inscrições ainda não entraram.');
+    fireEvent.click(screen.getByRole('button', { name: /Enviar agora/ }));
+    await waitFor(() => expect(banco.chamadas).toContainEqual({ sincronizar: true }));
   });
 });

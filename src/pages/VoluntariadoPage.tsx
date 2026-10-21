@@ -4,7 +4,7 @@ import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import InstitutionalFooterBar from '@/components/news/InstitutionalFooterBar';
 import { findNewsUnit } from '@/lib/news/units';
 import { ROTULO_DA_AREA, UNIDADES_POR_AREA } from '@/lib/pizza/modelo';
-import { inscrever } from '@/lib/voluntariado/api';
+import { enviarParaAPlanilha, inscrever } from '@/lib/voluntariado/api';
 import {
   DIA_DO_EVENTO, GRUPOS, SOBRE_O_EVENTO, ULTIMO_DIA, encerrado, mascaraDoWhatsapp, mensagemDoErro, problemaDaInscricao, rotuloDaAjuda, tocarArea,
   type AreaDeAjuda,
@@ -51,6 +51,7 @@ export default function VoluntariadoPage() {
     setEnviando(true); setErro(null);
     try {
       const protocolo = await inscrever({ nome, whatsapp, unidadeId: unidade, opcao1: opcoes.opcao1!, opcao2: opcoes.opcao2 });
+      enviarParaAPlanilha();
       setFeito({ protocolo, nome: nome.trim(), unidade: findNewsUnit(unidade)?.name ?? '', opcao1: rotuloDaAjuda(opcoes.opcao1), opcao2: opcoes.opcao2 ? rotuloDaAjuda(opcoes.opcao2) : null });
       window.scrollTo?.({ top: 0 });
     } catch (e) {

@@ -47,3 +47,29 @@ export async function apagarInscricao(id: string): Promise<void> {
   const { error } = await supabase.from('voluntarios_natal').delete().eq('id', id);
   if (error) throw error;
 }
+
+// --- A planilha do Google que se atualiza sozinha (21/10/2026) -------------------------
+
+/** Pede para escrever as inscrições pendentes na planilha. Sem esperar: a planilha é extra. */
+export function enviarParaAPlanilha(): void {
+  void supabase.functions.invoke('voluntariado-planilha', { body: {} }).catch(() => { /* o painel mostra as pendentes */ });
+}
+
+export interface EstadoDaPlanilha {
+  drive_conectado: boolean;
+  google_email: string | null;
+  planilha: { link: string; criada_por: string | null; criada_em: string; erro: string | null } | null;
+  pendentes: number;
+}
+
+/** Chama a função como a pessoa logada, com a mensagem de erro dela. */
+export async function chamarPlanilha<T>(corpo: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('voluntariado-planilha', { body: corpo });
+  if (error) {
+    const ctx = (error as { context?: Response }).context;
+    const msg = ctx && typeof ctx.json === 'function' ? (await ctx.json().catch(() => null))?.error : null;
+    throw new Error(msg || error.message);
+  }
+  if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
+  return data as T;
+}
