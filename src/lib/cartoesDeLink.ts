@@ -90,6 +90,15 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
     imagemAlt: 'Natal Feliz 2026 da ANA Brasil: seja voluntário, dia 08/12, inscrições até 15/11',
   },
   {
+    // O painel ao vivo da gestão (21/10/2026): link com código secreto.
+    arquivo: 'voluntariado-acompanhar.html',
+    regra: 'RewriteRule ^voluntariado/acompanhar/ /voluntariado-acompanhar.html [L]',
+    titulo: 'Natal Feliz · Voluntariado ao vivo',
+    descricao: 'O andamento das inscrições de voluntários do Natal Feliz, atualizado sozinho.',
+    imagem: '/og-voluntariado.jpg',
+    imagemAlt: 'Natal Feliz 2026 da ANA Brasil: voluntariado ao vivo',
+  },
+  {
     arquivo: 'vagas.html',
     regra: 'RewriteRule ^vagas(/|$) /vagas.html [L]',
     titulo: 'Trabalhe Conosco · ANA Brasil',
