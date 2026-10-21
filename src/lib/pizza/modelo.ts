@@ -38,10 +38,13 @@ export const ROTULO_DA_AREA: Record<Area, string> = { educacao: 'Educação', so
 /** CEIs e GOE ficam em Educação; as unidades ANA, em Social (decisão de 07/10). */
 export const areaDaUnidade = (u: Pick<NewsUnit, 'type'>): Area => (u.type === 'NAVE' ? 'social' : 'educacao');
 
+/** Fora das campanhas (Pizza e voluntariado do Natal Feliz), a pedido em 21/10/2026; no resto do app a unidade segue ativa. */
+export const FORA_DAS_CAMPANHAS = ['ana-oziel'];
+
 /** As unidades do formulário, por área, na ordem do app. */
 export const UNIDADES_POR_AREA: Array<{ area: Area; unidades: NewsUnit[] }> = (['educacao', 'social'] as Area[]).map((area) => ({
   area,
-  unidades: ACTIVE_NEWS_UNITS.filter((u) => areaDaUnidade(u) === area),
+  unidades: ACTIVE_NEWS_UNITS.filter((u) => areaDaUnidade(u) === area && !FORA_DAS_CAMPANHAS.includes(u.id)),
 }));
 
 export type Quantidades = Partial<Record<Sabor, number>>;
