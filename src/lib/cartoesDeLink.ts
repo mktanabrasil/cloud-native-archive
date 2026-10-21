@@ -83,9 +83,11 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
     regra: 'RewriteRule ^voluntariado/?$ /voluntariado.html [L]',
     titulo: 'Natal Feliz · Seja voluntário',
     descricao: 'Inscreva-se para ajudar no Natal Feliz de 08/12. Escolha onde quer ajudar: inscrições até 15/11.',
-    // Provisória até a arte da campanha: a imagem do app.
-    imagem: '/og-app.jpg',
-    imagemAlt: 'Natal Feliz da ANA Brasil: seja voluntário',
+    // Desenhada com a capa provisória da página (21/10/2026). Quando a arte da
+    // campanha chegar, trocar este arquivo e a capa da página no mesmo PR, com
+    // um nome novo de arquivo (o WhatsApp guarda a imagem pelo endereço).
+    imagem: '/og-voluntariado.jpg',
+    imagemAlt: 'Natal Feliz 2026 da ANA Brasil: seja voluntário, dia 08/12, inscrições até 15/11',
   },
   {
     arquivo: 'vagas.html',
