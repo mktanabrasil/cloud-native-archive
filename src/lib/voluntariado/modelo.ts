@@ -12,6 +12,12 @@ export const PRAZO = new Date('2026-11-16T00:00:00-03:00');
 export const DIA_DO_EVENTO = '08/12';
 export const ULTIMO_DIA = '15/11';
 
+/** O bloco antes da primeira pergunta (mockup aprovado em 21/10/2026). */
+export const SOBRE_O_EVENTO = {
+  titulo: 'Natal Feliz 2026 · Manaim',
+  texto: 'No dia 8 de dezembro, o Manaim recebe o Natal Feliz, em parceria com a JNI: um dia de celebração, solidariedade e união entre as unidades da ANA, para proporcionar às famílias que atendemos uma experiência inesquecível. Para isso acontecer, contamos com você!',
+};
+
 export const GRUPOS = [
   { grupo: 'Alimentação', areas: [
     ['cozinha', 'Cozinha / Servimento', 'Auxiliar a equipe na preparação e no servimento das refeições.'],

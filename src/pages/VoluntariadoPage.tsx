@@ -6,7 +6,7 @@ import { findNewsUnit } from '@/lib/news/units';
 import { ROTULO_DA_AREA, UNIDADES_POR_AREA } from '@/lib/pizza/modelo';
 import { inscrever } from '@/lib/voluntariado/api';
 import {
-  DIA_DO_EVENTO, GRUPOS, ULTIMO_DIA, encerrado, mascaraDoWhatsapp, mensagemDoErro, problemaDaInscricao, rotuloDaAjuda, tocarArea,
+  DIA_DO_EVENTO, GRUPOS, SOBRE_O_EVENTO, ULTIMO_DIA, encerrado, mascaraDoWhatsapp, mensagemDoErro, problemaDaInscricao, rotuloDaAjuda, tocarArea,
   type AreaDeAjuda,
 } from '@/lib/voluntariado/modelo';
 
@@ -68,8 +68,21 @@ export default function VoluntariadoPage() {
           <div><b className="block text-3xl font-extrabold">Natal Feliz</b><span className="text-xs opacity-85">ANA Brasil · 2026</span></div>
         </div>
         <div className="flex flex-col gap-0.5 px-5 py-3.5 text-white" style={{ background: COR.vermelho }}>
-          <b className="text-sm uppercase tracking-[0.06em]">{feito ? 'Natal Feliz' : 'Seja voluntário'}</b>
-          <span className="text-[13px] opacity-90">{feito ? 'Obrigado por se oferecer!' : `Dia ${DIA_DO_EVENTO} · inscrições até ${ULTIMO_DIA}`}</span>
+          {feito ? (
+            <>
+              <b className="text-sm uppercase tracking-[0.06em]">Natal Feliz</b>
+              <span className="text-[13px] opacity-90">Obrigado por se oferecer!</span>
+            </>
+          ) : (
+            <>
+              {/* A data do evento ao lado do título; as inscrições na linha de baixo (21/10/2026). */}
+              <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <b className="text-sm uppercase tracking-[0.06em]">Seja voluntário</b>
+                <span className="rounded-full bg-white/20 px-2.5 py-px text-[12.5px] font-semibold" data-testid="dia-do-evento">{DIA_DO_EVENTO} · Natal Feliz</span>
+              </span>
+              <span className="text-[13px] opacity-90">Inscrições até {ULTIMO_DIA}</span>
+            </>
+          )}
         </div>
 
         {feito ? (
@@ -96,6 +109,10 @@ export default function VoluntariadoPage() {
           </div>
         ) : (
           <form className="flex flex-col gap-7 px-5 py-6" onSubmit={(e) => { e.preventDefault(); enviar(); }} noValidate aria-label="Inscrição de voluntário">
+            <div className="-mb-2 rounded-2xl p-4 text-[13.5px] leading-relaxed" style={{ background: COR.verdeClaro, color: COR.verde }} data-testid="sobre-o-evento">
+              <b className="mb-1 block text-[15px]">{SOBRE_O_EVENTO.titulo}</b>
+              {SOBRE_O_EVENTO.texto}
+            </div>
             <Secao n={1} titulo="Quem é você">
               <label className="flex flex-col gap-1.5 text-sm font-semibold">Nome completo
                 <input className={campo} style={{ borderColor: COR.linha }} autoComplete="name" maxLength={120} value={nome} onChange={(e) => { setNome(e.target.value); setErro(null); }} />
