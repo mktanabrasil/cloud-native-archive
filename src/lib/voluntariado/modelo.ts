@@ -28,9 +28,14 @@ export const ULTIMO_DIA = '15/11';
  * 21/10/2026): o formulário é para a Educação, para quem a ida é voluntária,
  * então ele precisa convidar, não só registrar.
  */
+/** Os parceiros do Natal Feliz 2026 (21/10/2026: JNI, Nazateen e Hope Day). */
+export const PARCEIROS = ['JNI', 'Nazateen', 'Hope Day'];
+/** "JNI, Nazateen e Hope Day" */
+export const parceirosPorExtenso = (l: readonly string[] = PARCEIROS) => (l.length > 1 ? `${l.slice(0, -1).join(', ')} e ${l[l.length - 1]}` : l.join(''));
+
 export const SOBRE_O_EVENTO = {
   titulo: 'Neste Natal, seja o presente de alguém',
-  texto: 'No dia 8 de dezembro, o Manaim se transforma para receber o Natal Feliz, em parceria com a JNI. É o nosso Dia do Voluntariado: um dia de abraços, sorrisos, brincadeiras e presentes para as famílias que atendemos.',
+  texto: `No dia 8 de dezembro, o Manaim se transforma para receber o Natal Feliz, em parceria com ${parceirosPorExtenso()}. É o nosso Dia do Voluntariado: um dia de abraços, sorrisos, brincadeiras e presentes para as famílias que atendemos.`,
   destaque: 'A participação é voluntária, e é isso que torna o dia tão especial: quem vai, vai porque escolheu fazer a diferença.',
   selos: ['Você escolhe onde quer ajudar', 'Leva menos de 2 minutos', 'A equipe te passa todas as informações'],
   chamada: 'Vem com a gente fazer parte dessa história?',

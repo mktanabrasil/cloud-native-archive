@@ -6,7 +6,7 @@ import {
   ATUALIZA_A_CADA_MS, TROCA_DE_BLOCO_MS, calcularPainel, corDaUnidade, haQuanto, lerAcompanhamento,
   type Acompanhamento, type Painel,
 } from '@/lib/voluntariado/aoVivo';
-import { caminhoDoAoVivo } from '@/lib/voluntariado/modelo';
+import { caminhoDoAoVivo, parceirosPorExtenso } from '@/lib/voluntariado/modelo';
 
 /**
  * /voluntariado/natalfeliz26/acompanhar/:codigo — o painel ao vivo da gestão (mockup
@@ -132,7 +132,7 @@ export default function VoluntariadoAoVivoPage() {
         <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-4 text-[#F6EEDF]" style={{ background: 'repeating-linear-gradient(135deg,#1E4D3A 0 16px,#2F6B52 16px 32px)' }}>
           <div>
             <b className="text-2xl font-extrabold">Dia do Voluntariado · Natal Feliz 2026</b>
-            <small className="block text-[13px] opacity-85">08/12 no Manaim · em parceria com a JNI · inscrições até 15/11</small>
+            <small className="block text-[13px] opacity-85">08/12 no Manaim · em parceria com {parceirosPorExtenso()} · inscrições até 15/11</small>
           </div>
           <span className="flex items-center gap-2 rounded-full bg-black/25 px-3.5 py-1.5 text-[13px]" data-testid="ao-vivo">
             <i className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#7CF0A8]" />
