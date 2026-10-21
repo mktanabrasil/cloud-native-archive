@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { AREAS_DE_AJUDA, AREAS_FORA_DO_FORMULARIO, PRAZO, UNIDADES_DO_VOLUNTARIADO, rotuloDaAjuda } from './modelo';
+import { AREAS_DE_AJUDA, AREAS_FORA_DO_FORMULARIO, PRAZO, UNIDADES_DO_VOLUNTARIADO, caminhoDoAoVivo, rotuloDaAjuda } from './modelo';
 
 /**
  * O painel ao vivo da gestão (21/10/2026): o que o link de acompanhamento
@@ -147,4 +147,4 @@ export async function definirMeta(meta: number | null): Promise<void> {
   if (error) throw error;
 }
 
-export const linkDoAoVivo = (codigo: string) => `https://app.anabrasil.org/voluntariado/acompanhar/${codigo}`;
+export const linkDoAoVivo = (codigo: string) => `https://app.anabrasil.org${caminhoDoAoVivo(codigo)}`;

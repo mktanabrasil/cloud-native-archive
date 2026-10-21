@@ -80,7 +80,8 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
   },
   {
     arquivo: 'voluntariado.html',
-    regra: 'RewriteRule ^voluntariado/?$ /voluntariado.html [L]',
+    // /voluntariado/natalfeliz26 e o primeiro link divulgado, /voluntariado (21/10/2026).
+    regra: 'RewriteRule ^voluntariado(/natalfeliz26)?/?$ /voluntariado.html [L]',
     titulo: 'Natal Feliz · Seja voluntário',
     descricao: 'Inscreva-se para ajudar no Natal Feliz de 08/12. Escolha onde quer ajudar: inscrições até 15/11.',
     // Desenhada com a capa provisória da página (21/10/2026). Quando a arte da
@@ -92,7 +93,7 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
   {
     // O painel ao vivo da gestão (21/10/2026): link com código secreto.
     arquivo: 'voluntariado-acompanhar.html',
-    regra: 'RewriteRule ^voluntariado/acompanhar/ /voluntariado-acompanhar.html [L]',
+    regra: 'RewriteRule ^voluntariado/(natalfeliz26/)?acompanhar/ /voluntariado-acompanhar.html [L]',
     titulo: 'Natal Feliz · Voluntariado ao vivo',
     descricao: 'O andamento das inscrições de voluntários do Natal Feliz, atualizado sozinho.',
     imagem: '/og-voluntariado.jpg',

@@ -27,7 +27,7 @@ vi.mock('@/lib/voluntariado/aoVivo', async () => {
   };
 });
 
-const { default: AoVivo } = await import('./VoluntariadoAoVivoPage');
+const { default: AoVivo, AoVivoNoEnderecoNovo } = await import('./VoluntariadoAoVivoPage');
 const { AoVivoDaGestao } = await import('@/components/voluntariado/AoVivoDaGestao');
 const { calcularPainel, COR_DA_UNIDADE, diaDe } = await import('@/lib/voluntariado/aoVivo');
 
@@ -92,12 +92,24 @@ describe('contas', () => {
 });
 
 const abrir = (codigo = 'abc123') => render(
-  <MemoryRouter initialEntries={[`/voluntariado/acompanhar/${codigo}`]}>
-    <Routes><Route path="/voluntariado/acompanhar/:codigo" element={<AoVivo />} /></Routes>
+  <MemoryRouter initialEntries={[`/voluntariado/natalfeliz26/acompanhar/${codigo}`]}>
+    <Routes><Route path="/voluntariado/natalfeliz26/acompanhar/:codigo" element={<AoVivo />} /></Routes>
   </MemoryRouter>,
 );
 
 describe('a página', () => {
+  it('o endereço antigo do painel leva ao novo, com o mesmo código (21/10/2026)', async () => {
+    render(
+      <MemoryRouter initialEntries={['/voluntariado/acompanhar/abc123']}>
+        <Routes>
+          <Route path="/voluntariado/acompanhar/:codigo" element={<AoVivoNoEnderecoNovo />} />
+          <Route path="/voluntariado/natalfeliz26/acompanhar/:codigo" element={<AoVivo />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByTestId('kpi-Inscritos')).toHaveTextContent('4');
+  });
+
   it('código errado: "Este link não vale mais"', async () => {
     banco.leituras = [new Error('codigo_invalido')];
     abrir('errado');
@@ -136,13 +148,13 @@ describe('no painel do Marketing', () => {
     Object.assign(navigator, { clipboard: { writeText: escrever } });
     render(<AoVivoDaGestao />);
     fireEvent.click(await screen.findByRole('button', { name: /Copiar link/ }));
-    await waitFor(() => expect(escrever).toHaveBeenCalledWith('https://app.anabrasil.org/voluntariado/acompanhar/abc123'));
+    await waitFor(() => expect(escrever).toHaveBeenCalledWith('https://app.anabrasil.org/voluntariado/natalfeliz26/acompanhar/abc123'));
     fireEvent.change(screen.getByLabelText('Meta de voluntários'), { target: { value: '120' } });
     fireEvent.click(screen.getByRole('button', { name: 'Salvar meta' }));
     await waitFor(() => expect(banco.metas).toEqual([120]));
     fireEvent.click(screen.getByRole('button', { name: /Trocar o link/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'Trocar o link' }));
     await waitFor(() => expect(banco.trocas).toBe(1));
-    expect(screen.getByRole('link', { name: /Abrir/ })).toHaveAttribute('href', 'https://app.anabrasil.org/voluntariado/acompanhar/novo999');
+    expect(screen.getByRole('link', { name: /Abrir/ })).toHaveAttribute('href', 'https://app.anabrasil.org/voluntariado/natalfeliz26/acompanhar/novo999');
   });
 });
