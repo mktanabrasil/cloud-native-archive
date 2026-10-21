@@ -83,7 +83,13 @@ describe('formulário', () => {
 
   it('nome, WhatsApp, unidade, 1ª e 2ª opção até o protocolo e os próximos passos', async () => {
     render(<MemoryRouter><Voluntariado /></MemoryRouter>);
-    expect(screen.getByText(/inscrições até 15\/11/)).toBeInTheDocument();
+    // Topo de 21/10/2026: a data ao lado do título, as inscrições embaixo e o texto do evento antes das perguntas.
+    expect(screen.getByTestId('dia-do-evento')).toHaveTextContent('08/12 · Natal Feliz');
+    expect(screen.getByText('Inscrições até 15/11')).toBeInTheDocument();
+    const sobre = screen.getByTestId('sobre-o-evento');
+    expect(sobre).toHaveTextContent('Natal Feliz 2026 · Manaim');
+    expect(sobre).toHaveTextContent('em parceria com a JNI');
+    expect(sobre.compareDocumentPosition(screen.getByLabelText('Nome completo')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     preencher();
     expect(screen.getByLabelText('WhatsApp')).toHaveValue('(19) 99355-8242');
     // Cada área com a frase dela.
