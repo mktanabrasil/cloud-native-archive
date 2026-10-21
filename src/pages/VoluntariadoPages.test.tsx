@@ -110,7 +110,7 @@ describe('formulário', () => {
     expect(sobre).toHaveTextContent('Neste Natal, seja o presente de alguém');
     expect(sobre).toHaveTextContent('quem vai, vai porque escolheu fazer a diferença');
     expect(sobre).toHaveTextContent('Vem com a gente fazer parte dessa história?');
-    expect(sobre).toHaveTextContent('em parceria com a JNI');
+    expect(sobre).toHaveTextContent('em parceria com JNI, Nazateen e Hope Day');
     expect(sobre.compareDocumentPosition(screen.getByLabelText('Nome completo')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     preencher();
     expect(screen.getByLabelText('WhatsApp')).toHaveValue('(19) 99355-8242');
