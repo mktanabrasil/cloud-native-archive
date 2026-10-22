@@ -64,14 +64,8 @@ export default function VoluntariadoPage() {
   return (
     <div className="flex min-h-screen flex-col" style={{ background: COR.fundo, color: COR.tinta }}>
       <div className="mx-auto w-full max-w-[560px] flex-1">
-        {/* Faixa provisória até a arte da campanha ficar pronta. */}
-        <div className="grid h-40 place-items-center text-center" style={{ background: `repeating-linear-gradient(135deg, ${COR.verde} 0 18px, ${COR.verde2} 18px 36px)`, color: COR.creme }} role="img" aria-label="Dia do Voluntariado, Natal Feliz 2026, ANA Brasil">
-          <div>
-            <small className="block text-[11px] font-semibold uppercase tracking-[0.14em] opacity-85">Natal Feliz 2026</small>
-            <b className="block text-3xl font-extrabold leading-[1.05]">Dia do<br />Voluntariado</b>
-            <span className="text-xs opacity-85">ANA Brasil</span>
-          </div>
-        </div>
+        {/* A arte da campanha (22/10/2026), no lugar da faixa listrada provisória. */}
+        <img src="/voluntariado-natal-feliz-capa.webp" alt="Natal Feliz, ANA Brasil: crianças sorrindo com presentes" width={1793} height={877} className="block aspect-[1793/877] w-full object-cover" data-testid="capa" />
         <div className="flex flex-col gap-0.5 px-5 py-3.5 text-white" style={{ background: COR.vermelho }}>
           {feito ? (
             <>
