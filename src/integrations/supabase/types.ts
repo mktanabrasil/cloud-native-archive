@@ -1372,40 +1372,70 @@ export type Database = {
       }
       voluntarios_natal: {
         Row: {
-          area: string
+          area: string | null
           created_at: string
+          horario: string | null
           id: string
+          igreja: string | null
+          indicado_por: string | null
           nome: string
           opcao1: string
           opcao2: string | null
           protocolo: string
-          unidade_id: string
-          unidade_nome: string
+          unidade_id: string | null
+          unidade_nome: string | null
+          vinculo: string
           whatsapp: string
         }
         Insert: {
-          area: string
+          area?: string | null
           created_at?: string
+          horario?: string | null
           id?: string
+          igreja?: string | null
+          indicado_por?: string | null
           nome: string
           opcao1: string
           opcao2?: string | null
           protocolo: string
-          unidade_id: string
-          unidade_nome: string
+          unidade_id?: string | null
+          unidade_nome?: string | null
+          vinculo?: string
           whatsapp: string
         }
         Update: {
-          area?: string
+          area?: string | null
           created_at?: string
+          horario?: string | null
           id?: string
+          igreja?: string | null
+          indicado_por?: string | null
           nome?: string
           opcao1?: string
           opcao2?: string | null
           protocolo?: string
-          unidade_id?: string
-          unidade_nome?: string
+          unidade_id?: string | null
+          unidade_nome?: string | null
+          vinculo?: string
           whatsapp?: string
+        }
+        Relationships: []
+      }
+      voluntariado_metas: {
+        Row: {
+          area: string
+          atualizado_em: string
+          meta: number
+        }
+        Insert: {
+          area: string
+          atualizado_em?: string
+          meta: number
+        }
+        Update: {
+          area?: string
+          atualizado_em?: string
+          meta?: number
         }
         Relationships: []
       }
@@ -1518,8 +1548,16 @@ export type Database = {
         Returns: undefined
       }
       inscrever_voluntario: {
-        Args: { p_nome: string; p_whatsapp: string; p_unidade_id: string; p_unidade_nome: string; p_area: string; p_opcao1: string; p_opcao2?: string }
+        Args: { p_nome: string; p_whatsapp: string; p_horario: string; p_vinculo: string; p_opcao1: string; p_opcao2?: string; p_unidade_id?: string; p_unidade_nome?: string; p_area?: string; p_indicado_por?: string; p_igreja?: string }
         Returns: string
+      }
+      areas_lotadas_do_voluntariado: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
+      }
+      definir_meta_da_area: {
+        Args: { p_area: string; p_meta: number | null }
+        Returns: undefined
       }
       registrar_acesso: {
         Args: { p_acao: string; p_candidatura?: string; p_vaga?: string; p_detalhe?: string }

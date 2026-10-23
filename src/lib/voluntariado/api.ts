@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { comMaiusculas } from '@/lib/vagas/maiusculas';
 import { findNewsUnit } from '@/lib/news/units';
 import { areaDaUnidade } from '@/lib/pizza/modelo';
-import { digitosDoWhatsapp, type AreaDeAjuda } from './modelo';
+import { digitosDoWhatsapp, type AreaDeAjuda, type Horario, type Vinculo } from './modelo';
 
 /** Uma inscrição, como o painel lê. */
 export interface Inscricao {
@@ -10,34 +10,62 @@ export interface Inscricao {
   protocolo: string;
   nome: string;
   whatsapp: string;
-  unidade_id: string;
-  unidade_nome: string;
-  area: 'educacao' | 'social';
+  vinculo: Vinculo;
+  horario: Horario | null;
+  /** Só o funcionário tem unidade (23/10/2026). */
+  unidade_id: string | null;
+  unidade_nome: string | null;
+  area: 'educacao' | 'social' | null;
+  indicado_por: string | null;
+  igreja: string | null;
   opcao1: AreaDeAjuda;
   opcao2: AreaDeAjuda | null;
   created_at: string;
 }
 
-/** Envia a inscrição; o banco confere tudo e devolve o protocolo sorteado. */
-export async function inscrever(d: { nome: string; whatsapp: string; unidadeId: string; opcao1: AreaDeAjuda; opcao2: AreaDeAjuda | null }): Promise<string> {
-  const unidade = findNewsUnit(d.unidadeId);
-  if (!unidade) throw new Error('unidade_invalida');
+export interface NovaInscricao {
+  nome: string;
+  whatsapp: string;
+  horario: Horario;
+  vinculo: Vinculo;
+  unidadeId: string | null;
+  indicadoPor: string | null;
+  igreja: string | null;
+  opcao1: AreaDeAjuda;
+  opcao2: AreaDeAjuda | null;
+}
+
+/** Envia a inscrição; o banco confere tudo (inclusive a meta da área) e devolve o protocolo sorteado. */
+export async function inscrever(d: NovaInscricao): Promise<string> {
+  const unidade = d.vinculo === 'funcionario' ? findNewsUnit(d.unidadeId ?? '') : null;
+  if (d.vinculo === 'funcionario' && !unidade) throw new Error('unidade_invalida');
   const { data, error } = await supabase.rpc('inscrever_voluntario', {
     p_nome: comMaiusculas(d.nome, { pessoa: true }),
     p_whatsapp: digitosDoWhatsapp(d.whatsapp),
-    p_unidade_id: unidade.id,
-    p_unidade_nome: unidade.name,
-    p_area: areaDaUnidade(unidade),
+    p_horario: d.horario,
+    p_vinculo: d.vinculo,
     p_opcao1: d.opcao1,
     p_opcao2: d.opcao2 ?? undefined,
+    p_unidade_id: unidade?.id,
+    p_unidade_nome: unidade?.name,
+    p_area: unidade ? areaDaUnidade(unidade) : undefined,
+    p_indicado_por: d.vinculo === 'comunidade' && d.indicadoPor?.trim() ? comMaiusculas(d.indicadoPor, { pessoa: true }) : undefined,
+    p_igreja: d.vinculo === 'comunidade' && d.igreja?.trim() ? d.igreja.trim() : undefined,
   });
   if (error) throw error;
   return String(data);
 }
 
+/** Quais áreas já bateram a meta (o formulário só sabe isso, sem números). */
+export async function areasLotadas(): Promise<string[]> {
+  const { data, error } = await supabase.rpc('areas_lotadas_do_voluntariado');
+  if (error) throw error;
+  return (data ?? []) as string[];
+}
+
 export async function listarInscricoes(): Promise<Inscricao[]> {
   const { data, error } = await supabase.from('voluntarios_natal')
-    .select('id, protocolo, nome, whatsapp, unidade_id, unidade_nome, area, opcao1, opcao2, created_at')
+    .select('id, protocolo, nome, whatsapp, vinculo, horario, unidade_id, unidade_nome, area, indicado_por, igreja, opcao1, opcao2, created_at')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data ?? []) as Inscricao[];
@@ -45,6 +73,20 @@ export async function listarInscricoes(): Promise<Inscricao[]> {
 
 export async function apagarInscricao(id: string): Promise<void> {
   const { error } = await supabase.from('voluntarios_natal').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// --- As metas por área (23/10/2026) ----------------------------------------------------------
+
+export async function lerMetas(): Promise<Record<string, number>> {
+  const { data, error } = await supabase.from('voluntariado_metas').select('area, meta');
+  if (error) throw error;
+  return Object.fromEntries((data ?? []).map((m) => [m.area, m.meta]));
+}
+
+/** Sem número, a área fica sem limite. */
+export async function definirMetaDaArea(area: AreaDeAjuda, meta: number | null): Promise<void> {
+  const { error } = await supabase.rpc('definir_meta_da_area', { p_area: area, p_meta: meta });
   if (error) throw error;
 }
 

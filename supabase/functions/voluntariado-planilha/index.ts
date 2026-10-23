@@ -17,9 +17,14 @@ addEventListener('error', (e) => { console.error('[voluntariado-planilha] erro s
  * escopo drive, que também vale para a API do Sheets). Precisa da "Google
  * Sheets API" ativada no projeto do Google Cloud.
  *
- * Cores (21/10/2026): cada linha chega com a cor da unidade em A:H e sem
- * negrito (o Google copiava o formato do cabeçalho). As linhas que já
- * estavam lá são acertadas uma vez (voluntariado_planilha.cores_em).
+ * Cores (21/10/2026): cada linha chega com a cor da unidade e sem negrito
+ * (o Google copiava o formato do cabeçalho). As linhas que já estavam lá são
+ * acertadas uma vez (voluntariado_planilha.cores_em).
+ *
+ * Formulário em etapas (23/10/2026): as colunas passam de 8 (A:H) para 11
+ * (A:K), com vínculo, indicação, igreja e horário. O cabeçalho da planilha
+ * que já existe é reescrito uma vez (voluntariado_planilha.cabecalho_em).
+ * Quem não é funcionário não tem unidade: a linha vai pela cor do vínculo.
  *
  * Quem chama:
  *  - o formulário público, logo depois de cada inscrição (sem login): só
@@ -39,11 +44,14 @@ const OAUTH_CLIENT_ID = Deno.env.get('GOOGLE_OAUTH_CLIENT_ID') || '';
 const OAUTH_CLIENT_SECRET = Deno.env.get('GOOGLE_OAUTH_CLIENT_SECRET') || '';
 const NOME_DA_PLANILHA = 'Voluntariado Natal Feliz 2026';
 const ABA = 'Inscrições';
-const CABECALHO = ['Protocolo', 'Quando', 'Nome', 'WhatsApp', 'Unidade', 'Área', '1ª opção', '2ª opção'];
+const CABECALHO = ['Protocolo', 'Quando', 'Nome', 'WhatsApp', 'Vínculo', 'Unidade', 'Indicado por', 'Igreja', 'Horário', '1ª opção', '2ª opção'];
+const COLUNAS = `A:${String.fromCharCode(64 + CABECALHO.length)}`;
 const POR_VEZ = 200;
 
-const AREAS: Record<string, string> = { educacao: 'Educação', social: 'Social' };
+const VINCULO: Record<string, string> = { funcionario: 'Funcionário(a) ANA', alcance: 'Alcance JNI', comunidade: 'Voluntário(a)' };
+const HORARIO: Record<string, string> = { manha: 'Manhã', tarde: 'Tarde', dia_anterior: 'Dia anterior', pos_evento: 'Pós-evento', dia_todo: 'Dia todo' };
 const AJUDA: Record<string, string> = {
+  estacoes: 'Estações', louvor_kids: 'Louvor Kids',
   cozinha: 'Cozinha / Servimento', montagem: 'Montagem / Desmontagem', decoracao: 'Decoração', logistica: 'Logística', som: 'Som', projecao: 'Projeção',
   recreacao_kids: 'Recreação Kids', inflaveis: 'Brinquedos infláveis', atividades_adultos: 'Atividades adultos', presentes_kids: 'Presentes Kids',
   intercessao: 'Intercessão / Suporte espiritual', alojamentos: 'Alojamentos',
@@ -61,12 +69,18 @@ const COR_DA_UNIDADE: Record<string, string> = {
   'CEI Bem Querer Gov. Leonel de Moura Brizola': '#F3E2D3', 'CEI Bem Querer Paulo Reglus Neves Freire': '#E0EAF0',
   'CEI Bem Querer Mayara Masson Christofoletti': '#F6DDF0', 'CEI Bem Querer Profa. Renata Ferramola': '#D9F2E4',
   'CEI Bem Querer Vandir Justino da Costa Dias': '#FBE7D7',
+  // Quem não é funcionário não tem unidade: a linha vai pela cor do vínculo (23/10/2026).
+  'Alcance JNI': '#FFCC99', 'Voluntário(a)': '#E6E0D4',
 };
 const SEM_COR = '#EEEEEE';
 
+/** A chave da cor: a unidade de quem é funcionário; para os outros, o vínculo. */
+// deno-lint-ignore no-explicit-any
+const grupo = (i: any) => i.unidade_nome || VINCULO[i.vinculo] || '';
+
 const rgb = (hex: string) => ({ red: parseInt(hex.slice(1, 3), 16) / 255, green: parseInt(hex.slice(3, 5), 16) / 255, blue: parseInt(hex.slice(5, 7), 16) / 255 });
 
-/** Pinta as linhas (número da linha na planilha, 1 = cabeçalho) com a cor da unidade, sem negrito, de A a H. */
+/** Pinta as linhas (número da linha na planilha, 1 = cabeçalho) com a cor da unidade, sem negrito, em todas as colunas do app. */
 async function pintar(token: string, planilha: string, linhas: Array<{ linha: number; unidade: string }>) {
   if (!linhas.length) return;
   const info = await google(token, 'GET', `https://sheets.googleapis.com/v4/spreadsheets/${planilha}?fields=sheets.properties.sheetId`);
@@ -74,7 +88,7 @@ async function pintar(token: string, planilha: string, linhas: Array<{ linha: nu
   await google(token, 'POST', `https://sheets.googleapis.com/v4/spreadsheets/${planilha}:batchUpdate`, {
     requests: linhas.map(({ linha, unidade }) => ({
       repeatCell: {
-        range: { sheetId: aba, startRowIndex: linha - 1, endRowIndex: linha, startColumnIndex: 0, endColumnIndex: 8 },
+        range: { sheetId: aba, startRowIndex: linha - 1, endRowIndex: linha, startColumnIndex: 0, endColumnIndex: CABECALHO.length },
         cell: { userEnteredFormat: { backgroundColor: rgb(COR_DA_UNIDADE[unidade.trim()] ?? SEM_COR), textFormat: { bold: false } } },
         fields: 'userEnteredFormat(backgroundColor,textFormat.bold)',
       },
@@ -84,9 +98,10 @@ async function pintar(token: string, planilha: string, linhas: Array<{ linha: nu
 
 /** Uma vez só: acerta a cor das linhas que já estavam na planilha antes das cores. */
 async function acertarCoresAntigas(admin: Admin, token: string, planilha: string) {
-  const r = await google(token, 'GET', `https://sheets.googleapis.com/v4/spreadsheets/${planilha}/values/${encodeURIComponent('E2:E')}`);
+  // E = vínculo, F = unidade (colunas de 23/10/2026).
+  const r = await google(token, 'GET', `https://sheets.googleapis.com/v4/spreadsheets/${planilha}/values/${encodeURIComponent('E2:F')}`);
   const valores: string[][] = r?.values ?? [];
-  await pintar(token, planilha, valores.map((v, i) => ({ linha: i + 2, unidade: v?.[0] ?? '' })).filter((l) => l.unidade));
+  await pintar(token, planilha, valores.map((v, i) => ({ linha: i + 2, unidade: v?.[1] || v?.[0] || '' })).filter((l) => l.unidade));
   await admin.from('voluntariado_planilha').update({ cores_em: new Date().toISOString() }).eq('id', 1);
 }
 
@@ -105,6 +120,25 @@ async function google(token: string, metodo: string, url: string, corpo?: unknow
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new ErroGoogle(r.status, `Google ${r.status}: ${j?.error?.message || JSON.stringify(j).slice(0, 200)}`);
   return j;
+}
+
+/** O cabeçalho (negrito, fundo verde-claro) e a largura das colunas. Escreve por cima da linha 1. */
+function pedidosDoCabecalho(aba: number) {
+  return [
+    { updateCells: {
+      rows: [{ values: CABECALHO.map((t) => ({ userEnteredValue: { stringValue: t }, userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.9, green: 0.96, blue: 0.93 } } })) }],
+      fields: 'userEnteredValue,userEnteredFormat(textFormat,backgroundColor)', start: { sheetId: aba, rowIndex: 0, columnIndex: 0 },
+    } },
+    { updateDimensionProperties: { range: { sheetId: aba, dimension: 'COLUMNS', startIndex: 0, endIndex: CABECALHO.length }, properties: { pixelSize: 170 }, fields: 'pixelSize' } },
+  ];
+}
+
+/** Uma vez só (23/10/2026): a planilha que já existia ganha o cabeçalho de 11 colunas. */
+async function atualizarCabecalho(admin: Admin, token: string, planilha: string) {
+  const info = await google(token, 'GET', `https://sheets.googleapis.com/v4/spreadsheets/${planilha}?fields=sheets.properties.sheetId`);
+  const aba = info?.sheets?.[0]?.properties?.sheetId ?? 0;
+  await google(token, 'POST', `https://sheets.googleapis.com/v4/spreadsheets/${planilha}:batchUpdate`, { requests: pedidosDoCabecalho(aba) });
+  await admin.from('voluntariado_planilha').update({ cabecalho_em: new Date().toISOString() }).eq('id', 1);
 }
 
 /** O acesso da conta conectada no Drive da Pizza. */
@@ -127,7 +161,10 @@ const whatsapp = (d: string) =>
   d.length === 11 ? `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}` : d.length === 10 ? `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}` : d;
 
 // deno-lint-ignore no-explicit-any
-const linha = (i: any) => [i.protocolo, quando(i.created_at), i.nome, whatsapp(i.whatsapp), i.unidade_nome, AREAS[i.area] ?? i.area, AJUDA[i.opcao1] ?? i.opcao1, i.opcao2 ? (AJUDA[i.opcao2] ?? i.opcao2) : ''];
+const linha = (i: any) => [
+  i.protocolo, quando(i.created_at), i.nome, whatsapp(i.whatsapp), VINCULO[i.vinculo] ?? i.vinculo, i.unidade_nome ?? '',
+  i.indicado_por ?? '', i.igreja ?? '', HORARIO[i.horario] ?? '', AJUDA[i.opcao1] ?? i.opcao1, i.opcao2 ? (AJUDA[i.opcao2] ?? i.opcao2) : '',
+];
 
 const mensagem = (e: unknown) => {
   const msg = e instanceof Error ? e.message : String(e);
@@ -138,10 +175,11 @@ const mensagem = (e: unknown) => {
 
 /** Escreve no fim da planilha as inscrições que ainda não estão lá. */
 async function enviarPendentes(admin: Admin): Promise<{ enviadas: number; pendentes: number; motivo?: string }> {
-  const { data: p } = await admin.from('voluntariado_planilha').select('planilha_id, cores_em').eq('id', 1).maybeSingle();
+  const { data: p } = await admin.from('voluntariado_planilha').select('planilha_id, cores_em, cabecalho_em').eq('id', 1).maybeSingle();
   if (!p) return { enviadas: 0, pendentes: 0, motivo: 'planilha ainda não criada' };
   const g = await token(admin);
   if (!g) return { enviadas: 0, pendentes: 0, motivo: 'Drive não conectado' };
+  if (!p.cabecalho_em) await atualizarCabecalho(admin, g.token, p.planilha_id);
   if (!p.cores_em) await acertarCoresAntigas(admin, g.token, p.planilha_id).catch((e) => console.error('[voluntariado-planilha] cores antigas:', mensagem(e)));
 
   // Prende as pendentes de uma vez (um UPDATE só): duas chamadas juntas não pegam a mesma.
@@ -154,17 +192,17 @@ async function enviarPendentes(admin: Admin): Promise<{ enviadas: number; penden
   if (ids.length) {
     const { data: presas } = await admin.from('voluntarios_natal').update({ planilha_tentando_em: new Date().toISOString() })
       .in('id', ids).is('planilha_em', null).or(`planilha_tentando_em.is.null,planilha_tentando_em.lt.${limite}`)
-      .select('id, protocolo, nome, whatsapp, unidade_nome, area, opcao1, opcao2, created_at');
+      .select('id, protocolo, nome, whatsapp, vinculo, horario, unidade_nome, indicado_por, igreja, opcao1, opcao2, created_at');
     // deno-lint-ignore no-explicit-any
     const lista = ((presas ?? []) as any[]).sort((a, b) => a.created_at.localeCompare(b.created_at));
     if (lista.length) {
       try {
         const r = await google(g.token, 'POST',
-          `https://sheets.googleapis.com/v4/spreadsheets/${p.planilha_id}/values/${encodeURIComponent('A:H')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+          `https://sheets.googleapis.com/v4/spreadsheets/${p.planilha_id}/values/${encodeURIComponent(COLUNAS)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
           { values: lista.map(linha) });
-        // Onde as linhas entraram ("'Inscrições'!A3:H5"): cada uma ganha a cor da unidade, sem o negrito do cabeçalho.
+        // Onde as linhas entraram ("'Inscrições'!A3:K5"): cada uma ganha a cor da unidade, sem o negrito do cabeçalho.
         const primeira = Number(String(r?.updates?.updatedRange ?? '').match(/![A-Z]+(\d+)/)?.[1] ?? 0);
-        if (primeira) await pintar(g.token, p.planilha_id, lista.map((l, i) => ({ linha: primeira + i, unidade: l.unidade_nome }))).catch((e) => console.error('[voluntariado-planilha] cores:', mensagem(e)));
+        if (primeira) await pintar(g.token, p.planilha_id, lista.map((l, i) => ({ linha: primeira + i, unidade: grupo(l) }))).catch((e) => console.error('[voluntariado-planilha] cores:', mensagem(e)));
         await admin.from('voluntarios_natal').update({ planilha_em: new Date().toISOString(), planilha_tentando_em: null }).in('id', lista.map((l) => l.id));
         await admin.from('voluntariado_planilha').update({ erro: null }).eq('id', 1);
         enviadas = lista.length;
@@ -191,14 +229,10 @@ async function criar(admin: Admin, quem: string): Promise<string> {
   await google(g.token, 'POST', `https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, {
     requests: [
       { updateSheetProperties: { properties: { sheetId: aba, title: ABA, gridProperties: { frozenRowCount: 1 } }, fields: 'title,gridProperties.frozenRowCount' } },
-      { updateCells: {
-        rows: [{ values: CABECALHO.map((t) => ({ userEnteredValue: { stringValue: t }, userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.9, green: 0.96, blue: 0.93 } } })) }],
-        fields: 'userEnteredValue,userEnteredFormat(textFormat,backgroundColor)', start: { sheetId: aba, rowIndex: 0, columnIndex: 0 },
-      } },
-      { updateDimensionProperties: { range: { sheetId: aba, dimension: 'COLUMNS', startIndex: 0, endIndex: 8 }, properties: { pixelSize: 170 }, fields: 'pixelSize' } },
+      ...pedidosDoCabecalho(aba),
     ],
   });
-  await admin.from('voluntariado_planilha').upsert({ id: 1, planilha_id: id, criada_por: quem, criada_em: new Date().toISOString(), erro: null, cores_em: new Date().toISOString() });
+  await admin.from('voluntariado_planilha').upsert({ id: 1, planilha_id: id, criada_por: quem, criada_em: new Date().toISOString(), erro: null, cores_em: new Date().toISOString(), cabecalho_em: new Date().toISOString() });
   // Tudo o que já existe entra agora, do mais antigo ao mais novo.
   await admin.from('voluntarios_natal').update({ planilha_em: null, planilha_tentando_em: null }).not('id', 'is', null);
   return id;
