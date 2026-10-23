@@ -1,5 +1,4 @@
-import { ROTULO_DA_AREA } from '@/lib/pizza/modelo';
-import { rotuloDaAjuda } from './modelo';
+import { rotuloDaAjuda, rotuloDoHorario, rotuloDoVinculo } from './modelo';
 import type { Inscricao } from './api';
 
 /**
@@ -22,10 +21,11 @@ export const whatsappLegivel = (d: string) =>
   d.length === 11 ? `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}` : d.length === 10 ? `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}` : d;
 
 export function csvDasInscricoes(linhas: Inscricao[]): string {
-  const cabecalho = ['Protocolo', 'Quando', 'Nome', 'WhatsApp', 'Unidade', 'Área', '1ª opção', '2ª opção'];
+  // As mesmas colunas da planilha do Google (23/10/2026).
+  const cabecalho = ['Protocolo', 'Quando', 'Nome', 'WhatsApp', 'Vínculo', 'Unidade', 'Indicado por', 'Igreja', 'Horário', '1ª opção', '2ª opção'];
   const corpo = linhas.map((i) => [
-    i.protocolo, dataHora(i.created_at), i.nome, whatsappLegivel(i.whatsapp), i.unidade_nome, ROTULO_DA_AREA[i.area],
-    rotuloDaAjuda(i.opcao1), i.opcao2 ? rotuloDaAjuda(i.opcao2) : '',
+    i.protocolo, dataHora(i.created_at), i.nome, whatsappLegivel(i.whatsapp), rotuloDoVinculo(i.vinculo), i.unidade_nome ?? '',
+    i.indicado_por ?? '', i.igreja ?? '', rotuloDoHorario(i.horario), rotuloDaAjuda(i.opcao1), i.opcao2 ? rotuloDaAjuda(i.opcao2) : '',
   ].map(campo).join(';'));
   return '﻿' + [cabecalho.join(';'), ...corpo].join('\r\n') + '\r\n';
 }

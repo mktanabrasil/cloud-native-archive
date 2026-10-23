@@ -33,26 +33,30 @@ const { calcularPainel, COR_DA_UNIDADE, diaDe } = await import('@/lib/voluntaria
 
 const AGORA = new Date('2026-10-28T15:00:00-03:00').getTime();
 const I = (nome: string, unidade: string, area: 'social' | 'educacao', o1: string, o2: string | null, quando: string) =>
-  ({ nome, unidade_id: unidade, unidade_nome: unidade, area, opcao1: o1, opcao2: o2, created_at: new Date(quando).toISOString() });
+  ({ nome, vinculo: 'funcionario' as const, unidade_id: unidade, unidade_nome: unidade, area, opcao1: o1, opcao2: o2, created_at: new Date(quando).toISOString() });
+/** Quem não é funcionário (23/10/2026): sem unidade. */
+const J = (nome: string, vinculo: 'alcance' | 'comunidade', o1: string, o2: string | null, quando: string) =>
+  ({ nome, vinculo, unidade_id: null, unidade_nome: null, area: null, opcao1: o1, opcao2: o2, created_at: new Date(quando).toISOString() });
 const BASE = [
   I('Leonardo Garbo', 'CEI Bem Querer Prof. Pierre Weil', 'educacao', 'cozinha', 'montagem', '2026-10-21T09:00:00-03:00'),
-  I('Paulo Martins', 'Grupo de Oração Esperança', 'educacao', 'projecao', null, '2026-10-21T10:00:00-03:00'),
-  I('Marcos Souza', 'CEI Bem Querer Prof. Anísio Spínola', 'educacao', 'cozinha', 'seguranca', '2026-10-27T09:00:00-03:00'),
-  I('Ana Paula', 'CEI Bem Querer Prof. Anísio Spínola', 'educacao', 'recreacao_kids', null, '2026-10-28T14:59:00-03:00'),
+  J('Paulo Martins', 'alcance', 'louvor_kids', null, '2026-10-21T10:00:00-03:00'),
+  I('Marcos Souza', 'CEI Bem Querer Prof. Anísio Spínola', 'educacao', 'cozinha', 'estacoes', '2026-10-27T09:00:00-03:00'),
+  I('Ana Paula', 'CEI Bem Querer Prof. Anísio Spínola', 'educacao', 'inflaveis', null, '2026-10-28T14:59:00-03:00'),
 ];
-const dados = (inscricoes = BASE, meta: number | null = null) => ({ meta, agora: new Date(AGORA).toISOString(), inscricoes });
+const dados = (inscricoes: unknown[] = BASE, meta: number | null = null, metas: Record<string, number> = {}) => ({ meta, metas, agora: new Date(AGORA).toISOString(), inscricoes });
 
 beforeEach(() => { banco.leituras = [dados()]; banco.lidas = 0; banco.cfg = { codigo_acompanhamento: 'abc123', meta: null }; banco.metas = []; banco.trocas = 0; });
 afterEach(() => { vi.useRealTimers(); });
 
 describe('contas', () => {
-  const p = calcularPainel(dados(BASE, 10), AGORA);
+  const p = calcularPainel(dados(BASE, 10, { cozinha: 2, montagem: 5 }) as never, AGORA);
 
   it('números do topo', () => {
     expect(p.total).toBe(4);
     expect(p.hoje).toBe(1);
-    expect(p.unidades).toEqual({ comInscritos: 3, total: 12 }); // só a Educação: GOE + 11 CEIs (21/10/2026)
-    expect(p.areas.total).toBe(16); // Som fora do formulário e ninguém o escolheu
+    expect(p.unidades).toEqual({ comInscritos: 2, total: 12 }); // só a Educação: GOE + 11 CEIs (21/10/2026)
+    expect(p.porVinculo).toEqual({ funcionario: 3, alcance: 1, comunidade: 0 });
+    expect(p.areas.total).toBe(10); // as 10 áreas de 23/10/2026
     expect(p.areas.cobertas).toBe(3);
     expect(p.comSegunda).toBe(2);
     expect(p.meta).toBe(10);
@@ -66,17 +70,22 @@ describe('contas', () => {
     expect(p.mediaPorDia).toBe(0.3); // 2 inscrições nos últimos 7 dias (22 a 28/10)
   });
 
-  it('por área (1ª e 2ª), vazias e matriz só com quem tem gente', () => {
-    expect(p.porArea[0]).toMatchObject({ chave: 'cozinha', primeira: 2, segunda: 0 });
-    expect(p.porArea.find((a) => a.chave === 'montagem')).toMatchObject({ primeira: 0, segunda: 1 });
+  it('por área (1ª e 2ª, com a meta), vazias e matriz só com quem tem gente', () => {
+    expect(p.porArea[0]).toMatchObject({ chave: 'cozinha', primeira: 2, segunda: 0, meta: 2, lotada: true });
+    expect(p.porArea.find((a) => a.chave === 'montagem')).toMatchObject({ primeira: 0, segunda: 1, meta: 5, lotada: false });
+    expect(p.porArea.find((a) => a.chave === 'som')).toMatchObject({ meta: null, lotada: false });
     expect(p.vazias).toContain('Montagem / Desmontagem');
-    expect(p.matriz.colunas.map((c) => c.chave)).toEqual(['cozinha', 'projecao', 'recreacao_kids']);
-    expect(p.matriz.linhas.find((l) => l.nome === 'CEI Bem Querer Prof. Anísio Spínola')!.valores).toEqual([1, 0, 1]);
+    expect(p.matriz.colunas.map((c) => c.chave)).toEqual(['cozinha', 'inflaveis', 'louvor_kids']);
+    expect(p.matriz.linhas.find((l) => l.nome === 'CEI Bem Querer Prof. Anísio Spínola')!.valores).toEqual([1, 1, 0]);
+    // Quem não é funcionário entra na linha do vínculo.
+    expect(p.matriz.linhas.find((l) => l.nome === 'Alcance JNI')!.valores).toEqual([0, 0, 1]);
+    expect(p.porUnidade.slice(-2).map((u) => [u.nome, u.n])).toEqual([['Alcance JNI', 1], ['Voluntário(a)', 0]]);
   });
 
   it('últimas: a mais nova primeiro, com as áreas', () => {
-    expect(p.ultimas[0]).toMatchObject({ nome: 'Ana Paula', areas: 'Recreação' });
-    expect(p.ultimas[1].areas).toBe('Cozinha › Segurança');
+    expect(p.ultimas[0]).toMatchObject({ nome: 'Ana Paula', areas: 'Infláveis', quem: 'CEI Bem Querer Prof. Anísio Spínola' });
+    expect(p.ultimas[1].areas).toBe('Cozinha › Estações');
+    expect(p.ultimas.find((u) => u.nome === 'Paulo Martins')).toMatchObject({ quem: 'Alcance JNI', areas: 'Louvor' });
     expect(JSON.stringify(p)).not.toMatch(/whatsapp|protocolo/i);
   });
 
@@ -119,24 +128,26 @@ describe('a página', () => {
   it('mostra os números, troca de bloco pelas abas e pelas setas', async () => {
     abrir();
     expect(await screen.findByTestId('kpi-Inscritos')).toHaveTextContent('4');
+    // A capa da campanha no topo (23/10/2026).
+    expect(screen.getByTestId('capa')).toHaveAttribute('src', '/voluntariado-natal-feliz-capa.webp');
     expect(screen.getByTestId('trilho').style.transform).toBe('translateX(-0%)');
     fireEvent.click(screen.getByRole('button', { name: 'Por área' }));
     expect(screen.getByTestId('trilho').style.transform).toBe('translateX(-200%)');
     fireEvent.click(screen.getByRole('button', { name: 'Próximo' }));
     expect(screen.getByTestId('trilho').style.transform).toBe('translateX(-300%)');
-    expect(screen.getAllByTestId('unidade')).toHaveLength(12);
+    expect(screen.getAllByTestId('unidade')).toHaveLength(14); // 12 unidades + Alcance JNI + voluntários de fora
     expect(screen.queryByTestId('meta')).toBeNull();
   });
 
   it('troca sozinho a cada 10 s e, na leitura de 30 s, avisa quem chegou', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    banco.leituras = [dados(), dados([...BASE, I('Bruna Teixeira', 'ANA Jardim Santana', 'social', 'decoracao', null, '2026-10-28T15:00:10-03:00')], 120)];
+    banco.leituras = [dados(), dados([...BASE, J('Bruna Teixeira', 'comunidade', 'estacoes', null, '2026-10-28T15:00:10-03:00')], 120)];
     abrir();
     await screen.findByTestId('kpi-Inscritos');
     await act(async () => { vi.advanceTimersByTime(10_500); });
     expect(screen.getByTestId('trilho').style.transform).toBe('translateX(-100%)');
     await act(async () => { vi.advanceTimersByTime(20_000); });
-    await waitFor(() => expect(screen.getByTestId('aviso')).toHaveTextContent('Nova inscrição: Bruna Teixeira · ANA Jardim Santana'));
+    await waitFor(() => expect(screen.getByTestId('aviso')).toHaveTextContent('Nova inscrição: Bruna Teixeira · Voluntário(a)'));
     expect(screen.getByTestId('kpi-Inscritos')).toHaveTextContent('5');
     expect(screen.getByTestId('meta')).toHaveTextContent('Rumo à meta de 120 voluntários');
   });

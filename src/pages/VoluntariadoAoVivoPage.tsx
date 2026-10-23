@@ -3,7 +3,7 @@ import { Navigate, useParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import {
-  ATUALIZA_A_CADA_MS, TROCA_DE_BLOCO_MS, calcularPainel, corDaUnidade, haQuanto, lerAcompanhamento,
+  ATUALIZA_A_CADA_MS, TROCA_DE_BLOCO_MS, calcularPainel, corDaUnidade, grupoDe, haQuanto, lerAcompanhamento,
   type Acompanhamento, type Painel,
 } from '@/lib/voluntariado/aoVivo';
 import { caminhoDoAoVivo, parceirosPorExtenso } from '@/lib/voluntariado/modelo';
@@ -14,7 +14,9 @@ import { caminhoDoAoVivo, parceirosPorExtenso } from '@/lib/voluntariado/modelo'
  * acompanhamento da enquete; só lê. Faixa e números fixos no topo; embaixo,
  * os blocos passam sozinhos a cada 10 s, deslizando de lado (o mouse por
  * cima pausa). Busca de novo a cada 30 s e avisa quem acabou de chegar.
- * Feita para o computador ou uma TV.
+ * Feita para o computador ou uma TV. Desde 23/10/2026, com a capa da
+ * campanha no topo, o vínculo de cada um (unidade, Alcance JNI ou
+ * voluntário de fora) e a meta de cada área.
  */
 
 const VERDE = '#2F6B52';
@@ -82,7 +84,7 @@ export default function VoluntariadoAoVivoPage() {
         const novos = a.inscricoes.filter((i) => !vistos.current!.has(`${i.created_at}|${i.nome}`));
         if (novos.length) {
           const u = novos[novos.length - 1];
-          setChegou(novos.length === 1 ? `Nova inscrição: ${u.nome} · ${u.unidade_nome}` : `${novos.length} novas inscrições`);
+          setChegou(novos.length === 1 ? `Nova inscrição: ${u.nome} · ${grupoDe(u)}` : `${novos.length} novas inscrições`);
           window.setTimeout(() => setChegou(null), 4000);
         }
       }
@@ -129,12 +131,14 @@ export default function VoluntariadoAoVivoPage() {
   return (
     <div className="min-h-screen bg-muted/70 px-4 py-5 text-foreground">
       <div className="mx-auto grid max-w-[1400px] gap-3.5">
-        <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-4 text-[#F6EEDF]" style={{ background: 'repeating-linear-gradient(135deg,#1E4D3A 0 16px,#2F6B52 16px 32px)' }}>
-          <div>
+        {/* A capa da campanha (23/10/2026): no topo no celular, à esquerda no computador e na TV. */}
+        <header className="grid items-center gap-x-5 gap-y-3 overflow-hidden rounded-2xl pb-4 text-[#F6EEDF] md:grid-cols-[auto_minmax(0,1fr)_auto] md:pb-0" style={{ background: 'repeating-linear-gradient(135deg,#1E4D3A 0 16px,#2F6B52 16px 32px)' }}>
+          <img src="/voluntariado-natal-feliz-capa.webp" alt="Natal Feliz, ANA Brasil: crianças sorrindo com presentes" width={1793} height={877} className="block aspect-[1793/877] w-full object-cover md:h-[136px] md:w-auto" data-testid="capa" />
+          <div className="px-5 md:px-0">
             <b className="text-2xl font-extrabold">Dia do Voluntariado · Natal Feliz 2026</b>
             <small className="block text-[13px] opacity-85">08/12 no Manaim · em parceria com {parceirosPorExtenso()} · inscrições até 15/11</small>
           </div>
-          <span className="flex items-center gap-2 rounded-full bg-black/25 px-3.5 py-1.5 text-[13px]" data-testid="ao-vivo">
+          <span className="mx-5 flex w-fit items-center gap-2 rounded-full bg-black/25 px-3.5 py-1.5 text-[13px] md:ml-0" data-testid="ao-vivo">
             <i className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#7CF0A8]" />
             {erro === 'rede' ? 'Sem conexão · tentando de novo' : segundos < 3 ? 'Ao vivo · atualizado agora' : `Ao vivo · atualizado há ${segundos} s`}
           </span>
@@ -143,7 +147,7 @@ export default function VoluntariadoAoVivoPage() {
         {!p ? <p className="text-muted-foreground">Carregando…</p> : (
           <>
             <div className="grid grid-cols-3 gap-2.5 lg:grid-cols-6">
-              <Kpi rotulo="Inscritos" valor={p.total} sub={`+${p.hoje} hoje`} tom={p.hoje ? 'bom' : undefined} destaca={!!chegou} />
+              <Kpi rotulo="Inscritos" valor={p.total} sub={`+${p.hoje} hoje · ${p.porVinculo.funcionario} da ANA`} tom={p.hoje ? 'bom' : undefined} destaca={!!chegou} />
               <Kpi rotulo="Unidades com inscritos" valor={<>{p.unidades.comInscritos}<small className="text-base"> /{p.unidades.total}</small></>}
                 sub={p.unidades.total - p.unidades.comInscritos ? `${p.unidades.total - p.unidades.comInscritos} sem ninguém` : 'todas participando'} tom={p.unidades.total - p.unidades.comInscritos ? 'ruim' : 'bom'} />
               <Kpi rotulo="Áreas cobertas" valor={<>{p.areas.cobertas}<small className="text-base"> /{p.areas.total}</small></>}
@@ -161,13 +165,13 @@ export default function VoluntariadoAoVivoPage() {
                 </div>
 
                 <div className="grid min-h-[440px] flex-[0_0_100%] content-start gap-3.5 px-6 py-5" aria-hidden={atual !== 1}>
-                  <h2 className="text-xl font-bold">Últimas inscrições <span className="text-sm font-normal text-muted-foreground">nome, unidade e áreas</span></h2>
+                  <h2 className="text-xl font-bold">Últimas inscrições <span className="text-sm font-normal text-muted-foreground">nome, unidade (ou vínculo) e áreas</span></h2>
                   {p.ultimas.length === 0 ? <p className="text-muted-foreground">Ninguém se inscreveu ainda.</p> : (
                     <div className="grid gap-2" data-testid="ultimas">
                       {p.ultimas.map((i, k) => (
                         <div key={`${i.created_at}-${i.nome}`} className={`grid grid-cols-[14px_minmax(0,1fr)_auto] items-center gap-3.5 rounded-xl px-3.5 py-2.5 ${k === 0 && haQuanto(i.created_at, agora) === 'agora' ? 'bg-emerald-50 dark:bg-emerald-950/40' : 'bg-muted/60'}`}>
-                          <span className="h-3.5 w-3.5 rounded-full" style={{ background: corDaUnidade(i.unidade_nome) }} />
-                          <span className="min-w-0"><b className="block truncate text-base">{i.nome}</b><small className="text-[13px] text-muted-foreground">{i.unidade_nome} · {i.areas}</small></span>
+                          <span className="h-3.5 w-3.5 rounded-full" style={{ background: corDaUnidade(i.quem) }} />
+                          <span className="min-w-0"><b className="block truncate text-base">{i.nome}</b><small className="text-[13px] text-muted-foreground">{i.quem} · {i.areas}</small></span>
                           <span className="text-xs text-muted-foreground">{haQuanto(i.created_at, agora)}</span>
                         </div>
                       ))}
@@ -176,22 +180,22 @@ export default function VoluntariadoAoVivoPage() {
                 </div>
 
                 <div className="grid min-h-[440px] flex-[0_0_100%] content-start gap-2.5 px-6 py-5" aria-hidden={atual !== 2}>
-                  <h2 className="text-xl font-bold">Por área <span className="text-sm font-normal text-muted-foreground">1ª opção · <b className="text-[#5BBFA7]">+2ª</b> em verde-claro</span></h2>
+                  <h2 className="text-xl font-bold">Por área <span className="text-sm font-normal text-muted-foreground">1ª opção /meta · <b className="text-[#5BBFA7]">+2ª</b> em verde-claro</span></h2>
                   {(() => { const max = Math.max(1, ...p.porArea.map((x) => x.primeira + x.segunda)); return p.porArea.map((x) => (
-                    <div key={x.chave} className={`grid grid-cols-[220px_minmax(0,1fr)_70px] items-center gap-3 text-sm ${x.primeira === 0 ? 'text-red-700 dark:text-red-400' : ''}`} data-testid="area">
-                      <span className="truncate">{x.rotulo}</span>
+                    <div key={x.chave} className={`grid grid-cols-[220px_minmax(0,1fr)_90px] items-center gap-3 text-sm ${x.primeira === 0 ? 'text-red-700 dark:text-red-400' : ''}`} data-testid="area">
+                      <span className="flex min-w-0 items-center gap-1.5"><span className="truncate">{x.rotulo}</span>{x.lotada && <b className="shrink-0 rounded bg-amber-100 px-1.5 text-[10px] uppercase text-amber-900 dark:bg-amber-900/50 dark:text-amber-100">lotada</b>}</span>
                       <span className="relative h-4 overflow-hidden rounded-full bg-muted">
                         <s className="absolute inset-y-0 left-0 rounded-full bg-[#81E2CF] no-underline transition-[width] duration-700" style={{ width: `${((x.primeira + x.segunda) / max) * 100}%` }} />
                         <i className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-700" style={{ width: `${(x.primeira / max) * 100}%`, background: VERDE }} />
                       </span>
-                      <em className="text-right font-bold not-italic">{x.primeira}{x.segunda ? <small className="font-normal text-muted-foreground"> +{x.segunda}</small> : null}</em>
+                      <em className="text-right font-bold not-italic">{x.primeira}{x.meta ? <small className="font-normal text-muted-foreground">/{x.meta}</small> : null}{x.segunda ? <small className="font-normal text-muted-foreground"> +{x.segunda}</small> : null}</em>
                     </div>
                   )); })()}
                   {p.vazias.length > 0 && <p className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-800 dark:bg-red-950/50 dark:text-red-200"><b>Sem ninguém na 1ª opção:</b> {p.vazias.join(', ')}.</p>}
                 </div>
 
                 <div className="grid min-h-[440px] flex-[0_0_100%] content-start gap-3 px-6 py-5" aria-hidden={atual !== 3}>
-                  <h2 className="text-xl font-bold">Por unidade <span className="text-sm font-normal text-muted-foreground">na cor da planilha</span></h2>
+                  <h2 className="text-xl font-bold">Por unidade e vínculo <span className="text-sm font-normal text-muted-foreground">na cor da planilha</span></h2>
                   <div className="grid gap-x-8 gap-y-1.5 md:grid-cols-2">
                     {p.porUnidade.map((u) => (
                       <div key={u.nome} className={`grid grid-cols-[16px_minmax(0,1fr)_40px] items-center gap-2.5 py-0.5 text-sm ${u.n ? '' : 'text-muted-foreground'}`} data-testid="unidade">
