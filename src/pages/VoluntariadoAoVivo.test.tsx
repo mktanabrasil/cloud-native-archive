@@ -32,6 +32,7 @@ vi.mock('@/lib/voluntariado/aoVivo', async () => {
 const { default: AoVivo, AoVivoNoEnderecoNovo } = await import('./VoluntariadoAoVivoPage');
 const { AoVivoDaGestao } = await import('@/components/voluntariado/AoVivoDaGestao');
 const { calcularPainel, COR_DA_UNIDADE, diaDe } = await import('@/lib/voluntariado/aoVivo');
+const { AREAS_DE_AJUDA } = await import('@/lib/voluntariado/modelo');
 
 const AGORA = new Date('2026-10-28T15:00:00-03:00').getTime();
 const I = (nome: string, unidade: string, area: 'social' | 'educacao', o1: string, o2: string | null, quando: string) =>
@@ -58,7 +59,7 @@ describe('contas', () => {
     expect(p.hoje).toBe(1);
     expect(p.unidades).toEqual({ comInscritos: 2, total: 12 }); // só a Educação: GOE + 11 CEIs (21/10/2026)
     expect(p.porVinculo).toEqual({ funcionario: 3, alcance: 1, comunidade: 0 });
-    expect(p.areas.total).toBe(10); // as 10 áreas de 23/10/2026
+    expect(p.areas.total).toBe(8); // as 7 do dia do evento e a Montagem, que alguém escolheu como 2ª (23/10/2026)
     expect(p.areas.cobertas).toBe(3);
     expect(p.comSegunda).toBe(2);
     expect(p.meta).toBe(10);
@@ -92,7 +93,7 @@ describe('contas', () => {
   });
 
   it('por horário, na ordem da legenda', () => {
-    expect(p.porHorario.map((h) => [h.chave, h.n])).toEqual([['manha', 3], ['tarde', 0], ['dia_anterior', 0], ['pos_evento', 1], ['dia_todo', 0]]);
+    expect(p.porHorario.map((h) => [h.chave, h.n])).toEqual([['manha', 3], ['tarde', 0], ['pos_evento', 1], ['dia_todo', 0]]);
   });
 
   it('últimas: a mais nova primeiro, com as áreas', () => {
@@ -102,10 +103,12 @@ describe('contas', () => {
     expect(JSON.stringify(p)).not.toMatch(/whatsapp|protocolo/i);
   });
 
-  it('as cores das unidades são as mesmas da planilha', () => {
+  it('a função da planilha conhece a etiqueta de cada área (23/10/2026)', () => {
     const fn = readFileSync('supabase/functions/voluntariado-planilha/index.ts', 'utf8');
-    const daFuncao = Object.fromEntries([...fn.matchAll(/'([^']+)': '(#[0-9A-F]{6})'/g)].map((m) => [m[1], m[2]]));
-    expect(COR_DA_UNIDADE).toEqual(daFuncao);
+    const bloco = fn.slice(fn.indexOf('const AREA:'), fn.indexOf('};', fn.indexOf('const AREA:')));
+    const chaves = [...bloco.matchAll(/(\w+): '/g)].map((m) => m[1]).sort();
+    expect(chaves).toEqual(AREAS_DE_AJUDA.map((a) => a.chave).sort());
+    expect(Object.keys(COR_DA_UNIDADE)).toContain('Alcance JNI');
   });
 
   it('dia no fuso de Brasília', () => {

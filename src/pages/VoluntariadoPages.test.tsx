@@ -61,12 +61,15 @@ beforeEach(() => {
 });
 
 describe('regras', () => {
-  it('10 áreas com descrição; cada vínculo com as suas (23/10/2026)', () => {
-    expect(AREAS_DE_AJUDA).toHaveLength(10);
+  it('só as áreas do dia do evento; cada vínculo com as suas (23/10/2026)', () => {
+    expect(AREAS_DE_AJUDA).toHaveLength(10); // as 3 tiradas continuam conhecidas, para quem já as escolheu
     expect(AREAS_DE_AJUDA.every((a) => a.descricao.length > 40)).toBe(true);
-    expect(AREAS_POR_VINCULO.funcionario).toEqual(['cozinha', 'montagem', 'decoracao', 'limpeza_pre', 'inflaveis', 'estacoes']);
-    expect(AREAS_POR_VINCULO.alcance).toEqual(['cozinha', 'montagem', 'louvor_kids', 'som', 'limpeza_pre', 'recreacao_kids', 'inflaveis', 'presentes_kids']);
-    expect(AREAS_POR_VINCULO.comunidade).toEqual(['cozinha', 'montagem', 'limpeza_pre', 'inflaveis', 'estacoes']);
+    expect(AREAS_POR_VINCULO.funcionario).toEqual(['cozinha', 'inflaveis', 'estacoes']);
+    expect(AREAS_POR_VINCULO.alcance).toEqual(['cozinha', 'louvor_kids', 'som', 'recreacao_kids', 'inflaveis', 'presentes_kids']);
+    expect(AREAS_POR_VINCULO.comunidade).toEqual(['cozinha', 'inflaveis', 'estacoes']);
+    for (const k of ['montagem', 'decoracao', 'limpeza_pre'] as const) {
+      expect(Object.values(AREAS_POR_VINCULO).flat()).not.toContain(k);
+    }
     // Presentes, Som, Louvor e Recreação são só do Alcance JNI.
     for (const k of ['presentes_kids', 'som', 'louvor_kids', 'recreacao_kids'] as const) {
       expect(AREAS_POR_VINCULO.funcionario).not.toContain(k);
@@ -76,7 +79,7 @@ describe('regras', () => {
 
   it('a lista de áreas da função do banco é a mesma do formulário', async () => {
     const { readFileSync } = await import('node:fs');
-    const sql = readFileSync('supabase/migrations/20261023120000_voluntariado_em_etapas.sql', 'utf8');
+    const sql = readFileSync('supabase/migrations/20261023210000_voluntariado_dia_do_evento.sql', 'utf8');
     const lista = (v: string) => sql.match(new RegExp(`WHEN '${v}' +THEN ARRAY\\[([^\\]]+)\\]`))![1].match(/'([a-z_]+)'/g)!.map((s) => s.slice(1, -1));
     for (const v of ['funcionario', 'alcance', 'comunidade'] as const) expect(lista(v), v).toEqual([...AREAS_POR_VINCULO[v]]);
   });
@@ -125,7 +128,11 @@ describe('regras', () => {
     expect(problemaDaEtapa2({ ...ok, vinculo: 'alcance', unidade: null })).toBeNull();
     expect(problemaDaEtapa2({ ...ok, vinculo: 'comunidade', unidade: null })).toMatch(/te indicou/);
     expect(problemaDaEtapa2({ ...ok, vinculo: 'comunidade', unidade: null, indicado: true })).toMatch(/nome de quem te indicou/);
-    expect(problemaDaEtapa2({ ...ok, vinculo: 'comunidade', unidade: null, indicado: false })).toBeNull();
+    // A igreja é obrigatória para quem é de fora (23/10/2026).
+    expect(problemaDaEtapa2({ ...ok, vinculo: 'comunidade', unidade: null, indicado: false })).toMatch(/faz parte de alguma igreja/);
+    expect(problemaDaEtapa2({ ...ok, vinculo: 'comunidade', unidade: null, indicado: false, temIgreja: true, igreja: '' })).toMatch(/nome da sua igreja/);
+    expect(problemaDaEtapa2({ ...ok, vinculo: 'comunidade', unidade: null, indicado: false, temIgreja: false })).toBeNull();
+    expect(problemaDaEtapa2({ ...ok, vinculo: 'comunidade', unidade: null, indicado: false, temIgreja: true, igreja: 'Igreja Batista' })).toBeNull();
   });
 
   it('a planilha tem as colunas novas, com o vínculo e o horário pelo nome', () => {
@@ -154,7 +161,8 @@ describe('formulário', () => {
     expect(screen.getByTestId('dia-do-evento')).toHaveTextContent('08/12 · Natal Feliz');
     const sobre = screen.getByTestId('sobre-o-evento');
     expect(sobre).toHaveTextContent('Neste Natal, seja o presente de alguém');
-    expect(sobre).toHaveTextContent('em parceria com JNI, Nazateen e Hope Day');
+    expect(sobre).toHaveTextContent('em parceria com JNI e Nazateen');
+    expect(sobre).not.toHaveTextContent('Hope Day');
     expect(screen.getByTestId('aviso-do-treinamento')).toHaveTextContent('obrigatório participar do Treinamento de Voluntários, no dia 28/11, no Recanto Maanaim');
     expect(screen.getByTestId('etapas')).toHaveTextContent('Etapa 1 de 3');
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
@@ -182,7 +190,9 @@ describe('formulário', () => {
 
     expect(screen.getByTestId('etapas')).toHaveTextContent('Etapa 3 de 3');
     expect(screen.getByText('Áreas para funcionários da ANA')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^Decoração/ })).toBeInTheDocument();
+    // Só as do dia do evento (23/10/2026).
+    expect(screen.queryByRole('button', { name: /^Decoração/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Montagem/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Louvor Kids/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Presentes Kids/ })).toBeNull();
     const cozinha = screen.getByRole('button', { name: /^Cozinha \/ Servimento/ });
@@ -202,6 +212,9 @@ describe('formulário', () => {
     // Sem "tire um print" e sem "a equipe entra em contato" (23/10/2026): o treinamento já aqui.
     expect(screen.queryByText(/print/)).toBeNull();
     expect(screen.queryByText(/entrar em contato/)).toBeNull();
+    // O grupo do WhatsApp: entrada obrigatória, por botão (23/10/2026).
+    expect(screen.getByTestId('grupo')).toHaveTextContent('entrada obrigatória');
+    expect(screen.getByRole('link', { name: /Entrar no grupo do WhatsApp/ })).toHaveAttribute('href', 'https://chat.whatsapp.com/FnmKMVE3PXnEWKVYQY7ZEe');
     const treino = screen.getByTestId('treinamento');
     expect(treino).toHaveTextContent('Sábado, 28/11');
     expect(treino).toHaveTextContent('a confirmar');
@@ -291,7 +304,7 @@ describe('formulário', () => {
     etapa2();
     quemSou(/^Faço parte do Alcance JNI/);
     fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
-    fireEvent.click(screen.getByRole('button', { name: /^Montagem/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Som/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Enviar inscrição' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Este WhatsApp já está inscrito. Para mudar a área, fale com a equipe.');
   });
@@ -304,7 +317,8 @@ describe('painel', () => {
     render(<MemoryRouter><PainelDoVoluntariado /></MemoryRouter>);
     expect(await screen.findAllByTestId('inscricao')).toHaveLength(2);
     expect(screen.getByTestId('kpi-Inscritos')).toHaveTextContent('2');
-    expect(screen.getByTestId('kpi-Áreas sem ninguém')).toHaveTextContent('8');
+    // As 7 do formulário e a Decoração, que alguém já escolheu; com gente: Cozinha e Decoração.
+    expect(screen.getByTestId('kpi-Áreas sem ninguém')).toHaveTextContent('6');
     const decoracao = screen.getAllByTestId('barra-area').find((b) => b.textContent?.startsWith('Decoração'))!;
     expect(decoracao).toHaveTextContent('Decoração1 +1');
     await waitFor(() => expect(screen.getAllByTestId('barra-area').find((b) => b.textContent?.startsWith('Cozinha'))).toHaveTextContent('1/25'));

@@ -43,8 +43,8 @@ export const TREINAMENTO = {
 /** O endereço no Google Maps, para abrir no celular. */
 export const MAPA_DO_TREINAMENTO = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${TREINAMENTO.local}, ${TREINAMENTO.endereco}`)}`;
 
-/** Os parceiros do Natal Feliz 2026 (21/10/2026: JNI, Nazateen e Hope Day). */
-export const PARCEIROS = ['JNI', 'Nazateen', 'Hope Day'];
+/** Os parceiros do Natal Feliz 2026 (JNI e Nazateen; a Hope Day saiu em 23/10/2026). */
+export const PARCEIROS = ['JNI', 'Nazateen'];
 /** "JNI, Nazateen e Hope Day" */
 export const parceirosPorExtenso = (l: readonly string[] = PARCEIROS) => (l.length > 1 ? `${l.slice(0, -1).join(', ')} e ${l[l.length - 1]}` : l.join(''));
 
@@ -87,28 +87,52 @@ export const VINCULOS: ReadonlyArray<{ chave: Vinculo; rotulo: string; detalhe: 
 ];
 export const rotuloDoVinculo = (v: string | null | undefined) => VINCULOS.find((x) => x.chave === v)?.curto ?? '';
 
-/** As áreas de cada vínculo (23/10/2026). A função do banco tem a mesma lista. */
+/**
+ * As áreas de cada vínculo. A função do banco tem a mesma lista.
+ * Desde 23/10/2026, só o que acontece no dia do evento: montagem, decoração
+ * e limpeza ficam com os funcionários, no dia anterior, como dia trabalhado.
+ */
 export const AREAS_POR_VINCULO: Record<Vinculo, readonly AreaDeAjuda[]> = {
-  funcionario: ['cozinha', 'montagem', 'decoracao', 'limpeza_pre', 'inflaveis', 'estacoes'],
-  alcance: ['cozinha', 'montagem', 'louvor_kids', 'som', 'limpeza_pre', 'recreacao_kids', 'inflaveis', 'presentes_kids'],
-  comunidade: ['cozinha', 'montagem', 'limpeza_pre', 'inflaveis', 'estacoes'],
+  funcionario: ['cozinha', 'inflaveis', 'estacoes'],
+  alcance: ['cozinha', 'louvor_kids', 'som', 'recreacao_kids', 'inflaveis', 'presentes_kids'],
+  comunidade: ['cozinha', 'inflaveis', 'estacoes'],
 };
+
+/**
+ * Fora do formulário desde 23/10/2026. Continuam conhecidas (rótulo, planilha,
+ * painéis) para quem já tiver escolhido; só não aparecem mais para escolher.
+ */
+export const AREAS_FORA_DO_FORMULARIO: readonly string[] = ['montagem', 'decoracao', 'limpeza_pre'];
+/** A área entra nos painéis se está no formulário ou se alguém já a escolheu. */
+export const areaNosPaineis = (chave: string, escolhidas: Iterable<string | null>) =>
+  !AREAS_FORA_DO_FORMULARIO.includes(chave) || [...escolhidas].includes(chave);
+
+/** O grupo dos voluntários no WhatsApp (23/10/2026): a entrada é obrigatória. */
+export const GRUPO_DO_WHATSAPP = 'https://chat.whatsapp.com/FnmKMVE3PXnEWKVYQY7ZEe';
 export const TITULO_DAS_AREAS: Record<Vinculo, string> = {
   funcionario: 'Áreas para funcionários da ANA',
   alcance: 'Áreas para o Alcance JNI',
   comunidade: 'Áreas abertas para voluntários',
 };
 
-/** Os horários, com as cores da legenda da planilha da coordenação. */
+/**
+ * Os horários, com as cores da legenda da planilha da coordenação. O "Dia
+ * anterior" saiu do formulário em 23/10/2026 (o voluntariado é só no dia do
+ * evento); continua conhecido para o rótulo de quem já o escolheu.
+ */
 export type Horario = 'manha' | 'tarde' | 'dia_anterior' | 'pos_evento' | 'dia_todo';
-export const HORARIOS: ReadonlyArray<{ chave: Horario; rotulo: string; detalhe: string; cor: string }> = [
+type DadosDoHorario = { chave: Horario; rotulo: string; detalhe: string; cor: string };
+const DIA_ANTERIOR: DadosDoHorario = { chave: 'dia_anterior', rotulo: 'Dia anterior', detalhe: 'Montagem e decoração', cor: '#4A7FD0' };
+export const HORARIOS: ReadonlyArray<DadosDoHorario> = [
   { chave: 'manha', rotulo: 'Manhã', detalhe: '7h às 12h', cor: '#F6C343' },
   { chave: 'tarde', rotulo: 'Tarde', detalhe: '12h às 17h', cor: '#3CB371' },
-  { chave: 'dia_anterior', rotulo: 'Dia anterior', detalhe: 'Montagem e decoração', cor: '#4A7FD0' },
   { chave: 'pos_evento', rotulo: 'Pós-evento', detalhe: '17h às 20h', cor: '#3D3D3D' },
   { chave: 'dia_todo', rotulo: 'Dia todo', detalhe: '7h às 20h', cor: '#D9363E' },
 ];
-export const rotuloDoHorario = (h: string | null | undefined) => HORARIOS.find((x) => x.chave === h)?.rotulo ?? '';
+export const dadosDoHorario = (h: string | null | undefined) => [...HORARIOS, DIA_ANTERIOR].find((x) => x.chave === h);
+export const rotuloDoHorario = (h: string | null | undefined) => dadosDoHorario(h)?.rotulo ?? '';
+/** O texto da pergunta do horário (23/10/2026). */
+export const TEXTO_DO_HORARIO = 'O Natal Feliz vai das 7h às 17h. Algumas áreas também precisam de ajuda depois do evento, das 17h às 20h: por isso o Pós-evento e o Dia todo (7h às 20h) estão na lista. Escolha uma opção.';
 
 /**
  * As unidades da ANA Piauí ficam fora (21/10/2026). Continuam conhecidas no
@@ -173,6 +197,9 @@ export interface DadosDaEtapa2 {
   unidade: string | null;
   indicado: boolean | null;
   indicadoPor: string;
+  /** Desde 23/10/2026 a igreja é obrigatória para quem é de fora: Sim/Não e, se sim, qual. */
+  temIgreja?: boolean | null;
+  igreja?: string;
 }
 
 /** O que falta na etapa 2; null quando dá para seguir. */
@@ -184,6 +211,8 @@ export function problemaDaEtapa2(d: DadosDaEtapa2): string | null {
   if (d.vinculo === 'funcionario' && !d.unidade) return 'Escolha a unidade em que você trabalha.';
   if (d.vinculo === 'comunidade' && d.indicado === null) return 'Conte se alguém da ANA te indicou.';
   if (d.vinculo === 'comunidade' && d.indicado && d.indicadoPor.trim().length < 2) return 'Escreva o nome de quem te indicou.';
+  if (d.vinculo === 'comunidade' && (d.temIgreja === null || d.temIgreja === undefined)) return 'Conte se você faz parte de alguma igreja.';
+  if (d.vinculo === 'comunidade' && d.temIgreja && (d.igreja ?? '').trim().length < 2) return 'Escreva o nome da sua igreja.';
   return null;
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { CalendarDays, Check, Clock, Download, Heart, MapPin } from 'lucide-react';
+import { CalendarDays, Check, Clock, Download, Heart, MapPin, Users } from 'lucide-react';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import InstitutionalFooterBar from '@/components/news/InstitutionalFooterBar';
 import { findNewsUnit } from '@/lib/news/units';
@@ -7,7 +7,7 @@ import { ROTULO_DA_AREA } from '@/lib/pizza/modelo';
 import { areasLotadas, enviarParaAPlanilha, inscrever } from '@/lib/voluntariado/api';
 import { salvarComprovante } from '@/lib/voluntariado/comprovante';
 import {
-  AREAS_DE_AJUDA, AREAS_POR_VINCULO, DIA_DO_EVENTO, HORARIOS, MAPA_DO_TREINAMENTO, SOBRE_O_EVENTO, TITULO_DAS_AREAS, TREINAMENTO, UNIDADES_DO_VOLUNTARIADO, ULTIMO_DIA, VINCULOS,
+  AREAS_DE_AJUDA, AREAS_POR_VINCULO, DIA_DO_EVENTO, GRUPO_DO_WHATSAPP, HORARIOS, MAPA_DO_TREINAMENTO, SOBRE_O_EVENTO, TEXTO_DO_HORARIO, TITULO_DAS_AREAS, TREINAMENTO, UNIDADES_DO_VOLUNTARIADO, ULTIMO_DIA, VINCULOS,
   encerrado, mascaraDoWhatsapp, mensagemDoErro, pedeAvisoDeLotada, problemaDaEtapa2, rotuloDaAjuda, rotuloDoHorario, tocarArea,
   type AreaDeAjuda, type Horario, type Vinculo,
 } from '@/lib/voluntariado/modelo';
@@ -109,7 +109,7 @@ export default function VoluntariadoPage() {
   }
 
   function seguirParaAsAreas() {
-    const p = problemaDaEtapa2({ nome, whatsapp, horario, vinculo, unidade: unidade || null, indicado, indicadoPor });
+    const p = problemaDaEtapa2({ nome, whatsapp, horario, vinculo, unidade: unidade || null, indicado, indicadoPor, temIgreja, igreja });
     if (p) { setErro(p); return; }
     ir('areas');
   }
@@ -202,6 +202,14 @@ export default function VoluntariadoPage() {
                 <div key={r} className="flex justify-between gap-3"><dt style={{ color: COR.mut }}>{r}</dt><dd className="text-right font-semibold">{v}</dd></div>
               ))}
             </dl>
+            {/* O grupo do WhatsApp (23/10/2026): a entrada é obrigatória; o formulário é aberto no celular, então é um botão. */}
+            <div className="flex flex-col gap-2.5 rounded-2xl border-2 p-4 text-[13.5px] leading-relaxed" style={{ borderColor: '#25D366', background: '#E7F8EE', color: '#14532D' }} data-testid="grupo">
+              <b className="text-[14.5px]">Grupo dos voluntários · entrada obrigatória</b>
+              <span>É no grupo do WhatsApp que passamos todas as informações do treinamento e do dia do evento. Entre agora:</span>
+              <a href={GRUPO_DO_WHATSAPP} target="_blank" rel="noopener noreferrer" className={`${botao} flex items-center justify-center gap-2`} style={{ background: '#1FA855' }}>
+                <Users className="h-5 w-5" /> Entrar no grupo do WhatsApp
+              </a>
+            </div>
             {/* No lugar do "a equipe entra em contato" (23/10/2026): os dados do treinamento já aqui. */}
             <div className="flex flex-col gap-2.5 rounded-2xl p-4 text-[13.5px]" style={{ background: COR.verdeClaro, color: COR.verde }} data-testid="treinamento">
               <b className="text-[14.5px]">Treinamento de Voluntários · obrigatório</b>
@@ -269,7 +277,7 @@ export default function VoluntariadoPage() {
 
             <section className="flex flex-col gap-2" aria-labelledby="pergunta-horario">
               <Pergunta id="pergunta-horario">Em que horário você pode ajudar?</Pergunta>
-              <p className="-mt-1 mb-1 text-[13px]" style={{ color: COR.mut }}>O Natal Feliz vai das 7h às 16h. Também precisamos de gente no dia anterior (montagem e decoração) e no pós-evento (17h às 20h). Escolha uma opção.</p>
+              <p className="-mt-1 mb-1 text-[13px]" style={{ color: COR.mut }}>{TEXTO_DO_HORARIO}</p>
               {HORARIOS.map((h) => (
                 <Escolha key={h.chave} marcada={horario === h.chave} cor={h.cor} detalhe={h.detalhe} onClick={() => { setHorario(h.chave); setErro(null); }}>{h.rotulo}</Escolha>
               ))}
@@ -302,13 +310,13 @@ export default function VoluntariadoPage() {
                       <input className={campo} style={{ borderColor: COR.linha }} maxLength={120} placeholder="Nome do funcionário(a)" value={indicadoPor} onChange={(e) => { setIndicadoPor(e.target.value); setErro(null); }} />
                     </label>
                   )}
-                  <Pergunta>Você faz parte de alguma igreja? <span className="text-[12.5px] font-normal" style={{ color: COR.mut }}>(opcional)</span></Pergunta>
-                  {/* Opcional: tocar de novo na resposta desmarca. */}
-                  <Escolha marcada={temIgreja === true} onClick={() => setTemIgreja((t) => (t === true ? null : true))}>Sim</Escolha>
-                  <Escolha marcada={temIgreja === false} onClick={() => setTemIgreja((t) => (t === false ? null : false))}>Não</Escolha>
+                  {/* Obrigatória desde 23/10/2026: Sim/Não e, se sim, qual. */}
+                  <Pergunta>Você faz parte de alguma igreja?</Pergunta>
+                  <Escolha marcada={temIgreja === true} onClick={() => { setTemIgreja(true); setErro(null); }}>Sim</Escolha>
+                  <Escolha marcada={temIgreja === false} onClick={() => { setTemIgreja(false); setErro(null); }}>Não</Escolha>
                   {temIgreja && (
-                    <label className="flex flex-col gap-1.5 text-sm font-semibold">Qual igreja? <span className="-mt-1 text-[12px] font-normal" style={{ color: COR.mut }}>opcional</span>
-                      <input className={campo} style={{ borderColor: COR.linha }} maxLength={120} placeholder="Nome da igreja" value={igreja} onChange={(e) => setIgreja(e.target.value)} />
+                    <label className="flex flex-col gap-1.5 text-sm font-semibold">Qual igreja?
+                      <input className={campo} style={{ borderColor: COR.linha }} maxLength={120} placeholder="Nome da igreja" value={igreja} onChange={(e) => { setIgreja(e.target.value); setErro(null); }} />
                     </label>
                   )}
                 </div>

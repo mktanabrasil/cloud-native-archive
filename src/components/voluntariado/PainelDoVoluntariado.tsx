@@ -8,7 +8,7 @@ import {
 import { useUserRole } from '@/hooks/useUserRole';
 import { baixarArquivo } from '@/lib/enquetes/planilha';
 import { apagarInscricao, lerMetas, listarInscricoes, type Inscricao } from '@/lib/voluntariado/api';
-import { AREAS_DE_AJUDA, CAMINHO_DO_FORMULARIO, PRAZO, ULTIMO_DIA, rotuloDaAjuda, rotuloDoHorario, rotuloDoVinculo, type AreaDeAjuda } from '@/lib/voluntariado/modelo';
+import { AREAS_DE_AJUDA, CAMINHO_DO_FORMULARIO, areaNosPaineis, PRAZO, ULTIMO_DIA, rotuloDaAjuda, rotuloDoHorario, rotuloDoVinculo, type AreaDeAjuda } from '@/lib/voluntariado/modelo';
 import { csvDasInscricoes, nomeDaPlanilha, whatsappLegivel } from '@/lib/voluntariado/planilha';
 import { PlanilhaDoGoogle } from './PlanilhaDoGoogle';
 import { AoVivoDaGestao } from './AoVivoDaGestao';
@@ -65,7 +65,9 @@ export function PainelDoVoluntariado() {
   }
 
   // Quantos em cada área: a barra conta a 1ª opção; a 2ª aparece ao lado, para remanejar.
-  const porArea = AREAS_DE_AJUDA.map((a) => ({
+  // As áreas do formulário, e alguma tirada (23/10/2026) que alguém já tenha escolhido.
+  const escolhidas = (lista ?? []).flatMap((i) => [i.opcao1, i.opcao2]);
+  const porArea = AREAS_DE_AJUDA.filter((a) => areaNosPaineis(a.chave, escolhidas)).map((a) => ({
     ...a,
     primeira: daUnidade.filter((i) => i.opcao1 === a.chave).length,
     segunda: daUnidade.filter((i) => i.opcao2 === a.chave).length,
