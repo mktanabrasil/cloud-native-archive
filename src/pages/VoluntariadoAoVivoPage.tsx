@@ -136,7 +136,7 @@ export default function VoluntariadoAoVivoPage() {
           <img src="/voluntariado-natal-feliz-capa.webp" alt="Natal Feliz, ANA Brasil: crianças sorrindo com presentes" width={1793} height={877} className="block aspect-[1793/877] w-full object-cover md:h-[136px] md:w-auto" data-testid="capa" />
           <div className="px-5 md:px-0">
             <b className="text-2xl font-extrabold">Dia do Voluntariado · Natal Feliz 2026</b>
-            <small className="block text-[13px] opacity-85">08/12 no Manaim · em parceria com {parceirosPorExtenso()} · inscrições até 15/11</small>
+            <small className="block text-[13px] opacity-85">08/12 no Recanto Maanaim · em parceria com {parceirosPorExtenso()} · inscrições até 15/11</small>
           </div>
           <span className="mx-5 flex w-fit items-center gap-2 rounded-full bg-black/25 px-3.5 py-1.5 text-[13px] md:ml-0" data-testid="ao-vivo">
             <i className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#7CF0A8]" />

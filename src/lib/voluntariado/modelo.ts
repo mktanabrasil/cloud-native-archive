@@ -3,7 +3,7 @@
  *
  * Link público, como o da Pizza da Alegria. Desde 23/10/2026 o formulário
  * abre para funcionários, o público e o Alcance JNI, em três etapas:
- *  1. o treinamento obrigatório de 28/11 no Manaim (quem não pode, para ali);
+ *  1. o treinamento obrigatório de 28/11 no Recanto Maanaim (quem não pode, para ali);
  *  2. nome, WhatsApp, horário (um só) e vínculo: funcionário(a) informa a
  *     unidade; quem não é nem funcionário nem do JNI diz quem da ANA indicou
  *     e, se quiser, a igreja;
@@ -28,11 +28,20 @@ export const DIA_DO_EVENTO = '08/12';
 export const ULTIMO_DIA = '15/11';
 
 /**
- * O treinamento obrigatório (23/10/2026). Horário e endereço ainda não
- * foram passados: vazios, a tela e o comprovante mostram "a definir".
- * Quando chegarem, é só preencher aqui.
+ * O treinamento obrigatório (23/10/2026), no mesmo local do evento. O horário
+ * ainda está sendo confirmado: vazio, a tela e o comprovante mostram "a
+ * confirmar". Quando chegar, é só preencher aqui.
+ * Grafia: Maanaim, com dois "a" (23/10/2026).
  */
-export const TREINAMENTO = { data: 'Sábado, 28/11', dataCurta: '28/11', local: 'Manaim', horario: '', endereco: '' };
+export const TREINAMENTO = {
+  data: 'Sábado, 28/11',
+  dataCurta: '28/11',
+  local: 'Recanto Maanaim',
+  horario: '',
+  endereco: 'Rua Arcebispo Dom Luciano Mendes de Almeida, 50 - Swiss Park, Campinas - SP, 13049-446',
+};
+/** O endereço no Google Maps, para abrir no celular. */
+export const MAPA_DO_TREINAMENTO = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${TREINAMENTO.local}, ${TREINAMENTO.endereco}`)}`;
 
 /** Os parceiros do Natal Feliz 2026 (21/10/2026: JNI, Nazateen e Hope Day). */
 export const PARCEIROS = ['JNI', 'Nazateen', 'Hope Day'];
@@ -46,7 +55,7 @@ export const parceirosPorExtenso = (l: readonly string[] = PARCEIROS) => (l.leng
  */
 export const SOBRE_O_EVENTO = {
   titulo: 'Neste Natal, seja o presente de alguém',
-  texto: `No dia 8 de dezembro, o Manaim se transforma para receber o Natal Feliz, em parceria com ${parceirosPorExtenso()}. É o nosso Dia do Voluntariado: um dia de abraços, sorrisos, brincadeiras e presentes para as famílias que atendemos.`,
+  texto: `No dia 8 de dezembro, o Recanto Maanaim se transforma para receber o Natal Feliz, em parceria com ${parceirosPorExtenso()}. É o nosso Dia do Voluntariado: um dia de abraços, sorrisos, brincadeiras e presentes para as famílias que atendemos.`,
   destaque: 'A participação é voluntária, e é isso que torna o dia tão especial: quem vai, vai porque escolheu fazer a diferença.',
   selos: ['Você escolhe onde quer ajudar', 'Leva menos de 2 minutos', 'O comprovante já traz os dados do treinamento'],
   chamada: 'Vem com a gente fazer parte dessa história?',

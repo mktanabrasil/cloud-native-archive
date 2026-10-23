@@ -7,7 +7,7 @@ import { ROTULO_DA_AREA } from '@/lib/pizza/modelo';
 import { areasLotadas, enviarParaAPlanilha, inscrever } from '@/lib/voluntariado/api';
 import { salvarComprovante } from '@/lib/voluntariado/comprovante';
 import {
-  AREAS_DE_AJUDA, AREAS_POR_VINCULO, DIA_DO_EVENTO, HORARIOS, SOBRE_O_EVENTO, TITULO_DAS_AREAS, TREINAMENTO, UNIDADES_DO_VOLUNTARIADO, ULTIMO_DIA, VINCULOS,
+  AREAS_DE_AJUDA, AREAS_POR_VINCULO, DIA_DO_EVENTO, HORARIOS, MAPA_DO_TREINAMENTO, SOBRE_O_EVENTO, TITULO_DAS_AREAS, TREINAMENTO, UNIDADES_DO_VOLUNTARIADO, ULTIMO_DIA, VINCULOS,
   encerrado, mascaraDoWhatsapp, mensagemDoErro, pedeAvisoDeLotada, problemaDaEtapa2, rotuloDaAjuda, rotuloDoHorario, tocarArea,
   type AreaDeAjuda, type Horario, type Vinculo,
 } from '@/lib/voluntariado/modelo';
@@ -16,7 +16,7 @@ import {
  * /voluntariado/natalfeliz26 — inscrição de voluntários para o Natal Feliz
  * de 08/12/2026. Desde 23/10/2026, em três etapas e aberta a funcionários,
  * público e Alcance JNI (mockup aprovado em 23/10/2026):
- *  1. o treinamento obrigatório de 28/11 no Manaim; quem não pode vê um
+ *  1. o treinamento obrigatório de 28/11 no Recanto Maanaim; quem não pode vê um
  *     agradecimento e o formulário para ali, sem gravar nada;
  *  2. nome, WhatsApp, horário e vínculo, com a pergunta que cada vínculo pede;
  *  3. as áreas do vínculo (1ª e 2ª opção). Área que bateu a meta abre um
@@ -206,8 +206,8 @@ export default function VoluntariadoPage() {
             <div className="flex flex-col gap-2.5 rounded-2xl p-4 text-[13.5px]" style={{ background: COR.verdeClaro, color: COR.verde }} data-testid="treinamento">
               <b className="text-[14.5px]">Treinamento de Voluntários · obrigatório</b>
               <p className="flex items-start gap-2.5"><CalendarDays className="mt-0.5 h-4 w-4 shrink-0" /><span><small className="block text-[10.5px] uppercase tracking-wider opacity-75">Data</small><b>{TREINAMENTO.data}</b></span></p>
-              <p className="flex items-start gap-2.5"><Clock className="mt-0.5 h-4 w-4 shrink-0" /><span><small className="block text-[10.5px] uppercase tracking-wider opacity-75">Horário</small><OuADefinir valor={TREINAMENTO.horario} texto="horário a definir" /></span></p>
-              <p className="flex items-start gap-2.5"><MapPin className="mt-0.5 h-4 w-4 shrink-0" /><span><small className="block text-[10.5px] uppercase tracking-wider opacity-75">Local</small><b>{TREINAMENTO.local}</b><br /><OuADefinir valor={TREINAMENTO.endereco} texto="endereço a definir" /></span></p>
+              <p className="flex items-start gap-2.5"><Clock className="mt-0.5 h-4 w-4 shrink-0" /><span><small className="block text-[10.5px] uppercase tracking-wider opacity-75">Horário</small><OuADefinir valor={TREINAMENTO.horario} texto="a confirmar" /></span></p>
+              <p className="flex items-start gap-2.5"><MapPin className="mt-0.5 h-4 w-4 shrink-0" /><span><small className="block text-[10.5px] uppercase tracking-wider opacity-75">Local</small><b>{TREINAMENTO.local}</b> <span className="opacity-80">· mesmo local do Natal Feliz</span><br /><a href={MAPA_DO_TREINAMENTO} target="_blank" rel="noopener noreferrer" className="underline" data-testid="endereco-do-treinamento">{TREINAMENTO.endereco}</a></span></p>
             </div>
             <Erro />
             <button type="button" onClick={baixar} disabled={baixando} className={`${botao} flex items-center justify-center gap-2`} style={{ background: COR.verde }}>

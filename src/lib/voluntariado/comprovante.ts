@@ -66,7 +66,7 @@ export async function desenharComprovante(d: DadosDoComprovante): Promise<Blob> 
   const topo = y, folga = 40, x = MARGEM + folga - 8, larguraDoTexto = LARGURA - 2 * MARGEM - 2 * folga;
   const itens: Array<[string, string, boolean]> = [
     ['Data', TREINAMENTO.data, true],
-    ['Horário', TREINAMENTO.horario || '[a definir]', !!TREINAMENTO.horario],
+    ['Horário', TREINAMENTO.horario || '[a confirmar]', !!TREINAMENTO.horario],
     ['Local', `${TREINAMENTO.local} · ${TREINAMENTO.endereco || '[endereço a definir]'}`, !!TREINAMENTO.endereco],
   ];
   const medida = document.createElement('canvas').getContext('2d')!;
