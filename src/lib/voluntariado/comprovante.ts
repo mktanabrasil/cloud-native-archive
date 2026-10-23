@@ -2,8 +2,8 @@ import { DIA_DO_EVENTO, TREINAMENTO } from './modelo';
 
 /**
  * O comprovante da inscrição (23/10/2026), no lugar do "tire um print": uma
- * imagem JPEG leve (~200 KB) com a capa, o protocolo, o resumo e os dados do
- * treinamento. No celular abre o menu de compartilhar, que salva na galeria
+ * imagem JPEG leve (~200 KB) com a capa, o protocolo, o resumo, os dados do
+ * treinamento e o lembrete do grupo do WhatsApp. No celular abre o menu de compartilhar, que salva na galeria
  * (no iPhone, o download comum iria para o app Arquivos); no computador, ou
  * onde não houver o menu, baixa o arquivo.
  */
@@ -81,7 +81,13 @@ export async function desenharComprovante(d: DadosDoComprovante): Promise<Blob> 
     yy += 50; g.fillStyle = COR.verde2; g.font = '400 24px Poppins'; g.fillText(r.toUpperCase(), x, yy);
     g.fillStyle = definido ? COR.verde : COR.aDefinir; g.font = '600 34px Poppins'; yy = escrever(g, v, x, yy + 44, larguraDoTexto, 46);
   }
-  y = fim + 70;
+  // O grupo do WhatsApp (23/10/2026): o botão fica na tela; aqui, o lembrete de que a entrada é obrigatória.
+  const t2 = fim + 36, h2 = 200;
+  g.fillStyle = '#E7F8EE'; g.beginPath(); g.roundRect(MARGEM - 8, t2, LARGURA - 2 * MARGEM + 16, h2, 28); g.fill();
+  g.strokeStyle = '#25D366'; g.lineWidth = 4; g.stroke();
+  g.fillStyle = '#14532D'; g.font = '700 30px Poppins'; g.fillText('GRUPO DOS VOLUNTÁRIOS · ENTRADA OBRIGATÓRIA', x, t2 + folga + 30);
+  g.font = '400 26px Poppins'; escrever(g, 'Entre pelo botão "Entrar no grupo do WhatsApp", na tela da inscrição.', x, t2 + folga + 74, larguraDoTexto, 36);
+  y = t2 + h2 + 70;
   g.fillStyle = COR.mut; g.font = '400 24px Poppins'; g.fillText('ANA Brasil · Natal Feliz 2026', MARGEM, y);
 
   const final = document.createElement('canvas');

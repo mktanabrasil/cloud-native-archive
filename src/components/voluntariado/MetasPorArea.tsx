@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { definirMetaDaArea } from '@/lib/voluntariado/api';
-import { AREAS_DE_AJUDA, type AreaDeAjuda } from '@/lib/voluntariado/modelo';
+import { AREAS_DE_AJUDA, AREAS_FORA_DO_FORMULARIO, type AreaDeAjuda } from '@/lib/voluntariado/modelo';
 
 /**
  * As metas por área (23/10/2026), no painel do Marketing. A meta conta só a
@@ -14,11 +14,13 @@ import { AREAS_DE_AJUDA, type AreaDeAjuda } from '@/lib/voluntariado/modelo';
  */
 export function MetasPorArea({ metas, primeiras, onSalvas }: { metas: Record<string, number>; primeiras: Record<string, number>; onSalvas: (m: Record<string, number>) => void }) {
   const [texto, setTexto] = useState<Record<string, string>>({});
+  // As áreas do formulário; uma tirada (23/10/2026) só aparece se ainda tiver meta, para poder tirá-la.
+  const AREAS = AREAS_DE_AJUDA.filter((a) => !AREAS_FORA_DO_FORMULARIO.includes(a.chave) || metas[a.chave]);
   const [salvando, setSalvando] = useState(false);
-  useEffect(() => { setTexto(Object.fromEntries(AREAS_DE_AJUDA.map((a) => [a.chave, metas[a.chave] ? String(metas[a.chave]) : '']))); }, [metas]);
+  useEffect(() => { setTexto(Object.fromEntries(AREAS.map((a) => [a.chave, metas[a.chave] ? String(metas[a.chave]) : '']))); }, [metas]);
 
   const valor = (k: string) => (texto[k]?.trim() ? Number(texto[k]) : null);
-  const mudadas = AREAS_DE_AJUDA.filter((a) => valor(a.chave) !== (metas[a.chave] ?? null));
+  const mudadas = AREAS.filter((a) => valor(a.chave) !== (metas[a.chave] ?? null));
 
   async function salvar() {
     const invalida = mudadas.find((a) => { const n = valor(a.chave); return n !== null && (n < 1 || n > 5000); });
@@ -47,7 +49,7 @@ export function MetasPorArea({ metas, primeiras, onSalvas }: { metas: Record<str
         <span><b>Metas por área</b><br /><span className="text-muted-foreground">Conta a 1ª opção. Bateu a meta, o formulário avisa e a área só entra como 2ª opção. Vazio = sem limite.</span></span>
       </span>
       <div className="grid gap-x-5 gap-y-1.5 sm:grid-cols-2">
-        {AREAS_DE_AJUDA.map((a) => {
+        {AREAS.map((a) => {
           const meta = metas[a.chave];
           const lotada = !!meta && (primeiras[a.chave] ?? 0) >= meta;
           return (

@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { AREAS_DE_AJUDA, HORARIOS, PRAZO, UNIDADES_DO_VOLUNTARIADO, caminhoDoAoVivo, rotuloDaAjuda, rotuloDoVinculo } from './modelo';
+import { AREAS_DE_AJUDA, HORARIOS, PRAZO, UNIDADES_DO_VOLUNTARIADO, areaNosPaineis, caminhoDoAoVivo, dadosDoHorario, rotuloDaAjuda, rotuloDoVinculo } from './modelo';
 
 /**
  * O painel ao vivo da gestão (21/10/2026): o que o link de acompanhamento
@@ -88,7 +88,9 @@ export function calcularPainel(a: Acompanhamento, agora = Date.now()): Painel {
   const hojeDia = diaDe(agora);
   const nomesDasUnidades = UNIDADES_DO_VOLUNTARIADO.flatMap((g) => g.unidades.map((u) => u.name));
 
-  const porArea = AREAS_DE_AJUDA.map((x) => {
+  // As áreas do formulário, e alguma tirada (23/10/2026) que alguém já tenha escolhido.
+  const escolhidas = lista.flatMap((i) => [i.opcao1, i.opcao2]);
+  const porArea = AREAS_DE_AJUDA.filter((x) => areaNosPaineis(x.chave, escolhidas)).map((x) => {
     const primeira = lista.filter((i) => i.opcao1 === x.chave).length;
     const meta = a.metas?.[x.chave] ?? null;
     return { chave: x.chave as string, rotulo: x.rotulo, primeira, segunda: lista.filter((i) => i.opcao2 === x.chave).length, meta, lotada: meta !== null && primeira >= meta };
@@ -152,7 +154,7 @@ export function calcularPainel(a: Acompanhamento, agora = Date.now()): Painel {
     porHorario: [
       ...HORARIOS.map((h) => ({ chave: h.chave as string, rotulo: h.rotulo, detalhe: h.detalhe, cor: h.cor, n: lista.filter((i) => i.horario === h.chave).length })),
       ...[...new Set(lista.map((i) => i.horario).filter((h): h is string => !!h && !HORARIOS.some((x) => x.chave === h)))]
-        .map((h) => ({ chave: h, rotulo: h, detalhe: '', cor: '#9AA4A1', n: lista.filter((i) => i.horario === h).length })),
+        .map((h) => ({ chave: h, rotulo: dadosDoHorario(h)?.rotulo ?? h, detalhe: dadosDoHorario(h)?.detalhe ?? '', cor: dadosDoHorario(h)?.cor ?? '#9AA4A1', n: lista.filter((i) => i.horario === h).length })),
     ],
     ultimas,
   };
