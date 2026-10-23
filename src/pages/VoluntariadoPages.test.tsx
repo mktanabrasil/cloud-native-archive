@@ -155,7 +155,7 @@ describe('formulário', () => {
     const sobre = screen.getByTestId('sobre-o-evento');
     expect(sobre).toHaveTextContent('Neste Natal, seja o presente de alguém');
     expect(sobre).toHaveTextContent('em parceria com JNI, Nazateen e Hope Day');
-    expect(screen.getByTestId('aviso-do-treinamento')).toHaveTextContent('obrigatório participar do Treinamento de Voluntários, no dia 28/11, no Manaim');
+    expect(screen.getByTestId('aviso-do-treinamento')).toHaveTextContent('obrigatório participar do Treinamento de Voluntários, no dia 28/11, no Recanto Maanaim');
     expect(screen.getByTestId('etapas')).toHaveTextContent('Etapa 1 de 3');
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Não tenho disponibilidade' }));
@@ -204,9 +204,12 @@ describe('formulário', () => {
     expect(screen.queryByText(/entrar em contato/)).toBeNull();
     const treino = screen.getByTestId('treinamento');
     expect(treino).toHaveTextContent('Sábado, 28/11');
-    expect(treino).toHaveTextContent('horário a definir');
-    expect(treino).toHaveTextContent('Manaim');
-    expect(treino).toHaveTextContent('endereço a definir');
+    expect(treino).toHaveTextContent('a confirmar');
+    // Grafia com dois "a" e o endereço, que abre no Maps (23/10/2026).
+    expect(treino).toHaveTextContent('Recanto Maanaim · mesmo local do Natal Feliz');
+    expect(screen.getByTestId('endereco-do-treinamento')).toHaveTextContent('Rua Arcebispo Dom Luciano Mendes de Almeida, 50 - Swiss Park, Campinas - SP, 13049-446');
+    expect(screen.getByTestId('endereco-do-treinamento').getAttribute('href')).toMatch(/^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=Recanto%20Maanaim/);
+    expect(document.body.textContent).not.toMatch(/Manaim/);
     fireEvent.click(screen.getByRole('button', { name: /Baixar comprovante/ }));
     await waitFor(() => expect(banco.comprovantes).toHaveLength(1));
     expect(banco.comprovantes[0]).toMatchObject({ protocolo: 'VL-7K2Q9' });
