@@ -11,11 +11,13 @@ const banco = vi.hoisted(() => ({
   cfg: { codigo_acompanhamento: 'abc123', meta: null as number | null },
   metas: [] as Array<number | null>,
   trocas: 0,
+  resumos: 0,
 }));
 
 globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() } }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
+vi.mock('@/lib/voluntariado/resumoPdf', () => ({ baixarResumo: async () => { banco.resumos++; } }));
 vi.mock('@/lib/voluntariado/aoVivo', async () => {
   const real = await vi.importActual<typeof import('@/lib/voluntariado/aoVivo')>('@/lib/voluntariado/aoVivo');
   return {
@@ -33,10 +35,10 @@ const { calcularPainel, COR_DA_UNIDADE, diaDe } = await import('@/lib/voluntaria
 
 const AGORA = new Date('2026-10-28T15:00:00-03:00').getTime();
 const I = (nome: string, unidade: string, area: 'social' | 'educacao', o1: string, o2: string | null, quando: string) =>
-  ({ nome, vinculo: 'funcionario' as const, unidade_id: unidade, unidade_nome: unidade, area, opcao1: o1, opcao2: o2, created_at: new Date(quando).toISOString() });
+  ({ nome, vinculo: 'funcionario' as const, horario: 'manha', unidade_id: unidade, unidade_nome: unidade, area, opcao1: o1, opcao2: o2, created_at: new Date(quando).toISOString() });
 /** Quem não é funcionário (23/10/2026): sem unidade. */
 const J = (nome: string, vinculo: 'alcance' | 'comunidade', o1: string, o2: string | null, quando: string) =>
-  ({ nome, vinculo, unidade_id: null, unidade_nome: null, area: null, opcao1: o1, opcao2: o2, created_at: new Date(quando).toISOString() });
+  ({ nome, vinculo, horario: 'pos_evento', unidade_id: null, unidade_nome: null, area: null, opcao1: o1, opcao2: o2, created_at: new Date(quando).toISOString() });
 const BASE = [
   I('Leonardo Garbo', 'CEI Bem Querer Prof. Pierre Weil', 'educacao', 'cozinha', 'montagem', '2026-10-21T09:00:00-03:00'),
   J('Paulo Martins', 'alcance', 'louvor_kids', null, '2026-10-21T10:00:00-03:00'),
@@ -45,7 +47,7 @@ const BASE = [
 ];
 const dados = (inscricoes: unknown[] = BASE, meta: number | null = null, metas: Record<string, number> = {}) => ({ meta, metas, agora: new Date(AGORA).toISOString(), inscricoes });
 
-beforeEach(() => { banco.leituras = [dados()]; banco.lidas = 0; banco.cfg = { codigo_acompanhamento: 'abc123', meta: null }; banco.metas = []; banco.trocas = 0; });
+beforeEach(() => { banco.leituras = [dados()]; banco.lidas = 0; banco.resumos = 0; banco.cfg = { codigo_acompanhamento: 'abc123', meta: null }; banco.metas = []; banco.trocas = 0; });
 afterEach(() => { vi.useRealTimers(); });
 
 describe('contas', () => {
@@ -70,16 +72,27 @@ describe('contas', () => {
     expect(p.mediaPorDia).toBe(0.3); // 2 inscrições nos últimos 7 dias (22 a 28/10)
   });
 
-  it('por área (1ª e 2ª, com a meta), vazias e matriz só com quem tem gente', () => {
-    expect(p.porArea[0]).toMatchObject({ chave: 'cozinha', primeira: 2, segunda: 0, meta: 2, lotada: true });
-    expect(p.porArea.find((a) => a.chave === 'montagem')).toMatchObject({ primeira: 0, segunda: 1, meta: 5, lotada: false });
+  it('por área: as que mais precisam de gente primeiro, as sem meta no fim (23/10/2026)', () => {
+    // Montagem (0 de 5) precisa mais que Cozinha (2 de 2, lotada); as sem meta vêm depois, pela quantidade.
+    expect(p.porArea.slice(0, 3).map((a) => a.chave)).toEqual(['montagem', 'cozinha', 'inflaveis']);
+    expect(p.porArea[0]).toMatchObject({ primeira: 0, segunda: 1, meta: 5, lotada: false });
+    expect(p.porArea[1]).toMatchObject({ primeira: 2, segunda: 0, meta: 2, lotada: true });
     expect(p.porArea.find((a) => a.chave === 'som')).toMatchObject({ meta: null, lotada: false });
     expect(p.vazias).toContain('Montagem / Desmontagem');
-    expect(p.matriz.colunas.map((c) => c.chave)).toEqual(['cozinha', 'inflaveis', 'louvor_kids']);
-    expect(p.matriz.linhas.find((l) => l.nome === 'CEI Bem Querer Prof. Anísio Spínola')!.valores).toEqual([1, 1, 0]);
-    // Quem não é funcionário entra na linha do vínculo.
-    expect(p.matriz.linhas.find((l) => l.nome === 'Alcance JNI')!.valores).toEqual([0, 0, 1]);
+    // Vagas das metas: só as áreas com meta; quem passou da meta não conta duas vezes.
+    expect(p.vagas).toEqual({ preenchidas: 2, total: 7 });
+    expect(p.precisam).toEqual([{ rotulo: 'Montagem / Desmontagem', faltam: 5 }]);
     expect(p.porUnidade.slice(-2).map((u) => [u.nome, u.n])).toEqual([['Alcance JNI', 1], ['Voluntário(a)', 0]]);
+  });
+
+  it('vagas: a área que passou da meta conta só até a meta', () => {
+    const q = calcularPainel(dados(BASE, null, { cozinha: 1 }) as never, AGORA);
+    expect(q.vagas).toEqual({ preenchidas: 1, total: 1 });
+    expect(q.precisam).toEqual([]);
+  });
+
+  it('por horário, na ordem da legenda', () => {
+    expect(p.porHorario.map((h) => [h.chave, h.n])).toEqual([['manha', 3], ['tarde', 0], ['dia_anterior', 0], ['pos_evento', 1], ['dia_todo', 0]]);
   });
 
   it('últimas: a mais nova primeiro, com as áreas', () => {
@@ -125,31 +138,40 @@ describe('a página', () => {
     expect(await screen.findByText('Este link não vale mais')).toBeInTheDocument();
   });
 
-  it('mostra os números, troca de bloco pelas abas e pelas setas', async () => {
+  it('tudo numa tela: números, metas, quem são, horários, unidades e o Baixar resumo (23/10/2026)', async () => {
+    banco.leituras = [dados(BASE, null, { cozinha: 2, montagem: 5 })];
     abrir();
     expect(await screen.findByTestId('kpi-Inscritos')).toHaveTextContent('4');
-    // A capa da campanha no topo (23/10/2026).
     expect(screen.getByTestId('capa')).toHaveAttribute('src', '/voluntariado-natal-feliz-capa.webp');
-    expect(screen.getByTestId('trilho').style.transform).toBe('translateX(-0%)');
-    fireEvent.click(screen.getByRole('button', { name: 'Por área' }));
-    expect(screen.getByTestId('trilho').style.transform).toBe('translateX(-200%)');
-    fireEvent.click(screen.getByRole('button', { name: 'Próximo' }));
-    expect(screen.getByTestId('trilho').style.transform).toBe('translateX(-300%)');
-    expect(screen.getAllByTestId('unidade')).toHaveLength(14); // 12 unidades + Alcance JNI + voluntários de fora
+    expect(screen.queryByTestId('trilho')).toBeNull(); // sem carrossel
+    expect(screen.getByTestId('kpi-Vagas')).toHaveTextContent('2 / 7');
+    expect(screen.getByTestId('kpi-Precisam')).toHaveTextContent('Montagem / Desmontagem');
+    const areas = screen.getAllByTestId('area');
+    expect(areas[0]).toHaveTextContent('Montagem / Desmontagem');
+    expect(areas[0]).toHaveTextContent('Faltam 5');
+    expect(areas[1]).toHaveTextContent('Lotada');
+    expect(screen.getByTestId('quem-sao')).toBeInTheDocument();
+    expect(screen.getByTestId('por-horario')).toHaveTextContent('Manhã · 7h às 12h');
+    // Só as unidades com gente; as sem ninguém num aviso.
+    expect(screen.getAllByTestId('unidade')).toHaveLength(2);
+    expect(screen.getByTestId('sem-inscritos')).toHaveTextContent('Grupo de Oração Esperança');
+    expect(screen.getByTestId('ao-vivo')).toHaveTextContent('a cada 3 min');
     expect(screen.queryByTestId('meta')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Baixar resumo/ }));
+    await waitFor(() => expect(banco.resumos).toBe(1));
   });
 
-  it('troca sozinho a cada 10 s e, na leitura de 30 s, avisa quem chegou', async () => {
+  it('busca a cada 3 minutos e avisa quem chegou; mostra a meta geral, se houver', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     banco.leituras = [dados(), dados([...BASE, J('Bruna Teixeira', 'comunidade', 'estacoes', null, '2026-10-28T15:00:10-03:00')], 120)];
     abrir();
     await screen.findByTestId('kpi-Inscritos');
-    await act(async () => { vi.advanceTimersByTime(10_500); });
-    expect(screen.getByTestId('trilho').style.transform).toBe('translateX(-100%)');
-    await act(async () => { vi.advanceTimersByTime(20_000); });
+    await act(async () => { vi.advanceTimersByTime(60_000); });
+    expect(banco.lidas).toBe(1);
+    await act(async () => { vi.advanceTimersByTime(120_500); });
     await waitFor(() => expect(screen.getByTestId('aviso')).toHaveTextContent('Nova inscrição: Bruna Teixeira · Voluntário(a)'));
     expect(screen.getByTestId('kpi-Inscritos')).toHaveTextContent('5');
-    expect(screen.getByTestId('meta')).toHaveTextContent('Rumo à meta de 120 voluntários');
+    expect(screen.getByTestId('meta')).toHaveTextContent('/ meta 120');
   });
 });
 

@@ -1,14 +1,14 @@
 import { supabase } from '@/integrations/supabase/client';
-import { AREAS_DE_AJUDA, PRAZO, UNIDADES_DO_VOLUNTARIADO, caminhoDoAoVivo, rotuloDaAjuda, rotuloDoVinculo } from './modelo';
+import { AREAS_DE_AJUDA, HORARIOS, PRAZO, UNIDADES_DO_VOLUNTARIADO, caminhoDoAoVivo, rotuloDaAjuda, rotuloDoVinculo } from './modelo';
 
 /**
  * O painel ao vivo da gestão (21/10/2026): o que o link de acompanhamento
  * mostra. O banco entrega as inscrições (nome, unidade, áreas, data; nunca
- * o WhatsApp) e a meta; as contas são feitas aqui, a cada 30 segundos.
+ * o WhatsApp) e as metas; as contas são feitas aqui. Desde 23/10/2026 busca
+ * a cada 3 minutos (antes, 30 s) e mostra tudo numa tela, sem carrossel.
  */
 
-export const ATUALIZA_A_CADA_MS = 30_000;
-export const TROCA_DE_BLOCO_MS = 10_000;
+export const ATUALIZA_A_CADA_MS = 180_000;
 
 /** As cores de cada unidade, as mesmas da planilha (função voluntariado-planilha). */
 export const COR_DA_UNIDADE: Record<string, string> = {
@@ -63,12 +63,17 @@ export interface Painel {
   faltamDias: number;
   meta: number | null;
   porDia: Array<{ dia: string; rotulo: string; n: number; hoje: boolean; futuro: boolean }>;
+  /** As que mais precisam de gente primeiro (menor % da meta); as sem meta no fim (23/10/2026). */
   porArea: Array<{ chave: string; rotulo: string; primeira: number; segunda: number; meta: number | null; lotada: boolean }>;
   vazias: string[];
+  /** Vagas das metas: só as áreas que têm meta; quem passou da meta não conta duas vezes. */
+  vagas: { preenchidas: number; total: number };
+  /** As áreas com meta que ainda não bateram, com quantas faltam. */
+  precisam: Array<{ rotulo: string; faltam: number }>;
   /** As unidades da Educação e, no fim, o Alcance JNI e os voluntários de fora. */
   porUnidade: Array<{ nome: string; n: number; cor: string; unidade: boolean }>;
   porVinculo: { funcionario: number; alcance: number; comunidade: number };
-  matriz: { colunas: Array<{ chave: string; rotulo: string }>; linhas: Array<{ nome: string; cor: string; valores: number[] }> };
+  porHorario: Array<{ chave: string; rotulo: string; detalhe: string; cor: string; n: number }>;
   ultimas: Array<InscricaoAoVivo & { areas: string; quem: string }>;
 }
 
@@ -88,8 +93,15 @@ export function calcularPainel(a: Acompanhamento, agora = Date.now()): Painel {
     const meta = a.metas?.[x.chave] ?? null;
     return { chave: x.chave as string, rotulo: x.rotulo, primeira, segunda: lista.filter((i) => i.opcao2 === x.chave).length, meta, lotada: meta !== null && primeira >= meta };
   })
-    .sort((p, q) => q.primeira - p.primeira || q.segunda - p.segunda || p.rotulo.localeCompare(q.rotulo, 'pt-BR'));
+    .sort((p, q) => {
+      if (p.meta && q.meta) return p.primeira / p.meta - q.primeira / q.meta || q.meta - p.meta;
+      if (p.meta || q.meta) return p.meta ? -1 : 1;
+      return q.primeira - p.primeira || p.rotulo.localeCompare(q.rotulo, 'pt-BR');
+    });
   const vazias = porArea.filter((x) => x.primeira === 0).map((x) => x.rotulo);
+  const comMeta = porArea.filter((x) => x.meta);
+  const vagas = { preenchidas: comMeta.reduce((s, x) => s + Math.min(x.primeira, x.meta!), 0), total: comMeta.reduce((s, x) => s + x.meta!, 0) };
+  const precisam = comMeta.filter((x) => !x.lotada).map((x) => ({ rotulo: x.rotulo, faltam: x.meta! - x.primeira }));
 
   // Unidades do formulário (com zero) e alguma de fora que já tenha inscrição;
   // depois, sempre no fim, o Alcance JNI e os voluntários de fora (23/10/2026).
@@ -112,10 +124,6 @@ export function calcularPainel(a: Acompanhamento, agora = Date.now()): Painel {
   const ultimos7 = porDia.filter((d) => !d.futuro).slice(-7);
   const mediaPorDia = ultimos7.length ? Math.round((ultimos7.reduce((s, d) => s + d.n, 0) / ultimos7.length) * 10) / 10 : 0;
 
-  // Matriz: unidades com inscritos × áreas com alguém na 1ª opção.
-  const colunas = porArea.filter((x) => x.primeira > 0).map((x) => ({ chave: x.chave, rotulo: rotuloCurto(x.chave) }));
-  const linhas = porUnidade.filter((u) => u.n > 0).map((u) => ({ nome: u.nome, cor: u.cor, valores: colunas.map((c) => lista.filter((i) => grupoDe(i) === u.nome && i.opcao1 === c.chave).length) }));
-
   const ultimas = [...lista].sort((p, q) => q.created_at.localeCompare(p.created_at)).slice(0, 6)
     .map((i) => ({ ...i, quem: grupoDe(i), areas: rotuloCurto(i.opcao1) + (i.opcao2 ? ` › ${rotuloCurto(i.opcao2)}` : '') }));
   const vinculoDe = (i: InscricaoAoVivo) => i.vinculo ?? 'funcionario';
@@ -123,7 +131,6 @@ export function calcularPainel(a: Acompanhamento, agora = Date.now()): Painel {
   return {
     total: lista.length,
     hoje: lista.filter((i) => diaDe(i.created_at) === hojeDia).length,
-    // O total é a lista do formulário mais alguma de fora que já tenha inscrição.
     unidades: { comInscritos: porUnidade.filter((u) => u.unidade && u.n > 0).length, total: porUnidade.filter((u) => u.unidade).length },
     areas: { cobertas: porArea.length - vazias.length, total: porArea.length },
     comSegunda: lista.filter((i) => i.opcao2).length,
@@ -133,13 +140,20 @@ export function calcularPainel(a: Acompanhamento, agora = Date.now()): Painel {
     porDia,
     porArea,
     vazias,
+    vagas,
+    precisam,
     porUnidade,
     porVinculo: {
       funcionario: lista.filter((i) => vinculoDe(i) === 'funcionario').length,
       alcance: lista.filter((i) => vinculoDe(i) === 'alcance').length,
       comunidade: lista.filter((i) => vinculoDe(i) === 'comunidade').length,
     },
-    matriz: { colunas, linhas },
+    // Os horários do formulário, na ordem da legenda; algum fora dela que alguém já tenha escolhido também aparece.
+    porHorario: [
+      ...HORARIOS.map((h) => ({ chave: h.chave as string, rotulo: h.rotulo, detalhe: h.detalhe, cor: h.cor, n: lista.filter((i) => i.horario === h.chave).length })),
+      ...[...new Set(lista.map((i) => i.horario).filter((h): h is string => !!h && !HORARIOS.some((x) => x.chave === h)))]
+        .map((h) => ({ chave: h, rotulo: h, detalhe: '', cor: '#9AA4A1', n: lista.filter((i) => i.horario === h).length })),
+    ],
     ultimas,
   };
 }
