@@ -163,6 +163,9 @@ describe('formulário', () => {
     expect(sobre).toHaveTextContent('Neste Natal, seja o presente de alguém');
     expect(sobre).toHaveTextContent('em parceria com JNI e Nazateen');
     expect(sobre).not.toHaveTextContent('Hope Day');
+    // O evento é para as crianças, não mais para as famílias (26/10/2026).
+    expect(sobre).toHaveTextContent('presentes para as crianças que atendemos');
+    expect(sobre).not.toHaveTextContent('famílias');
     expect(screen.getByTestId('aviso-do-treinamento')).toHaveTextContent('obrigatório participar do Treinamento de Voluntários, no dia 28/11, no Recanto Maanaim');
     expect(screen.getByTestId('etapas')).toHaveTextContent('Etapa 1 de 3');
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
