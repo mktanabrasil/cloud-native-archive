@@ -196,7 +196,7 @@ export default function VoluntariadoPage() {
               <h1 className="text-xl font-bold">Inscrição feita</h1>
               <b className="text-3xl font-extrabold tracking-wide" style={{ color: COR.vermelhoEsc }} data-testid="protocolo">{feito.protocolo}</b>
             </div>
-            <p className="text-center text-[15px] font-semibold" style={{ color: COR.verde }} data-testid="agradecimento">Obrigado por fazer parte do Dia do Voluntariado! Você vai deixar o Natal de muitas famílias mais feliz. 💚</p>
+            <p className="text-center text-[15px] font-semibold" style={{ color: COR.verde }} data-testid="agradecimento">Obrigado por fazer parte do Dia do Voluntariado! Você vai deixar o Natal de muitas crianças mais feliz. 💚</p>
             <dl className="grid gap-2 rounded-2xl border-[1.5px] bg-white p-4 text-sm" style={{ borderColor: COR.linha }} data-testid="resumo">
               {feito.linhas.map(([r, v]) => (
                 <div key={r} className="flex justify-between gap-3"><dt style={{ color: COR.mut }}>{r}</dt><dd className="text-right font-semibold">{v}</dd></div>
