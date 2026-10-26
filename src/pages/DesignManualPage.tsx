@@ -76,7 +76,7 @@ import logoImg from '@/assets/logo.png';
 
 export default function DesignManualPage() {
   const { user } = useAuth();
-  const { isAdmin } = useUserRole();
+  const { isAdmin, loading } = useUserRole();
   const [isExporting, setIsExporting] = useState(false);
 
   const isMktUser = user?.email === 'mkt@anabrasil.org';
@@ -141,6 +141,9 @@ export default function DesignManualPage() {
     }
   };
 
+
+  // Espera as permissões: sem isso, "Acesso restrito" piscava antes de abrir (26/10/2026).
+  if (loading) return null;
 
   if (!hasAccess) {
     return (

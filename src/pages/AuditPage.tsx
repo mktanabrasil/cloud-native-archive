@@ -28,7 +28,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 
 export default function AuditPage() {
-  const { isManager, isAdmin, unit: userUnit, delegatedUnits, canViewAuditoria } = useUserRole();
+  const { isManager, isAdmin, unit: userUnit, delegatedUnits, canViewAuditoria, loading: carregandoPapel } = useUserRole();
   const [filterUnit, setFilterUnit] = useState<string>(isAdmin ? 'all' : (userUnit || 'all'));
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -67,6 +67,9 @@ export default function AuditPage() {
       (log.entity_type?.toLowerCase().includes(term))
     );
   }, [logs, searchTerm]);
+
+  // Espera as permissões, para não piscar "Acesso Negado" (26/10/2026).
+  if (carregandoPapel) return null;
 
   if (!canViewAuditoria) {
     return (

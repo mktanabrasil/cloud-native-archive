@@ -25,6 +25,8 @@ export function useUserRole() {
   const { activePersona } = useTestView();
   const [role, setRole] = useState<UserRole>(null);
   const [loading, setLoading] = useState(true);
+  /** Para quem as permissões abaixo já foram lidas (ver `carregando`, no fim). */
+  const [carregadoPara, setCarregadoPara] = useState<string | null>(null);
   const [accessStatus, setAccessStatus] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [isActive, setIsActive] = useState<boolean>(true);
@@ -66,6 +68,7 @@ export function useUserRole() {
       // If general admin, no restrictions. Otherwise, restrict to the persona's unit.
       setViewRestrictions(activePersona.permission_level === 'admin_geral' ? null : [activePersona.unit]);
       
+      setCarregadoPara(null);
       setLoading(false);
       return;
     }
@@ -74,6 +77,7 @@ export function useUserRole() {
       setRole(null);
       setLoading(false);
       setAccessStatus(null);
+      setCarregadoPara(null);
       return;
     }
 
@@ -139,6 +143,7 @@ export function useUserRole() {
         setRole(null);
         setAccessStatus(requestData?.status || null);
       }
+      setCarregadoPara(userId);
       setLoading(false);
     };
 
@@ -180,9 +185,19 @@ export function useUserRole() {
   const isUnitManager = permissionLevel === 'gestor_unidade' && isActive && !!unit;
   const canAccessJournal = isMarketing || isUnitManager;
 
+  /**
+   * Ainda carregando enquanto as permissões não forem desta pessoa (26/10/2026).
+   * Quando a sessão chega, a tela redesenha antes de o efeito acima marcar
+   * `loading`: por um instante o usuário existe, mas o papel ainda é o de
+   * ninguém. As guardas liam esse instante como "sem acesso" — o F5 no Jornal,
+   * na Auditoria ou no Portal da Transparência mandava para o início, e o
+   * Manual de Design piscava "Acesso restrito".
+   */
+  const carregando = loading || (!activePersona && isAuthenticated && !!userId && carregadoPara !== userId);
+
   return { 
     role, 
-    loading, 
+    loading: carregando, 
     canEdit, 
     canCreate,
     isAdmin, 
