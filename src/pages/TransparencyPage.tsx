@@ -64,7 +64,7 @@ interface DriveItem {
 }
 
 const TransparencyPage = () => {
-  const { isAdmin } = useUserRole();
+  const { isAdmin, loading: carregandoPapel } = useUserRole();
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [configs, setConfigs] = useState<any[]>([]);
@@ -449,6 +449,9 @@ const TransparencyPage = () => {
 
   const isEmbed = searchParams.get('embed') === 'true';
   const embedId = searchParams.get('id');
+
+  // Espera as permissões, para não piscar "Acesso Restrito" (26/10/2026).
+  if (!isEmbed && carregandoPapel) return null;
 
   if (!isEmbed && !isAdmin && user?.email !== 'mkt@anabrasil.org' && user?.email !== 'transparencia@anabrasil.org' && user?.email !== 'contato@anabrasil.org') {
     return <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4"><h1 className="text-2xl font-bold text-destructive">Acesso Restrito</h1></div>;

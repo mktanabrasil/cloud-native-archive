@@ -137,3 +137,27 @@ describe('o papel vem do banco', () => {
     expect(result.current.isRh).toBe(true);
   });
 });
+
+describe('a sessão chegando (26/10/2026)', () => {
+  it('quando a pessoa aparece, o papel conta como carregando até ser dela', async () => {
+    // Recarregar a página (F5): primeiro não há ninguém, depois a sessão chega.
+    // As guardas leem "carregando = falso e sem papel" como "sem acesso" e
+    // mandavam para o início; o Manual de Design piscava "Acesso restrito".
+    espiao.user = null;
+    espiao.nivel = 'admin_geral';
+    const vistos: Array<{ comUsuario: boolean; loading: boolean; isMarketing: boolean }> = [];
+    const { result, rerender } = renderHook(() => {
+      const r = useUserRole();
+      vistos.push({ comUsuario: !!espiao.user, loading: r.loading, isMarketing: r.isMarketing });
+      return r;
+    });
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    espiao.user = { id: 'u9', email: 'adm@ana.org' };
+    rerender();
+    await waitFor(() => expect(result.current.isMarketing).toBe(true));
+
+    // Nenhuma tela com a pessoa logada viu "pronto, e sem acesso".
+    expect(vistos.filter((v) => v.comUsuario && !v.loading && !v.isMarketing)).toEqual([]);
+  });
+});

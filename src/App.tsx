@@ -70,6 +70,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * A margem das páginas que não trazem a própria (26/10/2026): a mesma moldura
+ * da página inicial. Sem ela, Visão Geral, Calendário, Painel e as páginas da
+ * comunicação abertas pelo endereço encostavam na borda da tela. Dentro da
+ * página inicial e do Marketing elas já ganham a margem de lá.
+ */
+function ComMargem({ children }: { children: React.ReactNode }) {
+  return <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">{children}</div>;
+}
+
 function MarketingRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { isMarketing, loading: roleLoading } = useUserRole();
@@ -173,10 +183,10 @@ const App = () => (
                 <Route element={<AppLayout />}>
                   <Route path="/" element={<EventsHubPage />} />
                   <Route path="/visao-geral" element={
-                    <ProtectedRoute><Dashboard /></ProtectedRoute>
+                    <ProtectedRoute><ComMargem><Dashboard /></ComMargem></ProtectedRoute>
                   } />
                   <Route path="/calendario" element={
-                    <ProtectedRoute><CalendarPage /></ProtectedRoute>
+                    <ProtectedRoute><ComMargem><CalendarPage /></ComMargem></ProtectedRoute>
                   } />
                   {/* Endereço próprio das Programações. Antes só redirecionava para a
                       raiz, que era onde elas viviam; com a porta de entrada na raiz,
@@ -186,13 +196,13 @@ const App = () => (
                       gerencia os outros é a comunicação, e isso a própria tela
                       decide — ver `podeGerirTodos` em UsersPage. */}
                   <Route path="/usuarios" element={
-                    <ProtectedRoute><UsersPage /></ProtectedRoute>
+                    <ProtectedRoute><ComMargem><UsersPage /></ComMargem></ProtectedRoute>
                   } />
                   <Route path="/auditoria" element={
-                    <MarketingRoute><AuditPage /></MarketingRoute>
+                    <MarketingRoute><ComMargem><AuditPage /></ComMargem></MarketingRoute>
                   } />
                   <Route path="/design-manual" element={
-                    <MarketingRoute><DesignManualPage /></MarketingRoute>
+                    <MarketingRoute><ComMargem><DesignManualPage /></ComMargem></MarketingRoute>
                   } />
                   <Route path="/jornal-institucional" element={
                     <JournalRoute><JournalPage /></JournalRoute>
@@ -209,7 +219,7 @@ const App = () => (
                     <MarketingRoute><TransparencyPage /></MarketingRoute>
                   } />
                   <Route path="/admin-toolbox" element={
-                    <MarketingRoute><AdminToolboxPage /></MarketingRoute>
+                    <MarketingRoute><ComMargem><AdminToolboxPage /></ComMargem></MarketingRoute>
                   } />
                   <Route path="*" element={<NotFound />} />
 
