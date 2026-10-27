@@ -11,6 +11,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogAction,
 } from '@/components/ui/alert-dialog';
 import { useNavigate } from 'react-router-dom';
+import logoImg from '@/assets/logo.png';
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('');
@@ -57,12 +58,12 @@ export default function ResetPasswordPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="flex min-h-[100svh] items-center justify-center p-4">
+        {/* Esboço V2: a malha de fundo do app e o ícone da ANA no topo do card. */}
+        <div className="ana-mesh dark:opacity-50" aria-hidden="true" />
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary">
-              <KeyRound className="h-7 w-7 text-primary-foreground" />
-            </div>
+            <img src={logoImg} alt="" className="mx-auto mb-4 h-14 w-14 rounded-2xl object-cover" />
             <CardTitle className="text-2xl">Redefinir Senha</CardTitle>
             <CardDescription>Digite sua nova senha abaixo</CardDescription>
           </CardHeader>

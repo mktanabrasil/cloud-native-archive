@@ -35,7 +35,9 @@ export default function AuthConfirmPage() {
   }, [searchParams, navigate]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="flex min-h-[100svh] items-center justify-center p-4">
+      {/* Esboço V2: a malha de fundo do app. */}
+      <div className="ana-mesh dark:opacity-50" aria-hidden="true" />
       <Card className="w-full max-w-md text-center">
         <CardHeader>
           <CardTitle className="text-2xl font-bold">Verificando...</CardTitle>
@@ -44,7 +46,7 @@ export default function AuthConfirmPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex justify-center py-8">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" aria-hidden="true" />
         </CardContent>
       </Card>
     </div>

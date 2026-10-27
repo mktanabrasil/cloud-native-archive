@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -32,21 +31,22 @@ export default function ImpersonationBanner() {
   };
 
   return (
-    <div className="sticky top-0 z-[60] w-full bg-destructive text-destructive-foreground">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2 lg:px-8">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <ShieldAlert className="h-4 w-4 shrink-0" />
-          <span>
-            Modo de impersonação ativo — você está logado como <strong>{targetEmail || 'outro usuário'}</strong>.
+    // Esboço V2: faixa sólida no tom do cartão, com a situação em texto e bolinha
+    // (a cor fala só no aviso), no lugar do fundo vermelho chapado.
+    <div className="sticky top-0 z-[60] w-full border-b border-destructive/30 bg-card text-foreground">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2 lg:px-8">
+        <div className="flex min-w-0 items-center gap-2 text-sm">
+          <span className="h-2 w-2 shrink-0 rounded-full bg-destructive" aria-hidden="true" />
+          <span className="min-w-0">
+            <span className="font-semibold text-destructive">Modo de impersonação ativo</span> — você está logado como <strong className="break-all font-semibold">{targetEmail || 'outro usuário'}</strong>.
           </span>
         </div>
         <Button
-          variant="secondary"
+          variant="outline"
           size="sm"
           onClick={handleExit}
-          className="gap-1.5"
+          className="h-10 shrink-0 rounded-[12px]"
         >
-          <LogOut className="h-3.5 w-3.5" />
           Sair da impersonação
         </Button>
       </div>

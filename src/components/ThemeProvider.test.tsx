@@ -8,19 +8,21 @@ import { ThemeToggle } from "./ThemeToggle";
  * real, e o botão diz em que modo está.
  */
 type Ouvinte = (e: { matches: boolean }) => void;
-const sistema = { escuro: false, ouvintes: [] as Ouvinte[] };
+const sistema = { escuro: false, celular: false, ouvintes: [] as Ouvinte[] };
 
 beforeEach(() => {
   localStorage.clear();
   sistema.escuro = false;
+  sistema.celular = false;
   sistema.ouvintes = [];
   vi.spyOn(window, "matchMedia").mockImplementation((query: string) => ({
-    matches: query.includes("dark") && sistema.escuro,
+    matches: query.includes("dark") ? sistema.escuro : sistema.celular,
     media: query,
     onchange: null,
     addListener: () => {},
     removeListener: () => {},
-    addEventListener: (_: string, cb: Ouvinte) => { sistema.ouvintes.push(cb); },
+    // Só os ouvintes do tema do aparelho: a largura (celular) não muda nos testes.
+    addEventListener: (_: string, cb: Ouvinte) => { if (query.includes("dark")) sistema.ouvintes.push(cb); },
     removeEventListener: (_: string, cb: Ouvinte) => { sistema.ouvintes = sistema.ouvintes.filter(o => o !== cb); },
     dispatchEvent: () => false,
   }) as unknown as MediaQueryList);
@@ -69,6 +71,17 @@ describe("seguir o aparelho", () => {
     expect(classe()).toBe("light");
     aparelhoMuda(false);
     aparelhoMuda(true);
+    expect(classe()).toBe("light");
+  });
+
+  it("no celular vale sempre o aparelho, mesmo com um tema guardado (não há botão ali)", () => {
+    localStorage.setItem("teste-tema", "light");
+    sistema.celular = true;
+    sistema.escuro = true;
+    montar();
+
+    expect(classe()).toBe("dark");
+    aparelhoMuda(false);
     expect(classe()).toBe("light");
   });
 });
