@@ -1,30 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  AlertTriangle,
-  ArrowLeft,
-  Copy,
-  Download,
-  FileText,
-  Loader2,
-  Plus,
-  Trash2,
-  ChevronUp,
-  ChevronDown,
-  Image as ImageIcon,
-  Type,
-  Hash,
-  Check,
-  CheckCircle2,
-  RotateCcw,
-  Lock,
-  Unlock,
-  Undo2,
-  Redo2,
-  Maximize2,
-  Settings2,
-  Sparkles,
-  GraduationCap,
-} from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Undo2, Redo2 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { toast } from 'sonner';
@@ -60,7 +35,6 @@ import {
   DEFAULT_DECORATION_COLOR,
   JOURNAL_PAPER_KEYS,
   JOURNAL_PAPER_LABELS,
-  STATUS_BADGE_CLASSES,
   STATUS_LABELS,
   TEMPLATE_LABELS,
   createDecorationSet,
@@ -143,6 +117,13 @@ interface Props {
 }
 
 /** Largura da miniatura na barra lateral; a altura decorre da proporção A4. */
+/** Esboço V2: situação em texto com bolinha, na cor que diz o que fazer. */
+const COR_DA_SITUACAO: Record<JournalRecord['status'], string> = {
+  rascunho: 'text-warning',
+  finalizado: 'text-success',
+  arquivado: 'text-muted-foreground',
+};
+
 const THUMB_W = 180;
 const THUMB_SCALE = THUMB_W / A4_W;
 
@@ -881,31 +862,32 @@ export function JournalEditor({
     // e a area util do editor vazava para fora.
     <div className="flex h-[calc(100svh-7rem)] flex-col gap-3">
       {somenteLeitura && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/40">
-          <Lock className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
+        <div className="flex flex-wrap items-center gap-3 rounded-[20px] border border-black/5 bg-card px-4 py-3 dark:border-white/5">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+            <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-warning">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
               {status === 'arquivado' ? 'Somente leitura · jornal arquivado' : `Somente leitura · jornal ${unitName ? `da ${unitName}` : 'de outra unidade'}`}
             </p>
-            <p className="text-xs text-amber-800 dark:text-amber-300/80">
+            <p className="text-xs text-muted-foreground">
               {status === 'arquivado'
                 ? 'Você pode ler e exportar. Para voltar a editar, desarquive: ele volta como finalizado.'
                 : 'Você pode ler e exportar. Para trabalhar em cima dele, duplique para a sua unidade.'}
             </p>
           </div>
           {status === 'arquivado' && onDesarquivar && (
-            <Button size="sm" onClick={onDesarquivar}>
-              <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Desarquivar
+            <Button size="sm" variant="outline" onClick={onDesarquivar}>
+              Desarquivar
             </Button>
           )}
           {status !== 'arquivado' && onDuplicarParaMinhaUnidade && (
-            <Button size="sm" onClick={onDuplicarParaMinhaUnidade}>
-              <Copy className="mr-1.5 h-3.5 w-3.5" /> Duplicar para minha unidade
+            <Button size="sm" variant="outline" onClick={onDuplicarParaMinhaUnidade}>
+              Duplicar para minha unidade
             </Button>
           )}
         </div>
       )}
-      <div className="flex flex-col gap-2 border-b border-border pb-3">
+      {/* Barra do editor: fica por cima de tudo, por isso é a única peça de vidro. */}
+      <div className="glass-1 flex flex-col gap-1.5 rounded-[22px] px-2.5 py-2">
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="ghost" size="sm" onClick={pedirParaVoltar}>
             <ArrowLeft className="mr-1.5 h-4 w-4" /> Voltar
@@ -921,58 +903,64 @@ export function JournalEditor({
               dirtyRef.current = true;
               setName(event.target.value);
             }}
-            className={cn('h-9 w-56 text-base font-semibold', somenteLeitura && 'border-transparent bg-transparent px-0')}
+            className={cn('h-9 w-56 font-display text-base font-semibold', somenteLeitura && 'border-transparent bg-transparent px-0')}
           />
+          {/* Gravação e situação em texto com bolinha (esboço V2). */}
           {!somenteLeitura && (
-          <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium', falhouSalvar && !saving ? 'bg-destructive/10 text-destructive' : 'bg-accent text-accent-foreground')} data-testid="selo-de-gravacao">
+          <span
+            className={cn(
+              'inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold',
+              saving ? 'text-muted-foreground' : falhouSalvar ? 'text-destructive' : 'text-success',
+            )}
+            data-testid="selo-de-gravacao"
+            data-tutorial="salvo"
+          >
             {saving ? (
               <>
                 <Loader2 className="h-3 w-3 animate-spin" /> Salvando…
               </>
             ) : falhouSalvar ? (
               <>
-                <AlertTriangle className="h-3 w-3" /> Não salvou ·{' '}
+                <span className="h-1.5 w-1.5 rounded-full bg-current" /> Não salvou ·{' '}
                 <button type="button" className="underline underline-offset-2" onClick={() => void salvarAgora()}>tentar de novo</button>
               </>
             ) : (
               <>
-                <Check className="h-3 w-3" data-tutorial="salvo" /> {savedAt ? `Tudo salvo · ${savedAt}` : 'Tudo salvo'}
+                <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                <span className="tabular-nums">{savedAt ? `Tudo salvo · ${savedAt}` : 'Tudo salvo'}</span>
               </>
             )}
           </span>
           )}
-          <Badge className={STATUS_BADGE_CLASSES[status]} variant="secondary" data-tutorial="status">
+          <span
+            className={cn('inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold', COR_DA_SITUACAO[status])}
+            data-tutorial="status"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
             {STATUS_LABELS[status]}
-          </Badge>
+          </span>
           {/* Some da barra no celular e reaparece no menu: em 375px a barra
-              quebrava em duas linhas e comia altura do canvas. */}
+              quebrava em duas linhas e comia altura do canvas. O botão forte
+              da tela é o "Baixar PDF"; este fica em contorno. */}
           {!somenteLeitura && (
           <Button
-            variant={status === 'finalizado' ? 'outline' : 'default'}
+            variant="outline"
             size="sm"
             className="hidden sm:inline-flex"
             onClick={toggleStatus}
           >
-            {status === 'finalizado' ? (
-              <>
-                <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reabrir como rascunho
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Finalizar edição
-              </>
-            )}
+            {status === 'finalizado' ? 'Reabrir como rascunho' : 'Finalizar edição'}
           </Button>
           )}
           <div className="ml-auto flex items-center gap-1.5">
             {/* Depois do primeiro acesso, é por aqui que ela revê o tutorial. */}
             <Button
               size="sm"
-              variant="outline"
+              variant="ghost"
               className="hidden sm:inline-flex"
               onClick={() => setTutorial(true)}
             >
-              <GraduationCap className="mr-1.5 h-4 w-4" /> Como usar
+              Como usar
             </Button>
             {/* Sempre à vista, em qualquer largura: no celular ele sumia para
                 dentro do ⋯ (varredura de 16/09/2026). Abre as duas qualidades,
@@ -988,41 +976,33 @@ export function JournalEditor({
                   Baixar PDF
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="end" className="w-64 p-1.5" data-testid="menu-do-pdf">
-                <p className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Baixar PDF</p>
+              <PopoverContent align="end" className="w-64 rounded-[16px] p-1.5" data-testid="menu-do-pdf">
+                <p className="px-2 py-1.5 text-[13px] font-semibold text-foreground">Baixar PDF</p>
                 <Button variant="ghost" className={cn('w-full justify-start', toque ? 'h-11' : 'h-9')} onClick={() => exportPdf('impressao')} disabled={exporting}>
-                  <Download className="mr-2 h-4 w-4" /> Para imprimir
-                  <span className="ml-auto text-[11px] text-muted-foreground">arquivo maior</span>
+                  Para imprimir
+                  <span className="ml-auto text-xs text-[hsl(var(--fraco,0_0%_45%))]">arquivo maior</span>
                 </Button>
                 <Button variant="ghost" className={cn('w-full justify-start', toque ? 'h-11' : 'h-9')} onClick={() => exportPdf('digital')} disabled={exporting}>
-                  <FileText className="mr-2 h-4 w-4" /> Para enviar por WhatsApp
-                  <span className="ml-auto text-[11px] text-muted-foreground">leve</span>
+                  Para enviar por WhatsApp
+                  <span className="ml-auto text-xs text-[hsl(var(--fraco,0_0%_45%))]">leve</span>
                 </Button>
               </PopoverContent>
             </Popover>
             {/* No celular, Finalizar e Como usar moram aqui, com nome. */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn('sm:hidden', toque && 'h-11 w-11')} aria-label="Mais opções">
+                <Button variant="ghost" size="sm" className={cn('sm:hidden', toque && 'h-11 w-11')} aria-label="Mais opções">
                   ⋯
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="end" className="w-60 p-1.5">
+              <PopoverContent align="end" className="w-60 rounded-[16px] p-1.5">
                 {!somenteLeitura && (
                   <Button variant="ghost" className="h-11 w-full justify-start" onClick={toggleStatus}>
-                    {status === 'finalizado' ? (
-                      <>
-                        <RotateCcw className="mr-2 h-4 w-4" /> Reabrir como rascunho
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="mr-2 h-4 w-4" /> Finalizar edição
-                      </>
-                    )}
+                    {status === 'finalizado' ? 'Reabrir como rascunho' : 'Finalizar edição'}
                   </Button>
                 )}
                 <Button variant="ghost" className="h-11 w-full justify-start" onClick={() => setTutorial(true)}>
-                  <GraduationCap className="mr-2 h-4 w-4" /> Como usar
+                  Como usar
                 </Button>
               </PopoverContent>
             </Popover>
@@ -1031,6 +1011,7 @@ export function JournalEditor({
         </div>
 
         <UnitBadge
+          className="px-2.5 pb-0.5"
           variant="line"
           unitId={journal.unit_id}
           label="Jornal da unidade"
@@ -1073,7 +1054,7 @@ export function JournalEditor({
         <div
           role="tablist"
           aria-label="Áreas do editor"
-          className="grid shrink-0 grid-cols-2 gap-1 rounded-lg border border-border bg-card p-1"
+          className="grid shrink-0 grid-cols-2 gap-0.5 rounded-[14px] bg-muted p-1"
         >
           {([['folha', 'Folha'], ['conteudo', 'Conteúdo']] as const).map(([chave, rotulo]) => (
             <button
@@ -1083,11 +1064,11 @@ export function JournalEditor({
               aria-selected={abaMovel === chave}
               onClick={() => setAbaMovel(chave)}
               className={cn(
-                'rounded-md px-3 py-1.5 text-xs font-semibold transition-colors',
+                'min-h-[40px] rounded-[10px] px-3 py-1.5 text-[13.5px] transition-colors',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                 abaMovel === chave
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-accent/50',
+                  ? 'bg-card font-semibold text-foreground shadow-[0_1px_3px_hsl(165_30%_12%/0.12)]'
+                  : 'font-medium text-muted-foreground hover:text-foreground',
               )}
             >
               {rotulo}
@@ -1100,7 +1081,7 @@ export function JournalEditor({
         {/* Miniaturas */}
         <aside
           data-tutorial="paginas"
-          className="hidden flex-col gap-2 overflow-y-auto rounded-lg border border-border bg-card p-2 lg:flex"
+          className="hidden flex-col gap-2 overflow-y-auto rounded-[20px] border border-black/5 bg-card p-2.5 dark:border-white/5 lg:flex"
         >
           {pages.map((page, index) => {
             const status = pageStatus(page);
@@ -1115,11 +1096,11 @@ export function JournalEditor({
                   }}
                   aria-current={active}
                   className={cn(
-                    'block w-full rounded-md border p-1.5 text-left text-xs transition-all duration-200',
+                    'block w-full rounded-[12px] border p-1.5 text-left text-xs transition-colors duration-200',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                     active
-                      ? 'border-primary bg-accent shadow-sm'
-                      : 'border-border hover:border-primary/50 hover:bg-accent/40',
+                      ? 'border-[hsl(var(--sel,168_80%_27%))] bg-muted/60 ring-1 ring-[hsl(var(--sel,168_80%_27%))]'
+                      : 'border-transparent hover:bg-muted/60',
                   )}
                 >
                   <div
@@ -1138,16 +1119,17 @@ export function JournalEditor({
                       />
                     </div>
                   </div>
-                  <p className="mt-1.5 truncate font-medium text-foreground">
+                  <p className="mt-1.5 truncate font-medium tabular-nums text-foreground">
                     Página {String(index + 1).padStart(2, '0')} · {TEMPLATE_LABELS[page.template]}
                   </p>
                   <span
                     className={cn(
-                      'mt-0.5 inline-flex items-center gap-1 text-[10px]',
-                      status === 'completa' ? 'text-primary' : 'text-muted-foreground',
+                      'mt-0.5 inline-flex items-center gap-1.5 text-[11px] font-semibold',
+                      status === 'completa' ? 'text-success' : 'text-warning',
                     )}
                   >
-                    {status === 'completa' ? '✓ Completa' : '● Pendente'}
+                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                    {status === 'completa' ? 'Completa' : 'Pendente'}
                   </span>
                 </button>
 
@@ -1167,8 +1149,8 @@ export function JournalEditor({
           })}
 
           <Select onValueChange={(value) => addPage(value as JournalTemplate)}>
-            <SelectTrigger className="h-9 text-xs">
-              <Plus className="mr-1 h-3.5 w-3.5" /> Adicionar página
+            <SelectTrigger className="h-9 text-xs font-semibold">
+              Adicionar página
             </SelectTrigger>
             <SelectContent>
               {TEMPLATE_OPTIONS.map((template) => (
@@ -1182,15 +1164,15 @@ export function JournalEditor({
 
         {/* Canvas */}
         {(!compacto || abaMovel === 'folha') && (
-        <section data-tutorial="folha" className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
-          <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 text-xs">
-            <span className="font-medium text-muted-foreground">
+        <section data-tutorial="folha" className="flex flex-col overflow-hidden rounded-[20px] border border-black/5 bg-card dark:border-white/5">
+          <div className="flex flex-wrap items-center gap-2 border-b border-border/70 px-3 py-2 text-xs">
+            <span className="font-medium tabular-nums text-muted-foreground">
               Página {pages.findIndex((page) => page.id === activePage.id) + 1} de {pages.length}
             </span>
 
             <div className="ml-auto flex flex-wrap items-center gap-2">
               {/* Grupo 1 — histórico */}
-              <div className="flex items-center rounded-md border border-border p-0.5">
+              <div className="flex items-center rounded-[12px] border border-border p-0.5">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1216,7 +1198,7 @@ export function JournalEditor({
               </div>
 
               {/* Grupo 2 — zoom / ajuste */}
-              <div className="flex items-center rounded-md border border-border p-0.5">
+              <div className="flex items-center rounded-[12px] border border-border p-0.5">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1245,20 +1227,20 @@ export function JournalEditor({
                   onClick={() => setFitMode('screen')}
                   title="Ajustar a folha à tela"
                 >
-                  <Maximize2 className="mr-1.5 h-3.5 w-3.5" /> Ajustar
+                  Ajustar
                 </Button>
               </div>
 
               {/* Grupo 3 — opções da folha */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8" data-tutorial="formato">
-                    <Settings2 className="mr-1.5 h-3.5 w-3.5" /> Opções da folha
+                  <Button variant="outline" size="sm" className={toque ? 'h-11' : 'h-8'} data-tutorial="formato">
+                    Opções da folha
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="end" className="w-64 space-y-4">
+                <PopoverContent align="end" className="w-64 space-y-4 rounded-[16px]">
                   <div className="space-y-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <p className="text-[13px] font-semibold text-foreground">
                       Fundo do jornal
                     </p>
                     <div className="grid grid-cols-2 gap-2">
@@ -1272,10 +1254,10 @@ export function JournalEditor({
                           }}
                           aria-pressed={paper === key}
                           className={cn(
-                            'rounded-md border p-2 text-left text-[11px] transition-colors',
+                            'rounded-[12px] border p-2 text-left text-xs transition-colors',
                             paper === key
-                              ? 'border-primary bg-accent'
-                              : 'border-border hover:bg-accent/40',
+                              ? 'border-[hsl(var(--sel,168_80%_27%))] font-semibold ring-1 ring-[hsl(var(--sel,168_80%_27%))]'
+                              : 'border-border hover:bg-muted/60',
                           )}
                         >
                           <span
@@ -1286,14 +1268,14 @@ export function JournalEditor({
                         </button>
                       ))}
                     </div>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-xs text-[hsl(var(--fraco,0_0%_45%))]">
                       Vale para todas as páginas, na tela e no PDF.
                     </p>
                   </div>
 
                   {/* Errar o mês obrigava a recriar o jornal (varredura de 16/09/2026). */}
                   <div className="space-y-2 border-t border-border pt-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <p className="text-[13px] font-semibold text-foreground">
                       Mês da edição
                     </p>
                     <SeletorDeMes
@@ -1302,11 +1284,11 @@ export function JournalEditor({
                       idAno="ano-da-edicao-folha"
                       onChange={(texto) => { void onSave(journal.id, { referenceMonth: texto }); }}
                     />
-                    <p className="text-[10px] text-muted-foreground">Aparece no cabeçalho de todas as páginas.</p>
+                    <p className="text-xs text-[hsl(var(--fraco,0_0%_45%))]">Aparece no cabeçalho de todas as páginas.</p>
                   </div>
 
                   <div className="space-y-2 border-t border-border pt-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <p className="text-[13px] font-semibold text-foreground">
                       Ajuste da visualização
                     </p>
                     <div className="grid grid-cols-2 gap-1.5">
@@ -1338,48 +1320,40 @@ export function JournalEditor({
                   </div>
 
                   <div className="space-y-2 border-t border-border pt-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <p className="text-[13px] font-semibold text-foreground">
                       Formato
                     </p>
                     <Button
                       variant={layoutLocked ? 'secondary' : 'outline'}
                       size="sm"
-                      className="h-8 w-full justify-start text-[11px]"
+                      className="h-auto min-h-8 w-full justify-start whitespace-normal py-1.5 text-left text-xs"
                       onClick={() => setLayoutLocked((value) => !value)}
                     >
-                      {layoutLocked ? (
-                        <>
-                          <Lock className="mr-1.5 h-3.5 w-3.5" /> Formato protegido: só textos e fotos
-                        </>
-                      ) : (
-                        <>
-                          <Unlock className="mr-1.5 h-3.5 w-3.5" /> Formato liberado: posso mover as peças
-                        </>
-                      )}
+                      {layoutLocked ? 'Formato protegido: só textos e fotos' : 'Formato liberado: posso mover as peças'}
                     </Button>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className="text-xs text-[hsl(var(--fraco,0_0%_45%))]">
                       Protegido: você troca textos e fotos. Liberado: também dá para mover, redimensionar e reordenar as peças.
                     </p>
                   </div>
                 </PopoverContent>
               </Popover>
 
-              {layoutLocked ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[10px] text-muted-foreground">
-                  <Lock className="h-3 w-3" /> Formato protegido
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-1 text-[10px] text-accent-foreground">
-                  <Unlock className="h-3 w-3" /> Formato liberado
-                </span>
-              )}
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold',
+                  layoutLocked ? 'text-muted-foreground' : 'text-info',
+                )}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                {layoutLocked ? 'Formato protegido' : 'Formato liberado'}
+              </span>
             </div>
           </div>
 
           {/* O corte é silencioso; este aviso é o que impede que ele passe. */}
           {!somenteLeitura && transbordo?.transborda && (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-warning/40 bg-warning/10 px-3 py-2">
-              <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border/70 bg-warning/10 px-3 py-2">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning" aria-hidden="true" />
               <p className="min-w-0 flex-1 text-xs text-foreground">
                 {avisoDeTransbordo(transbordo)}
               </p>
@@ -1427,30 +1401,30 @@ export function JournalEditor({
 
         {/* Conteúdo da página */}
         {!somenteLeitura && (!compacto || abaMovel === 'conteudo') && (
-        <aside data-tutorial="painel" className="flex flex-col gap-3 overflow-y-auto rounded-lg border border-border bg-card p-3">
+        <aside data-tutorial="painel" className="flex flex-col gap-3 overflow-y-auto rounded-[20px] border border-black/5 bg-card p-3.5 dark:border-white/5">
           {layoutLocked && (
-            <p className="rounded-md bg-muted/60 px-2.5 py-2 text-[11px] text-muted-foreground">
+            <p className="rounded-[12px] bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
               O formato do modelo está protegido: clique em uma peça para trocar o texto ou enviar a foto.
               Para incluir, remover ou redimensionar peças, libere o formato na barra acima da folha.
             </p>
           )}
 
           <div>
-            <Label className="text-xs text-muted-foreground">
+            <h3 className="text-[15px] font-semibold text-foreground">
               {!layoutLocked && selectedBlock
                 ? 'Adicionar abaixo da peça selecionada'
                 : 'Adicionar ao jornal'}
-            </Label>
+            </h3>
             <div className="mt-1.5 grid grid-cols-2 gap-1.5">
               {/* Blocos alteram o layout — só com o layout livre. A forma ANA não:
                   posição e tamanho são do modelo, então continua disponível travado. */}
               {!layoutLocked && (
                 <>
                   <Button variant="outline" size="sm" onClick={() => addBlock(textBlock('corpo', 'Novo texto.'))}>
-                    <Type className="mr-1.5 h-3.5 w-3.5" /> Texto
+                    Texto
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => addBlock(imageBlock(6, '16/9'))}>
-                    <ImageIcon className="mr-1.5 h-3.5 w-3.5" /> Imagem
+                    Imagem
                   </Button>
                   <Button
                     variant="outline"
@@ -1458,7 +1432,7 @@ export function JournalEditor({
                     className="col-span-2"
                     onClick={() => addBlock(statBlock())}
                   >
-                    <Hash className="mr-1.5 h-3.5 w-3.5" /> Número em destaque
+                    Número em destaque
                   </Button>
                 </>
               )}
@@ -1471,12 +1445,12 @@ export function JournalEditor({
                     className="w-full"
                     onClick={restoreMissingDecorations}
                   >
-                    <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Repor formas que faltam
+                    Repor formas que faltam
                   </Button>
                 )}
                 {decorations.length === JOURNAL_CORNER_KEYS.length && (
                   <Button variant="outline" size="sm" className="w-full" disabled>
-                    <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Formas ANA aplicadas
+                    Formas ANA aplicadas
                   </Button>
                 )}
               </div>
@@ -1501,7 +1475,7 @@ export function JournalEditor({
             onRemoveDecoration={removeDecoration}
           />
 
-          <div className="h-px bg-border" />
+          <div className="h-px bg-border/70" />
 
           {selectedDecoration ? (
             <JournalDecorationProperties
@@ -1576,7 +1550,7 @@ export function JournalEditor({
           <ul className="space-y-1.5 text-sm" data-testid="paginas-transbordando">
             {transbordoDoPdf?.paginas.map((p) => (
               <li key={p.indice} className="flex items-center gap-2">
-                <Badge variant="secondary">Página {p.indice + 1}</Badge> {linhaDoTransbordo(p)}
+                <Badge variant="outline" className="tabular-nums">Página {p.indice + 1}</Badge> {linhaDoTransbordo(p)}
               </li>
             ))}
           </ul>

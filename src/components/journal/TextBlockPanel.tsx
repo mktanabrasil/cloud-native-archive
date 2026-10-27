@@ -64,10 +64,10 @@ export function TextBlockPanel({ block, onChange }: TextBlockPanelProps) {
       {/* Conteúdo */}
       <section className="space-y-1.5">
         <div className="flex items-baseline justify-between">
-          <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <Label className="text-[13px] font-semibold text-foreground">
             Conteúdo
           </Label>
-          <span className="text-[10px] text-muted-foreground">{block.content.length} caracteres</span>
+          <span className="text-[11px] text-muted-foreground">{block.content.length} caracteres</span>
         </div>
         <Textarea
           value={block.content}
@@ -79,8 +79,8 @@ export function TextBlockPanel({ block, onChange }: TextBlockPanelProps) {
       </section>
 
       {/* Estilo: função + tamanho */}
-      <section className="space-y-2 rounded-lg border border-border bg-muted/30 p-2.5">
-        <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <section className="space-y-2 rounded-[16px] border border-border/70 bg-muted/30 p-3">
+        <Label className="text-[13px] font-semibold text-foreground">
           Estilo
         </Label>
         <Select
@@ -113,12 +113,12 @@ export function TextBlockPanel({ block, onChange }: TextBlockPanelProps) {
       </section>
 
       {/* Alinhamento e formatação, em uma única barra visual */}
-      <section className="space-y-2 rounded-lg border border-border bg-muted/30 p-2.5">
-        <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <section className="space-y-2 rounded-[16px] border border-border/70 bg-muted/30 p-3">
+        <Label className="text-[13px] font-semibold text-foreground">
           Alinhamento e formatação
         </Label>
         <div className="flex flex-wrap items-center gap-1.5">
-          <div className="flex items-center gap-0.5 rounded-md border border-border bg-background p-0.5">
+          <div className="flex items-center gap-0.5 rounded-[12px] border border-border bg-background p-0.5">
             {ALIGNMENTS.map(({ value, label, Icon }) => (
               <button
                 key={value}
@@ -128,19 +128,19 @@ export function TextBlockPanel({ block, onChange }: TextBlockPanelProps) {
                 aria-pressed={block.align === value}
                 onClick={() => onChange({ align: value } as Partial<JournalBlock>)}
                 className={cn(
-                  'grid place-items-center rounded transition-colors',
+                  'grid place-items-center rounded-[9px] transition-colors',
                   toque ? 'h-11 w-11' : 'h-8 w-8',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   block.align === value
                     ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 )}
               >
                 <Icon className="h-4 w-4" />
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-0.5 rounded-md border border-border bg-background p-0.5">
+          <div className="flex items-center gap-0.5 rounded-[12px] border border-border bg-background p-0.5">
             {([
               { key: 'bold', label: 'Negrito', Icon: Bold },
               { key: 'italic', label: 'Itálico', Icon: Italic },
@@ -154,12 +154,12 @@ export function TextBlockPanel({ block, onChange }: TextBlockPanelProps) {
                 aria-pressed={Boolean(block[key])}
                 onClick={() => onChange({ [key]: !block[key] } as Partial<JournalBlock>)}
                 className={cn(
-                  'grid place-items-center rounded transition-colors',
+                  'grid place-items-center rounded-[9px] transition-colors',
                   toque ? 'h-11 w-11' : 'h-8 w-8',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   block[key]
                     ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -170,7 +170,7 @@ export function TextBlockPanel({ block, onChange }: TextBlockPanelProps) {
       </section>
 
       {/* Cor e espaçamento */}
-      <section className="space-y-3 rounded-lg border border-border bg-muted/30 p-2.5">
+      <section className="space-y-3 rounded-[16px] border border-border/70 bg-muted/30 p-3">
         <ColorSwatchPicker
           label="Cor do texto"
           value={block.color}

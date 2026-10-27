@@ -147,13 +147,13 @@ export function JournalEsbocoDialog({ aberto, onAberto, sugerirNome, onCriar, on
                 Escolha a pasta do jornal dentro de “Jornal - Esboço”. O app lê o esboço e as fotos dela; nada é enviado antes de você conferir.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid justify-items-center gap-2.5 rounded-xl border-2 border-dashed border-border px-4 py-7 text-center">
+            <div className="grid justify-items-center gap-2.5 rounded-[16px] border-2 border-dashed border-border px-4 py-7 text-center">
               <FolderOpen className="h-8 w-8 text-muted-foreground" />
               <Button onClick={() => entrada.current?.click()}>Escolher a pasta do esboço</Button>
               <span className="text-xs text-muted-foreground">ex.: Downloads › Jornal - Esboço › <b>2026-10 Anísio</b></span>
             </div>
             {etapa.erro && (
-              <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs text-foreground">{etapa.erro}</p>
+              <p role="alert" className="rounded-[12px] border border-destructive/40 bg-destructive/5 p-3 text-xs text-foreground">{etapa.erro}</p>
             )}
             <DialogFooter>
               <Button variant="outline" onClick={() => fechar(false)}>Cancelar</Button>
@@ -174,14 +174,14 @@ export function JournalEsbocoDialog({ aberto, onAberto, sugerirNome, onCriar, on
                 {c.erros.map((e) => (
                   <li key={e} className="flex gap-2 text-destructive"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{e}</li>
                 ))}
-                {c.unidade && <li className="flex gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />Unidade: <b>{c.unidade.name}</b></li>}
-                {pode && <li className="flex gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />{c.fotosUsadas.length} fotos usadas, todas na pasta</li>}
+                {c.unidade && <li className="flex gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />Unidade: <b>{c.unidade.name}</b></li>}
+                {pode && <li className="flex gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />{c.fotosUsadas.length} fotos usadas, todas na pasta</li>}
                 {c.avisos.map((a) => (
-                  <li key={a} className="flex gap-2 text-amber-700 dark:text-amber-400"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{a}</li>
+                  <li key={a} className="flex gap-2 text-warning"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{a}</li>
                 ))}
               </ul>
               {c.unidade && c.mes && (
-                <div className="grid gap-1 rounded-lg bg-muted/50 px-3 py-2 text-sm">
+                <div className="grid gap-1 rounded-[12px] bg-muted/50 px-3 py-2 text-sm">
                   <span><span className="text-muted-foreground">Nome:</span> {sugerirNome(c.unidade.id, c.mes)}</span>
                   <span><span className="text-muted-foreground">Mês:</span> {c.mes}</span>
                 </div>
@@ -191,17 +191,17 @@ export function JournalEsbocoDialog({ aberto, onAberto, sugerirNome, onCriar, on
                   const titulo = p.blocks.find((b) => b.kind === 'text' && b.style.startsWith('titulo'));
                   const fotos = p.blocks.filter((b) => b.kind === 'image').map((b) => c.fotoDoBloco.get(b.id));
                   return (
-                    <li key={p.id} className="grid grid-cols-[24px_minmax(0,1fr)] items-center gap-2.5 rounded-lg border border-border px-2.5 py-2">
+                    <li key={p.id} className="grid grid-cols-[24px_minmax(0,1fr)] items-center gap-2.5 rounded-[12px] border border-border/70 px-2.5 py-2">
                       <span className="text-center font-bold tabular-nums text-muted-foreground">{i + 1}</span>
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold">
-                          <span className="mr-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">{TEMPLATE_LABELS[p.template] ?? p.template}</span>
+                          <span className="mr-1.5 rounded-full border border-border px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground">{TEMPLATE_LABELS[p.template] ?? p.template}</span>
                           {titulo && titulo.kind === 'text' ? titulo.content : 'Sem título'}
                         </div>
                         {fotos.length > 0 && (
                           <div className="mt-1 flex flex-wrap gap-1">
                             {fotos.map((n, k) => (
-                              <span key={k} className="grid h-5 w-7 place-items-center rounded border border-border bg-muted text-[9px] tabular-nums text-muted-foreground">{n ?? '—'}</span>
+                              <span key={k} className="grid h-5 w-7 place-items-center rounded-md border border-border bg-muted text-[10px] tabular-nums text-muted-foreground">{n ?? '—'}</span>
                             ))}
                           </div>
                         )}
@@ -227,7 +227,7 @@ export function JournalEsbocoDialog({ aberto, onAberto, sugerirNome, onCriar, on
               <DialogDescription>Deixe esta janela aberta até terminar.</DialogDescription>
             </DialogHeader>
             <div className="h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={etapa.total} aria-valuenow={etapa.enviadas}>
-              <div className="h-full bg-primary transition-[width]" style={{ width: `${etapa.total ? (etapa.enviadas / etapa.total) * 100 : 100}%` }} />
+              <div className="h-full bg-[hsl(var(--sel,168_80%_27%))] transition-[width]" style={{ width: `${etapa.total ? (etapa.enviadas / etapa.total) * 100 : 100}%` }} />
             </div>
             <ul className="grid gap-1.5 text-sm">
               <li className={etapa.criando ? 'text-muted-foreground' : 'font-semibold'}>
@@ -246,13 +246,13 @@ export function JournalEsbocoDialog({ aberto, onAberto, sugerirNome, onCriar, on
         {etapa.tipo === 'pronto' && (
           <>
             <div className="grid justify-items-center gap-2 py-2 text-center">
-              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#81E2CF] text-[#1F2322]"><Check className="h-7 w-7" /></span>
+              <span className="grid h-12 w-12 place-items-center rounded-[16px] bg-[#81E2CF] text-[#1F2322]"><Check className="h-7 w-7" /></span>
               <DialogTitle>Rascunho pronto</DialogTitle>
               <DialogDescription>
                 {etapa.nome} · {etapa.paginas} páginas · {etapa.fotos} fotos
               </DialogDescription>
               {etapa.faltaram > 0 && (
-                <p className="text-xs text-amber-700 dark:text-amber-400">{etapa.faltaram} {etapa.faltaram === 1 ? 'foto não subiu e ficou' : 'fotos não subiram e ficaram'} como quadro vazio, para colocar à mão.</p>
+                <p className="text-xs text-warning">{etapa.faltaram} {etapa.faltaram === 1 ? 'foto não subiu e ficou' : 'fotos não subiram e ficaram'} como quadro vazio, para colocar à mão.</p>
               )}
             </div>
             <DialogFooter className="sm:justify-center">

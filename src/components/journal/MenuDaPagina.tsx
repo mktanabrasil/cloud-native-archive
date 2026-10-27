@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Copy, MoreHorizontal, Trash2 } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -37,30 +37,30 @@ export function MenuDaPagina({ indice, total, rotulo, onMove, onDuplicate, onRem
     <Popover open={aberto} onOpenChange={setAberto}>
       <PopoverTrigger asChild>
         <Button
-          variant="secondary"
+          variant="ghost"
           size="icon"
-          className={cn('shadow-sm', toque ? 'h-11 w-11' : 'h-7 w-7', className)}
+          className={cn('glass-2 rounded-full', toque ? 'h-11 w-11' : 'h-7 w-7', className)}
           aria-label={`Menu da página ${indice + 1}`}
           onClick={(event) => event.stopPropagation()}
         >
           <MoreHorizontal className={toque ? 'h-5 w-5' : 'h-4 w-4'} />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-60 p-1.5" onClick={(event) => event.stopPropagation()}>
-        <p className="px-2 py-1.5 text-[11px] font-semibold text-muted-foreground">
+      <PopoverContent align="end" className="w-60 rounded-[16px] p-1.5" onClick={(event) => event.stopPropagation()}>
+        <p className="px-2 py-1.5 text-[13px] font-semibold text-foreground">
           Página {indice + 1} · {rotulo}
         </p>
         <Button variant="ghost" className={item} disabled={indice === 0} onClick={escolher(() => onMove(-1))}>
-          <ChevronUp className="mr-2 h-4 w-4" /> Mover para cima
+          Mover para cima
         </Button>
         <Button variant="ghost" className={item} disabled={indice === total - 1} onClick={escolher(() => onMove(1))}>
-          <ChevronDown className="mr-2 h-4 w-4" /> Mover para baixo
+          Mover para baixo
         </Button>
         <Button variant="ghost" className={item} onClick={escolher(onDuplicate)}>
-          <Copy className="mr-2 h-4 w-4" /> Duplicar página
+          Duplicar página
         </Button>
         <Button variant="ghost" className={cn(item, 'text-destructive hover:text-destructive')} onClick={escolher(onRemove)}>
-          <Trash2 className="mr-2 h-4 w-4" /> Excluir página
+          Excluir página
         </Button>
       </PopoverContent>
     </Popover>

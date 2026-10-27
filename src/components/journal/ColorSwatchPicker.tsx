@@ -65,7 +65,7 @@ export function ColorSwatchPicker({
           </button>
         ))}
       </div>
-      <p className="text-[10px] text-muted-foreground">
+      <p className="text-[11px] text-muted-foreground">
         Selecionado: <strong>{JOURNAL_COLOR_LABELS[current]}</strong>
         {current === 'tinta' && ' (padrão)'}
       </p>

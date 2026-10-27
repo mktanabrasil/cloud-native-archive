@@ -132,7 +132,7 @@ export function JournalTutorial({ percurso, aberto, onFechar, onVisto }: Props) 
       {caixa ? (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute rounded-lg ring-2 ring-primary"
+          className="pointer-events-none absolute rounded-[14px] ring-2 ring-[hsl(var(--sel,168_80%_27%))]"
           style={{
             top: caixa.top - FOLGA,
             left: caixa.left - FOLGA,
@@ -146,10 +146,10 @@ export function JournalTutorial({ percurso, aberto, onFechar, onVisto }: Props) 
       )}
 
       <div
-        className="absolute w-[min(320px,calc(100vw-24px))] rounded-xl border border-border bg-card p-4 shadow-2xl"
+        className="absolute w-[min(320px,calc(100vw-24px))] rounded-[20px] border border-black/5 bg-card p-4 shadow-2xl dark:border-white/5"
         style={estiloCartao}
       >
-        <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+        <p className="text-xs tabular-nums text-[hsl(var(--fraco,0_0%_45%))]">
           Passo {indice + 1} de {passos.length}
         </p>
         <h2 className="mt-1 text-[15px] font-semibold text-foreground">{passo.titulo}</h2>
@@ -157,7 +157,7 @@ export function JournalTutorial({ percurso, aberto, onFechar, onVisto }: Props) 
 
         <div className="mt-3 h-1 overflow-hidden rounded-full bg-muted">
           <div
-            className="h-full bg-primary transition-all duration-200"
+            className="h-full bg-[hsl(var(--sel,168_80%_27%))] transition-all duration-200"
             style={{ width: `${((indice + 1) / passos.length) * 100}%` }}
           />
         </div>

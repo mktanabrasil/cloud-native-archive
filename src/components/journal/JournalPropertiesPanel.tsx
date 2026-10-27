@@ -1,4 +1,4 @@
-import { Trash2, Plus, X, AlignVerticalSpaceAround, ChevronUp, ChevronDown } from 'lucide-react';
+import { Trash2, X, ChevronUp, ChevronDown } from 'lucide-react';
 import { TextBlockPanel } from '@/components/journal/TextBlockPanel';
 
 import { Button } from '@/components/ui/button';
@@ -46,11 +46,11 @@ export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlo
   if (!block) {
     return (
       <div className="space-y-3 text-sm">
-        <p className="font-semibold text-foreground">Conteúdo da página</p>
+        <h3 className="text-[15px] font-semibold text-foreground">Conteúdo da página</h3>
         <p className="text-muted-foreground">
           Tipo de página: <strong>{page ? TEMPLATE_LABELS[page.template] : '—'}</strong>
         </p>
-        <p className="text-muted-foreground">Peças nesta página: {page?.blocks.length ?? 0}</p>
+        <p className="text-muted-foreground">Peças nesta página: <span className="tabular-nums">{page?.blocks.length ?? 0}</span></p>
         <p className="text-xs text-muted-foreground">
           Clique em uma peça da folha para trocar o conteúdo dela. Cabeçalho, rodapé, margens e
           cores já vêm prontos da identidade da ANA.
@@ -70,8 +70,8 @@ export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlo
 
   return (
     <div className="space-y-4 text-sm">
-      <div className="-mx-3 -mt-3 flex items-center justify-between rounded-t-lg bg-accent px-3 py-2.5">
-        <p className="font-semibold text-accent-foreground">{title}</p>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-[15px] font-semibold text-foreground">{title}</h3>
         {onClose && (
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose} aria-label="Fechar painel">
             <X className="h-4 w-4" />
@@ -80,12 +80,12 @@ export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlo
       </div>
 
       {locked ? (
-        <p className="rounded-md bg-muted/60 px-2.5 py-2 text-[11px] text-muted-foreground">
+        <p className="rounded-[12px] bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
           O formato desta página está protegido: tamanho e posição já vêm definidos. Troque os textos
           e as fotos à vontade. Para mover as peças, libere o formato na barra acima da folha.
         </p>
       ) : (
-        <p className="rounded-md bg-muted/60 px-2.5 py-2 text-[11px] text-muted-foreground">
+        <p className="rounded-[12px] bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
           Ocupa <strong className="text-foreground">{block.span} de 6 colunas</strong> · Altura:{' '}
           <strong className="text-foreground">
             {block.height ? `${block.height}px` : 'automática'}
@@ -97,7 +97,7 @@ export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlo
 
       {/* Sem arrastar: mover e largura em colunas, para o toque e para quem prefere botão. */}
       {!locked && (onMoveBlock || onResizeSpan) && (
-        <div className="space-y-2 rounded-md border border-border p-2.5" data-testid="mover-e-largura">
+        <div className="space-y-2 rounded-[16px] border border-border/70 p-3" data-testid="mover-e-largura">
           {onMoveBlock && (
             <div className="flex items-center gap-2">
               <span className="w-16 text-[11px] text-muted-foreground">Posição</span>
@@ -126,8 +126,7 @@ export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlo
 
       {/* Só faz sentido com companhia na fileira — sozinho não há a que igualar. */}
       {!locked && rowSiblingCount > 0 && onEqualizeRow && (
-        <Button variant="outline" size="sm" onClick={onEqualizeRow} className="w-full gap-2">
-          <AlignVerticalSpaceAround className="h-4 w-4" />
+        <Button variant="outline" size="sm" onClick={onEqualizeRow} className="w-full">
           Deixar todas da mesma altura
         </Button>
       )}
@@ -140,7 +139,7 @@ export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlo
       {block.kind === 'image' && (
         <div className="space-y-3">
           <section className="space-y-1.5">
-            <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <Label className="text-[13px] font-semibold text-foreground">
               Imagem
             </Label>
             <ImageBlockField
@@ -149,9 +148,9 @@ export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlo
             />
           </section>
 
-          <section className="space-y-3 rounded-lg border border-border bg-muted/30 p-2.5">
+          <section className="space-y-3 rounded-[16px] border border-border/70 bg-muted/30 p-3">
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <Label className="text-[13px] font-semibold text-foreground">
                 Legenda (opcional)
               </Label>
               <Input
@@ -172,8 +171,8 @@ export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlo
 
       {block.kind === 'stat' && (
         <div className="space-y-3">
-          <section className="space-y-2 rounded-lg border border-border bg-muted/30 p-2.5">
-            <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <section className="space-y-2 rounded-[16px] border border-border/70 bg-muted/30 p-3">
+            <Label className="text-[13px] font-semibold text-foreground">
               Conteúdo
             </Label>
             <div className="space-y-1.5">
@@ -196,7 +195,7 @@ export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlo
             </div>
           </section>
 
-          <section className="rounded-lg border border-border bg-muted/30 p-2.5">
+          <section className="rounded-[16px] border border-border/70 bg-muted/30 p-3">
             <ColorSwatchPicker
               label="Cor do número"
               value={block.color}
@@ -207,20 +206,20 @@ export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlo
       )}
 
       {block.kind === 'agenda' && (
-        <section className="space-y-2 rounded-lg border border-border bg-muted/30 p-2.5">
+        <section className="space-y-2 rounded-[16px] border border-border/70 bg-muted/30 p-3">
           <div className="flex items-baseline justify-between">
-            <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <Label className="text-[13px] font-semibold text-foreground">
               Agenda
             </Label>
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-[11px] text-muted-foreground">
               {block.items.length} {block.items.length === 1 ? 'linha' : 'linhas'}
             </span>
           </div>
 
           {block.items.map((item, index) => (
-            <div key={item.id} className="space-y-1.5 rounded-md border border-border bg-background p-2">
+            <div key={item.id} className="space-y-1.5 rounded-[12px] border border-border/70 bg-background p-2">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <span className="text-xs font-semibold text-muted-foreground">
                   Item {index + 1}
                 </span>
                 <Button
@@ -292,21 +291,21 @@ export function JournalPropertiesPanel({ page, block, onChangeBlock, onRemoveBlo
               } as Partial<JournalBlock>)
             }
           >
-            <Plus className="mr-1.5 h-4 w-4" /> Adicionar linha
+            Adicionar linha
           </Button>
         </section>
       )}
 
 
       {!locked && (
-        <div className="border-t border-border pt-2">
+        <div className="border-t border-border/70 pt-2">
           <Button
             variant="ghost"
             size="sm"
             onClick={onRemoveBlock}
             className="w-full justify-start px-1 text-destructive hover:text-destructive"
           >
-            <Trash2 className="mr-1.5 h-4 w-4" /> Remover esta peça
+            Remover esta peça
           </Button>
         </div>
       )}

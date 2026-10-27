@@ -196,7 +196,8 @@ export function EnqueteFormDialog({ open, onOpenChange, criadaPor, onSalva, modo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[95vh] overflow-y-auto sm:max-w-4xl" data-testid="form-enquete">
+      {/* Esboço V2: o formulário abre numa folha lateral, com a lista visível atrás. */}
+      <DialogContent className="folha-lateral left-auto right-0 top-0 h-[100svh] max-h-[100svh] w-full translate-x-0 translate-y-0 overflow-y-auto rounded-none p-5 sm:right-3 sm:top-3 sm:h-[calc(100svh-1.5rem)] sm:max-h-[calc(100svh-1.5rem)] sm:max-w-[min(980px,calc(100vw-1.5rem))] sm:rounded-[22px] sm:p-6" data-testid="form-enquete">
         <DialogHeader>
           <DialogTitle>{editando ? 'Editar enquete' : modo === 'duplicar' ? 'Duplicar enquete' : 'Nova enquete'}</DialogTitle>
           <DialogDescription>
@@ -285,7 +286,7 @@ export function EnqueteFormDialog({ open, onOpenChange, criadaPor, onSalva, modo
                 ['identificar', 'Identificar quem vota pelo WhatsApp', 'Nome + número + PIN de 4 dígitos criado na hora. Um voto por número. Desligado, a enquete é anônima por aparelho.'],
                 ['permitir_troca', 'Permitir trocar o voto até o prazo', 'Com o mesmo número e PIN. No prazo, congela.'],
               ] as const).map(([chave, titulo, sub]) => (
-                <div key={chave} className="flex items-start gap-3 rounded-xl border border-border p-3">
+                <div key={chave} className="flex items-start gap-3 rounded-2xl border border-border p-3">
                   <Switch id={`enq-${chave}`} checked={form[chave]} onCheckedChange={v => setForm({ ...form, [chave]: v })} className="mt-0.5" />
                   <Label htmlFor={`enq-${chave}`} className="cursor-pointer">
                     <b className="block text-[13.5px]">{titulo}</b>
@@ -299,7 +300,7 @@ export function EnqueteFormDialog({ open, onOpenChange, criadaPor, onSalva, modo
               <Label className="text-xs font-semibold">Encerra em *</Label>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {atalhos.map(a => (
-                  <button key={a.rotulo} type="button" className={`rounded-full border px-2.5 py-1.5 text-xs font-semibold ${form.encerra_em === a.valor ? 'border-foreground bg-foreground text-background' : 'border-border text-muted-foreground hover:bg-muted'}`} onClick={() => setForm({ ...form, encerra_em: a.valor })}>
+                  <button key={a.rotulo} type="button" aria-pressed={form.encerra_em === a.valor} className={`rounded-[10px] border px-2.5 py-1.5 text-xs font-semibold transition-colors ${form.encerra_em === a.valor ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-muted-foreground hover:bg-muted'}`} onClick={() => setForm({ ...form, encerra_em: a.valor })}>
                     {a.rotulo}
                   </button>
                 ))}
@@ -309,9 +310,9 @@ export function EnqueteFormDialog({ open, onOpenChange, criadaPor, onSalva, modo
             </div>
           </div>
 
-          <aside className="rounded-2xl bg-muted/50 p-4" aria-label="Prévia">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[.1em] text-muted-foreground">Prévia · como quem vota vê</p>
-            <div className="flex flex-col gap-2.5 rounded-2xl bg-background p-4">
+          <aside className="self-start rounded-2xl bg-muted/50 p-4 md:sticky md:top-0" aria-label="Prévia">
+            <p className="mb-2.5 text-[15px] font-semibold">Prévia <span className="text-[13px] font-normal text-muted-foreground">· como quem vota vê</span></p>
+            <div className="flex flex-col gap-2.5 rounded-2xl border border-black/5 bg-background p-4 dark:border-white/5">
               <Marca />
               <h3 className="text-lg font-bold leading-tight [text-wrap:balance]">{form.pergunta || 'Sua pergunta aqui'}</h3>
               <TextoDaEnquete texto={form.texto} />

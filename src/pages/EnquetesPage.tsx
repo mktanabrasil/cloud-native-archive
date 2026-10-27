@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Copy, CopyPlus, Download, Link2, Lock, LockOpen, MessageCircle, Pencil, Plus, Trash2, Users } from 'lucide-react';
+import { Copy, CopyPlus, Download, MessageCircle, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -83,75 +83,67 @@ export default function EnquetesPage() {
   if (!isMarketing) return null;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold">Enquetes</h2>
+          <h2 className="text-xl font-bold">Enquetes</h2>
           <p className="text-sm text-muted-foreground">Crie, mande o link de voto no grupo e o de acompanhamento para a chefia.</p>
         </div>
         <Button className="gap-1.5" onClick={() => setFormulario({ modo: 'nova', enquete: null })} data-testid="nova-enquete"><Plus className="h-4 w-4" /> Nova enquete</Button>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-border">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-muted/60 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-              <th className="px-3.5 py-2.5 font-semibold">Enquete</th>
-              <th className="px-3.5 py-2.5 font-semibold">Estado</th>
-              <th className="px-3.5 py-2.5 font-semibold">Votos</th>
-              <th className="px-3.5 py-2.5 font-semibold">Liderando</th>
-              <th className="px-3.5 py-2.5 font-semibold">Encerra</th>
-              <th className="px-3.5 py-2.5" />
-            </tr>
-          </thead>
-          <tbody>
-            {enquetes === null && <tr><td colSpan={6} className="px-3.5 py-6 text-center text-muted-foreground">Carregando…</td></tr>}
-            {enquetes?.length === 0 && <tr><td colSpan={6} className="px-3.5 py-8 text-center text-muted-foreground">Nenhuma enquete ainda. Crie a primeira.</td></tr>}
-            {enquetes?.map(e => {
-              const r = resultados[e.slug];
-              const aberta = estaAberta(e);
-              const l = r ? lider(e.opcoes, r.por_opcao) : null;
-              return (
-                <tr key={e.id} className="border-t border-border align-middle" data-testid={`enquete-${e.slug}`}>
-                  <td className="px-3.5 py-3">
-                    <b>{e.pergunta}</b>
-                    <br />
-                    <small className="text-muted-foreground">criada {format(new Date(e.created_at), 'dd/MM', { locale: ptBR })}{e.criada_por ? ` por ${e.criada_por}` : ''}</small>
-                  </td>
-                  <td className="px-3.5 py-3">
-                    {aberta ? (
-                      <span className="rounded-full bg-[#E4F8F3] px-2.5 py-0.5 text-[11px] font-semibold text-[#0E6B58] dark:bg-[#153A32] dark:text-[#8FE3CF]">Aberta</span>
-                    ) : (
-                      <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-semibold text-muted-foreground">Encerrada</span>
-                    )}
-                  </td>
-                  <td className="px-3.5 py-3 tabular-nums"><b>{r?.total ?? '—'}</b></td>
-                  <td className="px-3.5 py-3">
+      {/* Esboço V2: lista em linhas, situação em texto com bolinha, ações discretas. */}
+      {enquetes === null ? (
+        <p className="rounded-[20px] border border-black/5 bg-card px-4 py-8 text-center text-sm text-muted-foreground dark:border-white/5">Carregando…</p>
+      ) : enquetes.length === 0 ? (
+        <p className="rounded-[20px] border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">Nenhuma enquete ainda. Crie a primeira.</p>
+      ) : (
+        <ul className="overflow-hidden rounded-[20px] border border-black/5 bg-card dark:border-white/5">
+          {enquetes.map(e => {
+            const r = resultados[e.slug];
+            const aberta = estaAberta(e);
+            const l = r ? lider(e.opcoes, r.por_opcao) : null;
+            const encerra = e.encerrada_em ? `encerrada à mão, ${format(new Date(e.encerrada_em), 'dd/MM HH:mm', { locale: ptBR })}` : e.encerra_em ? `${aberta ? 'encerra' : 'encerrou'} ${format(new Date(e.encerra_em), 'dd/MM HH:mm', { locale: ptBR })}` : 'sem prazo';
+            return (
+              <li key={e.id} className="grid gap-3 border-b border-border/70 px-4 py-3.5 last:border-b-0 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-6" data-testid={`enquete-${e.slug}`}>
+                <div className="min-w-0 space-y-1">
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <b className="text-[15px] font-semibold leading-snug">{e.pergunta}</b>
+                    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] font-semibold ${aberta ? 'text-success' : 'text-muted-foreground'}`}>
+                      <span className="h-1.5 w-1.5 rounded-full bg-current" />{aberta ? 'Aberta' : 'Encerrada'}
+                    </span>
+                  </div>
+                  <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-muted-foreground">
+                    <span><b className="font-semibold tabular-nums text-foreground">{r?.total ?? '—'}</b> {r?.total === 1 ? 'voto' : 'votos'}</span>
+                    <span aria-hidden="true">·</span>
                     {l && r ? (
-                      <span className="inline-flex items-center gap-1.5"><span className={`h-[9px] w-[9px] rounded-full ${tomDaCor(l.cor).forte}`} />{l.titulo} · {percentual(r.por_opcao[l.id] ?? 0, r.total)}%</span>
-                    ) : r && r.total > 0 ? 'empate' : '—'}
-                  </td>
-                  <td className="px-3.5 py-3 whitespace-nowrap text-muted-foreground">
-                    {e.encerrada_em ? `à mão, ${format(new Date(e.encerrada_em), 'dd/MM HH:mm', { locale: ptBR })}` : e.encerra_em ? format(new Date(e.encerra_em), 'dd/MM HH:mm', { locale: ptBR }) : 'sem prazo'}
-                  </td>
-                  <td className="px-3.5 py-3 whitespace-nowrap text-right">
-                    <Button variant="outline" size="sm" className="ml-1.5 gap-1" onClick={() => setLinks(e)}><Link2 className="h-3.5 w-3.5" /> Links</Button>
-                    <Button variant="outline" size="sm" className="ml-1.5 gap-1" onClick={() => abrirVotos(e)} data-testid={`votos-${e.slug}`}><Users className="h-3.5 w-3.5" /> Votos</Button>
-                    <Button variant="ghost" size="sm" className="ml-1.5" aria-label="Editar" title="Editar" onClick={() => setFormulario({ modo: 'editar', enquete: e })} data-testid={`editar-${e.slug}`}><Pencil className="h-3.5 w-3.5" /></Button>
-                    <Button variant="ghost" size="sm" className="ml-1.5" aria-label="Duplicar" title="Duplicar" onClick={() => setFormulario({ modo: 'duplicar', enquete: e })} data-testid={`duplicar-${e.slug}`}><CopyPlus className="h-3.5 w-3.5" /></Button>
-                    {aberta ? (
-                      <Button variant="outline" size="sm" className="ml-1.5 gap-1" onClick={() => agir(() => encerrarEnquete(e.id), 'Enquete encerrada')}><Lock className="h-3.5 w-3.5" /> Encerrar</Button>
-                    ) : e.encerrada_em ? (
-                      <Button variant="outline" size="sm" className="ml-1.5 gap-1" onClick={() => agir(() => reabrirEnquete(e.id), 'Enquete reaberta')}><LockOpen className="h-3.5 w-3.5" /> Reabrir</Button>
-                    ) : null}
-                    <Button variant="ghost" size="sm" className="ml-1.5 text-muted-foreground hover:text-destructive" aria-label="Apagar" onClick={() => setApagando(e)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className={`h-2 w-2 rounded-full ring-1 ring-black/10 ${tomDaCor(l.cor).forte}`} />
+                        <span className="text-foreground">{l.titulo}</span> <span className="tabular-nums">{percentual(r.por_opcao[l.id] ?? 0, r.total)}%</span>
+                      </span>
+                    ) : <span>{r && r.total > 0 ? 'empate' : 'sem líder'}</span>}
+                    <span aria-hidden="true">·</span>
+                    <span className="whitespace-nowrap tabular-nums">{encerra}</span>
+                  </p>
+                  <p className="text-xs text-[hsl(var(--fraco))]">criada {format(new Date(e.created_at), 'dd/MM', { locale: ptBR })}{e.criada_por ? ` por ${e.criada_por}` : ''}</p>
+                </div>
+                <div className="-ml-2 flex flex-wrap items-center gap-0.5 md:ml-0 md:justify-end">
+                  <Button variant="ghost" size="sm" className="h-11 md:h-9" onClick={() => setLinks(e)}>Links</Button>
+                  <Button variant="ghost" size="sm" className="h-11 md:h-9" onClick={() => abrirVotos(e)} data-testid={`votos-${e.slug}`}>Votos</Button>
+                  <Button variant="ghost" size="icon" className="h-11 w-11 text-muted-foreground md:h-9 md:w-9" aria-label="Editar" title="Editar" onClick={() => setFormulario({ modo: 'editar', enquete: e })} data-testid={`editar-${e.slug}`}><Pencil className="h-3.5 w-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-11 w-11 text-muted-foreground md:h-9 md:w-9" aria-label="Duplicar" title="Duplicar" onClick={() => setFormulario({ modo: 'duplicar', enquete: e })} data-testid={`duplicar-${e.slug}`}><CopyPlus className="h-3.5 w-3.5" /></Button>
+                  {aberta ? (
+                    <Button variant="ghost" size="sm" className="h-11 md:h-9" onClick={() => agir(() => encerrarEnquete(e.id), 'Enquete encerrada')}>Encerrar</Button>
+                  ) : e.encerrada_em ? (
+                    <Button variant="ghost" size="sm" className="h-11 md:h-9" onClick={() => agir(() => reabrirEnquete(e.id), 'Enquete reaberta')}>Reabrir</Button>
+                  ) : null}
+                  <Button variant="ghost" size="icon" className="h-11 w-11 text-muted-foreground hover:text-destructive md:h-9 md:w-9" aria-label="Apagar" title="Apagar" onClick={() => setApagando(e)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       <EnqueteFormDialog
         open={!!formulario}
@@ -179,7 +171,7 @@ export default function EnquetesPage() {
               </DialogHeader>
               {votos && votos.length > 0 && (
                 <>
-                  <ul className="divide-y divide-border rounded-xl border border-border text-sm">
+                  <ul className="divide-y divide-border/70 rounded-2xl border border-border text-sm">
                     {votos.map(v => {
                       const o = votosDe.opcoes.find(x => x.id === v.opcao_id);
                       return (
@@ -240,7 +232,7 @@ export default function EnquetesPage() {
                 </DialogHeader>
                 <div className="space-y-2.5">
                   {[['Para votar · mande no grupo', votar, 'Link de voto'], ['Para acompanhar · mande para a chefia', resultado, 'Link de acompanhamento']].map(([rotulo, url, nome]) => (
-                    <div key={url} className="flex items-center justify-between gap-2.5 rounded-xl border border-border px-3 py-2.5">
+                    <div key={url} className="flex items-center justify-between gap-2.5 rounded-2xl border border-border px-3 py-2.5">
                       <div className="min-w-0">
                         <small className="block text-[11px] text-muted-foreground">{rotulo}</small>
                         <code className="break-all text-xs">{url.replace(/^https?:\/\//, '')}</code>
