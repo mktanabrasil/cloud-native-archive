@@ -1,4 +1,4 @@
-import { Globe, Instagram, Plus, Sparkles } from 'lucide-react';
+import { ArrowUpRight, Instagram, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { INSTAGRAM_DA_ANA, SITE_DA_ANA } from '@/lib/links';
 
@@ -22,49 +22,42 @@ interface Props {
 
 export function VitrineVazia({ onCriar, semConvites = false }: Props) {
   return (
+    /* Esboço V2: um bloco sólido e calmo, sem brilho nem ícone de enfeite;
+       um botão forte (Conhecer a ANA) e o resto discreto. */
     <section
       aria-labelledby="vitrine-vazia-titulo"
-      className="relative overflow-hidden rounded-3xl border border-border bg-card px-7 py-14 text-center"
+      className="rounded-[20px] border border-black/5 bg-card px-6 py-14 text-center dark:border-white/5 sm:px-10"
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -bottom-[60%] -left-[20%] -right-[20%] h-[70%] bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.28),transparent_70%)]"
-      />
-      <div className="relative">
-        <div className="mx-auto mb-5 grid h-[72px] w-[72px] place-items-center rounded-full bg-primary/20 text-primary-foreground">
-          <Sparkles className="h-8 w-8" />
-        </div>
-        <h3 id="vitrine-vazia-titulo" className="text-2xl font-bold tracking-tight text-foreground">
-          A próxima programação está sendo montada
-        </h3>
-        <p className="mx-auto mt-2 max-w-[46ch] text-muted-foreground">
-          Assim que houver eventos confirmados, eles aparecem aqui. Enquanto isso, conheça a ANA e acompanhe as novidades.
-        </p>
-        {!semConvites && (
-        <div className="mt-7 flex flex-wrap items-center justify-center gap-2.5">
-          <Button asChild className="rounded-full gap-2">
-            <a href={SITE_DA_ANA} target="_blank" rel="noopener noreferrer">
-              <Globe className="h-4 w-4" /> Conhecer a ANA
+      <h3 id="vitrine-vazia-titulo" className="text-2xl font-bold tracking-tight text-foreground">
+        A próxima programação está sendo montada
+      </h3>
+      <p className="mx-auto mt-2 max-w-[46ch] text-muted-foreground">
+        Assim que houver eventos confirmados, eles aparecem aqui. Enquanto isso, conheça a ANA e acompanhe as novidades.
+      </p>
+      {!semConvites && (
+      <div className="mt-7 flex flex-wrap items-center justify-center gap-2.5">
+        <Button asChild className="gap-2">
+          <a href={SITE_DA_ANA} target="_blank" rel="noopener noreferrer">
+            Conhecer a ANA <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+          </a>
+        </Button>
+        {INSTAGRAM_DA_ANA && (
+          <Button asChild variant="outline" className="gap-2">
+            <a href={INSTAGRAM_DA_ANA} target="_blank" rel="noopener noreferrer">
+              <Instagram className="h-4 w-4" aria-hidden="true" /> Instagram
             </a>
           </Button>
-          {INSTAGRAM_DA_ANA && (
-            <Button asChild variant="outline" className="rounded-full gap-2 border-border">
-              <a href={INSTAGRAM_DA_ANA} target="_blank" rel="noopener noreferrer">
-                <Instagram className="h-4 w-4" /> Instagram
-              </a>
-            </Button>
-          )}
-        </div>
-        )}
-        {onCriar && (
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-3 border-t border-border pt-5 text-sm text-muted-foreground">
-            <span>Só a equipe vê esta linha.</span>
-            <Button size="sm" variant="outline" className="rounded-full gap-1.5 border-border" onClick={onCriar}>
-              <Plus className="h-3.5 w-3.5" /> Criar evento
-            </Button>
-          </div>
         )}
       </div>
+      )}
+      {onCriar && (
+        <div className="mx-auto mt-7 flex max-w-md flex-wrap items-center justify-center gap-3 border-t border-border/70 pt-5 text-sm text-muted-foreground">
+          <span>Só a equipe vê esta linha.</span>
+          <Button size="sm" variant="ghost" className="gap-1.5 text-[hsl(var(--sel,168_80%_27%))]" onClick={onCriar}>
+            <Plus className="h-3.5 w-3.5" /> Criar evento
+          </Button>
+        </div>
+      )}
     </section>
   );
 }

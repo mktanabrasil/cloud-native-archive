@@ -1,14 +1,11 @@
 import { useMemo } from 'react';
-import { getStatusBadgeClass } from '@/lib/statusColors';
-import { rotuloDoStatus } from '@/lib/events/status';
 import { useNavigate } from 'react-router-dom';
-import { AppEvent, PARTNER_TYPES, Unit } from '@/types';
+import { AppEvent, Unit } from '@/types';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, startOfWeek, endOfWeek } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Camera, Handshake, Users, CheckCircle2, Clock, Maximize2 } from 'lucide-react';
+import { LinhaDeEvento, ListaDeEventos } from '@/components/events/LinhaDeEvento';
 
 const unitDotColors: Record<Unit, string> = {
   'DIC': 'bg-unit-dic',
@@ -44,13 +41,13 @@ export default function FilteredEventsDialog({ events, filterType, selectedMonth
   );
 
   const config = {
-    marketing: { title: 'Eventos com Cobertura de Marketing', Icon: Camera, color: 'text-primary', bgColor: '', borderColor: '', pulseClass: '' },
-    partners: { title: 'Eventos com Parceiros', Icon: Handshake, color: 'text-primary', bgColor: '', borderColor: '', pulseClass: '' },
-    confirmed: { title: 'Eventos Confirmados', Icon: CheckCircle2, color: 'text-success', bgColor: 'bg-success/10', borderColor: 'border-success/30', pulseClass: 'animate-confirmed-pulse' },
-    pending: { title: 'Eventos Pendentes', Icon: Clock, color: 'text-warning', bgColor: 'bg-warning/10', borderColor: 'border-warning/30', pulseClass: 'animate-pending-pulse' },
+    marketing: { title: 'Eventos com Cobertura de Marketing', color: 'text-foreground', bgColor: '', pulseClass: '' },
+    partners: { title: 'Eventos com Parceiros', color: 'text-foreground', bgColor: '', pulseClass: '' },
+    confirmed: { title: 'Eventos Confirmados', color: 'text-success', bgColor: 'bg-success/[0.07]', pulseClass: 'animate-confirmed-pulse' },
+    pending: { title: 'Eventos Pendentes', color: 'text-warning', bgColor: 'bg-warning/[0.07]', pulseClass: 'animate-pending-pulse' },
   }[filterType];
 
-  const { title, Icon, color, bgColor, borderColor, pulseClass } = config;
+  const { title, color, bgColor, pulseClass } = config;
 
   // Calendar data
   const monthStart = startOfMonth(month);
@@ -79,80 +76,62 @@ export default function FilteredEventsDialog({ events, filterType, selectedMonth
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={hasCalendar ? 'sm:max-w-4xl max-h-[85vh] overflow-y-auto' : 'sm:max-w-lg max-h-[85vh] overflow-y-auto'}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <Icon className={`h-5 w-5 ${color}`} />
-            {title} ({filtered.length})
+          <DialogTitle className="text-xl">
+            {title} <span className={`tabular-nums ${filtered.length > 0 ? color : 'text-muted-foreground'}`}>({filtered.length})</span>
           </DialogTitle>
         </DialogHeader>
 
+        {/* Esboço V2: lista em linhas com a data em destaque; nos confirmados e
+            pendentes, o mês ao lado com os dias marcados. */}
         <div className={hasCalendar ? 'grid grid-cols-1 gap-6 lg:grid-cols-2' : ''}>
-          {/* Event list */}
-          <div className="space-y-2">
-            {hasCalendar && <h3 className="text-sm font-semibold text-muted-foreground mb-3">Lista de Eventos</h3>}
+          <div>
+            {hasCalendar && <h3 className="mb-3 text-[15px] font-semibold text-foreground">Lista de Eventos</h3>}
             {filtered.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">Nenhum evento encontrado</p>
             ) : (
-              <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
-                {filtered.map(e => {
-                  const statusClass = getStatusBadgeClass(e.status, e.has_conflict);
-                  const itemBorder = hasCalendar ? `${borderColor} ${bgColor}` : 'border-border';
-                  return (
-                    <button
-                      key={e.id}
-                      onClick={() => onEventClick(e)}
-                      className={`w-full rounded-lg border ${itemBorder} p-3 text-left transition-colors hover:bg-accent`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${unitDotColors[e.unit]}`} />
-                          <p className="font-medium text-foreground truncate">{e.title}</p>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <Badge variant="outline" className={`text-xs ${statusClass}`}>{rotuloDoStatus(e.status)}</Badge>
-                        </div>
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {format(new Date(e.start_datetime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} — {format(new Date(e.end_datetime), 'HH:mm')} · {e.unit}
-                      </p>
-                      <div className="mt-1 flex items-center gap-3">
-                        {e.marketing_request && (
-                          <span className="flex items-center gap-1 text-[10px] text-primary">
-                            <Camera className="h-3 w-3" /> Marketing
-                          </span>
-                        )}
+              <ListaDeEventos className="max-h-[55vh] overflow-y-auto">
+                {filtered.map(e => (
+                  <LinhaDeEvento
+                    key={e.id}
+                    evento={e}
+                    comConflito={e.has_conflict}
+                    onClick={() => onEventClick(e)}
+                    extra={(e.marketing_request || e.partner_involved) ? (
+                      <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                        {e.marketing_request && <span className="font-semibold text-foreground">Marketing</span>}
+                        {e.marketing_request && e.partner_involved && ' · '}
                         {e.partner_involved && (
-                          <span className="flex items-center gap-1 text-[10px] text-primary">
-                            <Users className="h-3 w-3" />
+                          <>
+                            <span className="font-semibold text-foreground">Parceiros:</span>{' '}
                             {(e.partners || []).length > 0
                               ? e.partners.map(p => p.name).filter(Boolean).join(', ')
                               : e.partner_name || 'Parceiro'}
-                          </span>
+                          </>
                         )}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                      </span>
+                    ) : undefined}
+                  />
+                ))}
+              </ListaDeEventos>
             )}
           </div>
 
-          {/* Calendar sidebar for confirmed/pending */}
           {hasCalendar && (
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-muted-foreground">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="text-[15px] font-semibold text-foreground">
                   Calendário — <span className="capitalize">{format(month, 'MMMM yyyy', { locale: ptBR })}</span>
                 </h3>
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={handleOpenFullCalendar}>
-                  <Maximize2 className="h-3.5 w-3.5" /> Tela cheia
+                <Button variant="outline" size="sm" className="text-xs" onClick={handleOpenFullCalendar}>
+                  Tela cheia
                 </Button>
               </div>
-              <div className="rounded-lg border border-border p-2">
+              <div className="overflow-hidden rounded-2xl border border-border bg-card">
                 <div className="grid grid-cols-7 text-center">
-                  {dayNames.map(d => (
-                    <div key={d} className="p-1.5 text-[10px] font-semibold text-muted-foreground">{d}</div>
+                  {dayNames.map((d, i) => (
+                    <div key={d} className={`border-b border-border/70 p-1.5 text-[11px] font-semibold text-muted-foreground ${i > 0 ? 'border-l' : ''}`}>{d}</div>
                   ))}
-                  {days.map(day => {
+                  {days.map((day, i) => {
                     const dayEvents = getEventsForDay(day);
                     const isCurrentMonth = isSameMonth(day, month);
                     const isToday = isSameDay(day, new Date());
@@ -162,19 +141,19 @@ export default function FilteredEventsDialog({ events, filterType, selectedMonth
                     return (
                       <div
                         key={day.toISOString()}
-                        className={`min-h-[60px] border border-border p-1 ${!isCurrentMonth ? 'opacity-30' : ''} ${isToday ? 'bg-primary/5' : ''} ${isHighlighted ? `${bgColor} ${borderColor} ${pulseClass}` : ''}`}
+                        className={`min-h-[60px] min-w-0 border-border/70 p-1 text-left ${i % 7 !== 0 ? 'border-l' : ''} ${i < days.length - 7 ? 'border-b' : ''} ${!isCurrentMonth ? 'bg-muted/40' : ''} ${isHighlighted ? `${bgColor} ${pulseClass}` : ''}`}
                       >
-                        <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${isToday ? 'bg-primary text-primary-foreground' : isHighlighted ? (filterType === 'confirmed' ? 'bg-success text-success-foreground' : 'bg-warning text-warning-foreground') : 'text-foreground'}`}>
+                        <span className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-md px-0.5 text-[10px] font-semibold tabular-nums ${isToday ? 'bg-foreground text-background' : isHighlighted ? color : isCurrentMonth ? 'text-foreground' : 'text-[hsl(var(--fraco,0_0%_45%))]'}`}>
                           {format(day, 'd')}
                         </span>
                         <div className="mt-0.5 space-y-0.5">
                           {dayEvents.slice(0, 2).map(ev => (
                             <div
                               key={ev.id}
-                              className={`flex items-center gap-0.5 rounded px-0.5 py-px text-[8px] leading-tight ${isHighlighted && (ev.status === (filterType === 'confirmed' ? 'confirmado' : 'pendente')) ? `${bgColor}` : ''}`}
+                              className="flex items-center gap-0.5 rounded px-0.5 py-px text-[8px] leading-tight"
                             >
                               <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${unitDotColors[ev.unit]}`} />
-                              <span className="truncate text-foreground">{ev.title}</span>
+                              <span className={`truncate ${isHighlighted && (ev.status === (filterType === 'confirmed' ? 'confirmado' : 'pendente')) ? `font-semibold ${color}` : 'text-foreground'}`}>{ev.title}</span>
                             </div>
                           ))}
                           {dayEvents.length > 2 && (

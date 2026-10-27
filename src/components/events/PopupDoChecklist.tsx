@@ -58,7 +58,7 @@ export function PopupDoChecklist({ sucesso, onFechar }: Props) {
         </DialogHeader>
 
         {resumo.length > 0 && (
-          <dl className="grid grid-cols-1 gap-1.5 rounded-lg bg-muted/50 p-3 text-xs" data-testid="resumo-do-popup">
+          <dl className="grid grid-cols-1 gap-1.5 rounded-2xl border border-border bg-card p-3 text-xs" data-testid="resumo-do-popup">
             {resumo.map(([a, b]) => (
               <div key={a} className="flex items-baseline justify-between gap-3">
                 <dt className="text-muted-foreground shrink-0">{a}</dt>

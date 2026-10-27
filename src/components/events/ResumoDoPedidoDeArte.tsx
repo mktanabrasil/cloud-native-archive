@@ -21,7 +21,7 @@ export function ResumoDoPedidoDeArte({ itens, compacto = false }: Props) {
   const pilulas = pilulasDoPedido(pedido);
   if (pilulas.length === 0 && antigos.length === 0) return null;
   const texto = compacto ? 'text-[11px]' : 'text-sm';
-  const rotulo = compacto ? 'text-[10px]' : 'text-[11px]';
+  const rotulo = compacto ? 'text-[11px]' : 'text-[12px]';
 
   const copiarLegenda = () => {
     navigator.clipboard?.writeText(pedido.legenda);
@@ -33,25 +33,25 @@ export function ResumoDoPedidoDeArte({ itens, compacto = false }: Props) {
       {pilulas.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {pilulas.map(p => (
-            <span key={p} className="rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-[11px] font-semibold">{p}</span>
+            <span key={p} className="rounded-full border border-border px-2.5 py-0.5 text-[11px] font-semibold text-foreground">{p}</span>
           ))}
         </div>
       )}
       {pedido.legenda && (
         <div>
-          <p className={`${rotulo} font-semibold uppercase tracking-wider text-muted-foreground`}>Legenda</p>
+          <p className={`${rotulo} font-semibold text-muted-foreground`}>Legenda</p>
           <p className={`${texto} text-foreground whitespace-pre-wrap`}>{pedido.legenda}</p>
         </div>
       )}
       {pedido.conteudo && (
         <div>
-          <p className={`${rotulo} font-semibold uppercase tracking-wider text-muted-foreground`}>Na arte</p>
+          <p className={`${rotulo} font-semibold text-muted-foreground`}>Na arte</p>
           <p className={`${texto} text-foreground whitespace-pre-wrap`}>{pedido.conteudo}</p>
         </div>
       )}
       {antigos.map((item, n) => (
         <div key={n}>
-          <p className={`${rotulo} font-semibold uppercase tracking-wider text-muted-foreground`}>Arte (pedido antigo) · {item.item}</p>
+          <p className={`${rotulo} font-semibold text-muted-foreground`}>Arte (pedido antigo) · {item.item}</p>
           {item.description && <p className={`${texto} text-foreground whitespace-pre-wrap`}>{item.description}</p>}
         </div>
       ))}

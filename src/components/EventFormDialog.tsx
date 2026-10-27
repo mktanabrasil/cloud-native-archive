@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -195,6 +196,10 @@ const emptyEvent = (): Partial<AppEvent> => ({
 });
 
 export default function EventFormDialog({ open, onOpenChange, event, revisao = false }: Props) {
+  // Ajuste de 26/10: os botões finais moram num rodapé fixo da folha, fora da rolagem,
+  // no canto inferior direito — antes ficavam por cima dos campos.
+  const [rodapeDaFolha, setRodapeDaFolha] = useState<HTMLDivElement | null>(null);
+  const noRodape = (conteudo: ReactNode) => (rodapeDaFolha ? createPortal(conteudo, rodapeDaFolha) : conteudo);
   const { addEvent, updateEvent, detectConflicts, setSelectedEvent, events } = useApp();
   const { userName, unit, isAdmin, isMarketing } = useUserRole();
   const { user } = useAuth();
@@ -888,32 +893,36 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     <>
     <PopupDoChecklist sucesso={sucesso} onFechar={() => setSucesso(null)} />
     <Dialog open={open} onOpenChange={pedirParaFechar}>
-      <DialogContent className={`max-h-[95vh] overflow-y-auto ${isAdmin ? 'sm:max-w-[95vw] lg:max-w-[90vw]' : 'sm:max-w-lg'}`}>
+      {/* Esboço V2: o formulário abre numa folha lateral, com a tela de trás visível. */}
+      <DialogContent className={`folha-lateral left-auto right-0 top-0 h-[100svh] max-h-[100svh] w-full translate-x-0 translate-y-0 flex flex-col gap-0 overflow-hidden rounded-none p-0 sm:right-3 sm:top-3 sm:h-[calc(100svh-1.5rem)] sm:max-h-[calc(100svh-1.5rem)] sm:rounded-[22px] ${isAdmin ? 'sm:max-w-[min(1240px,calc(100vw-1.5rem))]' : 'sm:max-w-[780px]'}`}>
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 sm:p-6">
         <DialogHeader>
           <div className="flex justify-between items-center pr-8">
             <div className="flex flex-wrap items-center gap-2">
               <DialogTitle>{emRevisao ? 'Revisar evento' : isEditing ? 'Editar evento' : 'Novo evento'}</DialogTitle>
               {emRevisao && event && (
-                <Badge variant="outline" className="border-warning/60 bg-warning/15 text-foreground text-[11px] font-medium">
+                <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-warning">
+                  <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
                   Pendente · {eventUnitLabel(event.unit)} · {event.created_by}
                   {event.submitted_at && ` · enviado ${formatarData(new Date(event.submitted_at), "dd/MM 'às' HH:mm", { locale: ptBR })}`}
-                </Badge>
+                </span>
               )}
             </div>
             {isAdmin && (
-              <Badge variant="outline" className="text-primary border-primary/20 bg-primary/5 flex items-center gap-1.5 px-3 py-1">
-                <Layout className="h-3.5 w-3.5" /> Formulário + prévia
+              <Badge variant="outline" className="hidden text-muted-foreground lg:inline-flex">
+                Formulário + prévia
               </Badge>
             )}
           </div>
         </DialogHeader>
 
-        <div className={`grid gap-8 ${isAdmin ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+        <div className={`grid gap-8 ${isAdmin ? 'grid-cols-1 md:grid-cols-[150px_minmax(0,1fr)] lg:grid-cols-[150px_minmax(0,1fr)_minmax(0,1fr)]' : 'grid-cols-1 md:grid-cols-[150px_minmax(0,1fr)]'}`}>
+          {!showConflictAlert && <IndiceDoFormulario />}
           {/* LADO ESQUERDO: FORMULÁRIO */}
           <div className="space-y-6">
             {showConflictAlert ? (
               <div className="space-y-4">
-                <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 p-4">
+                <div className="flex items-center gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
                   <div>
                     <p className="font-semibold text-foreground">Conflito de horário detectado!</p>
                     <p className="text-sm text-muted-foreground">Este evento conflita com {conflicts.length} evento(s):</p>
@@ -921,7 +930,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 </div>
                 <div className="space-y-2">
                   {conflicts.map(c => (
-                    <div key={c.id} className="rounded-lg border border-border p-3">
+                    <div key={c.id} className="rounded-xl border border-border bg-card p-3">
                       <p className="font-medium text-foreground">{c.title}</p>
                       <p className="text-xs text-muted-foreground">{eventUnitLabel(c.unit)} · {new Date(c.start_datetime).toLocaleString('pt-BR')}</p>
                     </div>
@@ -939,9 +948,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 <ResumoDePendencias erros={errors} acao={acaoDoBotao} />
 
                 {travadoParaEla && (
-                  <div className="flex items-start gap-3 rounded-lg border border-amber-300 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-400/10 p-3">
-                    <Lock className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
-                    <p className="text-xs text-amber-900 dark:text-amber-100">
+                  <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/5 p-3">
+                    <Lock className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                    <p className="text-xs text-foreground">
                       <strong>{event?.status === 'concluido' ? 'Já concluído.' : 'Já confirmado pela administração geral.'}</strong> Para
                       alterar, peça à administração — ela pode devolver o evento para pendente.
                     </p>
@@ -949,9 +958,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 )}
 
                 {event?.review_note && event.status !== 'confirmado' && (
-                  <div className="flex items-start gap-3 rounded-lg border border-amber-300 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-400/10 p-3">
-                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
-                    <p className="text-xs text-amber-900 dark:text-amber-100">
+                  <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/5 p-3">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                    <p className="text-xs text-foreground">
                       <strong>Devolvido pela administração{event.reviewed_by ? ` (${event.reviewed_by})` : ''}:</strong>{' '}
                       {event.review_note}
                     </p>
@@ -959,15 +968,15 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 )}
 
                 {enviaParaAprovacao && isEditing && event?.status === 'pendente' && !event.review_note && (
-                  <div className="flex items-start gap-3 rounded-lg border border-yellow-300 bg-yellow-500/10 p-3" data-testid="onde-esta">
-                    <Clock className="mt-0.5 h-4 w-4 shrink-0 text-yellow-700" />
+                  <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/5 p-3" data-testid="onde-esta">
+                    <Clock className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
                     <p className="text-xs text-foreground">
                       <strong>Aguardando aprovação.</strong> Enviado{event.created_by ? ` por ${event.created_by}` : ''}{event.submitted_at ? ` em ${formatarData(new Date(event.submitted_at), "dd/MM 'às' HH:mm", { locale: ptBR })}` : ''}. Você ainda pode alterar; a administração vê a versão mais recente.
                     </p>
                   </div>
                 )}
                 {enviaParaAprovacao && isEditing && event?.status === 'cancelado' && (
-                  <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/40 p-3" data-testid="onde-esta">
+                  <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/40 p-3" data-testid="onde-esta">
                     <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                     <p className="text-xs text-foreground">
                       {form.status === 'cancelado'
@@ -978,8 +987,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 )}
 
                 {rascunho && (
-                  <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-300 dark:border-amber-400/30 bg-amber-50/70 p-3 dark:bg-amber-950/30" data-testid="faixa-rascunho">
-                    <Clock className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+                  <div className="flex flex-wrap items-center gap-3 rounded-xl border border-warning/30 bg-warning/5 p-3" data-testid="faixa-rascunho">
+                    <Clock className="h-4 w-4 shrink-0 text-warning" />
                     <p className="flex-1 min-w-[200px] text-sm">
                       <b>Você tem um rascunho</b>{rascunho.form.title?.trim() ? ` de “${tituloEmTexto(rascunho.form.title)}”` : ''}, guardado {quandoFoiGuardado(rascunho.em)} neste aparelho.
                     </p>
@@ -1138,15 +1147,15 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 )}
 
                 {isMarketing && (
-                  <div className={emRevisao ? 'space-y-4 rounded-xl border-2 border-primary/50 bg-primary/5 p-3' : 'space-y-4 border-t pt-4'}>
-                    <Label className="flex items-center gap-2 text-sm font-semibold text-primary">
-                      <Globe className="h-4 w-4" /> Configurações de Compartilhamento (Público)
+                  <div className={emRevisao ? 'space-y-4 rounded-2xl border border-border bg-muted/40 p-3' : 'space-y-4 border-t pt-4'}>
+                    <Label className="block text-[15px] font-semibold text-foreground">
+                      Configurações de Compartilhamento (Público)
                     </Label>
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <Label htmlFor="slug" className="text-xs font-medium block">Endereço do evento no site</Label>
                         {slugMode === 'auto' ? (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Automático</Badge>
+                          <Badge variant="secondary" className="text-[11px]">Automático</Badge>
                         ) : (
                           <button
                             type="button"
@@ -1154,7 +1163,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                               setSlugMode('auto');
                               setForm(prev => ({ ...prev, slug: generateUniqueSlug(prev.title || '') }));
                             }}
-                            className="text-[10px] text-primary hover:underline"
+                            className="text-[11px] font-semibold text-[hsl(var(--sel,168_80%_27%))] hover:underline"
                           >
                             Personalizado · Usar título
                           </button>
@@ -1222,7 +1231,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     Para os demais o bloco não aparece, e o evento fica interno — que
                     já é o padrão de um evento novo. */}
                 {isMarketing && (
-                <div className={emRevisao ? 'rounded-xl border-2 border-primary/50 bg-primary/5 p-3' : undefined}>
+                <div className={emRevisao ? 'rounded-2xl border border-border bg-muted/40 p-3' : undefined}>
                   <div className="flex items-center gap-2 mb-3">
                     <Label className="text-sm font-semibold">Onde este evento deve aparecer?</Label>
                     <TooltipProvider>
@@ -1243,11 +1252,11 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       onClick={() => setForm({ ...form, visibility: 'interno' })}
                       className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
                         form.visibility === 'interno' 
-                          ? 'border-primary bg-primary/5 text-primary shadow-sm' 
+                          ? 'border-foreground/40 bg-accent text-foreground' 
                           : 'border-border bg-card text-muted-foreground hover:border-muted-foreground/30'
                       }`}
                     >
-                      <Lock className={`h-6 w-6 mb-2 ${form.visibility === 'interno' ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <Lock className={`h-6 w-6 mb-2 ${form.visibility === 'interno' ? 'text-foreground' : 'text-muted-foreground'}`} />
                       <span className="text-sm font-bold">Privado / Interno</span>
                       <span className="text-[11px] opacity-70">Apenas para equipe</span>
                     </button>
@@ -1257,11 +1266,11 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       onClick={() => setForm({ ...form, visibility: 'publico' })}
                       className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
                         form.visibility === 'publico' 
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-400/10 text-blue-700 dark:text-blue-300 shadow-sm' 
+                          ? 'border-foreground/40 bg-accent text-foreground' 
                           : 'border-border bg-card text-muted-foreground hover:border-muted-foreground/30'
                       }`}
                     >
-                      <Globe className={`h-6 w-6 mb-2 ${form.visibility === 'publico' ? 'text-blue-500' : 'text-muted-foreground'}`} />
+                      <Globe className={`h-6 w-6 mb-2 ${form.visibility === 'publico' ? 'text-info' : 'text-muted-foreground'}`} />
                       <span className="text-sm font-bold">Público / Site</span>
                       <span className="text-[11px] opacity-70">Visível para todos</span>
                     </button>
@@ -1271,17 +1280,18 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       pessoa marca "Visível para todos", cumpre o checklist inteiro e o
                       evento nunca aparece — sem nada explicando por quê. */}
                   {form.visibility === 'publico' && form.status !== 'confirmado' && !emRevisao && (
-                    <div className="mt-3 flex items-start gap-3 rounded-lg border border-amber-300 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-400/10 p-3">
-                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+                    <div className="mt-3 flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/5 p-3">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
                       <div className="space-y-2">
-                        <p className="text-xs text-amber-900 dark:text-amber-100">
+                        <p className="text-xs text-foreground">
                           <strong>Ainda não vai aparecer no site.</strong> A página pública mostra só
                           eventos confirmados, e este está como {form.status}.
                         </p>
                         <Button
                           type="button"
                           size="sm"
-                          className="h-7 text-xs"
+                          variant="outline"
+                          className="h-8 text-xs"
                           onClick={() => setForm({ ...form, status: 'confirmado' })}
                         >
                           Marcar como confirmado
@@ -1291,8 +1301,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   )}
 
                   {form.visibility === 'publico' && form.status === 'confirmado' && (
-                    <p className="mt-3 flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-300">
-                      <CheckCircle2 className="h-3.5 w-3.5" /> Vai aparecer no site assim que for salvo.
+                    <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-success">
+                      <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" /> Vai aparecer no site assim que for salvo.
                     </p>
                   )}
 
@@ -1300,9 +1310,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       só faz sentido quando a unidade pediu. "Não" tira a vaga do
                       marketing da conta do transporte. */}
                   {form.marketing_request && form.marketing_coverage && (
-                    <div className="mt-4 rounded-lg border border-blue-200 dark:border-blue-400/30 bg-blue-50/60 dark:bg-blue-400/10 p-3" data-testid="resposta-da-cobertura">
-                      <p className="mb-2 text-xs font-semibold text-blue-900 dark:text-blue-100">Cobertura pedida pela unidade</p>
-                      <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-2.5 shadow-sm">
+                    <div className="mt-4 rounded-2xl border border-border bg-muted/40 p-3" data-testid="resposta-da-cobertura">
+                      <p className="mb-2 text-[13px] font-semibold text-foreground">Cobertura pedida pela unidade</p>
+                      <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-2.5">
                         <Switch
                           id="marketing_confirmed"
                           checked={form.marketing_confirmed === true}
@@ -1325,16 +1335,15 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 )}
 
                 {isMarketing && form.visibility === 'publico' && (
-                  <div className="space-y-6 rounded-2xl border-2 border-blue-200 dark:border-blue-400/30 p-5 bg-blue-50/30 dark:bg-blue-400/10">
-                    <div className="flex justify-between items-center border-b border-blue-100 dark:border-blue-400/30 pb-3">
+                  <div className="space-y-6 rounded-2xl border border-border bg-muted/30 p-5">
+                    <div className="flex justify-between items-center border-b border-border/70 pb-3">
                       <div className="flex items-center gap-2">
-                        <Share2 className="h-4 w-4 text-blue-600 dark:text-blue-300" />
-                        <Label className="text-sm font-semibold text-blue-800 dark:text-blue-100 uppercase tracking-wider">Checklist de publicação</Label>
+                        <Label className="text-[15px] font-semibold text-foreground">Checklist de publicação</Label>
                       </div>
 
                     </div>
                     
-                    <div className="flex items-center justify-between gap-3 p-2 bg-primary/5 rounded-md border border-primary/10">
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-2.5">
                       <div className="flex flex-col">
                         <Label htmlFor="show_in_banner" className="text-sm font-semibold text-foreground">Exibir no banner superior</Label>
                         <p className="text-[11px] text-muted-foreground">Destacar no carrossel da página pública.</p>
@@ -1349,16 +1358,16 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     {/* Antes passava em silêncio: o carrossel mostrava um bloco só de
                         cor. A ordem de fallback é a mesma do preview ao lado. */}
                     {form.show_in_banner && !form.banner_image_desktop && !form.banner_url_desktop && !form.banner_url_mobile && (
-                      <div className="flex items-start gap-3 rounded-lg border border-dashed border-amber-300 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-400/10 p-3">
-                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
-                        <p className="text-xs text-amber-900 dark:text-amber-100">
+                      <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/5 p-3">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                        <p className="text-xs text-foreground">
                           <strong>“Exibir no banner” ligado sem imagem.</strong> O carrossel vai usar só a cor do card.
                           Envie ao menos o Banner Desktop (21:9) abaixo.
                         </p>
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between gap-3 p-2 bg-muted rounded-md border border-border">
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-2.5">
                       <div className="flex flex-col">
                         <Label htmlFor="use_logo_as_title" className="text-sm font-semibold text-foreground">Usar logo como título</Label>
                         <p className="text-[11px] text-muted-foreground">Substitui o texto do título pela imagem da logo.</p>
@@ -1370,7 +1379,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       />
                     </div>
 
-                    <div className="flex items-center justify-between gap-3 p-2 bg-muted rounded-md border border-border">
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-2.5">
                       <div className="flex flex-col">
                         <Label htmlFor="show_banner_overlay" className="text-sm font-semibold text-foreground">Cortina de opacidade</Label>
                         <p className="text-[11px] text-muted-foreground">Escurece levemente a imagem para destacar o texto.</p>
@@ -1382,7 +1391,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       />
                     </div>
 
-                    <div className="flex items-center justify-between gap-3 p-2 bg-muted rounded-md border border-border">
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-2.5">
                       <div className="flex flex-col">
                         <Label htmlFor="show_banner_fade" className="text-sm font-semibold text-foreground">Degradê na base</Label>
                         <p className="text-[11px] text-muted-foreground">Adiciona um degradê na base do banner para melhorar a leitura.</p>
@@ -1394,7 +1403,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       />
                     </div>
 
-                    <div className="flex items-center justify-between gap-3 p-2 bg-muted rounded-md border border-border">
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-2.5">
                       <div className="flex flex-col">
                         <Label htmlFor="full_height_title" className="text-sm font-semibold text-foreground">Ocupar toda a altura</Label>
                         <p className="text-[11px] text-muted-foreground">O título ou logo cresce para preencher o banner (estilo cinema).</p>
@@ -1645,20 +1654,20 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                   </div>
 
                   {form.marketing_request && (
-                    <div className="rounded-lg border border-blue-100 dark:border-blue-400/30 bg-blue-50/30 dark:bg-blue-400/10 p-4 space-y-4 animate-in fade-in slide-in-from-top-1">
+                    <div className="rounded-2xl border border-border bg-muted/30 p-4 space-y-4 animate-in fade-in slide-in-from-top-1">
                       <div className="flex items-center justify-between">
-                        <Label className="text-sm font-semibold text-blue-900 dark:text-blue-100">O que você precisa? *</Label>
+                        <Label className="text-sm font-semibold text-foreground">O que você precisa? *</Label>
                       </div>
                       
                       <div className="space-y-4">
                         <div className="space-y-3">
-                          <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 shadow-sm">
+                          <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
                             <Switch
                               id="marketing_cobertura"
                               checked={form.marketing_coverage || false}
                               onCheckedChange={v => setForm({ ...form, marketing_coverage: v })}
                             />
-                            <Label htmlFor="marketing_cobertura" className="cursor-pointer flex-1 text-sm font-medium text-blue-900 dark:text-blue-100">Fotos e vídeo no dia (cobertura)</Label>
+                            <Label htmlFor="marketing_cobertura" className="cursor-pointer flex-1 text-sm font-medium text-foreground">Fotos e vídeo no dia (cobertura)</Label>
                           </div>
                           
                           {/* Dois combinados que a unidade precisa ler ao pedir: a
@@ -1667,7 +1676,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                               no transporte aparece na conta do transporte, não aqui. */}
                           {form.marketing_coverage && (
                             <div
-                              className="rounded-lg border border-blue-200 dark:border-blue-400/30 bg-blue-50/70 dark:bg-blue-400/10 px-3 py-2.5 text-[12px] leading-relaxed text-blue-900 dark:text-blue-100 animate-in fade-in zoom-in-95 duration-200"
+                              className="rounded-xl border border-info/30 bg-info/5 px-3 py-2.5 text-[12px] leading-relaxed text-foreground animate-in fade-in zoom-in-95 duration-200"
                               data-testid="combinados-da-cobertura"
                             >
                               <p className="mb-1.5 font-semibold">Pedido registrado. Dois combinados:</p>
@@ -1681,15 +1690,15 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                 da unidade: os dois registros se completam.
                               </p>
                               {form.marketing_confirmed === true && (
-                                <p className="mt-2 font-semibold text-emerald-700 dark:text-emerald-300">✓ Marketing confirmado para este evento.</p>
+                                <p className="mt-2 font-semibold text-success">✓ Marketing confirmado para este evento.</p>
                               )}
                               {form.marketing_confirmed === false && (
-                                <p className="mt-2 font-semibold text-amber-800 dark:text-amber-100">Sem marketing neste evento — o registro é pela unidade.</p>
+                                <p className="mt-2 font-semibold text-warning">Sem marketing neste evento — o registro é pela unidade.</p>
                               )}
                             </div>
                           )}
 
-                          <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 shadow-sm">
+                          <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
                             <Switch
                               id="marketing_grafica"
                               checked={arteAberta}
@@ -1700,7 +1709,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                 if (!v) setForm({ ...form, marketing_items: comPedidoDeArte(form.marketing_items, PEDIDO_VAZIO) });
                               }}
                             />
-                            <Label htmlFor="marketing_grafica" className="cursor-pointer flex-1 text-sm font-medium text-blue-900 dark:text-blue-100">Arte ou material impresso</Label>
+                            <Label htmlFor="marketing_grafica" className="cursor-pointer flex-1 text-sm font-medium text-foreground">Arte ou material impresso</Label>
                           </div>
 
                           {/* O pedido de verdade (22/09/2026): duas escolhas, legenda,
@@ -1714,7 +1723,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
 
                           {/* Pedidos do modelo antigo: legíveis e apagáveis, não editáveis. */}
                           {itensAntigosDeArte(form.marketing_items).map((item, idx) => (
-                            <div key={`antigo-${idx}`} className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-xs" data-testid="arte-pedido-antigo">
+                            <div key={`antigo-${idx}`} className="flex items-start gap-2 rounded-xl border border-border bg-muted/40 p-3 text-xs" data-testid="arte-pedido-antigo">
                               <div className="flex-1 min-w-0">
                                 <p className="font-semibold text-muted-foreground">Arte (pedido antigo) · {item.item}</p>
                                 {item.description && <p className="whitespace-pre-wrap text-foreground">{item.description}</p>}
@@ -1738,8 +1747,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                             Impressos"), mas não havia onde escrever: o único
                             valor entrou por migração. Aqui, junto do pedido de
                             marketing, é onde a pessoa diz o que já está pronto. */}
-                        <div className="pt-2 border-t border-blue-100 dark:border-blue-400/30">
-                          <Label htmlFor="printed_materials" className="text-xs font-medium mb-1 block text-blue-900 dark:text-blue-100">
+                        <div className="pt-2 border-t border-border/70">
+                          <Label htmlFor="printed_materials" className="text-xs font-medium mb-1 block text-foreground">
                             Já existe algo pronto? <span className="font-normal text-muted-foreground">(opcional)</span>
                           </Label>
                           <Input
@@ -1747,7 +1756,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                             value={form.printed_materials || ''}
                             onChange={e => setForm({ ...form, printed_materials: e.target.value })}
                             placeholder="Link ou descrição: cartaz, folder, lista de presença…"
-                            className="bg-background h-9 text-sm"
+                            className="bg-card h-9 text-sm"
                           />
                           <p className="text-[11px] text-muted-foreground mt-1">O que já está pronto, para o marketing não refazer.</p>
                         </div>
@@ -1755,7 +1764,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                         {/* Anexos moram no pedido ao marketing (22/09/2026): é para o
                             marketing que a gestora manda ofício, lista, referência de
                             arte. Sem limite de tamanho por arquivo. */}
-                        <div className="pt-2 border-t border-blue-100 dark:border-blue-400/30" data-testid="anexos-do-marketing">
+                        <div className="pt-2 border-t border-border/70" data-testid="anexos-do-marketing">
                           <FileUpload
                             mode="multiple"
                             label="Anexos para o marketing"
@@ -1794,7 +1803,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     const usarSugestao = () =>
                       s && setForm({ ...form, transport_vehicle: s.principal.value, transport_support_vehicle: s.apoio?.value ?? '' });
                     return (
-                      <div className="rounded-lg border border-amber-100 dark:border-amber-400/30 bg-amber-50/30 dark:bg-amber-400/10 p-4 space-y-4 animate-in fade-in slide-in-from-top-1">
+                      <div className="rounded-2xl border border-border bg-muted/30 p-4 space-y-4 animate-in fade-in slide-in-from-top-1">
                         <div>
                           <Label htmlFor="transport_passengers" className="text-xs font-medium mb-1 block">Quantas pessoas vão? *</Label>
                           <div className="grid gap-3 sm:grid-cols-[120px_1fr] sm:items-center">
@@ -1834,7 +1843,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                         </div>
 
                         {s && !sugestaoJaEscolhida && (
-                          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/60 bg-primary/10 p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-3">
                             <div>
                               <p className="text-sm font-semibold text-foreground">Sugestão: {s.texto}</p>
                               <p className="text-[11px] text-muted-foreground">
@@ -1844,7 +1853,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                 {s.utilitario && ' · utilitário pelos volumosos'}
                               </p>
                             </div>
-                            <Button type="button" size="sm" className="h-8" onClick={usarSugestao}>
+                            <Button type="button" size="sm" variant="outline" className="h-8" onClick={usarSugestao}>
                               Usar sugestão
                             </Button>
                           </div>
@@ -1897,7 +1906,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
 
                         {/* Gravado em `transport_extra_equipment` — antes era só
                             estado da tela e sumia ao salvar. */}
-                        <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 shadow-sm">
+                        <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
                           <Switch
                             id="transport_extra_equipment"
                             checked={!!form.transport_extra_equipment}
@@ -1915,14 +1924,14 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                             ficou de fora. Só avisa — o envio segue; o fretado é decisão
                             de quem aprova. */}
                         {r.acimaDoTeto ? (
-                          <div className="rounded-md border border-dashed border-destructive/40 bg-destructive/10 p-3 space-y-2 animate-in fade-in zoom-in-95 duration-200" data-testid="aviso-frota">
+                          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 space-y-2 animate-in fade-in zoom-in-95 duration-200" data-testid="aviso-frota">
                             <p className="text-sm font-semibold text-destructive">Não cabe na frota da ANA</p>
                             <p className="text-[11px] text-destructive">
                               Nossa frota (VAN + Kombi) leva até {TETO_DA_FROTA} passageiros; faltam <b>{r.faltamNaFrota}</b>.
                               Se precisar, marque o apoio externo abaixo — ônibus fretado, segunda viagem ou carona de parceiro — e
                               registre o combinado nas observações.
                             </p>
-                            <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-2.5 shadow-sm">
+                            <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-2.5">
                               <Switch
                                 id="transport_external_support"
                                 checked={!!form.transport_external_support}
@@ -1934,10 +1943,10 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                             </div>
                           </div>
                         ) : motivo && (
-                          <div className={`px-3 py-2 rounded-md border border-dashed animate-in fade-in zoom-in-95 duration-200 ${
-                            r.excedido ? 'bg-destructive/10 border-destructive/40' : 'bg-amber-50/60 dark:bg-amber-400/10 border-amber-300 dark:border-amber-400/30'
+                          <div className={`px-3 py-2 rounded-xl border animate-in fade-in zoom-in-95 duration-200 ${
+                            r.excedido ? 'bg-destructive/5 border-destructive/30' : 'bg-warning/5 border-warning/30'
                           }`}>
-                            <p className={`text-[11px] flex items-center gap-1.5 font-medium ${r.excedido ? 'text-destructive' : 'text-amber-700 dark:text-amber-300'}`}>
+                            <p className={`text-[11px] flex items-center gap-1.5 font-medium ${r.excedido ? 'text-destructive' : 'text-warning'}`}>
                               <AlertTriangle className="h-3 w-3" /> {motivo}
                             </p>
                           </div>
@@ -2135,16 +2144,16 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
             )}
             
             {!showConflictAlert && enviaParaAprovacao && !isEditing && (
-              <div className="flex items-start gap-3 rounded-lg border border-dashed border-blue-200 dark:border-blue-400/30 bg-blue-50/60 dark:bg-blue-400/10 p-3">
-                <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-300" />
-                <p className="text-xs text-blue-900 dark:text-blue-100">
+              <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/40 p-3">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <p className="text-xs text-foreground">
                   Vai para a administração geral, que revisa, confirma e decide se aparece no site.
                 </p>
               </div>
             )}
 
-            {!showConflictAlert && emRevisao && (
-              <DialogFooter className="sticky bottom-0 bg-background pt-4 pb-2 gap-2">
+            {!showConflictAlert && emRevisao && noRodape(
+              <DialogFooter className="gap-2 sm:justify-end">
                 <Button variant="outline" onClick={() => pedirParaFechar(false)}>Cancelar</Button>
                 <Button variant="outline" onClick={() => setDevolvendo(true)} disabled={salvando}>
                   Devolver com observação
@@ -2156,8 +2165,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
               </DialogFooter>
             )}
 
-            {!showConflictAlert && !emRevisao && (
-              <DialogFooter className="sticky bottom-0 bg-background pt-4 pb-2 sm:justify-between">
+            {!showConflictAlert && !emRevisao && noRodape(
+              <DialogFooter className="gap-2 sm:items-center sm:justify-between">
                 <div className="flex gap-2">
                   {podeCancelarOPedido && (
                     <Button variant="ghost" className="text-destructive hover:text-destructive" disabled={salvando} onClick={() => setConfirmandoCancelamento(true)}>
@@ -2193,15 +2202,15 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
           {isAdmin && (
             <div className="hidden lg:block border-l pl-8 space-y-4">
               <div className="flex items-center justify-between">
-                <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Preview público (Banner)</Label>
-                <Badge variant="outline" className="text-[10px] text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-200 dark:bg-amber-400/10 dark:border-amber-400/30">Exclusivo Banner</Badge>
+                <Label className="text-[15px] font-semibold text-foreground">Preview público (Banner)</Label>
+                <Badge variant="outline" className="text-[11px] text-muted-foreground">Exclusivo Banner</Badge>
               </div>
-              <div className="rounded-2xl border bg-muted/50 overflow-hidden shadow-inner h-full flex flex-col">
+              <div className="rounded-2xl border bg-muted/50 overflow-hidden h-full flex flex-col">
                 <div className="bg-background border-b px-4 py-2 flex items-center justify-between">
                   <div className="flex gap-1">
-                    <div className="h-2 w-2 rounded-full bg-red-400" />
-                    <div className="h-2 w-2 rounded-full bg-amber-400" />
-                    <div className="h-2 w-2 rounded-full bg-emerald-400" />
+                    <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
+                    <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
+                    <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
                   </div>
                   <div className="text-[10px] text-muted-foreground font-mono">
                     {prefixoDoLinkPublico()}{form.slug || 'preview'}
@@ -2240,7 +2249,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       )}
 
                       <div className="absolute bottom-0 left-0 right-0 p-4 z-[20] flex flex-col items-start justify-end h-full">
-                        <Badge className="bg-primary/80 text-white mb-2 text-[10px] border-none backdrop-blur-sm shrink-0">{form.unit ? eventUnitLabel(form.unit) : 'UNIDADE'}</Badge>
+                        <Badge className={`${form.unit ? UNIT_BG_COLORS[form.unit as Unit] : 'bg-white/80'} text-slate-900 mb-2 text-[10px] border-none shrink-0`}>{form.unit ? eventUnitLabel(form.unit) : 'UNIDADE'}</Badge>
                         
                         {form.use_logo_as_title && form.event_logo_url ? (
                           <div className={`flex items-center justify-start ${form.full_height_title ? 'h-1/2 w-full mb-2' : 'h-12 w-full mb-1'}`}>
@@ -2275,8 +2284,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
 
                     <div className="p-6 border-t bg-muted/40">
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-                        <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-tighter">Detalhes do evento (Card/Modal)</span>
+                        <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+                        <span className="text-[13px] font-semibold text-foreground">Detalhes do evento (Card/Modal)</span>
                       </div>
                       <h4 className="text-sm font-bold text-foreground mb-1">{form.title || 'Título do evento'}</h4>
                       <p className="text-[11px] text-muted-foreground line-clamp-3 leading-relaxed">{form.description || 'Sem descrição.'}</p>
@@ -2294,6 +2303,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
             </div>
           )}
         </div>
+        </div>
+        <div ref={setRodapeDaFolha} className="shrink-0 border-t border-border/70 bg-card/90 px-5 py-3 empty:hidden sm:px-6" />
       </DialogContent>
 
       <AlertDialog open={confirmarSaida} onOpenChange={setConfirmarSaida}>
@@ -2418,5 +2429,28 @@ function CabecalhoDeSecao({ n, titulo, sub }: { n: number; titulo: string; sub?:
       {sub && <span className="text-[11px] text-muted-foreground">{sub}</span>}
       <span className="h-px flex-1 bg-border" aria-hidden="true" />
     </div>
+  );
+}
+
+/** Esboço V2: o índice das quatro seções, ao lado dos campos. Leva até o cabeçalho de cada uma. */
+const SECOES_DO_FORMULARIO = ['O evento', 'Logística', 'Pedidos', 'Parcerias'];
+function IndiceDoFormulario() {
+  const ir = (i: number) => (e: React.MouseEvent<HTMLButtonElement>) => {
+    const raiz = e.currentTarget.closest('[role="dialog"]');
+    raiz?.querySelectorAll('[data-testid="secao-do-formulario"]')[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  return (
+    <nav aria-label="Seções do formulário" className="sticky top-0 hidden self-start md:block">
+      <ol className="space-y-1">
+        {SECOES_DO_FORMULARIO.map((t, i) => (
+          <li key={t}>
+            <button type="button" onClick={ir(i)} className="grid w-full grid-cols-[24px_1fr] items-center gap-2 rounded-xl px-1.5 py-1.5 text-left text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+              <span className="grid h-6 w-6 place-items-center rounded-full border border-border text-[11px] font-semibold">{i + 1}</span>
+              {t}
+            </button>
+          </li>
+        ))}
+      </ol>
+    </nav>
   );
 }

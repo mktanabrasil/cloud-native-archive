@@ -1,14 +1,12 @@
 import { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { CalendarDays, Clock, MapPin, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { RotateCcw, Search, Trash2 } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { AppEvent, UNIT_BG_COLORS } from '@/types';
 import { CapaDaUnidade } from '@/components/events/CapaDaUnidade';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
   AlertDialog,
@@ -55,98 +53,80 @@ export default function LixeiraPage() {
   }, [trashEvents, search]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="mb-8">
-          <PageHeader
-            title="Lixeira de Eventos"
-            description="Eventos excluídos que podem ser recuperados ou removidos permanentemente."
-            className="mb-0"
+    <div className="space-y-6">
+      <div>
+        <PageHeader
+          title="Lixeira de Eventos"
+          description="Eventos excluídos que podem ser recuperados ou removidos permanentemente."
+          className="mb-0"
+        />
+        <div className="mt-5 relative max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por título, local ou descrição..."
+            className="pl-10 h-11 border-border bg-card focus-visible:ring-primary"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
-          <div className="mt-6 relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por título, local ou descrição..."
-              className="pl-10 h-12 shadow-sm border-border bg-card focus-visible:ring-primary"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
         </div>
+      </div>
 
-        {loading ? (
-          <EsqueletoDaLixeira />
-        ) : erroAoCarregar && trashEvents.length === 0 ? (
-          <ErroAoCarregar oQue="a lixeira" onTentar={refetchEvents} />
-        ) : eventos.length === 0 ? (
-          <div className="text-center py-20 bg-card rounded-2xl border border-dashed border-border">
-            <Trash2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground">
-              {search ? 'Nada na lixeira com esse termo' : 'A lixeira está vazia'}
-            </h3>
-            <p className="text-muted-foreground">
-              {search ? 'Tente outra busca.' : 'Nada aguardando restauração.'}
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {eventos.map(event => (
-              <Card key={event.id} className="overflow-hidden border-border bg-card flex flex-col">
-                <div className="relative aspect-video overflow-hidden bg-muted">
-                  {/* A mesma capa da vitrine: a arte (capa, banner) ou a foto da
-                      unidade. Antes era o card chapado antigo e ignorava o banner
-                      (varredura de 25/09/2026). */}
-                  {event.banner_url_desktop || event.banner_url_mobile || event.banner_image_desktop ? (
-                    <img
-                      src={event.banner_url_desktop || event.banner_url_mobile || event.banner_image_desktop}
-                      alt={tituloEmTexto(event.title)}
-                      loading="lazy"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <CapaDaUnidade evento={event} className="select-none" />
-                  )}
-                  <div className={`absolute top-0 left-0 h-1 w-full ${UNIT_BG_COLORS[event.unit]}`} />
-                  <Badge className={`absolute top-3 left-3 ${UNIT_BG_COLORS[event.unit]} text-slate-900 border-none shadow-sm`}>
-                    {event.unit}
-                  </Badge>
+      {loading ? (
+        <EsqueletoDaLixeira />
+      ) : erroAoCarregar && trashEvents.length === 0 ? (
+        <ErroAoCarregar oQue="a lixeira" onTentar={refetchEvents} />
+      ) : eventos.length === 0 ? (
+        <div className="rounded-[20px] border border-black/5 bg-card px-6 py-16 text-center dark:border-white/5">
+          <h3 className="text-lg font-semibold text-foreground">
+            {search ? 'Nada na lixeira com esse termo' : 'A lixeira está vazia'}
+          </h3>
+          <p className="mt-1 text-muted-foreground">
+            {search ? 'Tente outra busca.' : 'Nada aguardando restauração.'}
+          </p>
+        </div>
+      ) : (
+        /* Esboço V2: a lixeira em linhas, como a lista das Programações — data
+           em destaque, título, meta com o ponto da unidade, quando foi
+           excluído, as duas saídas e a miniatura da capa. */
+        <div className="overflow-hidden rounded-[20px] border border-black/5 bg-card dark:border-white/5">
+          {eventos.map(event => {
+            const inicio = new Date(event.start_datetime);
+            return (
+              <div
+                key={event.id}
+                className="grid grid-cols-[48px_minmax(0,1fr)] items-center gap-x-4 gap-y-3 border-b border-border/70 px-4 py-4 last:border-b-0 sm:grid-cols-[56px_minmax(0,1fr)_auto_136px] sm:px-5"
+              >
+                <div className="grid justify-items-center self-start pt-0.5 leading-none sm:self-center sm:pt-0">
+                  <span className="font-display text-[26px] font-bold tabular-nums text-foreground">{format(inicio, 'dd')}</span>
+                  <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">{format(inicio, 'MMM', { locale: ptBR }).replace('.', '')}</span>
                 </div>
-                <CardHeader className="pb-3">
-                  <div className="flex gap-2 mb-2">
-                    <Badge variant="outline" className="border-destructive/20 bg-destructive/10 font-medium text-[10px] text-destructive">
-                      {event.deleted_at
-                        ? `Excluído em ${format(new Date(event.deleted_at), "dd/MM/yyyy 'às' HH:mm")}`
-                        : 'Excluído'}
-                    </Badge>
-                  </div>
-                  <CardTitle className="text-xl line-clamp-2 leading-tight text-foreground">
+
+                <div className="min-w-0">
+                  <p className="mb-1 inline-flex items-center gap-1.5 text-[12px] font-semibold text-destructive">
+                    <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
+                    {event.deleted_at
+                      ? `Excluído em ${format(new Date(event.deleted_at), "dd/MM/yyyy 'às' HH:mm")}`
+                      : 'Excluído'}
+                  </p>
+                  <h3 className="font-display text-base font-semibold leading-snug text-foreground line-clamp-2 sm:text-[17px]">
                     <TituloDoEvento texto={event.title} />
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 flex-1">
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <CalendarDays className="h-4 w-4 shrink-0" />
-                      <span>{format(new Date(event.start_datetime), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 shrink-0" />
-                      <span>
-                        {format(new Date(event.start_datetime), 'HH:mm')} às {format(new Date(event.end_datetime), 'HH:mm')}
-                      </span>
-                    </div>
-                    {event.location && (
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 shrink-0" />
-                        <span className="line-clamp-1">{event.location}</span>
-                      </div>
-                    )}
+                  </h3>
+                  <div className="mt-1 flex flex-wrap gap-x-3.5 gap-y-0.5 text-[13px] text-muted-foreground">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className={`h-2 w-2 shrink-0 rounded-full ring-1 ring-black/10 ${UNIT_BG_COLORS[event.unit]}`} />
+                      {event.unit}
+                    </span>
+                    <span>{format(inicio, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</span>
+                    <span>
+                      {format(inicio, 'HH:mm')} às {format(new Date(event.end_datetime), 'HH:mm')}
+                    </span>
+                    {event.location && <span className="min-w-0 line-clamp-1">{event.location}</span>}
                   </div>
-                </CardContent>
+                </div>
 
                 {/* As duas saídas da lixeira: voltar, ou acabar de vez. */}
-                <div className="flex items-center gap-2 border-t border-border p-4">
-                  <Button size="sm" variant="outline" className="flex-1 gap-1.5" onClick={() => restoreEvent(event.id)}>
+                <div className="col-start-2 flex flex-wrap items-center gap-2 sm:col-start-auto">
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => restoreEvent(event.id)}>
                     <RotateCcw className="h-3.5 w-3.5" /> Restaurar
                   </Button>
                   <Button
@@ -158,11 +138,26 @@ export default function LixeiraPage() {
                     <Trash2 className="h-3.5 w-3.5" /> Excluir de vez
                   </Button>
                 </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </main>
+
+                <div className="relative hidden aspect-video overflow-hidden rounded-xl bg-muted sm:block">
+                  {/* A mesma capa da vitrine: a arte (capa, banner) ou a foto da
+                      unidade (varredura de 25/09/2026). */}
+                  {event.banner_url_desktop || event.banner_url_mobile || event.banner_image_desktop ? (
+                    <img
+                      src={event.banner_url_desktop || event.banner_url_mobile || event.banner_image_desktop}
+                      alt={tituloEmTexto(event.title)}
+                      loading="lazy"
+                      className="h-full w-full object-cover saturate-50"
+                    />
+                  ) : (
+                    <CapaDaUnidade evento={event} comTitulo={false} className="select-none saturate-50" />
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Aqui a linha some do banco. É a única tela do app que faz isso com
           evento, e por isso ela pergunta, mostrando qual. */}
@@ -172,7 +167,7 @@ export default function LixeiraPage() {
             <AlertDialogTitle>Excluir este evento definitivamente?</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
-                <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
+                <div className="rounded-2xl border border-border bg-muted/40 p-3 text-sm">
                   <p className="font-medium text-foreground">{pendingPurge ? tituloEmTexto(pendingPurge.title) : ''}</p>
                   <p className="mt-1 text-muted-foreground">
                     {pendingPurge?.unit}

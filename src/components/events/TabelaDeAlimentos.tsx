@@ -39,7 +39,7 @@ export function TabelaDeAlimentos({ id, refeicao, alimentos, onAlimentos, cardap
   return (
     <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-1 duration-150" data-testid={`${id}-tabela`}>
       {alimentos.length > 0 && (
-        <div className="hidden md:grid grid-cols-[1.4fr_1fr_auto_1.3fr_28px] gap-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="hidden md:grid grid-cols-[1.4fr_1fr_auto_1.3fr_28px] gap-2 px-1 text-xs font-semibold text-muted-foreground">
           <span>Alimento</span>
           <span>Quantidade</span>
           <span>Precisamos providenciar?</span>
@@ -52,7 +52,7 @@ export function TabelaDeAlimentos({ id, refeicao, alimentos, onAlimentos, cardap
         const sim = providenciar(a);
         const base = `${id}-alimento-${n}`;
         return (
-          <div key={n} className="relative grid grid-cols-2 md:grid-cols-[1.4fr_1fr_auto_1.3fr_28px] gap-2 items-start rounded-lg border border-border bg-background p-2 md:p-1.5 md:border-0 md:bg-transparent" data-testid={`${base}`}>
+          <div key={n} className="relative grid grid-cols-2 md:grid-cols-[1.4fr_1fr_auto_1.3fr_28px] gap-2 items-start rounded-xl border border-border bg-card p-2 md:p-1.5 md:border-0 md:bg-transparent" data-testid={`${base}`}>
             <Input
               id={`${base}-nome`}
               aria-label={`Alimento ${n + 1} de ${refeicao}`}
@@ -74,7 +74,7 @@ export function TabelaDeAlimentos({ id, refeicao, alimentos, onAlimentos, cardap
             <div
               role="radiogroup"
               aria-label={`Precisamos providenciar o alimento ${n + 1} de ${refeicao}?`}
-              className="inline-flex h-11 md:h-9 rounded-md border border-border overflow-hidden text-xs font-medium self-start"
+              className="inline-flex h-11 md:h-9 rounded-xl border border-border overflow-hidden text-xs font-medium self-start"
               // Setas trocam entre Sim e Não, como num grupo de rádio de verdade.
               onKeyDown={e => {
                 if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
@@ -107,14 +107,14 @@ export function TabelaDeAlimentos({ id, refeicao, alimentos, onAlimentos, cardap
             </div>
             <div className="col-span-2 md:col-span-1 flex gap-1.5 min-w-0">
               {sim ? (
-                <p className="h-9 flex items-center px-2.5 rounded-md bg-muted text-xs text-muted-foreground flex-1" data-testid={`${base}-ana`}>
+                <p className="h-9 flex items-center px-2.5 rounded-xl bg-muted text-xs text-muted-foreground flex-1" data-testid={`${base}-ana`}>
                   ANA providencia
                 </p>
               ) : (
                 <>
                   <select
                     aria-label={`Quem fornece o alimento ${n + 1} de ${refeicao}`}
-                    className="h-9 rounded-md border border-input bg-background px-2 text-xs shrink-0"
+                    className="h-9 rounded-xl border border-input bg-card px-2 text-xs shrink-0"
                     value={a.fornecedor}
                     onChange={e => trocar(n, { fornecedor: e.target.value as Fornecedor })}
                   >

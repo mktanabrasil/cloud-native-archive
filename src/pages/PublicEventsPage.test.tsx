@@ -54,6 +54,15 @@ vi.mock('@/components/EventDetailDialog', () => ({
       </div>
     ) : null,
 }));
+// Fora do app (sem a V2 ligada) a página é a versão de antes, que traz o detalhe de antes.
+vi.mock('@/classico/EventDetailDialog', () => ({
+  EventDetailDialog: (props: { open: boolean; event: AppEvent | null; onEditar?: unknown; comoVisitante?: boolean }) =>
+    props.open && props.event ? (
+      <div data-testid="detalhe" data-editar={props.onEditar ? 'sim' : 'nao'} data-visitante={props.comoVisitante ? 'sim' : 'nao'}>
+        detalhe de {props.event.title}
+      </div>
+    ) : null,
+}));
 vi.mock('@/components/EventFormDialog', () => ({ default: () => null }));
 vi.mock('@/components/BannerMissingDialog', () => ({ BannerMissingDialog: () => null }));
 

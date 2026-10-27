@@ -32,6 +32,8 @@ import EventFormDialog from '@/components/EventFormDialog';
 import { BannerMissingDialog } from '@/components/BannerMissingDialog';
 import { VitrineVazia } from '@/components/events/VitrineVazia';
 import { RodapePublico } from '@/components/events/RodapePublico';
+import { useUiV2 } from '@/lib/uiV2';
+import PublicEventsPageClassica from '@/classico/PublicEventsPage';
 
 /**
  * A página pública de eventos — a vitrine que a família vê.
@@ -52,7 +54,15 @@ import { RodapePublico } from '@/components/events/RodapePublico';
 /** As unidades que viram chip. A Administração fica de fora, de propósito. */
 const UNIDADES_DO_FILTRO: Unit[] = ['DIC', 'Nilópolis', 'Santana'];
 
+/**
+ * Fora do app (embed no site, telas limpas), a Programação continua exatamente
+ * como era: o site já a incorpora (pedido de 26/10/2026). Dentro do app, a V2.
+ */
 export default function PublicEventsPage() {
+  return useUiV2() ? <ProgramacaoV2 /> : <PublicEventsPageClassica />;
+}
+
+function ProgramacaoV2() {
   const { isAuthenticated } = useAuth();
   const [search, setSearch] = useState('');
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -328,7 +338,7 @@ export default function PublicEventsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       {/* O h1 da página, só para leitor de tela: o herói vem antes com um h2
           por slide, e o título visível "Programação de Eventos" é um h2. Assim
           a ordem dos títulos faz sentido para quem navega por eles. */}
@@ -373,7 +383,7 @@ export default function PublicEventsPage() {
           onMouseLeave={() => setCarrosselPausado(false)}
           onFocus={() => setCarrosselPausado(true)}
           onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setCarrosselPausado(false); }}
-          className={`relative w-full h-[400px] md:h-[500px] overflow-hidden bg-slate-900 ${isAuthenticated ? 'mt-6' : ''}`}
+          className={`relative mx-auto h-[400px] w-[calc(100%-2rem)] max-w-7xl overflow-hidden rounded-[20px] rounded-br-[48px] bg-slate-900 md:h-[460px] md:w-[calc(100%-3rem)] ${isAuthenticated ? 'mt-5' : 'mt-4'}`}
         >
           {bannerEvents.map((event, index) => (
             <div
@@ -412,7 +422,7 @@ export default function PublicEventsPage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent z-[10]" />
               )}
 
-              <div className="absolute bottom-0 left-0 right-0 p-8 md:p-16 max-w-7xl mx-auto flex flex-col items-start justify-end h-full z-[20]">
+              <div className="glass-photo absolute bottom-4 left-4 right-4 z-[20] flex max-h-[calc(100%-2rem)] flex-col items-start rounded-[20px] p-5 md:bottom-8 md:left-8 md:right-auto md:max-w-[580px] md:p-7">
                 <div className="flex flex-wrap gap-2 mb-4 shrink-0">
                   <Badge className={`${UNIT_BG_COLORS[event.unit]} text-slate-900 border-none shadow-lg`}>
                     {event.unit}
@@ -442,12 +452,12 @@ export default function PublicEventsPage() {
                   </div>
                 ) : (
                   <h2
-                    className={`font-bold text-white mb-4 leading-tight drop-shadow-lg ${event.full_height_title ? 'text-4xl md:text-8xl lg:text-9xl max-w-5xl' : 'text-3xl md:text-6xl max-w-3xl'}`}
+                    className={`font-bold text-white mb-4 leading-tight drop-shadow-lg ${event.full_height_title ? 'text-4xl md:text-6xl' : 'text-3xl md:text-5xl'}`}
                   >
                     <TituloDoEvento texto={event.title} apenasNoDesktop />
                   </h2>
                 )}
-                <div className="flex flex-wrap gap-4 text-slate-200 text-sm md:text-base mb-6">
+                <div className="flex flex-wrap gap-4 text-slate-200 text-sm md:text-base mb-2">
                   <div className="flex items-center gap-2">
                     <CalendarDays className="h-5 w-5" />
                     <span>{textoDaData(event, anoQuandoPreciso(event))}</span>
@@ -464,10 +474,10 @@ export default function PublicEventsPage() {
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-4 mt-6">
+                <div className="mt-3 flex flex-wrap items-center gap-3">
                   <Button
                     size="lg"
-                    className="rounded-full px-8 shadow-xl"
+                    className="rounded-xl bg-white px-6 text-[#1F2322] hover:bg-white/90"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleCardClick(event);
@@ -479,7 +489,7 @@ export default function PublicEventsPage() {
                     <Button
                       variant="outline"
                       size="lg"
-                      className={`rounded-full backdrop-blur-md border-white/30 ${event.show_in_banner ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-primary text-white hover:bg-primary/90'}`}
+                      className={`rounded-xl border-white/40 bg-transparent text-white backdrop-blur-md hover:bg-white/15 hover:text-white ${event.show_in_banner ? '' : 'border-[#81e2cf] text-[#81e2cf]'}`}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -634,7 +644,7 @@ export default function PublicEventsPage() {
                     aria-pressed={ligado}
                     onClick={() => filtrarUnidade(ligado ? null : unidade)}
                     className={`inline-flex h-11 items-center gap-2 rounded-full border px-3.5 text-[13px] font-medium transition-colors ${
-                      ligado ? 'border-foreground bg-foreground text-background' : 'border-border bg-card text-foreground hover:bg-muted'
+                      ligado ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground hover:bg-muted'
                     }`}
                   >
                     <span className={`inline-block h-2 w-2 rounded-full ${UNIT_BG_COLORS[unidade]} ${ligado ? 'ring-2 ring-background' : ''}`} />
@@ -695,142 +705,115 @@ export default function PublicEventsPage() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sortedEvents.map(event => (
-              <Card
-                key={event.id}
-                role="button"
-                tabIndex={0}
-                aria-label={`Ver detalhes de ${tituloEmTexto(event.title)}`}
-                onKeyDown={(e) => teclaNoCard(e, event)}
-                className={`overflow-hidden border-border hover:shadow-lg transition-shadow bg-card flex flex-col group cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
-                  aba === 'passados' ? 'opacity-75 [&_img]:saturate-50 [&_.capa-sem-imagem]:saturate-50' : ''
-                }`}
-                onClick={() => handleCardClick(event)}
-              >
-                <div className="relative aspect-video overflow-hidden bg-muted">
-                  {/* Capa 16:9, depois 4:3, e por último o banner 21:9: um evento
-                      publicado só com a arte do banner ficava com card de cor sólida
-                      enquanto o herói mostrava a arte. */}
-                  {event.banner_url_desktop || event.banner_url_mobile || event.banner_image_desktop ? (
-                    <img
-                      src={event.banner_url_desktop || event.banner_url_mobile || event.banner_image_desktop}
-                      alt={tituloEmTexto(event.title)}
-                      loading="lazy"
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  ) : (
-                    /* Sem arte: a foto da unidade com a cor dela por cima
-                       (22/09/2026). Sede ou outro local: o card chapado. */
-                    <CapaDaUnidade evento={event} className="select-none" />
-                  )}
-                  <div className={`absolute top-0 left-0 h-1 w-full ${UNIT_BG_COLORS[event.unit]}`} />
-                  <Badge className={`absolute top-3 left-3 ${UNIT_BG_COLORS[event.unit]} text-slate-900 border-none shadow-sm`}>
-                    {event.unit}
-                  </Badge>
-
-                  {/* Os botões da equipe: o lápis edita direto (o clique no
-                      card abre o detalhe, como para o visitante); o olho liga e
-                      desliga o banner. */}
-                  {equipe && (canEdit || isAdmin) && (
-                    <div className="absolute top-3 right-3 flex gap-2.5">
-                      {canEdit && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            editar(event);
-                          }}
-                          className="p-2.5 sm:p-1.5 rounded-full shadow-lg backdrop-blur-md transition-colors bg-white/80 text-muted-foreground hover:bg-white"
-                          title="Editar evento"
-                          aria-label="Editar evento"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                      )}
-                      {isAdmin && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleToggleBanner(event);
-                          }}
-                          className={`p-2.5 sm:p-1.5 rounded-full shadow-lg backdrop-blur-md transition-colors ${event.show_in_banner ? 'bg-primary text-white' : 'bg-white/80 text-muted-foreground hover:bg-white'}`}
-                          title={event.show_in_banner ? 'Remover do banner' : 'Adicionar ao banner'}
-                          aria-label={event.show_in_banner ? 'Remover do banner' : 'Adicionar ao banner'}
-                        >
-                          {event.show_in_banner ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex gap-2">
-                      {jaAconteceu(event) && (
-                        <Badge variant="outline" className="bg-muted text-muted-foreground border-border font-medium text-[10px]">
-                          Já aconteceu
-                        </Badge>
-                      )}
-                      {/* Na vitrine todo evento é confirmado: o selo não dizia nada.
-                          O tipo, que só a equipe recebe (não está na lista pública
-                          de colunas), diz. */}
-                      {equipe && (
-                        <>
-                          {event.event_type && (
-                            <Badge variant="outline" className="bg-muted text-muted-foreground border-border font-medium text-[10px]">
-                              {rotuloDoTipo(event.event_type)}
-                            </Badge>
-                          )}
-                          {event.show_in_banner && (
-                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 font-medium text-[10px] flex items-center gap-1">
-                              <LayoutPanelTop className="h-2 w-2" /> Banner Ativo
-                            </Badge>
-                          )}
-                        </>
-                      )}
-                    </div>
+          /* Esboço V2: os eventos em lista, com a data em destaque, no lugar da
+             grade de cartões. Mesmo papel de botão, mesmo título (h3), mesma
+             capa e o mesmo endereço; só o arranjo mudou. */
+          <div className="overflow-hidden rounded-[20px] border border-black/5 bg-card dark:border-white/5">
+            {sortedEvents.map(event => {
+              const inicio = new Date(event.start_datetime);
+              return (
+                <div
+                  key={event.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Ver detalhes de ${tituloEmTexto(event.title)}`}
+                  onKeyDown={(e) => teclaNoCard(e, event)}
+                  onClick={() => handleCardClick(event)}
+                  className={`group grid cursor-pointer grid-cols-[48px_minmax(0,1fr)] items-center gap-x-4 gap-y-2 border-b border-border/70 px-4 py-4 transition-colors last:border-b-0 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:grid-cols-[56px_minmax(0,1fr)_auto_136px] sm:px-5 ${
+                    aba === 'passados' ? 'opacity-75 [&_img]:saturate-50 [&_.capa-sem-imagem]:saturate-50' : ''
+                  }`}
+                >
+                  <div className="grid justify-items-center self-start pt-0.5 leading-none sm:self-center sm:pt-0">
+                    <span className="font-display text-[26px] font-bold tabular-nums text-foreground">{format(inicio, 'dd')}</span>
+                    <span className="mt-1 text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">{format(inicio, 'MMM', { locale: ptBR }).replace('.', '')}</span>
                   </div>
-                  <CardTitle className="text-xl line-clamp-2 leading-tight group-hover:text-primary transition-colors text-foreground">
-                    <TituloDoEvento texto={event.title} />
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 flex-1">
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+
+                  <div className="min-w-0">
+                    {(jaAconteceu(event) || (equipe && (event.event_type || event.show_in_banner))) && (
+                      <div className="mb-1 flex flex-wrap gap-x-3 gap-y-1">
+                        {jaAconteceu(event) && <Badge variant="secondary" className="text-[11px]">Já aconteceu</Badge>}
+                        {/* Na vitrine todo evento é confirmado: o selo não dizia nada.
+                            O tipo, que só a equipe recebe, diz. */}
+                        {equipe && event.event_type && <Badge variant="secondary" className="text-[11px]">{rotuloDoTipo(event.event_type)}</Badge>}
+                        {equipe && event.show_in_banner && <Badge className="text-[11px] text-[hsl(var(--sel,168_80%_27%))]">Banner Ativo</Badge>}
+                      </div>
+                    )}
+                    <h3 className="font-display text-base font-semibold leading-snug text-foreground line-clamp-2 sm:text-[17px]">
+                      <TituloDoEvento texto={event.title} />
+                    </h3>
+                    <div className="mt-1 flex flex-wrap gap-x-3.5 gap-y-0.5 text-[13px] text-muted-foreground">
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className={`h-2 w-2 shrink-0 rounded-full ring-1 ring-black/10 ${UNIT_BG_COLORS[event.unit]}`} />
+                        {event.unit}
+                      </span>
                       <span>{textoDaData(event)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                       <span>{textoDoHorario(event)}</span>
-                    </div>
-                    {event.location && (
-                      <div className="flex items-start gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                      {event.location && (
                         <span className="min-w-0">
-                          <span className="line-clamp-1">{event.location}</span>
+                          {event.location}
                           {/* Evento público mostra o endereço inteiro da unidade
                               (22/09/2026): quem vem de fora precisa saber onde é. */}
                           {event.visibility === 'publico' && enderecoDoLocal(event.location) && (
-                            <span className="block text-xs text-muted-foreground line-clamp-2" data-testid="endereco-card">{enderecoDoLocal(event.location)}</span>
+                            <span className="block text-xs text-[hsl(var(--fraco,0_0%_45%))] line-clamp-1" data-testid="endereco-card">{enderecoDoLocal(event.location)}</span>
                           )}
                         </span>
-                      </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Os botões da equipe: o lápis edita direto (o clique na linha
+                      abre o detalhe, como para o visitante); o olho liga e
+                      desliga o banner. */}
+                  <div className="col-start-2 flex gap-1.5 sm:col-start-auto">
+                    {equipe && canEdit && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          editar(event);
+                        }}
+                        className="grid h-9 w-9 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        title="Editar evento"
+                        aria-label="Editar evento"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    )}
+                    {equipe && isAdmin && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleToggleBanner(event);
+                        }}
+                        className={`grid h-9 w-9 place-items-center rounded-xl transition-colors ${event.show_in_banner ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+                        title={event.show_in_banner ? 'Remover do banner' : 'Adicionar ao banner'}
+                        aria-label={event.show_in_banner ? 'Remover do banner' : 'Adicionar ao banner'}
+                      >
+                        {event.show_in_banner ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                      </button>
                     )}
                   </div>
 
-                  {event.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-3 italic border-t border-border pt-4">
-                      "{event.description}"
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+                  <div className="relative hidden aspect-video overflow-hidden rounded-xl bg-muted sm:block">
+                    {/* Capa 16:9, depois 4:3, e por último o banner 21:9. */}
+                    {event.banner_url_desktop || event.banner_url_mobile || event.banner_image_desktop ? (
+                      <img
+                        src={event.banner_url_desktop || event.banner_url_mobile || event.banner_image_desktop}
+                        alt={tituloEmTexto(event.title)}
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      /* Sem arte: a foto da unidade com a cor dela por cima. */
+                      <CapaDaUnidade evento={event} comTitulo={false} className="select-none" />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
         </div>

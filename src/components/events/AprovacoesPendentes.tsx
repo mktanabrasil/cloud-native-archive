@@ -1,12 +1,9 @@
 import { useMemo } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Clock } from 'lucide-react';
-import { AppEvent, eventUnitLabel } from '@/types';
+import { AppEvent, UNIT_BG_COLORS, Unit, eventUnitLabel } from '@/types';
 import { tituloEmTexto } from '@/lib/events/titulo';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 
 /**
  * O que as unidades enviaram e a administração geral ainda não revisou.
@@ -31,40 +28,43 @@ export function AprovacoesPendentes({ eventos, onRevisar }: Props) {
   const pedidos = useMemo(() => pedidosPendentes(eventos), [eventos]);
   if (pedidos.length === 0) return null;
 
+  /* Esboço V2: o bloco "Pede atenção". Título de bloco, a contagem em texto
+     com bolinha, e uma linha por pedido com nome, motivo e o link "Revisar". */
   return (
-    <Card className="border-warning/50">
-      <CardContent className="p-4 sm:p-5">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-warning" />
-            <h2 className="text-sm font-semibold text-foreground">Aprovações pendentes</h2>
-          </div>
-          <Badge variant="outline" className="border-warning/60 bg-warning/15 text-foreground">
-            {pedidos.length === 1 ? '1 aguardando aprovação' : `${pedidos.length} aguardando aprovação`}
-          </Badge>
-        </div>
+    <Card className="overflow-hidden" data-testid="aprovacoes-pendentes">
+      <div className="flex items-center justify-between gap-3 border-b border-border/70 px-4 py-3.5 sm:px-5">
+        <h2 className="text-[15px] font-semibold text-foreground">Pede atenção</h2>
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold tabular-nums text-warning">
+          <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
+          {pedidos.length === 1 ? '1 aguardando aprovação' : `${pedidos.length} aguardando aprovação`}
+        </span>
+      </div>
 
-        <ul className="space-y-1.5 sm:space-y-2">
-          {pedidos.map(e => (
-            <li
-              key={e.id}
-              className="flex items-center gap-3 rounded-lg border border-border border-l-4 border-l-warning bg-card p-2.5 sm:p-3"
+      <ul>
+        {pedidos.map(e => (
+          <li
+            key={e.id}
+            className="flex items-center gap-3 border-b border-border/70 px-4 py-2.5 last:border-b-0 sm:px-5 sm:py-3"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-foreground">{tituloEmTexto(e.title)}</p>
+              <p className="flex flex-wrap items-center gap-x-1.5 text-[12px] text-muted-foreground sm:text-[13px]">
+                <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ring-1 ring-black/10 ${UNIT_BG_COLORS[e.unit as Unit] ?? 'bg-muted-foreground'}`} />
+                {eventUnitLabel(e.unit)} · {format(new Date(e.start_datetime), "d MMM, HH:mm", { locale: ptBR })} · enviado por{' '}
+                {e.created_by || 'a unidade'}{' '}
+                {formatDistanceToNow(new Date(e.submitted_at!), { locale: ptBR, addSuffix: true })}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="h-11 shrink-0 rounded-xl px-2 text-[13px] font-semibold text-[hsl(var(--sel))] transition-colors hover:bg-muted hover:underline hover:underline-offset-4 sm:h-8"
+              onClick={() => onRevisar(e)}
             >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold text-foreground sm:text-sm">{tituloEmTexto(e.title)}</p>
-                <p className="text-[11px] text-muted-foreground sm:text-xs">
-                  {eventUnitLabel(e.unit)} · {format(new Date(e.start_datetime), "d MMM, HH:mm", { locale: ptBR })} · enviado por{' '}
-                  {e.created_by || 'a unidade'}{' '}
-                  {formatDistanceToNow(new Date(e.submitted_at!), { locale: ptBR, addSuffix: true })}
-                </p>
-              </div>
-              <Button size="sm" className="h-8 shrink-0" onClick={() => onRevisar(e)}>
-                Revisar
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
+              Revisar
+            </button>
+          </li>
+        ))}
+      </ul>
     </Card>
   );
 }

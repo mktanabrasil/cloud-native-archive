@@ -14,7 +14,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { getStatusBadgeClass } from '@/lib/statusColors';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -25,16 +24,16 @@ import { AppEvent, EventStatus, UNITS, EVENT_STATUSES, EVENT_TYPES, Unit } from 
 import { cn } from '@/lib/utils';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, startOfWeek, endOfWeek, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, List, LayoutGrid, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Search } from 'lucide-react';
 import { MarcaDaAgenda } from '@/components/events/AgendaDoEvento';
+import { SituacaoDoEvento } from '@/components/events/SituacaoDoEvento';
 import { rotuloDoStatus } from '@/lib/events/status';
 import { Checkbox } from '@/components/ui/checkbox';
 import EventFormDialog from '@/components/EventFormDialog';
@@ -51,11 +50,12 @@ const unitDotColors: Record<Unit, string> = {
   'Administração': 'bg-unit-geral',
 };
 
-const unitBorderColors: Record<Unit, string> = {
-  'DIC': 'border-l-unit-dic',
-  'Nilópolis': 'border-l-unit-nilopolis',
-  'Santana': 'border-l-unit-santana',
-  'Administração': 'border-l-unit-geral',
+/** A variável de cor de cada unidade, para os blocos translúcidos (como na semana da Visão Geral). */
+const varDaUnidade: Record<Unit, string> = {
+  'DIC': '--unit-dic',
+  'Nilópolis': '--unit-nilopolis',
+  'Santana': '--unit-santana',
+  'Administração': '--unit-geral',
 };
 
 type View = 'month' | 'week' | 'list';
@@ -321,15 +321,10 @@ export default function CalendarPage() {
             <div className="flex items-center gap-2">
               <Tabs value={view} onValueChange={(v) => setView(v as View)} className="w-full sm:w-auto">
                 <TabsList className="h-10">
-                  <TabsTrigger value="month" className="gap-1.5 h-8">
-                    <LayoutGrid className="h-4 w-4" /> <span className="hidden sm:inline">Mês</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="week" className="gap-1.5 h-8">
-                    <CalendarIcon className="h-4 w-4" /> <span className="hidden sm:inline">Semana</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="list" className="gap-1.5 h-8">
-                    <List className="h-4 w-4" /> <span className="hidden sm:inline">Lista</span>
-                  </TabsTrigger>
+                  {/* Esboço V2: abas só com o nome, sem ícone. */}
+                  <TabsTrigger value="month" className="h-8">Mês</TabsTrigger>
+                  <TabsTrigger value="week" className="h-8">Semana</TabsTrigger>
+                  <TabsTrigger value="list" className="h-8">Lista</TabsTrigger>
                 </TabsList>
               </Tabs>
               
@@ -390,148 +385,159 @@ export default function CalendarPage() {
       />
 
 
+      {/* Esboço V2: o mês em grade limpa, com cada evento como um bloco de
+          borda esquerda na cor da unidade (o mesmo desenho da semana da
+          Visão Geral). Arrastar, continuação e "+N" continuam iguais. */}
       {view === 'month' && (
-        <Card>
-          <CardContent className="p-2">
-            <div className="grid grid-cols-7 text-center">
-              {dayNames.map(d => (
-                <div key={d} className="p-1 text-[10px] font-semibold text-muted-foreground sm:p-2 sm:text-xs">{d}</div>
-              ))}
-              {days.map(day => {
-                const dayEvents = getEventsForDay(day);
-                const isCurrentMonth = isSameMonth(day, selectedMonth);
-                const isToday = isSameDay(day, new Date());
-                const dateStr = format(day, 'yyyy-MM-dd');
-                const isDragOver = dragOverDate === dateStr;
-                const hasConflict = conflictDates.has(dateStr);
-                return (
-                  <div
-                    key={day.toISOString()}
-                    onDragOver={(e) => handleDragOver(e, dateStr)}
-                    onDragLeave={handleDragLeave}
-                    onDrop={(e) => handleDrop(e, day)}
-                    className={cn(
-                      "min-h-[80px] sm:min-h-[100px] border border-border p-0.5 sm:p-1 transition-colors relative",
-                      !isCurrentMonth ? 'opacity-30 bg-muted/20' : '',
-                      isToday ? 'bg-primary/5' : '',
-                      isDragOver ? 'bg-accent/50 border-primary/50' : '',
-                      hasConflict ? 'bg-muted/10 border-border/50' : '',
-                    )}
-                  >
+        <Card className="overflow-hidden">
+          <div className="grid grid-cols-7">
+            {dayNames.map((d, i) => (
+              <div key={d} className={cn("border-b border-border/70 px-1 py-2 text-center text-[11px] font-semibold text-muted-foreground sm:text-xs", i > 0 && 'border-l')}>{d}</div>
+            ))}
+            {days.map((day, i) => {
+              const dayEvents = getEventsForDay(day);
+              const isCurrentMonth = isSameMonth(day, selectedMonth);
+              const isToday = isSameDay(day, new Date());
+              const dateStr = format(day, 'yyyy-MM-dd');
+              const isDragOver = dragOverDate === dateStr;
+              const hasConflict = conflictDates.has(dateStr);
+              const limite = isMobile ? 2 : 3;
+              return (
+                <div
+                  key={day.toISOString()}
+                  onDragOver={(e) => handleDragOver(e, dateStr)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, day)}
+                  className={cn(
+                    "relative min-h-[84px] min-w-0 border-border/70 p-1 transition-colors sm:min-h-[116px] sm:p-1.5",
+                    i % 7 !== 0 && 'border-l',
+                    i < days.length - 7 && 'border-b',
+                    !isCurrentMonth && 'bg-muted/40',
+                    isDragOver && 'bg-accent',
+                  )}
+                >
+                  <div className="mb-1 flex items-center gap-1 px-0.5">
                     <span className={cn(
-                      "inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] sm:h-6 sm:w-6 sm:text-xs mb-1",
-                      isToday ? 'bg-primary text-primary-foreground font-bold' : hasConflict ? 'bg-muted text-muted-foreground' : 'text-foreground'
+                      "inline-flex h-6 min-w-[24px] items-center justify-center rounded-md px-1 text-[11px] font-semibold tabular-nums sm:text-xs",
+                      isToday ? 'bg-foreground text-background' : isCurrentMonth ? 'text-foreground' : 'text-[hsl(var(--fraco))]'
                     )}>
                       {format(day, 'd')}
                     </span>
-                    <div className="flex flex-col gap-0.5">
-                      {dayEvents.slice(0, isMobile ? 2 : 3).map(e => {
-                        // Só o primeiro dia tem a borda colorida e aceita arrasto;
-                        // os do meio mostram o título mais claro e abrem o mesmo detalhe.
-                        const inicio = eDiaDeInicio(e, day);
-                        return (
+                    {hasConflict && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-destructive" title="Dia com conflito" />}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {dayEvents.slice(0, limite).map(e => {
+                      // Só o primeiro dia tem a borda colorida e aceita arrasto;
+                      // os do meio mostram o título mais claro e abrem o mesmo detalhe.
+                      const inicio = eDiaDeInicio(e, day);
+                      const cor = varDaUnidade[e.unit];
+                      return (
+                      <button
+                        key={e.id}
+                        draggable={inicio}
+                        data-continuacao={inicio ? undefined : 'sim'}
+                        aria-label={inicio ? undefined : `${tituloEmTexto(e.title)} (continua)`}
+                        onDragStart={inicio ? (ev) => handleDragStart(ev, e) : undefined}
+                        onClick={() => handleEventClick(e)}
+                        className={cn(
+                          "block min-w-0 px-1.5 py-0.5 text-left text-[10px] leading-snug transition-opacity hover:opacity-80 sm:text-[11.5px]",
+                          inicio
+                            ? "w-full cursor-grab rounded-r-md border-l-[3px] font-semibold text-foreground active:cursor-grabbing"
+                            : cn("-mx-1 cursor-pointer italic text-muted-foreground sm:-mx-1.5", eDiaDeFim(e, day) ? 'rounded-r-md' : 'rounded-none'),
+                        )}
+                        style={inicio
+                          ? { background: `hsl(var(${cor}) / 0.16)`, borderColor: `hsl(var(${cor}))` }
+                          : { background: `hsl(var(${cor}) / 0.08)` }}
+                      >
+                        <span className="block truncate">{e.title}</span>
+                        {inicio && (
+                          <span className="hidden truncate font-normal text-muted-foreground sm:block">{format(new Date(e.start_datetime), 'HH:mm')}</span>
+                        )}
+                      </button>
+                      );
+                    })}
+                    {dayEvents.length > limite && (
+                      <span className="block px-1 text-[10px] font-medium text-muted-foreground sm:text-[11px]">
+                        +{dayEvents.length - limite}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Esboço V2: a semana em sete colunas (no celular, um dia embaixo do
+          outro), com os mesmos blocos do mês. */}
+      {view === 'week' && (
+        <Card className="overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-7">
+            {weekDays.map((day, i) => {
+              const dayEvents = getEventsForDay(day);
+              const isToday = isSameDay(day, new Date());
+              const dateStr = format(day, 'yyyy-MM-dd');
+              const isDragOver = dragOverDate === dateStr;
+              const rotulo = format(day, isMobile ? 'EEEE, d' : 'EEE d', { locale: ptBR });
+              return (
+                <div
+                  key={day.toISOString()}
+                  onDragOver={(e) => handleDragOver(e, dateStr)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, day)}
+                  className={cn(
+                    "min-w-0 border-border/70 transition-colors",
+                    i < weekDays.length - 1 && 'border-b sm:border-b-0',
+                    i > 0 && 'sm:border-l',
+                    isDragOver && 'bg-accent',
+                  )}
+                >
+                  <div className="border-b border-border/70 px-3 py-2 text-left text-xs font-semibold capitalize text-muted-foreground sm:text-center">
+                    {isToday ? (
+                      <b className="rounded-md bg-foreground px-1.5 py-0.5 text-background">{rotulo}</b>
+                    ) : (
+                      rotulo
+                    )}
+                  </div>
+                  <div className="space-y-1.5 p-2 sm:min-h-[280px]">
+                    {dayEvents.length === 0 ? (
+                      <p className="px-1 py-1 text-xs text-muted-foreground sm:hidden">Sem eventos</p>
+                    ) : (
+                      dayEvents.map(e => { const inicio = eDiaDeInicio(e, day); const cor = varDaUnidade[e.unit]; return (
                         <button
                           key={e.id}
                           draggable={inicio}
                           data-continuacao={inicio ? undefined : 'sim'}
-                          aria-label={inicio ? undefined : `${tituloEmTexto(e.title)} (continua)`}
                           onDragStart={inicio ? (ev) => handleDragStart(ev, e) : undefined}
                           onClick={() => handleEventClick(e)}
                           className={cn(
-                            "flex w-full items-center gap-1 px-1 py-0.5 text-left text-[8px] sm:text-[10px] leading-tight hover:opacity-80 transition-opacity",
-                            unitDotColors[e.unit], "bg-opacity-10",
-                            inicio
-                              ? cn("rounded cursor-grab active:cursor-grabbing border-l-2", unitBorderColors[e.unit])
-                              : cn("cursor-pointer -mx-0.5 sm:-mx-1 pl-2 italic", eDiaDeFim(e, day) ? 'rounded-r' : 'rounded-none'),
+                            "block w-full rounded-r-lg border-l-[3px] px-2 py-1.5 text-left text-[12px] leading-snug transition-opacity hover:opacity-80",
+                            inicio ? 'cursor-grab font-semibold text-foreground active:cursor-grabbing' : 'cursor-pointer italic text-muted-foreground',
                           )}
+                          style={{ background: `hsl(var(${cor}) / ${inicio ? 0.16 : 0.08})`, borderColor: inicio ? `hsl(var(${cor}))` : 'transparent' }}
                         >
-                          <span className={cn("truncate flex-1", inicio ? 'text-foreground' : 'text-muted-foreground')}>{e.title}</span>
+                          <span className="line-clamp-2">{e.title}</span>
+                          <span className="block font-normal not-italic text-muted-foreground">
+                            {inicio
+                              ? `${format(new Date(e.start_datetime), 'HH:mm')} - ${format(new Date(e.end_datetime), 'HH:mm')}`
+                              : `continua · até ${format(new Date(e.end_datetime), 'dd/MM')}`}
+                          </span>
                         </button>
-                        );
-                      })}
-                      {dayEvents.length > (isMobile ? 2 : 3) && (
-                        <span className="block text-center text-[8px] font-medium text-muted-foreground sm:text-[10px]">
-                          +{dayEvents.length - (isMobile ? 2 : 3)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {view === 'week' && (
-        <Card>
-          <CardContent className="p-2 sm:p-4">
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-7 sm:gap-3">
-              {weekDays.map(day => {
-                const dayEvents = getEventsForDay(day);
-                const isToday = isSameDay(day, new Date());
-                const dateStr = format(day, 'yyyy-MM-dd');
-                const isDragOver = dragOverDate === dateStr;
-                return (
-                  <div
-                    key={day.toISOString()}
-                    onDragOver={(e) => handleDragOver(e, dateStr)}
-                    onDragLeave={handleDragLeave}
-                    onDrop={(e) => handleDrop(e, day)}
-                    className={cn(
-                      "rounded-lg border border-border transition-colors",
-                      isToday ? 'bg-primary/5 border-primary/20' : '',
-                      isDragOver ? 'bg-accent/50 border-primary/50' : '',
-                      isMobile ? 'p-2' : 'p-3'
+                      ); })
                     )}
-                  >
-                    <div className="flex items-center justify-between mb-2 sm:flex-col sm:mb-3">
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider sm:text-xs sm:mb-2 text-center w-full">
-                        {format(day, isMobile ? 'EEEE' : 'EEE', { locale: ptBR })}
-                      </p>
-                      <p className={cn(
-                        "text-lg font-bold sm:text-xl text-center w-full",
-                        isToday ? 'text-primary' : 'text-foreground'
-                      )}>
-                        {format(day, 'd')}
-                      </p>
-                    </div>
-                    <div className="space-y-1.5 sm:space-y-2">
-                      {dayEvents.length === 0 ? (
-                        <p className="text-[10px] text-muted-foreground text-center py-2 sm:hidden">Sem eventos</p>
-                      ) : (
-                        dayEvents.map(e => { const inicio = eDiaDeInicio(e, day); return (
-                          <button
-                            key={e.id}
-                            draggable={inicio}
-                            data-continuacao={inicio ? undefined : 'sim'}
-                            onDragStart={inicio ? (ev) => handleDragStart(ev, e) : undefined}
-                            onClick={() => handleEventClick(e)}
-                            className="w-full rounded-md border border-border p-2 text-left cursor-grab active:cursor-grabbing hover:bg-accent bg-card"
-                          >
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <span className={`h-1.5 w-1.5 rounded-full ${unitDotColors[e.unit]}`} />
-                              <span className="truncate text-[10px] font-medium text-foreground sm:text-xs">{e.title}</span>
-                            </div>
-                            <p className="text-[9px] text-muted-foreground sm:text-[10px]">
-                              {inicio
-                                ? `${format(new Date(e.start_datetime), 'HH:mm')} - ${format(new Date(e.end_datetime), 'HH:mm')}`
-                                : `continua · até ${format(new Date(e.end_datetime), 'dd/MM')}`}
-                            </p>
-                          </button>
-                        ); })
-                      )}
-                    </div>
                   </div>
-                );
-              })}
-            </div>
-          </CardContent>
+                </div>
+              );
+            })}
+          </div>
         </Card>
       )}
 
+      {/* Esboço V2: a lista em linhas, com a data em destaque, como a lista
+          das Programações; a situação em texto com bolinha. */}
       {view === 'list' && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {canEdit && (
             <BulkActionBar
               type="events"
@@ -541,37 +547,51 @@ export default function CalendarPage() {
               onChangeStatus={handleBulkStatusChange}
             />
           )}
-          {filtered.sort((a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime()).map(e => (
-            <Card key={e.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="flex items-center gap-4 p-4">
-                {canEdit && (
-                  <Checkbox
-                    checked={selectedEvents.has(e.id)}
-                    onCheckedChange={() => toggleEventSelection(e.id)}
-                    onClick={(ev) => ev.stopPropagation()}
-                  />
-                )}
-                <button onClick={() => handleEventClick(e)} className="flex flex-1 items-center gap-4 cursor-pointer">
-                  <span className={`h-3 w-3 rounded-full ${unitDotColors[e.unit]}`} />
-                  <div className="flex-1 min-w-0 text-left">
-                    <p className="font-medium text-foreground truncate">{e.title}</p>
-                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="truncate">{e.unit} · {e.location}</span><MarcaDaAgenda event={e} /></p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm text-foreground">
-                      {diasDoEvento(e).length > 1
-                        ? `${format(new Date(e.start_datetime), 'dd/MM')} a ${format(new Date(e.end_datetime), 'dd/MM/yyyy')}`
-                        : format(new Date(e.start_datetime), 'dd/MM/yyyy')}
-                    </p>
-                    <p className="text-xs text-muted-foreground">{format(new Date(e.start_datetime), 'HH:mm')} - {format(new Date(e.end_datetime), 'HH:mm')}</p>
-                  </div>
-                  <Badge variant="outline" className={`shrink-0 ${getStatusBadgeClass(e.status)}`}>
-                    {rotuloDoStatus(e.status)}
-                  </Badge>
-                </button>
-              </CardContent>
-            </Card>
-          ))}
+          {filtered.length === 0 ? (
+            <p className="rounded-[20px] border border-black/5 bg-card py-12 text-center text-sm text-muted-foreground dark:border-white/5">Nenhum evento encontrado</p>
+          ) : (
+          <div className="overflow-hidden rounded-[20px] border border-black/5 bg-card dark:border-white/5">
+          {[...filtered].sort((a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime()).map(e => {
+            const inicio = new Date(e.start_datetime);
+            return (
+            <div key={e.id} className="flex items-center gap-3 border-b border-border/70 px-4 py-3 transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-4 sm:px-5">
+              {canEdit && (
+                <Checkbox
+                  checked={selectedEvents.has(e.id)}
+                  onCheckedChange={() => toggleEventSelection(e.id)}
+                  onClick={(ev) => ev.stopPropagation()}
+                />
+              )}
+              <button onClick={() => handleEventClick(e)} className="grid min-w-0 flex-1 cursor-pointer grid-cols-[44px_minmax(0,1fr)] items-center gap-x-4 gap-y-1 text-left sm:grid-cols-[48px_minmax(0,1fr)_auto_160px]">
+                <span className="grid justify-items-center self-start leading-none sm:self-center">
+                  <span className="font-display text-[22px] font-bold tabular-nums text-foreground">{format(inicio, 'dd')}</span>
+                  <span className="mt-1 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">{format(inicio, 'MMM', { locale: ptBR }).replace('.', '')}</span>
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate font-semibold text-foreground">{e.title}</span>
+                  <span className="mt-0.5 flex items-center gap-1.5 text-[13px] text-muted-foreground">
+                    <span className={`h-2 w-2 shrink-0 rounded-full ring-1 ring-black/10 ${unitDotColors[e.unit]}`} />
+                    <span className="truncate">{e.unit} · {e.location}</span>
+                    <MarcaDaAgenda event={e} />
+                  </span>
+                </span>
+                <span className="col-start-2 text-[13px] tabular-nums text-muted-foreground sm:col-start-auto sm:text-right">
+                  <span className="block text-foreground">
+                    {diasDoEvento(e).length > 1
+                      ? `${format(new Date(e.start_datetime), 'dd/MM')} a ${format(new Date(e.end_datetime), 'dd/MM/yyyy')}`
+                      : format(new Date(e.start_datetime), 'dd/MM/yyyy')}
+                  </span>
+                  <span className="block">{format(new Date(e.start_datetime), 'HH:mm')} - {format(new Date(e.end_datetime), 'HH:mm')}</span>
+                </span>
+                <span className="col-start-2 sm:col-start-auto">
+                  <SituacaoDoEvento status={e.status} />
+                </span>
+              </button>
+            </div>
+            );
+          })}
+          </div>
+          )}
         </div>
       )}
 

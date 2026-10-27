@@ -80,20 +80,20 @@ export default function EventsHubPage() {
             cabeçalho (Visão Geral e Calendário) e nenhum nas Programações. No
             celular a faixa de abas rola e o botão fica fixo na ponta direita. */}
         <div className="flex items-center gap-3 pb-2">
-          <div className="min-w-0 flex-1 overflow-x-auto">
+          <div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-sm:[mask-image:linear-gradient(90deg,#000_82%,transparent)]">
             {/* alvo de toque: 44px no mobile, os 32px de antes no desktop */}
             <TabsList className="h-[3.25rem] w-max md:h-10">
               {abas.map((tab) => (
                 <TabsTrigger key={tab.value} value={tab.value} className="h-11 gap-1.5 md:h-8">
-                  <tab.icon className="h-4 w-4" />
                   {tab.label}
                 </TabsTrigger>
               ))}
             </TabsList>
           </div>
           {canCreate && (
-            <Button onClick={() => setNovoAberto(true)} className="h-11 shrink-0 gap-2 shadow-sm md:h-10" data-testid="novo-evento">
-              <Plus className="h-4 w-4" /> Novo
+            // No celular só o "+", para as abas caberem; o nome continua para o leitor de tela.
+            <Button onClick={() => setNovoAberto(true)} className="h-11 w-11 shrink-0 gap-2 px-0 sm:w-auto sm:px-4 md:h-10" data-testid="novo-evento" aria-label="Novo">
+              <Plus className="h-4 w-4" /><span className="hidden sm:inline">Novo</span>
             </Button>
           )}
         </div>

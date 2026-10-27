@@ -25,13 +25,13 @@ export function AgendaDoEvento({ event, ultimo, reenviando, reenviar }: Props) {
 
   const quando = leitura.quando ? ' · ' + format(new Date(leitura.quando), "dd/MM 'às' HH:mm") : '';
   const girando = reenviando ? 'animate-spin' : '';
-  const abrir = leitura.link ? <a href={leitura.link} target="_blank" rel="noreferrer" className="font-medium text-primary underline underline-offset-2">Abrir no Google</a> : null;
+  const abrir = leitura.link ? <a href={leitura.link} target="_blank" rel="noreferrer" className="font-medium text-[hsl(var(--sel,168_80%_27%))] underline underline-offset-2">Abrir no Google</a> : null;
 
   if (leitura.estado === 'sincronizado') {
     return (
-      <div className="space-y-1 rounded-lg border border-primary/40 bg-primary/10 p-3" data-testid="agenda-do-evento">
+      <div className="space-y-1 rounded-xl border border-border bg-muted/40 p-3" data-testid="agenda-do-evento">
         <p className="flex items-center gap-2 text-xs font-semibold text-foreground">
-          <CalendarCheck className="h-3.5 w-3.5 text-primary" />
+          <CalendarCheck className="h-3.5 w-3.5 text-success" />
           {ROTULO_DA_AGENDA.sincronizado}{quando}
         </p>
         <p className="text-[11px] text-muted-foreground">
@@ -43,7 +43,7 @@ export function AgendaDoEvento({ event, ultimo, reenviando, reenviar }: Props) {
 
   if (leitura.estado === 'falhou') {
     return (
-      <div role="alert" className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3" data-testid="agenda-do-evento">
+      <div role="alert" className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3" data-testid="agenda-do-evento">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-xs font-semibold text-foreground">{ROTULO_DA_AGENDA.falhou}{quando}</p>
@@ -60,14 +60,14 @@ export function AgendaDoEvento({ event, ultimo, reenviando, reenviar }: Props) {
 
   if (leitura.estado === 'removido') {
     return (
-      <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground" data-testid="agenda-do-evento">
+      <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 p-3 text-xs text-muted-foreground" data-testid="agenda-do-evento">
         <CalendarX className="h-3.5 w-3.5" /> {ROTULO_DA_AGENDA.removido}{quando}
       </div>
     );
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3" data-testid="agenda-do-evento">
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 p-3" data-testid="agenda-do-evento">
       <p className="flex items-center gap-2 text-xs text-muted-foreground">
         <Clock className="h-3.5 w-3.5" /> {ROTULO_DA_AGENDA.aguardando}{quando}
       </p>

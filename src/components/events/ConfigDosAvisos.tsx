@@ -99,7 +99,7 @@ export function ConfigDosAvisos() {
       </CardHeader>
       <CardContent className="space-y-5">
         {erro && (
-          <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs text-foreground">
+          <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-foreground">
             Não consegui falar com a função de avisos agora ({erro}). <button className="underline" onClick={() => void ler()}>Tentar de novo</button>
           </p>
         )}
@@ -107,12 +107,12 @@ export function ConfigDosAvisos() {
         {/* 1. Lançamento */}
         <section className="space-y-2">
           <h3 className="text-sm font-semibold">1. Lançamento <span className="font-normal text-muted-foreground">· quem entra além das quatro caixas</span></h3>
-          <div className={`flex items-start gap-3 rounded-lg border p-3 ${config.pre_lancamento ? 'border-dashed border-warning/60 bg-warning/10' : 'border-primary/40 bg-primary/10'}`} data-testid="modo-lancamento">
+          <div className={`flex items-start gap-3 rounded-xl border p-3 ${config.pre_lancamento ? 'border-warning/30 bg-warning/5' : 'border-border bg-muted/40'}`} data-testid="modo-lancamento">
             {/* O interruptor É o modo pré-lançamento: ligado quando o texto diz "ligado". Desligar = lançar (com confirmação). */}
             <Switch id="pre-lancamento" checked={config.pre_lancamento} disabled={!carregado || salvando} onCheckedChange={v => alternar(v)} aria-label="Modo pré-lançamento" className="mt-0.5" />
             <div className="flex-1 text-xs">
               <p className="flex items-center gap-1.5 font-semibold text-foreground">
-                {config.pre_lancamento ? <><Lock className="h-3.5 w-3.5 text-warning" /> Modo pré-lançamento ligado</> : <><Rocket className="h-3.5 w-3.5 text-primary" /> Lançado para a equipe</>}
+                {config.pre_lancamento ? <><Lock className="h-3.5 w-3.5 text-warning" /> Modo pré-lançamento ligado</> : <><Rocket className="h-3.5 w-3.5 text-success" /> Lançado para a equipe</>}
               </p>
               <p className="text-muted-foreground">
                 {config.pre_lancamento
@@ -127,10 +127,10 @@ export function ConfigDosAvisos() {
         {/* 2. Lista */}
         <section className="space-y-2">
           <h3 className="text-sm font-semibold">2. Quem recebe os e-mails <span className="font-normal text-muted-foreground">· {resumoDaLista(linhas)}</span></h3>
-          <div className="overflow-x-auto rounded-lg border border-border">
+          <div className="overflow-x-auto rounded-2xl border border-border">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-border text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border text-left text-xs text-muted-foreground">
                   <th className="px-3 py-2 font-semibold">Pessoa</th><th className="px-3 py-2 font-semibold">Por quê</th><th className="px-3 py-2 font-semibold">Hoje</th><th className="px-3 py-2"></th>
                 </tr>
               </thead>
@@ -140,7 +140,7 @@ export function ConfigDosAvisos() {
                     <td className="px-3 py-2"><span className="text-foreground">{l.email}</span>{l.nome && <span className="text-muted-foreground"> · {l.nome}</span>}</td>
                     <td className="px-3 py-2 text-muted-foreground">{l.motivo === 'gestao' ? `gestão ${l.unidade}` : ROTULO_DO_MOTIVO[l.motivo]}</td>
                     <td className="px-3 py-2">
-                      <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${l.estado === 'recebe' ? 'bg-primary/15 text-primary' : l.estado === 'entra_no_lancamento' ? 'bg-warning/15 text-warning' : 'bg-muted text-muted-foreground'}`}>{ROTULO_DO_ESTADO[l.estado]}</span>
+                      <span className={`inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold ${l.estado === 'recebe' ? 'text-success' : l.estado === 'entra_no_lancamento' ? 'text-warning' : 'text-muted-foreground'}`}><span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />{ROTULO_DO_ESTADO[l.estado]}</span>
                     </td>
                     <td className="px-3 py-1 text-right">
                       {!l.fixo && l.motivo !== 'avulso' && (
