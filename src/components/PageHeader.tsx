@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { useUiV2 } from '@/lib/uiV2';
 
 interface PageHeaderProps {
   title: string;
@@ -22,11 +23,13 @@ interface PageHeaderProps {
  */
 export default function PageHeader({ title, description, actions, hidden, className, nivel = 1 }: PageHeaderProps) {
   const Titulo = nivel === 2 ? 'h2' : 'h1';
+  // V2: título de 28 px que quebra em vez de cortar. Fora do app (embeds), como era.
+  const v2 = useUiV2();
   return (
-    <header className={cn("flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6", className)}>
+    <header className={cn("flex flex-col gap-4 mb-6", v2 ? "lg:flex-row lg:items-center lg:justify-between" : "md:flex-row md:items-center md:justify-between", className)}>
       {!hidden ? (
-        <div className="min-w-0">
-          <Titulo className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl truncate">{title}</Titulo>
+        <div className={v2 ? "min-w-0 shrink-0 md:max-w-[45%]" : "min-w-0"}>
+          <Titulo className={v2 ? "text-[26px] font-bold leading-tight tracking-tight text-foreground sm:text-[28px] [text-wrap:balance]" : "text-2xl font-bold tracking-tight text-foreground sm:text-3xl truncate"}>{title}</Titulo>
           {description && (
             <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
           )}

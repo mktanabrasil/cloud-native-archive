@@ -1,10 +1,13 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { useUiV2 } from "@/lib/uiV2";
 
-const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)} {...props} />
-));
+const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => {
+  // V2 (vidro): raio 20, contorno de 5%, sem sombra.
+  const v2 = useUiV2();
+  return <div ref={ref} className={cn(v2 ? "rounded-[20px] border border-black/5 bg-card text-card-foreground dark:border-white/5" : "rounded-lg border bg-card text-card-foreground shadow-sm", className)} {...props} />;
+});
 Card.displayName = "Card";
 
 const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(

@@ -166,8 +166,8 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
     return (
       <Card className={className ? `text-center ${className}` : 'w-full max-w-md text-center'}>
         <CardHeader>
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10">
-            <Clock className="h-7 w-7 text-primary" />
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[16px] bg-muted">
+            <Clock className="h-7 w-7 text-foreground" />
           </div>
           <CardTitle className="text-xl">Aguardando aprovação</CardTitle>
           <CardDescription>
@@ -197,8 +197,8 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
       <AlertDialog open={!!popup} onOpenChange={(open) => { if (!open) setPopup(null); }}>
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
-            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full" style={{ background: popup?.type === 'error' ? 'hsl(var(--destructive) / 0.1)' : 'hsl(var(--primary) / 0.1)' }}>
-              {popup?.type === 'error' ? <AlertCircle className="h-6 w-6 text-destructive" /> : <CheckCircle2 className="h-6 w-6 text-primary" />}
+            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full" style={{ background: popup?.type === 'error' ? 'hsl(var(--destructive) / 0.1)' : 'hsl(var(--success) / 0.1)' }}>
+              {popup?.type === 'error' ? <AlertCircle className="h-6 w-6 text-destructive" /> : <CheckCircle2 className="h-6 w-6 text-success" />}
             </div>
             <AlertDialogTitle className="text-center">{popup?.title}</AlertDialogTitle>
             <AlertDialogDescription className="text-center">{popup?.message}</AlertDialogDescription>
@@ -224,7 +224,7 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
         </CardHeader>
         <CardContent>
           {avisoDeSessao && mode === 'login' && (
-            <p role="status" className="mb-4 flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-3 text-sm text-foreground" data-testid="aviso-de-sessao">
+            <p role="status" className="mb-4 flex items-start gap-2 rounded-[12px] border border-border bg-muted/40 p-3 text-sm text-foreground" data-testid="aviso-de-sessao">
               <Clock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /> {avisoDeSessao}
             </p>
           )}

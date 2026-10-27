@@ -1,6 +1,7 @@
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme, type Theme } from "./ThemeProvider";
 import { Button } from "./ui/button";
+import { cn } from "@/lib/utils";
 
 /**
  * O botão de tema, em três estados visíveis.
@@ -14,7 +15,22 @@ import { Button } from "./ui/button";
 const PROXIMO: Record<Theme, Theme> = { light: "dark", dark: "system", system: "light" };
 const NOME: Record<Theme, string> = { light: "claro", dark: "escuro", system: "seguindo o aparelho" };
 
-export function ThemeToggle() {
+/**
+ * O botão de tema flutuando no canto de baixo, em todo o app (pedido de
+ * 27/10/2026: era assim antes da V2 e assim continua). No celular ele não
+ * aparece: ali vale o tema do aparelho (ver ThemeProvider). No tablet, com a
+ * doca embaixo, ela se marca com `data-barra-de-baixo` e o botão sobe para
+ * cima dela — a regra está no index.css (`.tema-flutuante`).
+ */
+export function TemaFlutuante() {
+  return (
+    <div className="tema-flutuante fixed right-[calc(1.5rem+env(safe-area-inset-right))] z-30 max-md:hidden print:hidden">
+      <ThemeToggle className="shadow-[0_4px_16px_hsl(165_30%_12%/0.12)]" />
+    </div>
+  );
+}
+
+export function ThemeToggle({ className }: { className?: string }) {
   const { theme, resolvedTheme, setTheme } = useTheme();
   const proximo = PROXIMO[theme];
   const rotulo = `Tema ${NOME[theme]}${theme === "system" ? ` (${resolvedTheme === "dark" ? "escuro" : "claro"})` : ""}. Mudar para ${NOME[proximo]}.`;
@@ -27,7 +43,7 @@ export function ThemeToggle() {
       aria-label={rotulo}
       title={rotulo}
       data-theme-mode={theme}
-      className="w-10 h-10 rounded-full border-primary/20 bg-background/50 backdrop-blur-sm"
+      className={cn("w-10 h-10 rounded-full border-primary/20 bg-background/50 backdrop-blur-sm", className)}
     >
       {theme === "light" && <Sun className="h-[1.2rem] w-[1.2rem]" />}
       {theme === "dark" && <Moon className="h-[1.2rem] w-[1.2rem]" />}

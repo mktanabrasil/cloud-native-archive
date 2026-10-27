@@ -43,8 +43,10 @@ export default function HomePage({ leaving = false }: HomePageProps) {
   return (
     <div
       className={cn(
-        'h-[100svh] overflow-hidden bg-background',
-        leaving ? 'ana-gate-leaving fixed inset-0 z-50' : 'relative',
+        // Esboço V2: sem fundo próprio, a malha do app aparece atrás do card.
+        // Na saída a porta cobre o hub, e aí precisa do fundo sólido.
+        'h-[100svh] overflow-hidden',
+        leaving ? 'ana-gate-leaving fixed inset-0 z-50 bg-background' : 'relative',
       )}
     >
       {/* Assinatura institucional: a mesma faixa de cinco cores que fecha o
@@ -98,7 +100,7 @@ export default function HomePage({ leaving = false }: HomePageProps) {
           sistema. Pesa mais agora que o app é instalável e roda sem barra. */}
       <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-[calc(1.5rem+env(safe-area-inset-right))] z-[60] flex items-center gap-3">
         <TestModeTrigger floating />
-        <ThemeToggle />
+        <ThemeToggle className="max-md:hidden" />
       </div>
     </div>
   );

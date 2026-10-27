@@ -1,4 +1,4 @@
-import { FlaskConical, RotateCcw, ChevronDown } from 'lucide-react';
+import { FlaskConical, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -32,18 +32,19 @@ export default function TestModeBanner() {
   // Active mode → banner with reset button
   if (activePersona) {
     return (
-      <div className="sticky top-0 z-[60] w-full bg-primary text-primary-foreground border-b border-primary/50">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2 lg:px-8">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <FlaskConical className="h-4 w-4 shrink-0" />
-            <span>
-              Modo teste — visualizando como <strong>{activePersona.name}</strong> ({activePersona.permission_level} · {activePersona.unit})
+      // Esboço V2: faixa no tom do cartão; a situação vai em texto com bolinha.
+      <div className="sticky top-0 z-[60] w-full border-b border-info/30 bg-card text-foreground">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2 lg:px-8">
+          <div className="flex min-w-0 items-center gap-2 text-sm">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-info" aria-hidden="true" />
+            <span className="min-w-0">
+              <span className="font-semibold text-info">Modo teste</span> — visualizando como <strong className="font-semibold">{activePersona.name}</strong> <span className="text-muted-foreground">({activePersona.permission_level} · {activePersona.unit})</span>
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="secondary" size="sm" className="gap-1.5">
+                <Button variant="outline" size="sm" className="h-10 gap-1.5 rounded-[12px]">
                   Trocar perfil
                   <ChevronDown className="h-3.5 w-3.5" />
                 </Button>
@@ -66,12 +67,11 @@ export default function TestModeBanner() {
               </DropdownMenuContent>
             </DropdownMenu>
             <Button
-              variant="destructive"
+              variant="ghost"
               size="sm"
               onClick={handleReset}
-              className="gap-1.5"
+              className="h-10 rounded-[12px] text-destructive hover:text-destructive"
             >
-              <RotateCcw className="h-3.5 w-3.5" />
               Resetar
             </Button>
           </div>

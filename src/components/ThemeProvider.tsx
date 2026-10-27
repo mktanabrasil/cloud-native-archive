@@ -11,6 +11,10 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
  *
  * `theme` é a escolha da pessoa (guardada no navegador); `resolvedTheme` é o
  * que está na tela de fato — no modo sistema, o que o aparelho pediu.
+ *
+ * No celular (abaixo de 768 px) não há botão de tema (27/10/2026): ali vale
+ * sempre o tema do aparelho, mesmo que haja uma escolha guardada de antes —
+ * senão ela ficaria presa, sem botão para desfazer.
  */
 export type Theme = "dark" | "light" | "system";
 export type ResolvedTheme = "dark" | "light";
@@ -43,9 +47,13 @@ const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
 const COR_DA_BARRA: Record<ResolvedTheme, string> = { light: "#f8f6f3", dark: "#191b1a" };
 
 const CONSULTA_DO_SISTEMA = "(prefers-color-scheme: dark)";
+const CONSULTA_DO_CELULAR = "(max-width: 767px)";
 
 const lerSistema = (): ResolvedTheme =>
   typeof window !== "undefined" && window.matchMedia?.(CONSULTA_DO_SISTEMA).matches ? "dark" : "light";
+
+const lerCelular = (): boolean =>
+  typeof window !== "undefined" && !!window.matchMedia?.(CONSULTA_DO_CELULAR).matches;
 
 const lerGuardado = (chave: string, padrao: Theme): Theme => {
   try {
@@ -64,19 +72,30 @@ export function ThemeProvider({
 }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(() => lerGuardado(storageKey, defaultTheme));
   const [sistema, setSistema] = useState<ResolvedTheme>(lerSistema);
+  const [celular, setCelular] = useState<boolean>(lerCelular);
+  const efetivo: Theme = celular ? "system" : theme;
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const media = window.matchMedia(CONSULTA_DO_CELULAR);
+    setCelular(media.matches);
+    const aoMudar = (e: MediaQueryListEvent) => setCelular(e.matches);
+    media.addEventListener?.("change", aoMudar);
+    return () => media.removeEventListener?.("change", aoMudar);
+  }, []);
 
   // No modo sistema, acompanha o aparelho em tempo real: o horário automático
   // do celular e a troca manual no desktop.
   useEffect(() => {
-    if (theme !== "system" || typeof window === "undefined" || !window.matchMedia) return;
+    if (efetivo !== "system" || typeof window === "undefined" || !window.matchMedia) return;
     const media = window.matchMedia(CONSULTA_DO_SISTEMA);
     setSistema(media.matches ? "dark" : "light");
     const aoMudar = (e: MediaQueryListEvent) => setSistema(e.matches ? "dark" : "light");
     media.addEventListener?.("change", aoMudar);
     return () => media.removeEventListener?.("change", aoMudar);
-  }, [theme]);
+  }, [efetivo]);
 
-  const resolvedTheme: ResolvedTheme = theme === "system" ? sistema : theme;
+  const resolvedTheme: ResolvedTheme = efetivo === "system" ? sistema : efetivo;
 
   useEffect(() => {
     const root = window.document.documentElement;
