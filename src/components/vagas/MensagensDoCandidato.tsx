@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarDays, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { dataEHora } from '@/lib/vagas/candidatura';
@@ -27,19 +27,19 @@ function Convite({ m, aoResponder }: { m: Mensagem; aoResponder: () => void }) {
     finally { setEnviando(false); }
   }
   return (
-    <div className="flex flex-col gap-2.5 rounded-2xl bg-sky-50 p-4 text-sky-950 dark:bg-sky-950/50 dark:text-sky-50" data-testid="convite">
-      <b className="flex items-center gap-2"><CalendarDays className="h-4 w-4" aria-hidden /> Convite para entrevista</b>
+    <div className="flex flex-col gap-2.5 rounded-[20px] border border-black/5 bg-card p-4 sm:p-5 dark:border-white/5" data-testid="convite">
+      <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-info"><span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />Convite para entrevista</span>
       {e && (
-        <p className="text-sm font-semibold">
+        <p className="font-display text-[17px] font-semibold leading-snug">
           <span className="capitalize">{diaPorExtenso(e.dia)}</span> às {e.hora}<br />
-          <span className="font-normal">{FORMATOS.find(([k]) => k === e.formato)?.[1]}{e.local ? ` · ${e.local}` : ''}</span>
+          <span className="font-sans text-sm font-normal text-muted-foreground">{FORMATOS.find(([k]) => k === e.formato)?.[1]}{e.local ? ` · ${e.local}` : ''}</span>
         </p>
       )}
       <p className="whitespace-pre-line text-sm">{m.texto}</p>
       {naoPosso ? (
         <>
           <label className="grid gap-1 text-sm font-semibold">Que dias e horários você pode?
-            <Textarea rows={2} maxLength={500} value={quando} onChange={(ev) => setQuando(ev.target.value)} className="bg-background font-normal text-foreground" placeholder="Ex.: segunda ou terça à tarde" />
+            <Textarea rows={2} maxLength={500} value={quando} onChange={(ev) => setQuando(ev.target.value)} className="font-normal" placeholder="Ex.: segunda ou terça à tarde" />
           </label>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => setNaoPosso(false)}>Voltar</Button>
@@ -48,11 +48,11 @@ function Convite({ m, aoResponder }: { m: Mensagem; aoResponder: () => void }) {
         </>
       ) : (
         <div className="grid gap-2 sm:grid-cols-2">
-          <Button disabled={enviando} onClick={() => responder('confirmada')} className="h-11 bg-[#81E2CF] text-[#1F2322] hover:bg-[#6fd6c1]"><Check className="h-4 w-4" /> Confirmo presença</Button>
-          <Button disabled={enviando} variant="outline" className="h-11 bg-background text-foreground" onClick={() => setNaoPosso(true)}>Não posso nesse horário</Button>
+          <Button disabled={enviando} onClick={() => responder('confirmada')} className="h-11"><Check className="h-4 w-4" /> Confirmo presença</Button>
+          <Button disabled={enviando} variant="outline" className="h-11" onClick={() => setNaoPosso(true)}>Não posso nesse horário</Button>
         </div>
       )}
-      {erro && <p role="alert" className="text-sm">{erro}</p>}
+      {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
     </div>
   );
 }
@@ -68,12 +68,12 @@ function Pergunta({ m, aoResponder }: { m: Mensagem; aoResponder: () => void }) 
     finally { setEnviando(false); }
   }
   return (
-    <div className="flex flex-col gap-2.5 rounded-2xl bg-muted/70 p-4" data-testid="pergunta">
-      <b>Pergunta do RH</b>
+    <div className="flex flex-col gap-2.5 rounded-[20px] border border-black/5 bg-card p-4 sm:p-5 dark:border-white/5" data-testid="pergunta">
+      <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-warning"><span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />Pergunta do RH</span>
       <p className="whitespace-pre-line text-sm">{m.texto}</p>
-      <Textarea aria-label="Sua resposta" rows={3} maxLength={1000} value={texto} onChange={(ev) => setTexto(ev.target.value)} className="bg-background" placeholder="Escreva sua resposta…" />
+      <Textarea aria-label="Sua resposta" rows={3} maxLength={1000} value={texto} onChange={(ev) => setTexto(ev.target.value)} placeholder="Escreva sua resposta…" />
       <Button className="self-start" disabled={enviando || !texto.trim()} onClick={responder}>Enviar resposta</Button>
-      {erro && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{erro}</p>}
+      {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
     </div>
   );
 }
@@ -100,10 +100,10 @@ export function MensagensDoCandidato({ candidatura, retirada }: { candidatura: s
         : <Pergunta key={m.id} m={m} aoResponder={carregar} />)}
       {historico.length > 0 && (
         <>
-          <span className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mensagens</span>
+          <h2 className="mt-1 text-[15px] font-semibold">Mensagens</h2>
           <ul className="flex flex-col gap-2">
             {historico.map((m) => (
-              <li key={m.id} className={`grid gap-1 rounded-2xl p-3.5 text-sm ${m.autor === 'candidato' ? 'ml-6 bg-emerald-50 dark:bg-emerald-950/40' : 'bg-muted/60'}`}>
+              <li key={m.id} className={`grid gap-1 rounded-[16px] p-3.5 text-sm ${m.autor === 'candidato' ? 'ml-6 bg-muted/70' : 'border border-black/5 bg-card dark:border-white/5'}`}>
                 <b className="text-xs font-semibold text-muted-foreground">
                   {m.autor === 'candidato' ? 'Você respondeu' : m.tipo === 'convite' ? `Convite · ${m.entrevista ? `${diaPorExtenso(m.entrevista.dia)} às ${m.entrevista.hora}` : ''}` : m.tipo === 'pergunta' ? 'Pergunta do RH' : 'Mensagem do RH'}
                 </b>

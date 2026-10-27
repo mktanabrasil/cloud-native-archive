@@ -16,10 +16,10 @@ import { GestaoDeVagas } from '@/components/vagas/GestaoDeVagas';
 import { RelatoriosDoRh } from '@/components/vagas/RelatoriosDoRh';
 import { AuditoriaDasVagas } from '@/components/vagas/AuditoriaDasVagas';
 import { ModelosDeEmail } from '@/components/vagas/ModelosDeEmail';
-import { CartaoDaVaga, COR_DA_AREA, ICONE_DA_AREA, MolduraDasVagas } from '@/components/vagas/PecasDasVagas';
+import { CartaoDaVaga, COR_DA_AREA, ICONE_DA_AREA, MolduraDasVagas, PontoDaArea, comumDasVagas } from '@/components/vagas/PecasDasVagas';
 import { guardarVista, separarProgramas, vistaGuardada, type Vista } from '@/lib/vagas/vitrine';
 import { listarVagasPublicadas } from '@/lib/vagas/api';
-import { ROTULO_DA_AREA, type Area, type Vaga } from '@/lib/vagas/modelo';
+import { ROTULO_DA_AREA, ROTULO_DA_CONTRATACAO, type Area, type Vaga } from '@/lib/vagas/modelo';
 import { contagemPorArea, enderecoDoFiltro, filtrarVagas, filtroDoEndereco, vagasNoPlural, type FiltroDaVitrine } from '@/lib/vagas/vitrine';
 
 /**
@@ -53,15 +53,15 @@ export default function VagasPage() {
     : souResponsavel ? [['Meus processos', 'meus'], ['Portal', 'portal']] : [];
   const telaPadrao: Tela = isRh ? 'painel' : 'meus';
   const abas = opcoes.length ? (
-    <nav aria-label="Vagas: abas" className="border-b border-border bg-muted/40">
-      <div className="mx-auto flex max-w-6xl gap-1 px-4 sm:px-6">
+    <nav aria-label="Vagas: abas" className="mt-4">
+      <div className="mx-auto flex max-w-6xl gap-5 overflow-x-auto border-b border-border px-4 sm:px-6">
         {opcoes.map(([rotulo, t]) => (
           <button
             key={rotulo}
             type="button"
             aria-current={tela === t ? 'page' : undefined}
             onClick={() => setParams(t === telaPadrao ? new URLSearchParams() : new URLSearchParams(`tela=${t}`), { replace: true })}
-            className={`-mb-px border-b-2 px-3 py-2.5 text-sm font-semibold ${tela === t ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+            className={`-mb-px shrink-0 whitespace-nowrap border-b-2 py-2.5 text-sm ${tela === t ? 'border-[#81e2cf] font-semibold text-foreground' : 'border-transparent font-medium text-muted-foreground hover:text-foreground'}`}
           >
             {rotulo}
           </button>
@@ -114,19 +114,23 @@ function Vitrine() {
   const areas = useMemo(() => (vagas ? contagemPorArea(vagas) : []), [vagas]);
   const temFiltro = filtro.area !== null || filtro.especial !== null || filtro.busca !== '';
   const total = vagas?.length ?? 0;
+  // O que toda vaga tem igual sai do cartão e aparece uma vez, acima da lista (esboço V2, 26/10/2026).
+  // Os programas (Jovem Aprendiz, PcD) têm contratação própria e ficam de fora da conta.
+  const comum = useMemo(() => comumDasVagas(separarProgramas(vagas ?? []).comuns), [vagas]);
 
-  const chip = (ativo: boolean, rotulo: string, Icone: LucideIcon, aoClicar: () => void) => (
+  // Esboço V2: filtros como abas segmentadas, só texto; nas áreas, a bolinha da cor.
+  const chip = (ativo: boolean, rotulo: string, ponto: Area | null, aoClicar: () => void) => (
     <button
       key={rotulo}
       type="button"
       aria-pressed={ativo}
       onClick={aoClicar}
-      className={`inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 text-sm font-medium transition active:scale-95 ${ativo ? 'bg-foreground text-background' : 'bg-muted text-foreground hover:bg-muted/70'}`}
+      className={`inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-[10px] px-3 text-[13.5px] transition ${ativo ? 'bg-card font-semibold text-foreground shadow-[0_1px_3px_hsl(165_30%_12%/0.12)]' : 'font-medium text-muted-foreground hover:text-foreground'}`}
     >
-      <Icone className="h-4 w-4" aria-hidden />{rotulo}
+      {ponto && <PontoDaArea area={ponto} />}{rotulo}
     </button>
   );
-  const grade = vista === 'lista' ? 'grid grid-cols-[minmax(0,1fr)] gap-2.5' : 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
+  const grade = vista === 'lista' ? 'grid grid-cols-[minmax(0,1fr)] gap-2 sm:gap-2.5' : 'grid grid-cols-[minmax(0,1fr)] gap-2.5 sm:gap-4 md:grid-cols-2 lg:grid-cols-3';
 
   return (
     <>
@@ -138,11 +142,12 @@ function Vitrine() {
           </p>
           <form
             role="search"
-            className="flex max-w-[560px] gap-2.5"
+           
+            className="glass-1 fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-40 flex gap-2 rounded-[22px] p-2 md:static md:max-w-[560px] md:gap-2.5 md:rounded-none md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none"
             onSubmit={e => { e.preventDefault(); mudar({ busca }); }}
           >
             <label htmlFor="busca-vaga" className="sr-only">Buscar vaga</label>
-            <div className="flex h-14 min-w-0 flex-1 items-center gap-2 rounded-2xl border border-input bg-background px-4 focus-within:ring-2 focus-within:ring-ring">
+            <div className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-[14px] border border-input bg-card px-3.5 focus-within:ring-2 focus-within:ring-ring md:h-12 md:rounded-xl md:px-4">
               <Search className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
               <input
                 id="busca-vaga"
@@ -157,46 +162,58 @@ function Vitrine() {
                 </button>
               )}
             </div>
-            <Button type="submit" className="h-14 shrink-0 rounded-2xl px-5 text-base sm:px-6">Buscar</Button>
+            <Button type="submit" className="h-11 shrink-0 rounded-[14px] px-4 text-base md:h-12 md:rounded-xl md:px-6">Buscar</Button>
           </form>
         </div>
         {areas.length > 0 && (
-          <div className={`grid gap-3 ${areas.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-            {areas.map(({ area, total: n }, i) => <BlocoDaArea key={area} area={area} total={n} largo={areas.length === 3 && i === 2} ativo={filtro.area === area} aoClicar={() => mudar({ area: filtro.area === area ? null : area })} />)}
+          <div className="glass-1 grid overflow-hidden rounded-[20px]" style={{ gridTemplateColumns: `repeat(${Math.min(areas.length, 3)}, minmax(0, 1fr))` }}>
+            {areas.map(({ area, total: n }, i) => <BlocoDaArea key={area} area={area} total={n} largo={i > 0} ativo={filtro.area === area} aoClicar={() => mudar({ area: filtro.area === area ? null : area })} />)}
           </div>
         )}
       </section>
 
-      <section className="mx-auto flex max-w-6xl flex-col gap-4 px-4 pb-12 sm:px-6" aria-label="Vagas abertas">
+      <section className="mx-auto flex max-w-6xl flex-col gap-4 px-4 pb-28 sm:px-6 md:pb-12" aria-label="Vagas abertas">
         {total > 0 && (
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             {/* No celular os filtros rolam de lado com o dedo, em vez de quebrar em várias linhas. */}
-            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden" role="group" aria-label="Filtros">
-              {chip(filtro.area === null && filtro.especial === null, `Todas · ${total}`, LayoutGrid, () => mudar({ area: null, especial: null }))}
-              {areas.map(({ area }) => chip(filtro.area === area, ROTULO_DA_AREA[area], ICONE_DA_AREA[area], () => mudar({ area: filtro.area === area ? null : area })))}
-              {vagas!.some(v => v.aprendizagem || v.contratacao === 'aprendiz') && chip(filtro.especial === 'aprendiz', 'Jovem Aprendiz', GraduationCap, () => mudar({ especial: filtro.especial === 'aprendiz' ? null : 'aprendiz' }))}
-              {vagas!.some(v => v.afirmativa_pcd) && chip(filtro.especial === 'pcd', 'Vagas afirmativas PcD', Accessibility, () => mudar({ especial: filtro.especial === 'pcd' ? null : 'pcd' }))}
+            <div className="flex max-w-full gap-0.5 self-start overflow-x-auto rounded-[14px] bg-muted p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Filtros">
+              {chip(filtro.area === null && filtro.especial === null, `Todas · ${total}`, null, () => mudar({ area: null, especial: null }))}
+              {areas.map(({ area }) => chip(filtro.area === area, ROTULO_DA_AREA[area], area, () => mudar({ area: filtro.area === area ? null : area })))}
+              {vagas!.some(v => v.aprendizagem || v.contratacao === 'aprendiz') && chip(filtro.especial === 'aprendiz', 'Jovem Aprendiz', null, () => mudar({ especial: filtro.especial === 'aprendiz' ? null : 'aprendiz' }))}
+              {vagas!.some(v => v.afirmativa_pcd) && chip(filtro.especial === 'pcd', 'Vagas afirmativas PcD', null, () => mudar({ especial: filtro.especial === 'pcd' ? null : 'pcd' }))}
             </div>
-            <div className="inline-flex shrink-0 self-end rounded-xl bg-muted p-[3px] lg:self-auto" role="group" aria-label="Ver as vagas como">
+            <div className="flex items-center justify-between gap-3 lg:contents">
+            {(comum.contratacao || comum.cidade) && (
+              <p className="text-[13px] text-muted-foreground lg:order-first lg:hidden">
+                Todas{comum.contratacao && <> <b className="font-semibold text-foreground">{ROTULO_DA_CONTRATACAO[comum.contratacao]}</b></>}{comum.cidade && <>, em <b className="font-semibold text-foreground">{comum.cidade.replace(/\/SP$/, '')}</b></>}.
+              </p>
+            )}
+            <div className="inline-flex shrink-0 self-end rounded-[14px] bg-muted p-1 lg:self-auto" role="group" aria-label="Ver as vagas como">
               {([['grade', 'Grade', LayoutGrid], ['lista', 'Lista', List]] as const).map(([v, rotulo, Icone]) => (
                 <button key={v} type="button" aria-pressed={vista === v} onClick={() => trocarVista(v)}
-                  className={`inline-flex h-9 items-center gap-1.5 rounded-[9px] px-3 text-[13px] font-semibold transition ${vista === v ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
-                  <Icone className="h-[17px] w-[17px]" aria-hidden />{rotulo}
+                  className={`inline-flex h-9 items-center gap-1.5 rounded-[10px] px-3 text-[13px] font-semibold transition ${vista === v ? 'bg-card text-foreground shadow-[0_1px_3px_hsl(165_30%_12%/0.12)]' : 'text-muted-foreground hover:text-foreground'}`}>
+                  {rotulo}
                 </button>
               ))}
             </div>
+            </div>
           </div>
+        )}
+        {total > 0 && (comum.contratacao || comum.cidade) && (
+          <p className="hidden text-[13.5px] text-muted-foreground lg:block">
+            Todas{comum.contratacao && <> <b className="font-semibold text-foreground">{ROTULO_DA_CONTRATACAO[comum.contratacao]}</b></>}{comum.cidade && <>, em <b className="font-semibold text-foreground">{comum.cidade.replace(/\/SP$/, '')}</b></>}. Inscrições abertas.
+          </p>
         )}
 
         {erro ? (
-          <div className="flex flex-col items-start gap-3 rounded-2xl border border-border bg-card p-6">
+          <div className="flex flex-col items-start gap-3 rounded-[20px] border border-black/5 bg-card p-6 dark:border-white/5">
             <p className="font-semibold">Não deu para carregar as vagas.</p>
             <p className="text-sm text-muted-foreground">Confira a internet e tente de novo.</p>
             <Button variant="outline" onClick={() => setTentativa(t => t + 1)}>Tentar de novo</Button>
           </div>
         ) : vagas === null ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Carregando vagas">
-            {[0, 1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-40 rounded-2xl" />)}
+          <div className="grid gap-2.5 sm:gap-4 md:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Carregando vagas">
+            {[0, 1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-[124px] rounded-[22px] sm:h-[168px] sm:rounded-[24px]" />)}
           </div>
         ) : total === 0 ? (
           <Vazio titulo="Nenhuma vaga aberta agora." texto="Quando abrir uma vaga, ela aparece aqui primeiro." />
@@ -209,12 +226,12 @@ function Vitrine() {
         ) : (
           <>
             {temFiltro && <p className="text-sm text-muted-foreground" aria-live="polite">{vagasNoPlural(lista.length)}{filtro.busca ? ` para "${filtro.busca}"` : ''}</p>}
-            {comuns.length > 0 && <div className={grade}>{comuns.map(v => <CartaoDaVaga key={v.id} vaga={v} vista={vista} />)}</div>}
+            {comuns.length > 0 && <div className={grade}>{comuns.map(v => <CartaoDaVaga key={v.id} vaga={v} vista={vista} comum={comum} />)}</div>}
             {programas.length > 0 && (
               <section aria-label="Programas para todos" className={`flex flex-col gap-1.5 ${comuns.length ? 'mt-4 border-t border-border pt-6' : ''}`}>
                 <h2 className="text-lg font-bold">Programas para todos</h2>
                 <p className="mb-2 text-sm text-muted-foreground">Vagas garantidas por lei, com inscrição própria.</p>
-                <div className={grade}>{programas.map(v => <CartaoDaVaga key={v.id} vaga={v} vista={vista} />)}</div>
+                <div className={grade}>{programas.map(v => <CartaoDaVaga key={v.id} vaga={v} vista={vista} comum={comum} />)}</div>
               </section>
             )}
           </>
@@ -227,20 +244,18 @@ function Vitrine() {
 function BlocoDaArea({ area, total, largo, ativo, aoClicar }: { area: Area; total: number; largo: boolean; ativo: boolean; aoClicar: () => void }) {
   const Icone = ICONE_DA_AREA[area];
   return (
+    // Esboço V2: cada área é uma célula da faixa de números (vidro), com a bolinha da cor.
     <button
       type="button"
       aria-pressed={ativo}
+      aria-label={`${ROTULO_DA_AREA[area]} ${total} ${total === 1 ? 'vaga aberta' : 'vagas abertas'}`}
       onClick={aoClicar}
-      className={`flex min-h-[120px] flex-col justify-between gap-3 rounded-[20px] p-4 text-left text-[#1F2322] transition hover:-translate-y-1 hover:shadow-lg active:scale-[.98] sm:min-h-[140px] sm:p-5 ${largo ? 'col-span-2' : ''} ${ativo ? 'ring-4 ring-foreground/80 ring-offset-2 ring-offset-background' : ''}`}
-      style={{ background: COR_DA_AREA[area] }}
+      className={`flex flex-col gap-1 p-4 text-left transition-colors sm:p-5 ${largo ? 'border-l border-black/10 dark:border-white/10' : ''} ${ativo ? 'bg-[hsl(var(--ativo))]' : 'hover:bg-[hsl(var(--ativo))]'}`}
     >
-      <span className="flex items-center justify-between">
-        <span className="text-lg font-bold sm:text-xl">{ROTULO_DA_AREA[area]}</span>
-        <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/55"><Icone className="h-5 w-5" aria-hidden /></span>
-      </span>
-      <span className="flex items-baseline gap-2">
-        <span className="text-[32px] font-bold leading-none sm:text-[40px]">{total}</span>
-        <span className="text-sm font-semibold">{total === 1 ? 'vaga aberta' : 'vagas abertas'}</span>
+      <span className="font-display text-[30px] font-bold leading-none tabular-nums text-foreground sm:text-[34px]">{total}</span>
+      <span className="flex items-center gap-1.5 text-[13px] text-muted-foreground">
+        <PontoDaArea area={area} />
+        <span className={ativo ? 'font-semibold text-foreground' : ''}>{ROTULO_DA_AREA[area]}</span>
       </span>
     </button>
   );
@@ -248,7 +263,7 @@ function BlocoDaArea({ area, total, largo, ativo, aoClicar }: { area: Area; tota
 
 function Vazio({ titulo, texto, acao }: { titulo: string; texto: string; acao?: ReactNode }) {
   return (
-    <div className="flex flex-col items-start gap-2 rounded-2xl bg-muted/60 p-6">
+    <div className="flex flex-col items-start gap-2 rounded-[20px] border border-dashed border-border p-6">
       <p className="text-lg font-semibold">{titulo}</p>
       <p className="text-sm text-muted-foreground">{texto}</p>
       {acao && <div className="pt-2">{acao}</div>}

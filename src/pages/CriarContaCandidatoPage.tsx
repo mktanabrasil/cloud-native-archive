@@ -93,10 +93,10 @@ export default function CriarContaCandidatoPage() {
   const primeiro = nome.trim().split(/\s+/)[0];
 
   return (
-    <MolduraDaConta atalho={<Link to={entrar} className="text-foreground hover:text-primary">Já tenho conta</Link>}>
+    <MolduraDaConta atalho={<Link to={entrar} className="text-foreground hover:text-[hsl(var(--sel))]">Já tenho conta</Link>}>
       <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-[minmax(0,1fr)] content-center items-center gap-6 px-4 pb-10 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,500px)] lg:gap-12 lg:px-12">
         <div className="flex flex-col gap-4 lg:gap-6">
-          <span className="text-xs font-semibold uppercase tracking-wider text-emerald-800 dark:text-emerald-300" aria-live="polite">
+          <span className="text-[13px] font-semibold text-muted-foreground" aria-live="polite">
             {fim ? 'Criar conta · pronto' : `Criar conta · ${Math.min(etapa + 1, 3)} de 3 · um minuto`}
           </span>
           <h1 key={fim ?? etapa} className="vg-pergunta text-[30px] font-bold leading-[1.08] tracking-tight sm:text-[44px]">
@@ -106,7 +106,7 @@ export default function CriarContaCandidatoPage() {
         </div>
 
         {fim ? (
-          <div className="vg-pergunta flex flex-col items-start gap-4 lg:border-l lg:border-border lg:pl-10">
+          <div className="vg-pergunta flex flex-col items-start gap-4 rounded-[22px] border border-black/5 bg-card p-6 sm:p-7 dark:border-white/5">
             <span className="vg-selo grid h-16 w-16 place-items-center rounded-[20px] bg-[#F37964] text-[#1F2322]">
               {fim === 'pronta' ? <Check className="h-8 w-8" strokeWidth={2.6} /> : <MailCheck className="h-8 w-8" />}
             </span>
@@ -130,14 +130,14 @@ export default function CriarContaCandidatoPage() {
             )}
           </div>
         ) : (
-          <form onSubmit={seguir} noValidate className="flex flex-col gap-4 lg:border-l lg:border-border lg:pl-10" aria-label="Criar conta">
+          <form onSubmit={seguir} noValidate className="flex flex-col gap-4 rounded-[22px] border border-black/5 bg-card p-6 sm:p-7 dark:border-white/5" aria-label="Criar conta">
             <div key={etapa} className="vg-pergunta flex flex-col gap-4">
-              <label htmlFor="vg-resposta" className="text-[22px] font-bold sm:text-[26px]">{q.pergunta}</label>
-              {etapa === 0 && <Input ref={campo} id="vg-resposta" autoComplete="given-name" value={nome} maxLength={120} onChange={e => setNome(e.target.value)} className="h-[60px] rounded-2xl text-xl" aria-describedby="vg-dica" />}
-              {etapa === 1 && <Input ref={campo} id="vg-resposta" type="email" inputMode="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} className="h-[60px] rounded-2xl text-xl" aria-describedby="vg-dica" />}
+              <label htmlFor="vg-resposta" className="font-display text-[20px] font-semibold sm:text-[24px]">{q.pergunta}</label>
+              {etapa === 0 && <Input ref={campo} id="vg-resposta" autoComplete="given-name" value={nome} maxLength={120} onChange={e => setNome(e.target.value)} className="h-14 rounded-xl text-lg" aria-describedby="vg-dica" />}
+              {etapa === 1 && <Input ref={campo} id="vg-resposta" type="email" inputMode="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} className="h-14 rounded-xl text-lg" aria-describedby="vg-dica" />}
               {etapa === 2 && (
                 <div className="relative">
-                  <Input ref={campo} id="vg-resposta" type={verSenha ? 'text' : 'password'} autoComplete="new-password" value={senha} onChange={e => setSenha(e.target.value)} className="h-[60px] rounded-2xl pr-14 text-xl" aria-describedby="vg-dica" />
+                  <Input ref={campo} id="vg-resposta" type={verSenha ? 'text' : 'password'} autoComplete="new-password" value={senha} onChange={e => setSenha(e.target.value)} className="h-14 rounded-xl pr-14 text-lg" aria-describedby="vg-dica" />
                   <button type="button" onClick={() => setVerSenha(v => !v)} aria-label={verSenha ? 'Esconder senha' : 'Mostrar senha'}
                     className="absolute right-2 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground hover:text-foreground">
                     {verSenha ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -145,20 +145,20 @@ export default function CriarContaCandidatoPage() {
                 </div>
               )}
               {etapa === 3 && (
-                <div className="flex flex-col gap-3 rounded-2xl bg-muted/60 p-4 text-sm">
+                <div className="flex flex-col gap-3 rounded-2xl bg-muted/70 p-4 text-sm">
                   <p><b>{nome.trim()}</b> · {email.trim()}</p>
                   <label className="flex cursor-pointer items-start gap-3">
                     <Checkbox checked={aceite} onCheckedChange={v => setAceite(v === true)} className="mt-0.5" aria-label="Li e aceito os Termos de Uso e o Aviso de Privacidade" />
-                    <span>Li e aceito os Termos de Uso e o <Link to={ROTAS_DO_CANDIDATO.privacidade} target="_blank" className="font-semibold text-primary underline">Aviso de Privacidade</Link>.</span>
+                    <span>Li e aceito os Termos de Uso e o <Link to={ROTAS_DO_CANDIDATO.privacidade} target="_blank" className="font-semibold text-[hsl(var(--sel))] underline">Aviso de Privacidade</Link>.</span>
                   </label>
                 </div>
               )}
               {q.dica && <p id="vg-dica" className="text-sm text-muted-foreground">{q.dica}</p>}
             </div>
-            {erro && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-900 dark:bg-red-950/60 dark:text-red-100">{erro}</p>}
+            {erro && <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{erro}</p>}
             <div className="flex flex-wrap items-center gap-2">
-              {etapa > 0 && <Button type="button" variant="ghost" className="h-14 rounded-2xl" onClick={() => { setErro(null); setEtapa((etapa - 1) as Etapa); }}><ArrowLeft className="h-4 w-4" /> Voltar</Button>}
-              <Button type="submit" disabled={enviando} className="group h-14 flex-1 rounded-2xl px-8 text-base sm:flex-none">
+              {etapa > 0 && <Button type="button" variant="ghost" className="h-12 rounded-xl" onClick={() => { setErro(null); setEtapa((etapa - 1) as Etapa); }}><ArrowLeft className="h-4 w-4" /> Voltar</Button>}
+              <Button type="submit" disabled={enviando} className="group h-12 flex-1 rounded-xl px-8 text-base sm:flex-none">
                 {enviando ? 'Criando…' : etapa === 3 ? 'Criar conta' : <>Continuar <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" /></>}
               </Button>
             </div>

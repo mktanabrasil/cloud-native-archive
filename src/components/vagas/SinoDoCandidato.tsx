@@ -23,9 +23,9 @@ export function SinoDoCandidato() {
   if (!id) return null;
   return (
     <Link to={ROTAS_DO_CANDIDATO.avisos} aria-label={novos ? `Avisos, ${novos} ${novos === 1 ? 'novo' : 'novos'}` : 'Avisos'}
-      className="relative grid h-10 w-10 place-items-center rounded-xl bg-muted/60 text-foreground hover:bg-muted" data-testid="sino">
+      className="relative grid h-11 w-11 place-items-center rounded-[12px] text-foreground transition-colors hover:bg-[hsl(var(--ativo,0_0%_0%/0.05))]" data-testid="sino">
       <Bell className="h-5 w-5" aria-hidden />
-      {novos > 0 && <span className="absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#F26B4F] px-1 text-[10.5px] font-bold text-white" aria-hidden>{novos > 9 ? '9+' : novos}</span>}
+      {novos > 0 && <span className="absolute right-0.5 top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-destructive px-1 text-[10.5px] font-bold tabular-nums text-destructive-foreground" aria-hidden>{novos > 9 ? '9+' : novos}</span>}
     </Link>
   );
 }

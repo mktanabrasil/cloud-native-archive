@@ -38,29 +38,31 @@ export default function RecuperarSenhaCandidatoPage() {
   }
 
   return (
-    <MolduraDaConta atalho={<Link to={ROTAS_DO_CANDIDATO.entrar} className="text-foreground hover:text-primary">Entrar</Link>}>
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-5 px-4 pb-12">
-        <span className="vg-selo grid h-14 w-14 place-items-center rounded-[18px] bg-[#FBCE00] text-[#1F2322]">
-          {enviado ? <MailCheck className="h-7 w-7" /> : <KeyRound className="h-7 w-7" />}
-        </span>
-        {enviado ? (
-          <div className="vg-pergunta flex flex-col gap-3" role="status">
-            <h1 className="text-[28px] font-bold leading-tight">Confira seu e-mail.</h1>
-            <p className="text-muted-foreground">Se <b className="text-foreground">{email.trim()}</b> tiver conta, o link para criar uma senha nova chega em alguns minutos. Olhe também o spam.</p>
-            <Button asChild variant="outline" className="mt-2 h-12 self-start rounded-xl"><Link to={ROTAS_DO_CANDIDATO.entrar}><ArrowLeft className="h-4 w-4" /> Voltar para entrar</Link></Button>
-          </div>
-        ) : (
-          <form onSubmit={enviar} noValidate className="vg-pergunta flex flex-col gap-4">
-            <h1 className="text-[28px] font-bold leading-tight">Esqueceu a senha?</h1>
-            <p className="text-muted-foreground">Digite o e-mail da sua conta. Mandamos um link para você criar uma senha nova.</p>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="vg-email-rec">E-mail</Label>
-              <Input id="vg-email-rec" type="email" inputMode="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} className="h-14 rounded-[14px] text-base" />
+    <MolduraDaConta atalho={<Link to={ROTAS_DO_CANDIDATO.entrar} className="text-foreground hover:text-[hsl(var(--sel))]">Entrar</Link>}>
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 pb-12">
+        <div className="flex flex-col gap-5 rounded-[22px] border border-black/5 bg-card p-6 sm:p-8 dark:border-white/5">
+          <span className="vg-selo grid h-14 w-14 place-items-center rounded-[18px] bg-[#FBCE00] text-[#1F2322]">
+            {enviado ? <MailCheck className="h-7 w-7" /> : <KeyRound className="h-7 w-7" />}
+          </span>
+          {enviado ? (
+            <div className="vg-pergunta flex flex-col gap-3" role="status">
+              <h1 className="text-[28px] font-bold leading-tight">Confira seu e-mail.</h1>
+              <p className="text-muted-foreground">Se <b className="text-foreground">{email.trim()}</b> tiver conta, o link para criar uma senha nova chega em alguns minutos. Olhe também o spam.</p>
+              <Button asChild variant="outline" className="mt-2 h-12 self-start rounded-xl"><Link to={ROTAS_DO_CANDIDATO.entrar}><ArrowLeft className="h-4 w-4" /> Voltar para entrar</Link></Button>
             </div>
-            {erro && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-900 dark:bg-red-950/60 dark:text-red-100">{erro}</p>}
-            <Button type="submit" disabled={enviando} className="h-14 rounded-[14px] text-base">{enviando ? 'Enviando…' : 'Enviar link'}</Button>
-          </form>
-        )}
+          ) : (
+            <form onSubmit={enviar} noValidate className="vg-pergunta flex flex-col gap-4">
+              <h1 className="text-[28px] font-bold leading-tight">Esqueceu a senha?</h1>
+              <p className="text-muted-foreground">Digite o e-mail da sua conta. Mandamos um link para você criar uma senha nova.</p>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="vg-email-rec">E-mail</Label>
+                <Input id="vg-email-rec" type="email" inputMode="email" autoComplete="email" value={email} onChange={e => setEmail(e.target.value)} className="h-12 rounded-xl text-base" />
+              </div>
+              {erro && <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{erro}</p>}
+              <Button type="submit" disabled={enviando} className="h-12 rounded-xl text-base">{enviando ? 'Enviando…' : 'Enviar link'}</Button>
+            </form>
+          )}
+        </div>
       </div>
     </MolduraDaConta>
   );

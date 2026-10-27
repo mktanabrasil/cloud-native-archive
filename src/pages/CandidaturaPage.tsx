@@ -33,7 +33,7 @@ function Linha({ rotulo, children }: { rotulo: string; children: ReactNode }) {
 function Escolha({ ativo, onClick, children, papel = 'button' }: { ativo: boolean; onClick: () => void; children: ReactNode; papel?: 'button' | 'checkbox' | 'radio' }) {
   return (
     <button type="button" role={papel === 'button' ? undefined : papel} aria-checked={papel === 'button' ? undefined : ativo} aria-pressed={papel === 'button' ? ativo : undefined} onClick={onClick}
-      className={`rounded-full px-4 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${ativo ? 'bg-foreground text-background' : 'bg-muted hover:bg-muted/70'}`}>
+      className={`min-h-11 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${ativo ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-card hover:bg-muted/60'}`}>
       {children}
     </button>
   );
@@ -79,7 +79,7 @@ export default function CandidaturaPage() {
   // Conta da equipe (RH, admin…) não se candidata: explica em vez de devolver calado.
   if (!ehCandidato(user)) {
     return (
-      <MolduraDaConta atalho={<Link to={`/vagas/${slug}`} className="text-foreground hover:text-primary">Vaga</Link>}>
+      <MolduraDaConta atalho={<Link to={`/vagas/${slug}`} className="text-foreground hover:text-[hsl(var(--sel))]">Vaga</Link>}>
         <div className="mx-auto flex max-w-xl flex-col gap-4 px-4 py-10">
           <h1 className="text-[26px] font-bold leading-tight">Você entrou com uma conta da equipe.</h1>
           <p className="text-muted-foreground">A candidatura é feita com uma conta de candidato. Saia e entre com ela, ou crie uma.</p>
@@ -89,7 +89,7 @@ export default function CandidaturaPage() {
     );
   }
 
-  const atalho = <Link to={ROTAS_DO_CANDIDATO.minhaArea} className="text-foreground hover:text-primary">Minha área</Link>;
+  const atalho = <Link to={ROTAS_DO_CANDIDATO.minhaArea} className="text-foreground hover:text-[hsl(var(--sel))]">Minha área</Link>;
   const carregando = vaga === undefined || (vaga && !perfil);
 
   if (falhaAoAbrir) {
@@ -165,7 +165,7 @@ export default function CandidaturaPage() {
       <div className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5 px-4 pb-10 pt-2 sm:px-6">
         <div className="flex flex-col gap-2">
           <PassosComAviao total={PASSOS.length} atual={enviada ? PASSOS.length - 1 : passo} concluidos={PASSOS.map((_, i) => !!enviada || i < passo)} />
-          <span className="truncate text-xs font-semibold uppercase tracking-wider text-muted-foreground" aria-live="polite">
+          <span className="truncate text-[13px] font-semibold text-muted-foreground" aria-live="polite">
             {enviada ? 'Enviada' : `${passo + 1} de ${PASSOS.length}`} · {vaga.titulo}
           </span>
         </div>
@@ -173,14 +173,14 @@ export default function CandidaturaPage() {
         {enviada ? (
           <div className="vg-pergunta flex flex-col gap-5">
             <h1 className="text-[28px] font-bold leading-tight">Candidatura enviada!</h1>
-            <div className="grid gap-1 rounded-[18px] bg-emerald-50 p-4 text-center dark:bg-emerald-950/40">
-              <span className="text-xs text-muted-foreground">Protocolo</span>
-              <b className="text-2xl tabular-nums tracking-wide" data-testid="protocolo">{enviada.protocolo}</b>
+            <div className="grid gap-1 rounded-[20px] border border-black/5 bg-card dark:border-white/5 p-5 text-center">
+              <span className="text-[13px] text-muted-foreground">Protocolo</span>
+              <b className="font-display text-[28px] font-semibold tabular-nums tracking-wide" data-testid="protocolo">{enviada.protocolo}</b>
               <span className="text-xs text-muted-foreground">{vaga.titulo} · {dataEHora(enviada.created_at)}</span>
             </div>
             <ol className="grid gap-2.5 text-sm">
               {['Confirmação no seu e-mail.', 'O RH analisa as candidaturas.', 'Se avançar, você é avisado aqui e por e-mail.'].map((t, i) => (
-                <li key={t} className="flex items-start gap-3"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-muted text-xs font-bold">{i + 1}</span>{t}</li>
+                <li key={t} className="flex items-start gap-3"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-muted font-display text-xs font-semibold tabular-nums">{i + 1}</span>{t}</li>
               ))}
             </ol>
             <div className="flex flex-wrap gap-2">
@@ -195,14 +195,14 @@ export default function CandidaturaPage() {
                 <h1 className="text-[26px] font-bold leading-tight sm:text-[30px]">{faltamNoPerfil.length ? 'Falta pouco no seu perfil' : 'Confira o que vai junto'}</h1>
                 {faltamNoPerfil.length ? (
                   <>
-                    <p className="flex items-start gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/50 dark:text-red-100">
+                    <p className="flex items-start gap-2 rounded-2xl bg-destructive/10 p-3 text-sm text-destructive">
                       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> Complete antes de enviar: {faltamNoPerfil.map((f) => f.nome).join(' e ')}.
                     </p>
                     <ul className="grid gap-2">
                       {faltamNoPerfil.map((f) => (
                         <li key={f.passo}>
-                          <Link to={`${ROTAS_DO_CANDIDATO.meuPerfil}?passo=${f.passo}&volta=${encodeURIComponent(aqui)}`} className="flex items-center justify-between rounded-xl bg-muted/60 px-3 py-3 text-sm font-medium hover:bg-muted">
-                            {f.nome} <span className="flex items-center gap-1 text-sky-700 dark:text-sky-400">Preencher <ChevronRight className="h-4 w-4" /></span>
+                          <Link to={`${ROTAS_DO_CANDIDATO.meuPerfil}?passo=${f.passo}&volta=${encodeURIComponent(aqui)}`} className="flex min-h-[52px] items-center justify-between rounded-2xl border border-black/5 bg-card px-4 py-3 text-sm font-medium transition-colors hover:border-black/10 dark:border-white/5 dark:hover:border-white/15">
+                            {f.nome} <span className="flex items-center gap-1 font-semibold text-[hsl(var(--sel))]">Preencher <ChevronRight className="h-4 w-4" /></span>
                           </Link>
                         </li>
                       ))}
@@ -210,15 +210,15 @@ export default function CandidaturaPage() {
                   </>
                 ) : (
                   <>
-                    <div className="grid gap-2 rounded-2xl bg-muted/60 p-4" data-testid="resumo-do-perfil">
+                    <div className="grid gap-2.5 rounded-[20px] border border-black/5 bg-card dark:border-white/5 p-5" data-testid="resumo-do-perfil">
                       <Linha rotulo="Nome">{perfil.nome_social || perfil.nome}</Linha>
                       <Linha rotulo="WhatsApp">{perfil.whatsapp}</Linha>
                       <Linha rotulo="Cidade">{perfil.cidade}</Linha>
                       <Linha rotulo="Formação">{escolaridade}</Linha>
                       <Linha rotulo="Experiências">{perfil.sem_experiencia && exps.length === 0 ? 'Nenhuma' : exps.length}</Linha>
-                      <Linha rotulo="Currículo">{perfil.curriculo_nome ? <span className="inline-flex items-center gap-1"><Check className="h-4 w-4 text-emerald-600" />{perfil.curriculo_nome}</span> : 'Não enviado (opcional)'}</Linha>
+                      <Linha rotulo="Currículo">{perfil.curriculo_nome ? <span className="inline-flex items-center gap-1"><Check className="h-4 w-4 text-success" />{perfil.curriculo_nome}</span> : 'Não enviado (opcional)'}</Linha>
                     </div>
-                    <Link to={`${ROTAS_DO_CANDIDATO.meuPerfil}?volta=${encodeURIComponent(aqui)}`} className="self-start text-sm font-semibold text-sky-700 hover:underline dark:text-sky-400">Editar perfil ›</Link>
+                    <Link to={`${ROTAS_DO_CANDIDATO.meuPerfil}?volta=${encodeURIComponent(aqui)}`} className="self-start text-sm font-semibold text-[hsl(var(--sel))] hover:underline">Editar perfil ›</Link>
                   </>
                 )}
               </>
@@ -230,11 +230,11 @@ export default function CandidaturaPage() {
                 {requisitos.length === 0 ? (
                   <p className="text-muted-foreground">Esta vaga não lista requisitos. Pode seguir.</p>
                 ) : (
-                  <div className="grid gap-2" role="group" aria-label="Requisitos da vaga">
+                  <div className="flex flex-col divide-y divide-border/70 overflow-hidden rounded-[20px] border border-black/5 bg-card dark:border-white/5" role="group" aria-label="Requisitos da vaga">
                     {requisitos.map((r, i) => (
                       <button key={r} type="button" role="checkbox" aria-checked={!!atende[i]} onClick={() => setAtende((a) => ({ ...a, [i]: !a[i] }))}
-                        className="flex items-center gap-3 rounded-xl bg-muted/60 px-3 py-3 text-left text-sm hover:bg-muted">
-                        <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-lg border-2 ${atende[i] ? 'border-foreground bg-foreground text-background' : 'border-border bg-background'}`}>{atende[i] && <Check className="h-4 w-4" />}</span>
+                        className="flex min-h-[52px] items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+                        <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-md border-2 ${atende[i] ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-card'}`}>{atende[i] && <Check className="h-4 w-4" />}</span>
                         {r}
                       </button>
                     ))}
@@ -291,7 +291,7 @@ export default function CandidaturaPage() {
             {passo === 3 && (
               <>
                 <h1 className="text-[26px] font-bold leading-tight sm:text-[30px]">Tudo certo para enviar?</h1>
-                <div className="grid gap-2 rounded-2xl bg-muted/60 p-4">
+                <div className="grid gap-2.5 rounded-[20px] border border-black/5 bg-card dark:border-white/5 p-5">
                   <Linha rotulo="Vaga">{vaga.titulo}</Linha>
                   <Linha rotulo="Perfil">✓</Linha>
                   <Linha rotulo="Currículo">{perfil.curriculo_nome ? '✓' : 'Sem currículo'}</Linha>
@@ -299,12 +299,12 @@ export default function CandidaturaPage() {
                   {perguntas.length > 0 && <Linha rotulo="Perguntas">✓</Linha>}
                 </div>
                 <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Lock className="h-4 w-4 shrink-0 text-sky-700 dark:text-sky-400" /> Só o RH do processo vê. <Link to={ROTAS_DO_CANDIDATO.privacidade} target="_blank" className="font-semibold text-sky-700 underline dark:text-sky-400">Aviso de Privacidade</Link>
+                  <Lock className="h-4 w-4 shrink-0 text-[hsl(var(--sel))]" /> Só o RH do processo vê. <Link to={ROTAS_DO_CANDIDATO.privacidade} target="_blank" className="font-semibold text-[hsl(var(--sel))] underline">Aviso de Privacidade</Link>
                 </p>
               </>
             )}
 
-            {erro && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-900 dark:bg-red-950/60 dark:text-red-100">{erro}</p>}
+            {erro && <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{erro}</p>}
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
               {passo > 0

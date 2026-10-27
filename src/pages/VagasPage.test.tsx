@@ -218,7 +218,9 @@ describe('o cartão da vaga (modelo 1, versão B, 28/09/2026)', () => {
     expect(cartao).toHaveClass('vg-cartao');
     expect(cartao.querySelector('[data-mov="danca"]')).not.toBeNull();
     expect(cartao).toHaveTextContent('Requisito: Ensino Médio completo');
-    expect(cartao).toHaveTextContent('Aberta');
+    // Esboço V2 (26/10/2026): o que toda vaga tem igual sai do cartão e fica uma vez, no topo.
+    expect(cartao).not.toHaveTextContent('Aberta');
+    expect(screen.getAllByText(/Inscrições abertas/).length).toBeGreaterThan(0);
   });
 });
 
@@ -251,17 +253,18 @@ describe('grade ou lista, e os programas no fim (28/09/2026)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Lista' }));
     expect(screen.getByRole('button', { name: 'Lista' })).toHaveAttribute('aria-pressed', 'true');
     expect(localStorage.getItem('vagas-vista')).toBe('lista');
-    // na lista, sem a faixa com a frase
+    // Esboço V2 (26/10/2026): a lista é a faixa B, com o que a vaga pede ao lado do cargo.
     const cartao = screen.getByRole('link', { name: /Educador Social de Música/ });
-    expect(cartao).not.toHaveTextContent('Requisito:');
+    expect(cartao).toHaveTextContent('Requisito: Ensino Médio completo');
     localStorage.removeItem('vagas-vista');
   });
 
-  it('os filtros têm ícone', async () => {
+  // Esboço V2 (26/10/2026): os filtros são só texto; as áreas levam a bolinha da cor.
+  it('os filtros são texto, sem ícone', async () => {
     abrir('/vagas');
     await screen.findByText(/3 vagas abertas/);
     const filtros = screen.getByRole('group', { name: 'Filtros' });
-    within(filtros).getAllByRole('button').forEach(b => expect(b.querySelector('svg')).not.toBeNull());
+    within(filtros).getAllByRole('button').forEach(b => expect(b.querySelector('svg')).toBeNull());
   });
 });
 

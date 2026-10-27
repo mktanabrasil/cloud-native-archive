@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 import { AREAS, ROTULO_DA_AREA, type Area } from '@/lib/vagas/modelo';
 import { COLUNAS_DO_QUADRO, DIAS_PARADO, montarPainel, type Painel } from '@/lib/vagas/rh';
 
@@ -13,6 +12,10 @@ import { COLUNAS_DO_QUADRO, DIAS_PARADO, montarPainel, type Painel } from '@/lib
 
 const PERIODOS: Array<[number | null, string]> = [[7, '7 dias'], [30, '30 dias'], [90, '90 dias'], [null, 'Tudo']];
 const COR: Record<string, string> = { recebida: '#01ADFF', analise: '#FBCE00', entrevista: '#81E2CF', aprovado: '#0E6B58', nao_selecionado: 'hsl(var(--muted-foreground) / 0.35)', retiradas: 'hsl(var(--muted-foreground) / 0.2)' };
+
+// Esboço V2: abas segmentadas (o mesmo desenho dos filtros de Processos).
+const SEGMENTO = 'inline-flex max-w-full gap-0.5 overflow-x-auto rounded-[14px] bg-muted p-1';
+const opcao = (ativa: boolean) => `inline-flex shrink-0 items-center whitespace-nowrap rounded-[10px] px-3 py-1.5 text-[13.5px] transition-colors ${ativa ? 'bg-card font-semibold text-foreground shadow-[0_1px_3px_hsl(165_30%_12%/0.12)]' : 'font-medium text-muted-foreground hover:text-foreground'}`;
 
 export function PainelDoRh() {
   const [dias, setDias] = useState<number | null>(30);
@@ -37,56 +40,78 @@ export function PainelDoRh() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Painel do RH</h1>
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Período e área">
-          {PERIODOS.map(([d, r]) => <Button key={r} size="sm" variant={dias === d ? 'default' : 'secondary'} className="h-8 rounded-full" onClick={() => setDias(d)}>{r}</Button>)}
-          <span className="w-2" />
-          <Button size="sm" variant={area === null ? 'default' : 'secondary'} className="h-8 rounded-full" onClick={() => setArea(null)}>Todas as áreas</Button>
-          {AREAS.map((a) => <Button key={a} size="sm" variant={area === a ? 'default' : 'secondary'} className="h-8 rounded-full" onClick={() => setArea(a)}>{ROTULO_DA_AREA[a]}</Button>)}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[28px] font-bold leading-tight">Painel do RH</h1>
+          <p className="text-sm text-muted-foreground">Trabalhe Conosco · números do período</p>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Período e área">
+        <div className={SEGMENTO}>
+          {PERIODOS.map(([d, r]) => (
+            <button key={r} type="button" aria-pressed={dias === d} className={opcao(dias === d)} onClick={() => setDias(d)}>{r}</button>
+          ))}
+        </div>
+        <div className={SEGMENTO}>
+          <button type="button" aria-pressed={area === null} className={opcao(area === null)} onClick={() => setArea(null)}>Todas as áreas</button>
+          {AREAS.map((a) => (
+            <button key={a} type="button" aria-pressed={area === a} className={opcao(area === a)} onClick={() => setArea(a)}>{ROTULO_DA_AREA[a]}</button>
+          ))}
         </div>
       </div>
 
-      {erro && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/60 dark:text-red-100">Não consegui montar o painel. Recarregue a página.</p>}
+      {erro && <p role="alert" className="text-sm font-semibold text-destructive">Não consegui montar o painel. Recarregue a página.</p>}
       {!p && !erro && <p className="text-sm text-muted-foreground">Carregando…</p>}
 
       {p && (
         <>
-          <div className="grid grid-cols-2 gap-2.5 md:grid-cols-5">
-            {kpis.map(([r, n, sub, alerta]) => (
-              <div key={r} className={`flex flex-col gap-0.5 rounded-2xl p-4 ${alerta ? 'bg-red-50 dark:bg-red-950/40' : 'bg-muted/60'}`} data-testid={`kpi-${r}`}>
-                <small className="text-[11px] uppercase tracking-wider text-muted-foreground">{r}</small>
-                <b className={`text-3xl tabular-nums ${alerta ? 'text-red-800 dark:text-red-300' : ''}`}>{n}</b>
-                <span className="truncate text-xs text-muted-foreground">{sub}</span>
+          {/* faixa de números (padrão do Dashboard): cor só no número que pede ação */}
+          <div className="glass-1 grid grid-cols-2 overflow-hidden rounded-[20px] md:grid-cols-5">
+            {kpis.map(([r, n, sub, alerta], i) => (
+              <div
+                key={r}
+                data-testid={`kpi-${r}`}
+                className={[
+                  'flex min-w-0 flex-col border-black/10 p-4 dark:border-white/10 sm:px-5',
+                  i % 2 === 1 ? 'border-l' : '',
+                  i >= 2 ? 'border-t md:border-t-0' : '',
+                  i > 0 ? 'md:border-l' : '',
+                  i === 4 ? 'col-span-2 md:col-span-1' : '',
+                ].join(' ')}
+              >
+                <b className={`font-display text-3xl font-bold tabular-nums ${alerta ? 'text-destructive' : 'text-foreground'}`}>{n}</b>
+                <span className="mt-0.5 text-[13px] text-muted-foreground">{r}</span>
+                <span className="truncate text-xs text-[hsl(var(--fraco,0_0%_45%))]">{sub}</span>
               </div>
             ))}
           </div>
 
           <div className="grid gap-4 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-            <section className="flex flex-col gap-2.5 rounded-2xl bg-muted/60 p-4" aria-label="Candidatos por etapa">
-              <b className="text-sm">Candidatos por etapa · todas as vagas</b>
+            <section className="flex flex-col gap-3 rounded-[20px] border border-black/5 bg-card p-5 dark:border-white/5" aria-label="Candidatos por etapa">
+              <h2 className="text-[15px] font-semibold">Candidatos por etapa · todas as vagas</h2>
               {etapas.map(([k, r]) => {
                 const n = p.porColuna[k as keyof Painel['porColuna']];
                 return (
-                  <div key={k} className="grid grid-cols-[120px_minmax(0,1fr)_40px] items-center gap-2.5 text-sm">
-                    <span>{r}</span>
-                    <span className="h-3.5 rounded-full bg-background"><span className="block h-full rounded-full" style={{ width: `${(n / max) * 100}%`, background: COR[k] }} /></span>
-                    <b className="text-right tabular-nums">{n}</b>
+                  <div key={k} className="grid grid-cols-[110px_minmax(0,1fr)_36px] items-center gap-2.5 text-sm">
+                    <span className="text-muted-foreground">{r}</span>
+                    <span className="h-2 rounded-full bg-muted"><span className="block h-full rounded-full" style={{ width: `${(n / max) * 100}%`, background: COR[k] }} /></span>
+                    <b className="text-right font-semibold tabular-nums">{n}</b>
                   </div>
                 );
               })}
             </section>
 
-            <section className="flex flex-col gap-2 rounded-2xl bg-muted/60 p-4" aria-label="Pede atenção">
-              <b className="text-sm">Pede atenção</b>
-              {p.atencao.length === 0 ? <p className="text-sm text-muted-foreground">Nada pendente.</p> : (
-                <ul className="flex flex-col gap-1.5">
+            <section className="flex flex-col overflow-hidden rounded-[20px] border border-black/5 bg-card dark:border-white/5" aria-label="Pede atenção">
+              <h2 className="px-5 pb-2 pt-5 text-[15px] font-semibold">Pede atenção</h2>
+              {p.atencao.length === 0 ? <p className="px-5 pb-5 text-sm text-muted-foreground">Nada pendente.</p> : (
+                <ul className="flex flex-col">
                   {p.atencao.slice(0, 8).map((a) => (
-                    <li key={`${a.vaga.id}-${a.tipo}`}>
+                    <li key={`${a.vaga.id}-${a.tipo}`} className="border-t border-border/70">
                       <Link to={a.tipo === 'sem_candidatos' ? `/vagas/${a.vaga.slug}` : `/vagas/${a.vaga.slug}/candidatos?ver=${a.tipo}`}
-                        className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-xl bg-background px-3 py-2.5 text-sm hover:bg-background/70">
-                        <span className="min-w-0"><b className="block truncate">{a.vaga.titulo}</b><span className="text-xs text-muted-foreground">{a.detalhe}</span></span>
-                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${a.tipo === 'respostas' ? 'bg-sky-50 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300' : a.tipo === 'novos' ? 'bg-red-50 text-red-800 dark:bg-red-950/60 dark:text-red-300' : 'bg-amber-50 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200'}`}>
+                        className="grid min-h-[44px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 py-3 text-sm transition-colors hover:bg-muted/40">
+                        <span className="min-w-0"><b className="block truncate font-semibold">{a.vaga.titulo}</b><span className="text-xs text-[hsl(var(--fraco,0_0%_45%))]">{a.detalhe}</span></span>
+                        <span className={`inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] font-semibold ${a.tipo === 'respostas' ? 'text-info' : a.tipo === 'novos' ? 'text-destructive' : 'text-warning'}`}>
+                          <span className="h-1.5 w-1.5 rounded-full bg-current" />
                           {a.tipo === 'respostas' ? 'respondeu' : a.tipo === 'novos' ? `${a.quantidade} ${a.quantidade === 1 ? 'novo' : 'novos'}` : a.tipo === 'parados' ? 'parados' : 'sem candidatos'}
                         </span>
                       </Link>
