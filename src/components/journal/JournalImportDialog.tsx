@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { FileUp, Loader2, Sparkles, AlertCircle, FileText, X } from 'lucide-react';
+import { FileUp, Loader2, AlertCircle, FileText, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -202,8 +202,7 @@ export function JournalImportDialog({
     <Dialog open={aberto} onOpenChange={fechar}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
+          <DialogTitle>
             Começar de um arquivo que você já tem
           </DialogTitle>
           <DialogDescription>
@@ -214,7 +213,7 @@ export function JournalImportDialog({
 
         {etapa === 'lendo' ? (
           <div className="flex flex-col items-center gap-3 py-10 text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <Loader2 className="h-8 w-8 animate-spin text-[hsl(var(--sel,168_80%_27%))]" />
             <p className="text-sm font-medium text-foreground">
               {envio && envio.total > 0
                 ? `Preparando as fotos… ${envio.feitas} de ${envio.total}`
@@ -256,13 +255,13 @@ export function JournalImportDialog({
                 escolher(evento.dataTransfer.files?.[0]);
               }}
               className={cn(
-                'rounded-lg border-2 border-dashed p-5 text-center transition-colors',
-                arrastando ? 'border-primary bg-accent' : 'border-border bg-muted/30',
+                'rounded-[16px] border-2 border-dashed p-5 text-center transition-colors',
+                arrastando ? 'border-[hsl(var(--sel,168_80%_27%))] bg-muted/60' : 'border-border bg-muted/30',
               )}
             >
               {arquivo ? (
                 <div className="flex items-center justify-center gap-2 text-sm">
-                  <FileText className="h-4 w-4 shrink-0 text-primary" />
+                  <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="min-w-0 truncate font-medium text-foreground">{arquivo.name}</span>
                   <Button
                     variant="ghost"
@@ -288,7 +287,7 @@ export function JournalImportDialog({
                   >
                     Escolher do computador
                   </Button>
-                  <p className="mt-2 text-[11px] text-muted-foreground">
+                  <p className="mt-2 text-xs text-[hsl(var(--fraco,0_0%_45%))]">
                     PDF de até {LIMITE_ARQUIVO_MB} MB. No Word, use “Salvar como” e escolha PDF.
                   </p>
                 </>
@@ -303,7 +302,7 @@ export function JournalImportDialog({
             </div>
 
             {erro && (
-              <p className="flex items-start gap-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              <p className="flex items-start gap-2 rounded-[12px] bg-destructive/10 px-3 py-2 text-xs text-destructive">
                 <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>{erro}</span>
               </p>
@@ -331,7 +330,7 @@ export function JournalImportDialog({
               />
             </div>
 
-            <p className="rounded-md bg-muted/60 px-2.5 py-2 text-[11px] text-muted-foreground">
+            <p className="rounded-[12px] bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
               As fotos vêm junto: cada uma é recortada do arquivo e colocada no lugar dela, no tamanho
               e no formato originais — em pé ou deitada, na mesma fileira em que você as pôs. Se alguma
               não vier, o encaixe fica reservado e você arrasta a imagem para lá.
@@ -345,7 +344,6 @@ export function JournalImportDialog({
               Cancelar
             </Button>
             <Button onClick={importar} disabled={!arquivo}>
-              <Sparkles className="mr-1.5 h-4 w-4" />
               Organizar no modelo
             </Button>
           </DialogFooter>

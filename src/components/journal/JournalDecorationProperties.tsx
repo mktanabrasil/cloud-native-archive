@@ -1,4 +1,3 @@
-import { Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ColorSwatchPicker } from './ColorSwatchPicker';
 import { JOURNAL_CORNER_LABELS, findJournalElement } from '@/lib/journal/elements';
@@ -41,12 +40,12 @@ export function JournalDecorationProperties({
   const segmento = SEGMENT_LABELS[newsUnitSegment(unitId) ?? ''];
 
   return (
-    <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+    <div className="space-y-3 rounded-[16px] border border-border/70 bg-muted/30 p-3">
       <div>
-        <p className="text-xs font-semibold">
+        <h3 className="text-[15px] font-semibold text-foreground">
           Forma · {JOURNAL_CORNER_LABELS[decoration.corner].toLowerCase()}
-        </p>
-        <p className="text-[10px] text-muted-foreground">
+        </h3>
+        <p className="text-[11px] text-muted-foreground">
           {findJournalElement(decoration.element).label} · em todas as páginas do jornal
         </p>
       </div>
@@ -64,7 +63,7 @@ export function JournalDecorationProperties({
         pensaria que a tela quebrou.
       */}
       {foraDoSegmento && (
-        <p className="flex items-start gap-1.5 rounded-md bg-amber-100/60 px-2 py-1.5 text-[10px] leading-relaxed text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+        <p className="flex items-start gap-1.5 rounded-[12px] bg-warning/10 px-2.5 py-2 text-xs leading-relaxed text-foreground">
           <span
             aria-hidden="true"
             className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full border border-border"
@@ -79,7 +78,7 @@ export function JournalDecorationProperties({
       )}
 
       <Button variant="outline" size="sm" className="w-full text-destructive" onClick={onRemove}>
-        <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Remover forma
+        Remover forma
       </Button>
     </div>
   );

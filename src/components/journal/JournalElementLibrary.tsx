@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -24,15 +23,15 @@ export function JournalElementLibrary({ onPick }: Props) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="w-full">
-          <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Forma ANA
+          Forma ANA
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-72 space-y-3">
+      <PopoverContent align="end" className="w-72 space-y-3 rounded-[16px]">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <p className="text-[13px] font-semibold text-foreground">
             Escolher forma
           </p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
             Entra nos quatro cantos, em todas as páginas.
           </p>
         </div>
@@ -48,7 +47,7 @@ export function JournalElementLibrary({ onPick }: Props) {
                 setOpen(false);
               }}
               className={cn(
-                'rounded-md border border-border p-2 transition-colors hover:border-primary hover:bg-accent',
+                'rounded-[12px] border border-border p-2 transition-colors hover:border-[hsl(var(--sel,168_80%_27%))] hover:bg-muted/50',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               )}
             >
@@ -67,7 +66,7 @@ export function JournalElementLibrary({ onPick }: Props) {
           ))}
         </div>
 
-        <p className="text-[10px] leading-relaxed text-muted-foreground">
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
           Cantos de cima e de baixo, espelhadas automaticamente — em cima, de cabeça para baixo e
           menores, para não disputar com o cabeçalho. Valem para o jornal inteiro; a cor de cada
           canto é ajustada depois.

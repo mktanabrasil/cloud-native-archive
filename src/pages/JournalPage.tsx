@@ -1,13 +1,12 @@
-import { useEffect, useCallback, useMemo, useState } from 'react';
+import { useEffect, useCallback, useMemo, useState, type HTMLAttributes } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import {
-  Plus, Copy, Trash2, Pencil, Lock, Loader2, Newspaper, Search, Sparkles, GraduationCap, AlertTriangle, Archive, ArchiveRestore, FilePlus2 } from 'lucide-react';
+import { Lock, Loader2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+import PageHeader from '@/components/PageHeader';
 import {
   Dialog,
   DialogContent,
@@ -28,7 +27,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useJournals } from '@/hooks/useJournals';
 import { JournalEditor } from '@/components/journal/JournalEditor';
 import { JournalPageView, A4_W, A4_H } from '@/components/journal/JournalPageView';
-import { UnitBadge } from '@/components/journal/UnitBadge';
+import { UnitBadge, PontoDaUnidade } from '@/components/journal/UnitBadge';
 import { JournalImportDialog } from '@/components/journal/JournalImportDialog';
 import { JournalEsbocoDialog } from '@/components/journal/JournalEsbocoDialog';
 import { SeletorDeMes } from '@/components/journal/SeletorDeMes';
@@ -49,7 +48,6 @@ import {
   type JournalModelKey,
 } from '@/lib/journal/templates';
 import {
-  STATUS_BADGE_CLASSES,
   STATUS_LABELS,
   type JournalRecord,
 } from '@/lib/journal/types';
@@ -72,6 +70,25 @@ const COUNTER_LABELS: Record<JournalStatus, string> = {
   finalizado: 'Finalizados',
   arquivado: 'Arquivados',
 };
+
+/** Esboço V2: a situação é texto com bolinha, não pílula colorida. */
+const COR_DA_SITUACAO: Record<JournalStatus, string> = {
+  rascunho: 'text-warning',
+  finalizado: 'text-success',
+  arquivado: 'text-muted-foreground',
+};
+
+function Situacao({ status, ...rest }: { status: JournalStatus } & HTMLAttributes<HTMLSpanElement>) {
+  return (
+    <span
+      className={cn('inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[13px] font-semibold', COR_DA_SITUACAO[status])}
+      {...rest}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {STATUS_LABELS[status]}
+    </span>
+  );
+}
 
 const THUMB_W = 260;
 const THUMB_SCALE = THUMB_W / A4_W;
@@ -254,13 +271,13 @@ export default function JournalPage() {
     return (
       <div className="mx-auto w-full max-w-6xl px-4 py-8 lg:px-8" aria-busy="true" aria-label="Carregando o Jornal">
         <div className="space-y-3">
-          <Skeleton className="h-7 w-56" />
+          <Skeleton className="h-8 w-56 rounded-[12px]" />
           <Skeleton className="h-4 w-80" />
         </div>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Skeleton className="h-64 rounded-xl" />
-          <Skeleton className="h-64 rounded-xl" />
-          <Skeleton className="h-64 rounded-xl" />
+          <Skeleton className="h-64 rounded-[20px]" />
+          <Skeleton className="h-64 rounded-[20px]" />
+          <Skeleton className="h-64 rounded-[20px]" />
         </div>
       </div>
     );
@@ -333,39 +350,36 @@ export default function JournalPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">
-      <header className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Olá{userName ? `, ${userName.split(' ')[0]}` : ''}
-          </h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Aqui ficam os jornais da sua unidade.
-          </p>
-        </div>
-        {/* Criar fora da própria unidade seria recusado pela RLS. */}
-        {naMinhaUnidade && (
-          <div className="flex shrink-0 flex-wrap gap-2">
-            {IMPORTACAO_LIBERADA && (
-              <Button variant="outline" onClick={() => setImporting(true)}>
-                <Sparkles className="mr-1.5 h-4 w-4" /> Começar de um arquivo
+    <div className="mx-auto w-full max-w-7xl space-y-5 px-4 py-6 lg:px-8">
+      <PageHeader
+        className="mb-0"
+        title={`Olá${userName ? `, ${userName.split(' ')[0]}` : ''}`}
+        description="Aqui ficam os jornais da sua unidade."
+        actions={
+          /* Criar fora da própria unidade seria recusado pela RLS. */
+          naMinhaUnidade ? (
+            <>
+              {IMPORTACAO_LIBERADA && (
+                <Button variant="outline" onClick={() => setImporting(true)}>
+                  Começar de um arquivo
+                </Button>
+              )}
+              {/* Só a comunicação: o esboço sai da pasta "Jornal - Esboço" do marketing (05/10/2026). */}
+              {isMarketing && (
+                <Button variant="outline" onClick={() => setDeEsboco(true)}>
+                  Criar a partir de esboço
+                </Button>
+              )}
+              <Button variant="ghost" onClick={() => setTutorial(true)} data-tutorial="ajuda">
+                Como usar
               </Button>
-            )}
-            {/* Só a comunicação: o esboço sai da pasta "Jornal - Esboço" do marketing (05/10/2026). */}
-            {isMarketing && (
-              <Button variant="outline" onClick={() => setDeEsboco(true)}>
-                <FilePlus2 className="mr-1.5 h-4 w-4" /> Criar a partir de esboço
+              <Button onClick={openCreate} data-tutorial="criar">
+                Criar jornal da unidade
               </Button>
-            )}
-            <Button variant="outline" onClick={() => setTutorial(true)} data-tutorial="ajuda">
-              <GraduationCap className="mr-1.5 h-4 w-4" /> Como usar
-            </Button>
-            <Button onClick={openCreate} data-tutorial="criar">
-              <Plus className="mr-1.5 h-4 w-4" /> Criar jornal da unidade
-            </Button>
-          </div>
-        )}
-      </header>
+            </>
+          ) : undefined
+        }
+      />
 
       <UnitBadge
         data-tutorial="unidade"
@@ -381,70 +395,74 @@ export default function JournalPage() {
         modo={isMarketing ? 'mover' : 'ver'}
       />
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {COUNTER_ORDER.map((status) => {
-          const active = statusFilter === status;
-          return (
-            <button
-              key={status}
-              type="button"
-              onClick={() => setStatusFilter(active ? 'todos' : status)}
-              className={cn(
-                'rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                active
-                  ? 'border-primary bg-accent text-accent-foreground'
-                  : 'border-border bg-card text-muted-foreground hover:bg-accent/50',
-              )}
-              aria-pressed={active}
-            >
-              {counters[status]} {COUNTER_LABELS[status]}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Label htmlFor="busca-de-jornal" className="sr-only">Buscar jornal</Label>
-          <Input
-            id="busca-de-jornal"
-            className="pl-9"
-            placeholder="Buscar jornal…"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
+      {/* Situação em abas segmentadas, com a contagem; "Todos" é a lista de
+          trabalho (sem os arquivados), como era o "Todas as situações". */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div
+          role="group"
+          aria-label="Filtrar por situação"
+          className="inline-flex max-w-full gap-0.5 self-start overflow-x-auto rounded-[14px] bg-muted p-1"
+        >
+          {(['todos', ...COUNTER_ORDER] as const).map((status) => {
+            const active = statusFilter === status;
+            const rotulo = status === 'todos' ? 'Todos' : COUNTER_LABELS[status];
+            const contagem = status === 'todos' ? counters.rascunho + counters.finalizado : counters[status];
+            return (
+              <button
+                key={status}
+                type="button"
+                onClick={() => setStatusFilter(status === 'todos' || active ? 'todos' : status)}
+                className={cn(
+                  'inline-flex min-h-[40px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[10px] px-3 py-1.5 text-[13.5px] transition-colors sm:min-h-0',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  active
+                    ? 'bg-card font-semibold text-foreground shadow-[0_1px_3px_hsl(165_30%_12%/0.12)]'
+                    : 'font-medium text-muted-foreground hover:text-foreground',
+                )}
+                aria-pressed={active}
+                aria-label={`${contagem} ${rotulo}`}
+              >
+                {rotulo}
+                <span className="tabular-nums text-[hsl(var(--fraco,0_0%_45%))]">{contagem}</span>
+              </button>
+            );
+          })}
         </div>
-        <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as JournalStatus | 'todos')}>
-          <SelectTrigger aria-label="Situação">
-            <SelectValue placeholder="Situação" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todas as situações</SelectItem>
-            {COUNTER_ORDER.map((status) => (
-              <SelectItem key={status} value={status}>
-                {STATUS_LABELS[status]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={monthFilter} onValueChange={setMonthFilter}>
-          <SelectTrigger aria-label="Mês da edição">
-            <SelectValue placeholder="Mês da edição" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos os meses</SelectItem>
-            {months.map((month) => (
-              <SelectItem key={month} value={month}>
-                {month}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+
+        <div className="grid gap-2 sm:grid-cols-2 lg:w-[440px]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Label htmlFor="busca-de-jornal" className="sr-only">Buscar jornal</Label>
+            <Input
+              id="busca-de-jornal"
+              className="pl-9"
+              placeholder="Buscar jornal…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </div>
+          <Select value={monthFilter} onValueChange={setMonthFilter}>
+            <SelectTrigger aria-label="Mês da edição">
+              <SelectValue placeholder="Mês da edição" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os meses</SelectItem>
+              {months.map((month) => (
+                <SelectItem key={month} value={month}>
+                  {month}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      <h2 className="mt-7 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+      <section className="space-y-3">
+      <h2 className="text-[15px] font-semibold text-foreground">
         Seus jornais
+        {!loading && filtered.length > 0 && (
+          <span className="ml-2 font-normal tabular-nums text-[hsl(var(--fraco,0_0%_45%))]">{filtered.length}</span>
+        )}
       </h2>
 
       {loading ? (
@@ -452,15 +470,13 @@ export default function JournalPage() {
           <Loader2 className="h-4 w-4 animate-spin" /> Carregando jornais…
         </div>
       ) : erroDeLista && journals.length === 0 ? (
-        <div role="alert" className="mt-3 flex flex-col items-center gap-3 rounded-lg border border-dashed border-destructive/40 py-16 text-center" data-testid="erro-da-lista">
-          <AlertTriangle className="h-8 w-8 text-destructive" />
-          <p className="text-base font-semibold text-foreground">Não consegui carregar os jornais</p>
+        <div role="alert" className="flex flex-col items-center gap-3 rounded-[20px] border border-dashed border-destructive/40 py-16 text-center" data-testid="erro-da-lista">
+          <p className="text-base font-semibold text-destructive">Não consegui carregar os jornais</p>
           <p className="text-sm text-muted-foreground">Confira a conexão. Nada foi perdido.</p>
           <Button variant="outline" onClick={() => void refresh()}>Tentar de novo</Button>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="mt-3 flex flex-col items-center gap-3 rounded-lg border border-dashed border-border py-20 text-center">
-          <Newspaper className="h-10 w-10 text-muted-foreground" />
+        <div className="flex flex-col items-center gap-3 rounded-[20px] border border-dashed border-border px-4 py-20 text-center">
           {hasActiveFilters ? (
             <>
               <p className="text-sm font-semibold text-foreground">Nenhuma edição encontrada</p>
@@ -484,39 +500,41 @@ export default function JournalPage() {
               <p className="text-xs text-muted-foreground">
                 Comece o primeiro jornal de
                 <br />
-                <span className="font-medium text-foreground">
+                <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                  <PontoDaUnidade unitId={activeUnitId} />
                   {newsUnitName(activeUnitId) || 'Institucional geral'}
                 </span>
               </p>
+              {/* O botão forte já está no cabeçalho; aqui ele repete em contorno. */}
               <div className="flex flex-wrap justify-center gap-2">
-                <Button onClick={openCreate}>
-                  <Plus className="mr-1.5 h-4 w-4" /> Criar jornal da unidade
+                <Button variant="outline" onClick={openCreate}>
+                  Criar jornal da unidade
                 </Button>
                 {IMPORTACAO_LIBERADA && (
                   <Button variant="outline" onClick={() => setImporting(true)}>
-                    <Sparkles className="mr-1.5 h-4 w-4" /> Começar de um arquivo
+                    Começar de um arquivo
                   </Button>
                 )}
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-[hsl(var(--fraco,0_0%_45%))]">
                 A unidade já está definida — é só dar um nome à edição.
               </p>
             </>
           )}
         </div>
       ) : (
-        <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-tutorial="lista">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-tutorial="lista">
           {filtered.map((journal) => {
             const cover = journal.pages?.[0];
             return (
               <article
                 key={journal.id}
-                className="overflow-hidden rounded-lg border border-border bg-card transition-shadow hover:shadow-md"
+                className="overflow-hidden rounded-[20px] border border-black/5 bg-card transition-colors hover:border-black/10 dark:border-white/5 dark:hover:border-white/10"
               >
                 <button
                   type="button"
                   onClick={() => setEditingId(journal.id)}
-                  className="block w-full bg-muted/40 p-3 text-left"
+                  className="block w-full bg-muted/50 p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                   aria-label={`Abrir ${journal.name}`}
                 >
                   <div
@@ -538,63 +556,62 @@ export default function JournalPage() {
                   </div>
                 </button>
 
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="min-w-0 truncate text-base font-semibold text-foreground">
+                <div className="border-t border-border/70 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="min-w-0 truncate text-[15px] font-semibold leading-snug text-foreground">
                       {journal.name}
                     </h3>
-                    <Badge className={STATUS_BADGE_CLASSES[journal.status]} variant="secondary">
-                      {STATUS_LABELS[journal.status]}
-                    </Badge>
+                    <Situacao status={journal.status} />
                   </div>
-                  <div className="mt-1">
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[hsl(var(--fraco,0_0%_45%))]">
                     <UnitBadge variant="chip" unitId={journal.unit_id} />
+                    <span className="tabular-nums">
+                      · {journal.pages?.length ?? 0} páginas · {relativeDate(journal.updated_at)}
+                      {journal.reference_month ? ` · ${journal.reference_month}` : ''}
+                    </span>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {journal.pages?.length ?? 0} páginas · {relativeDate(journal.updated_at)}
-                    {journal.reference_month ? ` · ${journal.reference_month}` : ''}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    <Button size="sm" onClick={() => setEditingId(journal.id)}>
-                      <Pencil className="mr-1.5 h-3.5 w-3.5" /> Abrir
+                  {/* Ações discretas: o botão forte da tela é "Criar jornal da unidade". */}
+                  <div className="mt-3 flex flex-wrap items-center gap-1">
+                    <Button size="sm" variant="outline" className="mr-1" onClick={() => setEditingId(journal.id)}>
+                      Abrir
                     </Button>
                     {ehDela(journal) ? (
                       <>
-                        <Button size="sm" variant="outline" onClick={() => duplicate(journal)}>
-                          <Copy className="mr-1.5 h-3.5 w-3.5" /> Duplicar
+                        <Button size="sm" variant="ghost" onClick={() => duplicate(journal)}>
+                          Duplicar
                         </Button>
                         {/* Só finalizado arquiva: rascunho ainda está em uso (decisão de 16/09). */}
                         {journal.status === 'finalizado' && (
-                          <Button size="sm" variant="outline" onClick={() => void arquivar(journal)}>
-                            <Archive className="mr-1.5 h-3.5 w-3.5" /> Arquivar
+                          <Button size="sm" variant="ghost" onClick={() => void arquivar(journal)}>
+                            Arquivar
                           </Button>
                         )}
                         {journal.status === 'arquivado' && (
-                          <Button size="sm" variant="outline" onClick={() => void desarquivar(journal)}>
-                            <ArchiveRestore className="mr-1.5 h-3.5 w-3.5" /> Desarquivar
+                          <Button size="sm" variant="ghost" onClick={() => void desarquivar(journal)}>
+                            Desarquivar
                           </Button>
                         )}
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="text-destructive"
+                          className="ml-auto text-destructive hover:text-destructive"
                           onClick={() => setPendingDelete(journal)}
                         >
-                          <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Excluir
+                          Excluir
                         </Button>
                       </>
                     ) : (
                       defaultUnitId && (
                         <Button
                           size="sm"
-                          variant="outline"
+                          variant="ghost"
                           onClick={async () => {
                             await duplicate(journal, minhaUnidade);
                             setActiveUnitId(defaultUnitId);
                             toast.success('Cópia criada na sua unidade, como rascunho.');
                           }}
                         >
-                          <Copy className="mr-1.5 h-3.5 w-3.5" /> Duplicar para minha unidade
+                          Duplicar para minha unidade
                         </Button>
                       )
                     )}
@@ -605,6 +622,7 @@ export default function JournalPage() {
           })}
         </div>
       )}
+      </section>
 
       <AlertDialog
         open={!!pendingDelete}
@@ -615,7 +633,7 @@ export default function JournalPage() {
             <AlertDialogTitle>Excluir este jornal?</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
-                <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
+                <div className="rounded-[16px] border border-border bg-muted/40 p-3 text-sm">
                   <p className="font-medium text-foreground">{pendingDelete?.name}</p>
                   <p className="mt-1 text-muted-foreground">
                     {pendingDelete?.pages?.length ?? 0} páginas
@@ -687,7 +705,7 @@ export default function JournalPage() {
                   }))
                 }
               />
-              <p className="text-[11px] text-muted-foreground">Aparece no cabeçalho de todas as páginas.</p>
+              <p className="text-xs text-[hsl(var(--fraco,0_0%_45%))]">Aparece no cabeçalho de todas as páginas.</p>
             </div>
 
             <div className="space-y-1.5">
@@ -702,15 +720,15 @@ export default function JournalPage() {
                       onClick={() => setForm((prev) => ({ ...prev, model: model.key }))}
                       aria-pressed={active}
                       className={cn(
-                        'rounded-lg border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        'rounded-[16px] border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                         active
-                          ? 'border-primary bg-accent'
-                          : 'border-border bg-card hover:bg-accent/40',
+                          ? 'border-[hsl(var(--sel,168_80%_27%))] bg-card ring-1 ring-[hsl(var(--sel,168_80%_27%))]'
+                          : 'border-border bg-card hover:bg-muted/50',
                       )}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-semibold text-foreground">{model.name}</span>
-                        <span className="text-[11px] text-muted-foreground">
+                        <span className="text-xs tabular-nums text-[hsl(var(--fraco,0_0%_45%))]">
                           {model.pageLabels.length}{' '}
                           {model.pageLabels.length === 1 ? 'página' : 'páginas'}
                         </span>
@@ -720,7 +738,7 @@ export default function JournalPage() {
                         {model.pageLabels.map((label, index) => (
                           <span
                             key={`${model.key}-${index}`}
-                            className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                            className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground"
                           >
                             {label}
                           </span>
@@ -735,7 +753,7 @@ export default function JournalPage() {
           </div>
 
           {erroDeCriacao && (
-            <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs text-foreground" data-testid="erro-de-criacao">
+            <p role="alert" className="rounded-[12px] border border-destructive/40 bg-destructive/5 p-3 text-xs text-foreground" data-testid="erro-de-criacao">
               <strong>Não consegui criar o jornal.</strong> Confira a conexão e tente de novo. Se continuar, pode ser a sessão: saia e entre de novo.
             </p>
           )}

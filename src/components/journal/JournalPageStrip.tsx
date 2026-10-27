@@ -56,7 +56,7 @@ export function JournalPageStrip({
     <div
       // `shrink-0` porque ela vive num flex column: sem isso a tira seria
       // espremida pelo canvas quando a folha crescer.
-      className="flex shrink-0 gap-2 overflow-x-auto rounded-lg border border-border bg-card p-2 lg:hidden"
+      className="flex shrink-0 gap-2 overflow-x-auto rounded-[20px] border border-black/5 bg-card p-2.5 dark:border-white/5 lg:hidden"
       role="tablist"
       aria-label="Páginas do jornal"
     >
@@ -72,9 +72,9 @@ export function JournalPageStrip({
             aria-label={`Página ${index + 1}, ${TEMPLATE_LABELS[page.template]}${pending ? ', pendente' : ''}`}
             onClick={() => onSelect(page.id)}
             className={cn(
-              'shrink-0 rounded-md border p-1 transition-colors',
+              'shrink-0 rounded-[12px] border p-1 transition-colors',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              active ? 'border-primary bg-accent' : 'border-border hover:bg-accent/40',
+              active ? 'border-[hsl(var(--sel,168_80%_27%))] bg-muted/50 ring-1 ring-[hsl(var(--sel,168_80%_27%))]' : 'border-transparent hover:bg-muted/50',
             )}
           >
             <div
@@ -95,7 +95,7 @@ export function JournalPageStrip({
             </div>
             <span className="mt-1 flex items-center justify-center gap-1 text-[10px] tabular-nums text-muted-foreground">
               {String(index + 1).padStart(2, '0')}
-              {pending && <i aria-hidden="true" className="h-1 w-1 rounded-full bg-muted-foreground" />}
+              {pending && <i aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-warning" />}
             </span>
           </button>
           {acoes && active && (
@@ -116,7 +116,7 @@ export function JournalPageStrip({
         <Select onValueChange={(value) => acoes.onAdd(value as JournalTemplate)}>
           <SelectTrigger
             aria-label="Adicionar página"
-            className="h-auto shrink-0 flex-col justify-center gap-1 rounded-md border-dashed px-2 text-[10px] text-muted-foreground [&>svg:last-child]:hidden"
+            className="h-auto shrink-0 flex-col justify-center gap-1 rounded-[12px] border-dashed px-2 text-[11px] font-semibold text-muted-foreground [&>svg:last-child]:hidden"
             style={{ width: STRIP_W + 10, minHeight: Math.round(A4_H * STRIP_SCALE) + 26 }}
           >
             <Plus className="h-5 w-5" /> Página

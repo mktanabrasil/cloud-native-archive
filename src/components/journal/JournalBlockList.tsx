@@ -92,14 +92,14 @@ export function JournalBlockList({
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between">
-        <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <Label className="text-[13px] font-semibold text-foreground">
           Peças da página
         </Label>
-        <span className="text-[10px] text-muted-foreground">{blocks.length}</span>
+        <span className="text-[11px] text-muted-foreground">{blocks.length}</span>
       </div>
 
       {!blocks.length && !decorations.length ? (
-        <p className="rounded-lg border border-dashed border-border px-2.5 py-4 text-center text-xs text-muted-foreground">
+        <p className="rounded-[12px] border border-dashed border-border px-2.5 py-4 text-center text-xs text-muted-foreground">
           Nenhuma peça nesta página ainda.
         </p>
       ) : (
@@ -110,10 +110,10 @@ export function JournalBlockList({
               <li
                 key={block.id}
                 className={cn(
-                  'group flex items-center gap-2 rounded-lg border px-2 py-1.5 transition-colors',
+                  'group flex items-center gap-2 rounded-[12px] border px-2 py-1.5 transition-colors',
                   selected
-                    ? 'border-primary bg-accent'
-                    : 'border-border bg-background hover:bg-accent/50',
+                    ? 'border-[hsl(var(--sel,168_80%_27%))] bg-muted/50'
+                    : 'border-border/70 bg-background hover:bg-muted/50',
                 )}
               >
                 <span
@@ -132,7 +132,7 @@ export function JournalBlockList({
                   <p className="truncate text-xs font-medium text-foreground">
                     {blockKindLabel(block)}
                   </p>
-                  <p className="truncate text-[10px] text-muted-foreground">{blockPreview(block)}</p>
+                  <p className="truncate text-[11px] text-muted-foreground">{blockPreview(block)}</p>
                 </button>
                 {!locked && (
                   <div className="flex shrink-0 flex-col">
@@ -164,10 +164,10 @@ export function JournalBlockList({
 
           {decorations.length > 0 && (
             <li className="pt-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <Label className="text-[13px] font-semibold text-foreground">
                 Formas do jornal
               </Label>
-              <p className="text-[10px] text-muted-foreground">Aparecem em todas as páginas.</p>
+              <p className="text-[11px] text-muted-foreground">Aparecem em todas as páginas.</p>
             </li>
           )}
 
@@ -177,10 +177,10 @@ export function JournalBlockList({
               <li
                 key={decoration.corner}
                 className={cn(
-                  'group flex items-center gap-2 rounded-lg border px-2 py-1.5 transition-colors',
+                  'group flex items-center gap-2 rounded-[12px] border px-2 py-1.5 transition-colors',
                   selected
-                    ? 'border-primary bg-accent'
-                    : 'border-border bg-background hover:bg-accent/50',
+                    ? 'border-[hsl(var(--sel,168_80%_27%))] bg-muted/50'
+                    : 'border-border/70 bg-background hover:bg-muted/50',
                 )}
               >
                 <span
@@ -199,7 +199,7 @@ export function JournalBlockList({
                   <p className="truncate text-xs font-medium text-foreground">
                     Forma · {JOURNAL_CORNER_LABELS[decoration.corner].toLowerCase()}
                   </p>
-                  <p className="truncate text-[10px] text-muted-foreground">
+                  <p className="truncate text-[11px] text-muted-foreground">
                     {findJournalElement(decoration.element).label} ·{' '}
                     {JOURNAL_COLOR_LABELS[decoration.color]}
                   </p>

@@ -8,6 +8,11 @@ import { MercadoComoAjudar } from '@/components/mercado/MercadoComoAjudar';
 import { MercadoAtuacao } from '@/components/mercado/MercadoAtuacao';
 import { MercadoContato } from '@/components/mercado/MercadoContato';
 
+/*
+ * Esboço V2: só a casca muda aqui. As seções vêm de `components/mercado/*`,
+ * que o embed público (`/mercado-solidario-publico`) também usa — por isso
+ * ficam como estão, e o redesenho delas é pedido à parte.
+ */
 export default function MercadoSolidarioPage() {
   const contatoRef = useRef<HTMLDivElement>(null);
   const propositoRef = useRef<HTMLDivElement>(null);
@@ -22,28 +27,29 @@ export default function MercadoSolidarioPage() {
       <PageHeader
         title="Mercado Solidário"
         description="Iniciativa do Grupo ANA Brasil que apoia famílias em situação de vulnerabilidade."
+        className="mb-5"
       />
 
-      <div className="space-y-10">
+      <div className="space-y-8 md:space-y-10">
         <MercadoHero
           onPartnerClick={() => scrollTo(contatoRef)}
           onLearnClick={() => scrollTo(propositoRef)}
         />
-        <div ref={propositoRef}>
+        <div ref={propositoRef} className="scroll-mt-24">
           <MercadoProposito />
         </div>
         <MercadoComoAjudar />
         <MercadoAtuacao />
-        <div ref={contatoRef}>
+        <div ref={contatoRef} className="scroll-mt-24">
           <MercadoContato />
         </div>
 
-        <div className="pt-4">
-          <InstitutionalFooterBar className="rounded-md" />
-          <p className="mt-3 text-center text-xs text-muted-foreground">
+        <footer className="space-y-3 pt-2">
+          <InstitutionalFooterBar className="rounded-full md:h-3" />
+          <p className="text-center text-[13px] text-[hsl(var(--fraco,0_0%_45%))]">
             Mercado Solidário — uma iniciativa do Grupo ANA Brasil.
           </p>
-        </div>
+        </footer>
       </div>
     </div>
   );

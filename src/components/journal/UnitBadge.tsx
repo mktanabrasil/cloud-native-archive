@@ -1,5 +1,4 @@
 import { useState, type ComponentPropsWithoutRef } from 'react';
-import { Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +23,28 @@ import {
 import { NEWS_UNIT_GROUPS, newsUnitName, findNewsUnit } from '@/lib/news/units';
 
 export type UnitBadgeVariant = 'banner' | 'line' | 'chip';
+
+/**
+ * Esboço V2: dentro do conteúdo, a cor fala da unidade. Só quatro unidades têm
+ * cor própria no tema (`bg-unit-*`); as demais usam a do institucional.
+ */
+const COR_DA_UNIDADE: Record<string, string> = {
+  'ana-dic': 'bg-unit-dic',
+  'ana-nilopolis': 'bg-unit-nilopolis',
+  'ana-santana': 'bg-unit-santana',
+};
+export function corDaUnidade(unitId: string | null): string {
+  return (unitId && COR_DA_UNIDADE[unitId]) || 'bg-unit-geral';
+}
+/** Ponto de cor que vai sempre ao lado do nome da unidade. */
+export function PontoDaUnidade({ unitId, className }: { unitId: string | null; className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn('inline-block h-2 w-2 shrink-0 rounded-full ring-1 ring-black/10', corDaUnidade(unitId), className)}
+    />
+  );
+}
 
 export interface UnitBadgeProps extends Omit<ComponentPropsWithoutRef<'div'>, 'onChange'> {
   /** Id da unidade no catálogo (`NEWS_UNITS`). */
@@ -83,7 +104,7 @@ export function UnitBadge({
           texto com reticências assim que existe um teto. */}
       <SelectTrigger
         className={cn(
-          'h-8 w-full max-w-full gap-1.5 text-xs sm:w-auto sm:max-w-[220px]',
+          'h-9 w-full max-w-full gap-1.5 text-xs sm:w-auto sm:max-w-[220px]',
           variant === 'chip' && 'h-7',
         )}
         aria-label="Trocar unidade"
@@ -114,14 +135,14 @@ export function UnitBadge({
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-3">
-              <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
+              <div className="rounded-[16px] border border-border bg-muted/40 p-3 text-sm">
                 <p>
                   <span className="text-muted-foreground">De: </span>
                   <span className="font-medium text-foreground">{currentName}</span>
                 </p>
                 <p className="mt-1">
                   <span className="text-muted-foreground">Para: </span>
-                  <span className="font-semibold text-primary">{newsUnitName(pending)}</span>
+                  <span className="font-semibold text-foreground">{newsUnitName(pending)}</span>
                 </p>
               </div>
               {modo === 'ver' ? (
@@ -150,8 +171,8 @@ export function UnitBadge({
   if (variant === 'chip') {
     return (
       <div className={cn('inline-flex items-center gap-1.5', className)} {...rest}>
-        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-          <Building2 className="h-3.5 w-3.5" />
+        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+          <PontoDaUnidade unitId={unitId} />
           {shortName}
         </span>
         {selector}
@@ -163,9 +184,11 @@ export function UnitBadge({
   if (variant === 'line') {
     return (
       <div className={cn('flex flex-wrap items-center gap-2 text-xs text-muted-foreground', className)} {...rest}>
-        <Building2 className="h-4 w-4" />
         <span>{label}</span>
-        <span className="font-semibold text-foreground">{currentName}</span>
+        <span className="inline-flex min-w-0 items-center gap-1.5 font-semibold text-foreground">
+          <PontoDaUnidade unitId={unitId} />
+          {currentName}
+        </span>
         {selector}
         {dialog}
       </div>
@@ -175,7 +198,7 @@ export function UnitBadge({
   return (
     <div
       className={cn(
-        'flex flex-col gap-3 rounded-lg border border-border bg-card px-5 py-4 sm:flex-row sm:items-center sm:justify-between',
+        'flex flex-col gap-3 rounded-[20px] border border-black/5 bg-card px-5 py-4 dark:border-white/5 sm:flex-row sm:items-center sm:justify-between',
         className,
       )}
       {...rest}
@@ -184,15 +207,11 @@ export function UnitBadge({
           recusa a encolher abaixo do próprio conteúdo sem isso, e o `truncate`
           de dentro nunca chega a valer. */}
       <div className="flex min-w-0 items-start gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground">
-          <Building2 className="h-4.5 w-4.5" />
-        </div>
+        <PontoDaUnidade unitId={unitId} className="mt-[26px] h-2.5 w-2.5" />
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            {label}
-          </p>
-          <p className="truncate text-base font-bold text-foreground">{currentName}</p>
-          {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+          <p className="text-[13px] text-muted-foreground">{label}</p>
+          <p className="truncate font-display text-[17px] font-semibold leading-snug text-foreground">{currentName}</p>
+          {hint && <p className="mt-0.5 text-xs text-[hsl(var(--fraco,0_0%_45%))]">{hint}</p>}
         </div>
       </div>
       {selector && <div className="w-full min-w-0 sm:w-auto sm:shrink-0">{selector}</div>}
