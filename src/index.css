@@ -550,6 +550,10 @@ body.ui-v2 .vg-fundo { --vg-fundo: hsl(var(--background)); background-color: tra
 @keyframes folha-sai { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(24px); } }
 body.ui-v2 .folha-lateral[data-state="open"] { animation: folha-entra 280ms cubic-bezier(.2,.8,.2,1) both; }
 body.ui-v2 .folha-lateral[data-state="closed"] { animation: folha-sai 200ms ease-in both; }
+/* A folha só rola na vertical (27/10/2026): no celular, um campo mais largo
+   que a tela fazia o formulário inteiro deslizar para os lados ao rolar. E a
+   rolagem não passa para a página de trás quando chega ao fim. */
+body.ui-v2 .folha-lateral .overflow-y-auto { overflow-x: hidden; overscroll-behavior: contain; }
 @media (prefers-reduced-motion: reduce) {
   body.ui-v2 .folha-lateral[data-state] { animation: none; }
 }

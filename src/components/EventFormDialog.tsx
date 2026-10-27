@@ -1078,8 +1078,12 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     {errors.end_datetime && <p role="alert" className="mt-1 text-xs text-destructive">{errors.end_datetime}</p>}
                   </div>
                   {/* Quem edita de outro estado precisa saber em que relógio o
-                      horário está. O fuso é o do computador de quem preenche. */}
-                  <p className="col-span-2 -mt-1 text-[11px] text-muted-foreground">
+                      horário está. O fuso é o do computador de quem preenche.
+                      `sm:col-span-2`, não `col-span-2`: no celular a grade tem uma
+                      coluna, e o span criava uma segunda, invisível, que punha
+                      Início e Término lado a lado e o Término para fora da tela
+                      (a folha deslizava para os lados ao rolar, 27/10/2026). */}
+                  <p className="-mt-1 text-[11px] text-muted-foreground sm:col-span-2">
                     {fraseDoFuso()}
                   </p>
                 </div>
@@ -1171,9 +1175,12 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       </div>
                       {/* O prefixo é o endereço que abre de verdade (era
                           `anabrasil.com/eventos/`, que responde 404). */}
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">{prefixoDoLinkPublico()}</span>
+                      {/* No celular o prefixo fica numa linha e o campo com o
+                          Copiar na de baixo: os três juntos passavam de 375 px. */}
+                      <div className="flex flex-wrap items-center gap-2 mt-1 sm:flex-nowrap">
+                        <span className="w-full text-xs text-muted-foreground sm:w-auto sm:whitespace-nowrap">{prefixoDoLinkPublico()}</span>
                         <Input
+                          className="min-w-0 flex-1"
                           id="slug"
                           value={form.slug ?? ''}
                           onChange={e => {
