@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { History, BookOpen, FileSearch, LayoutDashboard, Lock, BarChart3, Pizza, HandHeart } from 'lucide-react';
+import { Lock } from 'lucide-react';
 import { PainelDaPizza } from '@/components/pizza/PainelDaPizza';
 import { PainelDoVoluntariado } from '@/components/voluntariado/PainelDoVoluntariado';
 import EnquetesPage from '@/pages/EnquetesPage';
@@ -11,14 +11,17 @@ import TransparencyPage from '@/pages/TransparencyPage';
 import AdminToolboxPage from '@/pages/AdminToolboxPage';
 
 const tabs = [
-  { value: 'auditoria', label: 'Auditoria', icon: History, Component: AuditPage },
-  { value: 'design-manual', label: 'Manual Design', icon: BookOpen, Component: DesignManualPage },
-  { value: 'transparencia', label: 'Portal Transparência', icon: FileSearch, Component: TransparencyPage },
-  { value: 'widgets', label: 'Widgets', icon: LayoutDashboard, Component: AdminToolboxPage },
-  { value: 'enquetes', label: 'Enquetes', icon: BarChart3, Component: EnquetesPage },
-  { value: 'pizza', label: 'Pizza da Alegria', icon: Pizza, Component: PainelDaPizza },
-  { value: 'voluntariado', label: 'Voluntariado', icon: HandHeart, Component: PainelDoVoluntariado },
+  { value: 'auditoria', label: 'Auditoria', Component: AuditPage },
+  { value: 'design-manual', label: 'Manual Design', Component: DesignManualPage },
+  { value: 'transparencia', label: 'Portal Transparência', Component: TransparencyPage },
+  { value: 'widgets', label: 'Widgets', Component: AdminToolboxPage },
+  { value: 'enquetes', label: 'Enquetes', Component: EnquetesPage },
+  { value: 'pizza', label: 'Pizza da Alegria', Component: PainelDaPizza },
+  { value: 'voluntariado', label: 'Voluntariado', Component: PainelDoVoluntariado },
 ];
+
+// A areia do rodapé some no fundo claro (1,3:1); no sublinhado entra a areia forte.
+const CORES_DO_RODAPE = ['#E2B979', '#fbce00', '#f37964', '#81e2cf', '#01adff'];
 
 export default function MarketingHubPage() {
   const { isMarketing, loading } = useUserRole();
@@ -41,11 +44,12 @@ export default function MarketingHubPage() {
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="overflow-x-auto pb-2">
-          <TabsList className="h-10 w-max">
-            {tabs.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value} className="h-8 gap-1.5">
-                <tab.icon className="h-4 w-4" />
+        {/* Esboço V2: sub-abas sublinhadas na cor da área (Marketing), como as do RH */}
+        <div className="overflow-x-auto border-b border-border">
+          <TabsList className="h-auto w-max justify-start gap-5 rounded-none bg-transparent p-0">
+            {tabs.map((tab, i) => (
+              /* Ajuste de 26/10: o sublinhado varia nas cores do rodapé, aba a aba */
+              <TabsTrigger key={tab.value} value={tab.value} style={{ ['--sublinhado' as string]: CORES_DO_RODAPE[i % CORES_DO_RODAPE.length] }} className="-mb-px h-auto shrink-0 rounded-none border-b-[3px] border-transparent px-0 py-2.5 hover:text-foreground data-[state=active]:border-[color:var(--sublinhado)] data-[state=active]:bg-transparent data-[state=active]:shadow-none">
                 {tab.label}
               </TabsTrigger>
             ))}
@@ -53,7 +57,7 @@ export default function MarketingHubPage() {
         </div>
 
         {tabs.map((tab) => (
-          <TabsContent key={tab.value} value={tab.value} className="mt-4">
+          <TabsContent key={tab.value} value={tab.value} className="mt-6">
             <tab.Component />
           </TabsContent>
         ))}

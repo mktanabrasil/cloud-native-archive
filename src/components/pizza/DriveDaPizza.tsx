@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, ExternalLink, FolderSync, Link2, Unlink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { chamarDrive, type EstadoDoDrive } from '@/lib/pizza/api';
@@ -68,26 +68,31 @@ export function DriveDaPizza() {
 
   const c = estado?.conexao;
   return (
-    <section aria-label="Google Drive" className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4" data-testid="drive">
+    <section aria-label="Google Drive" className="flex flex-col gap-3 rounded-[20px] border border-black/5 bg-card px-4 py-3.5 dark:border-white/5" data-testid="drive">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          {c && !c.erro ? <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" /> : <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />}
-          <div className="min-w-0">
-            <b className="block text-sm">Google Drive · Setor Marketing</b>
-            <span className="block truncate text-xs text-muted-foreground">
-              {falha ? `Não consegui ler o estado: ${falha}` : !estado ? 'Conferindo…' : c ? `Copiando como ${c.google_email} · ${estado.pendentes ? `${estado.pendentes} para copiar` : 'tudo copiado'}` : 'Ainda não conectado: as confirmações ficam guardadas no app e vão para o Drive quando conectar.'}
-            </span>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            <b className="text-[15px] font-semibold">Google Drive · Setor Marketing</b>
+            {/* Esboço V2: a situação em texto com bolinha, no lugar do ícone */}
+            {estado && !falha && (
+              <span className={`inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] font-semibold ${c && !c.erro ? 'text-success' : 'text-warning'}`}>
+                <span className="h-1.5 w-1.5 rounded-full bg-current" />{c ? (c.erro ? 'Com erro' : 'Conectado') : 'Não conectado'}
+              </span>
+            )}
           </div>
+          <span className="block text-[13px] text-muted-foreground sm:truncate">
+            {falha ? `Não consegui ler o estado: ${falha}` : !estado ? 'Conferindo…' : c ? `Copiando como ${c.google_email} · ${estado.pendentes ? `${estado.pendentes} para copiar` : 'tudo copiado'}` : 'Ainda não conectado: as confirmações ficam guardadas no app e vão para o Drive quando conectar.'}
+          </span>
         </div>
         <div className="flex flex-wrap gap-2">
           {c && <Button asChild variant="outline" size="sm"><a href={c.pasta_link} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /> Abrir a pasta</a></Button>}
-          {c && <Button variant="outline" size="sm" disabled={ocupado !== null} onClick={copiar}><FolderSync className="h-4 w-4" /> {ocupado === 'copiar' ? 'Copiando…' : 'Copiar pendentes agora'}</Button>}
-          {estado?.pode_conectar && !c && <Button size="sm" disabled={ocupado !== null || !estado.oauth_configurado} onClick={conectar}><Link2 className="h-4 w-4" /> {ocupado === 'conectar' ? 'Conectando…' : 'Conectar Google Drive'}</Button>}
-          {estado?.pode_conectar && c && <Button variant="ghost" size="sm" disabled={ocupado !== null} onClick={desconectar}><Unlink className="h-4 w-4" /> Desconectar</Button>}
+          {c && <Button variant="outline" size="sm" disabled={ocupado !== null} onClick={copiar}>{ocupado === 'copiar' ? 'Copiando…' : 'Copiar pendentes agora'}</Button>}
+          {estado?.pode_conectar && !c && <Button variant="outline" size="sm" disabled={ocupado !== null || !estado.oauth_configurado} onClick={conectar}>{ocupado === 'conectar' ? 'Conectando…' : 'Conectar Google Drive'}</Button>}
+          {estado?.pode_conectar && c && <Button variant="ghost" size="sm" disabled={ocupado !== null} onClick={desconectar}>Desconectar</Button>}
         </div>
       </div>
-      {c?.erro && <p role="alert" className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-950 dark:bg-amber-950/50 dark:text-amber-100">{c.erro}</p>}
-      {!!estado?.com_erro && <p className="text-xs text-red-800 dark:text-red-300">{estado.com_erro} {estado.com_erro === 1 ? 'confirmação deu erro' : 'confirmações deram erro'} ao copiar. Toque em “Copiar pendentes agora” para tentar de novo.</p>}
+      {c?.erro && <p role="alert" className="text-[13px] font-semibold text-warning">{c.erro}</p>}
+      {!!estado?.com_erro && <p className="text-[13px] text-destructive">{estado.com_erro} {estado.com_erro === 1 ? 'confirmação deu erro' : 'confirmações deram erro'} ao copiar. Toque em “Copiar pendentes agora” para tentar de novo.</p>}
       {estado && !c && !estado.pode_conectar && <p className="text-xs text-muted-foreground">Quem conecta é a comunicação, com a conta mkt@anabrasil.org.</p>}
     </section>
   );

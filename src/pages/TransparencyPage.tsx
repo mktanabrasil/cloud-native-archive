@@ -18,7 +18,6 @@ import {
   Trash2,
   Copy,
   Check,
-  LogIn,
   Download,
   Maximize2,
   X,
@@ -31,14 +30,10 @@ import {
   Edit2,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown,
-  Layers,
-  CheckCircle2,
-  Globe
+  ArrowDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import PageHeader from '@/components/PageHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
@@ -486,12 +481,15 @@ const TransparencyPage = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {hasGoogleAuth === false && (
-        <Card className="mb-8 border-amber-200 bg-amber-50">
-          <CardHeader><CardTitle className="text-amber-800 flex items-center gap-2"><LogIn className="h-5 w-5" /> Conexão Necessária</CardTitle></CardHeader>
-          <CardContent><Button onClick={handleGoogleLogin} className="bg-[#4285F4] hover:bg-[#357abd]">{isAuthenticating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />} Conectar Google Drive</Button></CardContent>
-        </Card>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-black/5 bg-card px-4 py-3.5 dark:border-white/5">
+          <div className="min-w-0">
+            <b className="block text-[15px] font-semibold">Conexão Necessária</b>
+            <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-warning"><span className="h-1.5 w-1.5 rounded-full bg-current" />Google Drive não conectado</span>
+          </div>
+          <Button onClick={handleGoogleLogin}>{isAuthenticating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Conectar Google Drive</Button>
+        </div>
       )}
 
       <PageHeader
@@ -515,7 +513,6 @@ const TransparencyPage = () => {
               }}
               className="gap-2 h-10"
             >
-              <Layers className="h-4 w-4" />
               Adicionar em Lote
             </Button>
             <Dialog open={isAdding} onOpenChange={setIsAdding}>
@@ -534,16 +531,17 @@ const TransparencyPage = () => {
       />
 
       {hasGoogleAuth === true && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Google Drive conectado
-            {googleAccount && <span className="font-semibold">· {googleAccount}</span>}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          {/* Esboço V2: situação em texto com bolinha, no lugar da pílula verde */}
+          <span className="inline-flex min-w-0 flex-wrap items-center gap-1.5 text-[13px]">
+            <span className="inline-flex items-center gap-1.5 font-semibold text-success"><span className="h-1.5 w-1.5 rounded-full bg-current" />Google Drive conectado</span>
+            {googleAccount && <span className="break-all text-muted-foreground">· {googleAccount}</span>}
           </span>
           {isAdmin && (
             <Dialog open={showDisconnectDialog} onOpenChange={setShowDisconnectDialog}>
               <DialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-destructive hover:text-destructive">
-                  <X className="h-3.5 w-3.5" /> Desconectar Google Drive
+                <Button variant="ghost" size="sm" className="h-8 px-2 text-[13px] font-semibold text-destructive hover:text-destructive">
+                  Desconectar Google Drive
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -567,49 +565,43 @@ const TransparencyPage = () => {
 
 
       {loading ? <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : (
-        <div className="grid gap-6">
+        // Esboço V2: cada pasta é um bloco sólido; o cabeçalho abre e fecha, as ações ficam à direita
+        // (no celular, embaixo do nome) e os arquivos aparecem dentro, sem moldura extra.
+        <div className="space-y-3">
           {sortedConfigs.map((config) => {
             const isExpanded = expandedConfigs.has(config.id);
             return (
-              <Card key={config.id} className="overflow-hidden">
-                <CardHeader 
-                  className="bg-muted/30 pb-4 cursor-pointer hover:bg-muted/50 transition-colors"
+              <section key={config.id} className="overflow-hidden rounded-[20px] border border-black/5 bg-card dark:border-white/5">
+                <div
+                  className="flex cursor-pointer flex-col gap-3 px-4 py-3.5 transition-colors hover:bg-muted/40 md:flex-row md:items-center md:justify-between"
                   onClick={() => toggleConfig(config.id)}
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-3">
-                      <div>
-                        <CardTitle className="text-xl flex items-center gap-2">
-                          {config.label}
-                          {config.original_folder_name && config.original_folder_name !== config.label && (
-                            <span className="text-sm font-normal text-muted-foreground">({config.original_folder_name})</span>
-                          )}
-                          <ChevronRight className={cn("h-5 w-5 text-muted-foreground ml-2 transition-transform duration-200", isExpanded ? "rotate-90" : "rotate-0")} />
-                        </CardTitle>
-                        <CardDescription className="font-mono text-xs mt-1">ID: {config.folder_id}</CardDescription>
-                      </div>
-                    </div>
-                    <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="sm" onClick={() => setEditingConfig({ id: config.id, label: config.label })}><Edit2 className="h-4 w-4" /></Button>
-                      <Button variant="outline" size="sm" onClick={() => copyEmbedCode(config.id)}>{copiedId === config.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} Embed</Button>
-                      <Button variant="outline" size="sm" onClick={() => copyEmbedCodeV2(config.id)}>{copiedId === config.id + '-v2' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} Embed v2</Button>
-                      <Button variant="outline" size="sm" onClick={() => setPublicUrlConfig({ id: config.id, label: config.label })}><Globe className="h-4 w-4" /> URL Pública</Button>
-                      <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(config.id)}><Trash2 className="h-4 w-4" /></Button>
+                  <div className="flex min-w-0 items-start gap-2.5">
+                    <ChevronRight className={cn("mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200", isExpanded ? "rotate-90" : "rotate-0")} aria-hidden="true" />
+                    <div className="min-w-0">
+                      <h3 className="text-[16px] font-semibold leading-snug">
+                        {config.label}
+                        {config.original_folder_name && config.original_folder_name !== config.label && (
+                          <span className="ml-1.5 text-sm font-normal text-muted-foreground">({config.original_folder_name})</span>
+                        )}
+                      </h3>
+                      <p className="mt-0.5 truncate font-mono text-[11px] text-[hsl(var(--fraco))]">ID: {config.folder_id}</p>
                     </div>
                   </div>
-                </CardHeader>
+                  <div className="-ml-2 flex flex-wrap items-center gap-0.5 md:ml-0 md:shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground md:h-9 md:w-9" aria-label="Editar nome" title="Editar nome" onClick={() => setEditingConfig({ id: config.id, label: config.label })}><Edit2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="sm" className="h-10 md:h-9" onClick={() => copyEmbedCode(config.id)}>{copiedId === config.id ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />} Embed</Button>
+                    <Button variant="ghost" size="sm" className="h-10 md:h-9" onClick={() => copyEmbedCodeV2(config.id)}>{copiedId === config.id + '-v2' ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />} Embed v2</Button>
+                    <Button variant="ghost" size="sm" className="h-10 md:h-9" onClick={() => setPublicUrlConfig({ id: config.id, label: config.label })}>URL Pública</Button>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground hover:text-destructive md:h-9 md:w-9" aria-label="Apagar pasta" title="Apagar pasta" onClick={() => handleDelete(config.id)}><Trash2 className="h-4 w-4" /></Button>
+                  </div>
+                </div>
                 {isExpanded && (
-                  <CardContent className="p-0 border-t">
-                    <div className="p-6">
-                      <div className="bg-card border rounded-lg overflow-hidden">
-                        <div className="p-4 min-h-[200px] flex flex-col gap-1">
-                          <DriveExplorer folderId={config.folder_id} folderName={config.label} />
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
+                  <div className="flex min-h-[200px] flex-col gap-1 border-t border-border/70 p-2 sm:p-3">
+                    <DriveExplorer folderId={config.folder_id} folderName={config.label} acoesVisiveis />
+                  </div>
                 )}
-              </Card>
+              </section>
             );
           })}
         </div>
@@ -624,7 +616,7 @@ const TransparencyPage = () => {
       <Dialog open={!!publicUrlConfig} onOpenChange={(open) => { if (!open) { setPublicUrlConfig(null); setPublicUrlCopied(null); } }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Globe className="h-5 w-5" /> URL Pública</DialogTitle>
+            <DialogTitle>URL Pública</DialogTitle>
             <DialogDescription>
               Compartilhe esta unidade como uma página pública ou incorpore-a nativamente em um site WordPress.
             </DialogDescription>
@@ -653,7 +645,7 @@ const TransparencyPage = () => {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Código para WordPress</label>
-                  <textarea readOnly value={wpHtml} className="w-full h-24 font-mono text-xs p-3 rounded-md border bg-muted/30 resize-none" onFocus={(e) => e.currentTarget.select()} />
+                  <textarea readOnly value={wpHtml} className="w-full h-24 font-mono text-xs p-3 rounded-xl border border-input bg-muted/30 resize-none" onFocus={(e) => e.currentTarget.select()} />
                   <div className="flex justify-end">
                     <Button variant="outline" size="sm" onClick={() => copy(wpHtml, 'html')} className="gap-1.5">
                       {publicUrlCopied === 'html' ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} Copiar HTML
@@ -1044,7 +1036,12 @@ const FileIcon = ({ mimeType, className }: { mimeType: string, className?: strin
   return <File className={cn("text-slate-400", className)} />;
 };
 
-export const DriveExplorer = ({ folderId, folderName }: { folderId: string, folderName: string }) => {
+/**
+ * `acoesVisiveis` (esboço V2): na gestão, dentro do app, as ações de cada
+ * arquivo (ver, abrir, baixar) ficam sempre à mostra, sem depender do hover.
+ * A página pública e o embed não passam a prop e seguem como estavam.
+ */
+export const DriveExplorer = ({ folderId, folderName, acoesVisiveis = false }: { folderId: string, folderName: string, acoesVisiveis?: boolean }) => {
   const [items, setItems] = useState<DriveItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1081,10 +1078,10 @@ export const DriveExplorer = ({ folderId, folderName }: { folderId: string, fold
   );
   if (items.length === 0) return <div className="p-8 text-center text-muted-foreground text-sm">Nenhum arquivo encontrado.</div>;
 
-  return <div className="space-y-1">{items.map(item => <DriveItemComponent key={item.id} item={item} depth={0} />)}</div>;
+  return <div className="space-y-1">{items.map(item => <DriveItemComponent key={item.id} item={item} depth={0} acoesVisiveis={acoesVisiveis} />)}</div>;
 };
 
-const DriveItemComponent = ({ item, depth }: { item: DriveItem, depth: number }) => {
+const DriveItemComponent = ({ item, depth, acoesVisiveis = false }: { item: DriveItem, depth: number, acoesVisiveis?: boolean }) => {
   const [searchParams] = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
   const [children, setChildren] = useState<DriveItem[]>([]);
@@ -1172,13 +1169,13 @@ const DriveItemComponent = ({ item, depth }: { item: DriveItem, depth: number })
         </div>
 
         {!isFolder && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={(e) => { 
-              e.stopPropagation(); 
-              setViewingFile(true); 
+          <div className={cn("flex items-center gap-1 transition-opacity duration-200", acoesVisiveis ? "shrink-0 opacity-100" : "opacity-0 group-hover:opacity-100")}>
+            <Button variant="ghost" size="icon" className={cn("text-muted-foreground", acoesVisiveis ? "h-9 w-9" : "h-8 w-8")} aria-label={acoesVisiveis ? `Ver ${item.name}` : undefined} title={acoesVisiveis ? 'Ver aqui' : undefined} onClick={(e) => {
+              e.stopPropagation();
+              setViewingFile(true);
             }}><Maximize2 className="h-3.5 w-3.5" /></Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" asChild onClick={(e) => e.stopPropagation()}><a href={`https://drive.google.com/file/d/${item.id}/preview`} target="_blank" rel="noreferrer"><ExternalLink className="h-3.5 w-3.5" /></a></Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" asChild onClick={(e) => e.stopPropagation()}><a href={`https://drive.google.com/uc?export=download&id=${item.id}`} target="_blank" rel="noreferrer"><Download className="h-3.5 w-3.5" /></a></Button>
+            <Button variant="ghost" size="icon" className={cn("text-muted-foreground", acoesVisiveis ? "h-9 w-9" : "h-8 w-8")} asChild onClick={(e) => e.stopPropagation()}><a href={`https://drive.google.com/file/d/${item.id}/preview`} target="_blank" rel="noreferrer" aria-label={acoesVisiveis ? `Abrir ${item.name} em nova aba` : undefined} title={acoesVisiveis ? 'Abrir em nova aba' : undefined}><ExternalLink className="h-3.5 w-3.5" /></a></Button>
+            <Button variant="ghost" size="icon" className={cn("text-muted-foreground", acoesVisiveis ? "h-9 w-9" : "h-8 w-8")} asChild onClick={(e) => e.stopPropagation()}><a href={`https://drive.google.com/uc?export=download&id=${item.id}`} target="_blank" rel="noreferrer" aria-label={acoesVisiveis ? `Baixar ${item.name}` : undefined} title={acoesVisiveis ? 'Baixar' : undefined}><Download className="h-3.5 w-3.5" /></a></Button>
           </div>
         )}
       </div>
@@ -1198,7 +1195,7 @@ const DriveItemComponent = ({ item, depth }: { item: DriveItem, depth: number })
               </div>
             ) : (
               children.map(child => (
-                <DriveItemComponent key={child.id} item={child} depth={depth + 1} />
+                <DriveItemComponent key={child.id} item={child} depth={depth + 1} acoesVisiveis={acoesVisiveis} />
               ))
             )}
           </div>
