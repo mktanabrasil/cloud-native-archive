@@ -1,19 +1,11 @@
 import { useMemo } from 'react';
-import { getStatusBadgeClass } from '@/lib/statusColors';
-import { rotuloDoStatus } from '@/lib/events/status';
-import { AppEvent, Unit } from '@/types';
+import { AppEvent, UNIT_BG_COLORS, Unit } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
+import { LinhaDeEvento, ListaDeEventos } from '@/components/events/LinhaDeEvento';
 
 
-const unitBadgeColors: Record<Unit, string> = {
-  'DIC': 'bg-unit-dic text-primary-foreground',
-  'Nilópolis': 'bg-unit-nilopolis text-primary-foreground',
-  'Santana': 'bg-unit-santana text-primary-foreground',
-  'Administração': 'bg-unit-geral text-primary-foreground',
-};
 
 interface Props {
   unit: Unit | null;
@@ -37,38 +29,28 @@ export default function UnitEventsDialog({ unit, events, open, onOpenChange, onE
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
         <DialogHeader>
+          {/* Esboço V2: o ponto da unidade ao lado do nome, no lugar do selo colorido. */}
           <DialogTitle className="flex items-center gap-2">
-            <Badge className={unitBadgeColors[unit]}>{unit}</Badge>
-            <span>Eventos ({unitEvents.length})</span>
+            <span aria-hidden="true" className={`h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/10 ${UNIT_BG_COLORS[unit]}`} />
+            <span>{unit}</span>
+            <span className="font-normal text-muted-foreground">· Eventos <span className="tabular-nums">({unitEvents.length})</span></span>
           </DialogTitle>
         </DialogHeader>
 
         {unitEvents.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">Nenhum evento para esta unidade</p>
         ) : (
-          <div className="space-y-2">
-            {unitEvents.map(e => {
-              const statusClass = getStatusBadgeClass(e.status, e.has_conflict);
-              return (
-                <button
-                  key={e.id}
-                  onClick={() => onEventClick(e)}
-                  className="w-full rounded-lg border border-border p-3 text-left transition-colors hover:bg-accent"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-medium text-foreground truncate">{e.title}</p>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      
-                      <Badge variant="outline" className={`text-xs ${statusClass}`}>{rotuloDoStatus(e.status)}</Badge>
-                    </div>
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {format(new Date(e.start_datetime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} · {e.location}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
+          <ListaDeEventos>
+            {unitEvents.map(e => (
+              <LinhaDeEvento
+                key={e.id}
+                evento={e}
+                comConflito={e.has_conflict}
+                onClick={() => onEventClick(e)}
+                meta={<>{format(new Date(e.start_datetime), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}{e.location ? ` · ${e.location}` : ''}</>}
+              />
+            ))}
+          </ListaDeEventos>
         )}
       </DialogContent>
     </Dialog>

@@ -198,7 +198,7 @@ export function GrupoDeOpcoes({
     return (
       <div
         key={opcao}
-        className={`p-3 rounded-lg border bg-card shadow-sm ${comDetalhe ? 'border-primary/50' : 'border-border'}`}
+        className={`p-3 rounded-xl border bg-card ${comDetalhe ? 'border-foreground/30' : 'border-border'}`}
       >
         <div className="flex items-center gap-3">
           <Switch
@@ -266,7 +266,7 @@ export function GrupoDeOpcoes({
             <div className="space-y-2">
               {demais.map(linha)}
 
-        <div className="space-y-2 p-3 rounded-lg border border-border bg-card shadow-sm">
+        <div className="space-y-2 p-3 rounded-xl border border-border bg-card">
           <div className="flex items-center gap-3">
             <Switch id={`${id}-outro`} checked={mostraOutro} onCheckedChange={alternarOutro} />
             <Label htmlFor={`${id}-outro`} className="text-sm cursor-pointer flex-1 font-medium">

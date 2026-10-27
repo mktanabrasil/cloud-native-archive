@@ -28,9 +28,9 @@ export default function BulkActionBar(props: BulkActionBarProps) {
   if (props.count === 0) return null;
 
   return (
-    <div className="sticky top-16 z-40 flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center">
+    <div className="glass-1 sticky top-20 z-40 flex flex-col gap-3 rounded-[18px] px-4 py-3 sm:flex-row sm:items-center">
       <div className="flex items-center gap-3">
-        <CheckSquare className="h-4 w-4 text-primary" />
+        <CheckSquare className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm font-medium text-foreground">
           {props.count} {props.type === 'events' ? 'evento(s)' : 'usuário(s)'} selecionado(s)
         </span>

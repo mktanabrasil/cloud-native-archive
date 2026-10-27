@@ -163,21 +163,21 @@ export function AgendaDoGoogle() {
       </CardHeader>
       <CardContent className="space-y-4">
         {erroDeLeitura && (
-          <p role="alert" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs text-foreground">
+          <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-foreground">
             Não consegui falar com a função de avisos agora ({erroDeLeitura}). <button className="underline" onClick={() => void ler()}>Tentar de novo</button>
           </p>
         )}
 
         {/* ----- a conexão ----- */}
         {estado && situacao === 'conectado' && estado.conexao && (
-          <div className="flex flex-col gap-3 rounded-lg border border-primary/40 bg-primary/10 p-3 sm:flex-row sm:items-start" data-testid="conexao-google">
-            <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/40 p-3 sm:flex-row sm:items-start" data-testid="conexao-google">
+            <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />
             <div className="min-w-0 flex-1 space-y-0.5 text-xs">
               <p className="font-semibold text-foreground">Conectado como {estado.conexao.google_email}</p>
               <p className="text-muted-foreground">
                 Conexão feita por {estado.conexao.conectado_por} em {new Date(estado.conexao.conectado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}.
                 Gravando em <b className="text-foreground">{estado.conexao.calendar_nome}</b>.
-                {estado.conexao.calendar_id && <> <a href={linkDaAgendaNoGoogle(estado.conexao.calendar_id)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-primary underline underline-offset-2"><ExternalLink className="h-3 w-3" /> Abrir no Google</a></>}
+                {estado.conexao.calendar_id && <> <a href={linkDaAgendaNoGoogle(estado.conexao.calendar_id)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-[hsl(var(--sel,168_80%_27%))] underline underline-offset-2"><ExternalLink className="h-3 w-3" /> Abrir no Google</a></>}
               </p>
             </div>
             <div className="flex shrink-0 gap-1">
@@ -188,7 +188,7 @@ export function AgendaDoGoogle() {
         )}
 
         {estado && situacao === 'sem_agenda' && estado.conexao && (
-          <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:flex-row sm:items-center" data-testid="conexao-google">
+          <div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/40 p-3 sm:flex-row sm:items-center" data-testid="conexao-google">
             <div className="flex-1 text-xs">
               <p className="font-semibold text-foreground">Conectado como {estado.conexao.google_email}, falta escolher a agenda</p>
               <p className="text-muted-foreground">Até escolher, os eventos seguem para {estado.modo === 'robo' ? 'a agenda do robô' : 'a fila'}.</p>
@@ -201,7 +201,7 @@ export function AgendaDoGoogle() {
         )}
 
         {estado && situacao === 'perdida' && estado.conexao && (
-          <div role="alert" className="flex flex-col gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3 sm:flex-row sm:items-start" data-testid="conexao-google">
+          <div role="alert" className="flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3 sm:flex-row sm:items-start" data-testid="conexao-google">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
             <div className="flex-1 text-xs">
               <p className="font-semibold text-foreground">O Google desconectou {estado.conexao.google_email}</p>
@@ -212,7 +212,7 @@ export function AgendaDoGoogle() {
         )}
 
         {estado && situacao === 'nao_conectado' && (
-          <div className="flex flex-col gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:flex-row sm:items-center" data-testid="conexao-google">
+          <div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/40 p-3 sm:flex-row sm:items-center" data-testid="conexao-google">
             <div className="flex-1 text-xs">
               <p className="font-semibold text-foreground">Google Agenda não conectado</p>
               <p className="text-muted-foreground">
@@ -229,7 +229,7 @@ export function AgendaDoGoogle() {
         )}
 
         {estado?.so_equipe && (
-          <div className="flex items-start gap-3 rounded-lg border border-dashed border-warning/60 bg-warning/10 p-3 text-xs" data-testid="modo-pre-lancamento">
+          <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/5 p-3 text-xs text-foreground" data-testid="modo-pre-lancamento">
             <Lock className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
             <p>
               <b>Modo pré-lançamento ligado.</b> Só mkt@, contato@, parceiros@ e eventos@ recebem os e-mails.{' '}
@@ -249,7 +249,7 @@ export function AgendaDoGoogle() {
           ].map(([rotulo, n]) => (
             <div key={rotulo as string}>
               <dt className="order-2 text-[11px] text-muted-foreground">{rotulo}</dt>
-              <dd className="text-xl font-semibold leading-tight">{n}</dd>
+              <dd className="font-display text-xl font-semibold leading-tight tabular-nums">{n}</dd>
             </div>
           ))}
         </dl>
@@ -268,15 +268,15 @@ export function AgendaDoGoogle() {
               const marcada = escolha.marcada?.id === a.id;
               return (
                 <button key={a.id} type="button" role="radio" aria-checked={marcada}
-                  className={`flex items-center gap-3 rounded-lg border p-3 text-left ${marcada ? 'border-primary bg-primary/10' : 'border-border'}`}
+                  className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-colors ${marcada ? 'border-foreground/40 bg-accent' : 'border-border hover:bg-muted/50'}`}
                   onClick={() => setEscolha({ ...escolha, marcada: a })}>
                   <span className={`h-4 w-4 shrink-0 rounded-full border-2 ${marcada ? 'border-primary bg-primary' : 'border-border'}`} />
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: a.cor || 'var(--border)' }} />
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/10" style={{ background: a.cor || 'var(--border)' }} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold">{a.nome}</span>
                     <span className="block text-[11px] text-muted-foreground">{a.primaria ? 'agenda pessoal da conta' : a.papel === 'owner' ? 'a conta é dona' : 'compartilhada com edição'}</span>
                   </span>
-                  {/eventos ana/i.test(a.nome) && <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">recomendada</span>}
+                  {/eventos ana/i.test(a.nome) && <span className="rounded-full border border-border px-2 py-0.5 text-[10.5px] font-semibold text-muted-foreground">recomendada</span>}
                 </button>
               );
             })}

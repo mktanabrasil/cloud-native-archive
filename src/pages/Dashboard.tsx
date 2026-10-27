@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { Fragment, useMemo, useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { getStatusBadgeClass } from '@/lib/statusColors';
 import { useApp } from '@/contexts/AppContext';
@@ -27,7 +27,7 @@ import FilteredEventsDialog from '@/components/FilteredEventsDialog';
 import PageHeader from '@/components/PageHeader';
 import PageGuide from '@/components/PageGuide';
 
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isWithinInterval, subDays } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isWithinInterval, subDays, addDays, isSameDay, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
@@ -36,6 +36,12 @@ const unitDotColors: Record<Unit, string> = {
   'Nilópolis': 'bg-unit-nilopolis',
   'Santana': 'bg-unit-santana',
   'Administração': 'bg-unit-geral',
+};
+const varDaUnidade: Record<Unit, string> = {
+  'DIC': '--unit-dic',
+  'Nilópolis': '--unit-nilopolis',
+  'Santana': '--unit-santana',
+  'Administração': '--unit-geral',
 };
 
 
@@ -75,6 +81,7 @@ export default function Dashboard() {
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
   const weekEnd = endOfWeek(new Date(), { weekStartsOn: 1 });
   
+  const diasDaSemana = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(new Date(), { weekStartsOn: 1 }), i)), []);
   const threeDaysAgo = useMemo(() => subDays(new Date(), 3), []);
 
   const filtered = useMemo(() => {
@@ -281,23 +288,23 @@ export default function Dashboard() {
         }
       />
 
-      {/* Stats cards */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-4">
-        {statCards.map(s => (
-          <Card
+      {/* Esboço V2: os quatro cartões viram uma faixa de vidro; cor só no número que pede ação */}
+      <div className="glass-1 grid grid-cols-2 overflow-hidden rounded-[20px] lg:grid-cols-4">
+        {statCards.map((s, i) => (
+          <div
             key={s.label}
             className={cn(
-              "transition-shadow hover:shadow-md",
-              s.onClick ? 'cursor-pointer' : ''
+              "border-black/10 p-4 transition-colors dark:border-white/10 sm:px-5",
+              i % 2 === 1 && "border-l",
+              i >= 2 && "border-t lg:border-t-0",
+              i === 2 && "lg:border-l",
+              s.onClick ? 'cursor-pointer hover:bg-[hsl(var(--ativo))]' : ''
             )}
             onClick={s.onClick}
           >
-            <CardContent className="p-4 sm:p-5">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-medium text-muted-foreground sm:text-xs uppercase tracking-wider">{s.label}</p>
-                <s.icon className={`h-5 w-5 ${s.color} opacity-70 shrink-0 sm:h-6 sm:w-6`} />
-              </div>
-              <p className="mt-1 text-2xl font-bold text-foreground sm:mt-2 sm:text-3xl">{s.value}</p>
+            <div>
+              <p className={cn("font-display text-3xl font-bold tabular-nums", s.label === 'Total de Eventos' ? 'text-foreground' : s.value > 0 ? s.color : 'text-foreground')}>{s.value}</p>
+              <p className="mt-0.5 text-[13px] text-muted-foreground">{s.label}</p>
               {s.label === 'Total de Eventos' && (
                 <div className="mt-2 flex items-center gap-3 border-t border-border pt-2 sm:mt-3 sm:gap-4 sm:pt-3">
                   <button
@@ -318,8 +325,8 @@ export default function Dashboard() {
                   </button>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ))}
       </div>
 
@@ -328,54 +335,88 @@ export default function Dashboard() {
           Sai de `rawEvents`: não depende do mês nem dos filtros da tela. */}
       {isMarketing && <AprovacoesPendentes eventos={rawEvents} onRevisar={handleRevisar} />}
 
-      {/* Timeline da Semana */}
-      <Card>
-        <CardContent className="p-4 sm:p-5">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <h2 className="text-sm font-semibold text-foreground">Timeline da Semana</h2>
-            </div>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              {UNITS.map(u => (
-                <div key={u} className="flex items-center gap-1.5">
-                  <span className={`h-2 w-2 rounded-full ${unitDotColors[u]} shrink-0 sm:h-2.5 sm:w-2.5`} />
-                  <span className="text-[10px] text-muted-foreground sm:text-xs">{u}</span>
-                </div>
-              ))}
-            </div>
+      {/* Esboço V2: a semana de verdade, uma linha por unidade e cada evento no
+          dia dele. No celular, a lista da semana. */}
+      <Card className="overflow-hidden">
+        <div className="flex items-center justify-between gap-3 border-b border-border/70 px-4 py-3.5 sm:px-5">
+          <h2 className="text-[15px] font-semibold text-foreground">
+            Semana de {format(weekStart, "d 'de' MMMM", { locale: ptBR })}
+          </h2>
+          <span className="text-xs text-muted-foreground">
+            {weekEvents.length === 1 ? '1 evento' : `${weekEvents.length} eventos`}
+          </span>
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
+          <div className="grid min-w-[760px] grid-cols-[136px_repeat(7,minmax(0,1fr))]">
+            <span className="border-b border-border/70" />
+            {diasDaSemana.map(d => (
+              <span key={d.toISOString()} className="border-b border-border/70 px-2 py-2 text-center text-xs font-semibold capitalize text-muted-foreground">
+                {isToday(d) ? (
+                  <b className="whitespace-nowrap rounded-md bg-foreground px-1.5 py-0.5 text-background">{format(d, 'EEE d', { locale: ptBR })}</b>
+                ) : (
+                  format(d, 'EEE d', { locale: ptBR })
+                )}
+              </span>
+            ))}
+            {UNITS.map(u => (
+              <Fragment key={u}>
+                <span className="flex items-center gap-2 border-b border-border/70 px-4 py-3 text-[13px] font-semibold text-foreground">
+                  <span className={`h-2 w-2 shrink-0 rounded-full ring-1 ring-black/10 ${unitDotColors[u]}`} />
+                  {u}
+                </span>
+                {diasDaSemana.map(d => {
+                  const doDia = weekEvents.filter(e => e.unit === u && isSameDay(new Date(e.start_datetime), d));
+                  return (
+                    <div key={d.toISOString()} className="min-h-[58px] space-y-1 border-b border-l border-border/70 p-1.5">
+                      {doDia.map(e => (
+                        <button
+                          key={e.id}
+                          type="button"
+                          onClick={() => handleEventClick(e)}
+                          className="block w-full rounded-r-lg border-l-[3px] px-2 py-1 text-left text-[11.5px] font-semibold leading-snug text-foreground transition-opacity hover:opacity-80"
+                          style={{ background: `hsl(var(${varDaUnidade[u]}) / 0.16)`, borderColor: `hsl(var(${varDaUnidade[u]}))` }}
+                        >
+                          <span className="line-clamp-2">{e.title}</span>
+                          <span className="block font-normal text-muted-foreground">
+                            {format(new Date(e.start_datetime), 'HH:mm')} · {rotuloDoStatus(e.status)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })}
+              </Fragment>
+            ))}
           </div>
+        </div>
+
+        <div className="md:hidden">
           {weekEvents.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">Nenhum evento nesta semana</p>
           ) : (
-            <div className="space-y-1.5 sm:space-y-2">
-              {weekEvents.slice(0, 6).map(e => (
-                <div key={e.id} className="flex w-full items-center gap-2 rounded-lg border border-border p-2.5 text-left transition-colors hover:bg-accent sm:gap-3 sm:p-3">
-                  <button onClick={() => handleEventClick(e)} className="flex flex-1 items-center gap-2 text-left sm:gap-3">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className={`h-2 w-2 rounded-full ${unitDotColors[e.unit]} shrink-0 sm:h-2.5 sm:w-2.5`} />
-                      {e.visibility === 'publico' ? (
-                        <Globe className="h-3 w-3 text-info shrink-0" />
-                      ) : (
-                        <Lock className="h-3 w-3 text-muted-foreground shrink-0" />
-                      )}
-                      <span className="flex-1 text-xs font-medium text-foreground line-clamp-1 sm:text-sm">{e.title}</span>
-                      <MarcaDaAgenda event={e} />
-                    </div>
-                    <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-3">
-                      <span className="text-[10px] text-muted-foreground whitespace-nowrap sm:text-xs">
-                        {format(new Date(e.start_datetime), 'dd/MM HH:mm')}
-                      </span>
-                      <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 sm:text-xs sm:px-2.5 sm:py-0.5", getStatusBadgeClass(e.status))}>
-                        {rotuloDoStatus(e.status)}
-                      </Badge>
-                    </div>
-                  </button>
-                </div>
-              ))}
-            </div>
+            weekEvents.slice(0, 8).map(e => (
+              <button
+                key={e.id}
+                type="button"
+                onClick={() => handleEventClick(e)}
+                className="grid w-full grid-cols-[44px_minmax(0,1fr)] items-center gap-3 border-b border-border/70 px-4 py-3 text-left last:border-b-0"
+              >
+                <span className="grid justify-items-center leading-none">
+                  <span className="font-display text-xl font-bold tabular-nums">{format(new Date(e.start_datetime), 'dd')}</span>
+                  <span className="mt-1 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">{format(new Date(e.start_datetime), 'EEE', { locale: ptBR }).replace('.', '')}</span>
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold text-foreground">{e.title}</span>
+                  <span className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className={`h-2 w-2 rounded-full ${unitDotColors[e.unit]}`} />
+                    {e.unit} · {format(new Date(e.start_datetime), 'HH:mm')} · {rotuloDoStatus(e.status)}
+                  </span>
+                </span>
+              </button>
+            ))
           )}
-        </CardContent>
+        </div>
       </Card>
 
 

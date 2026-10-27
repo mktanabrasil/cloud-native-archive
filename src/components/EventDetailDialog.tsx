@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { CalendarDays, MapPin, Clock, Share2, X, MessageCircle, Copy, Megaphone, CheckCircle2, Pencil, Eye, EyeOff } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { X, MessageCircle, Copy, Pencil, Eye, EyeOff } from 'lucide-react';
+import { useIsEmbedded } from '@/hooks/useIsEmbedded';
 import { AppEvent, UNIT_BG_COLORS } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTestView } from '@/contexts/TestViewContext';
@@ -44,6 +45,13 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
   const { activePersona } = useTestView();
   const isInternalView = !comoVisitante && (activePersona ? activePersona.id !== 'test-nao-logado' : !!user);
   /**
+   * Esboço V2: no app o detalhe é uma folha lateral. Embutido no site
+   * (iframe ou `?embed=true`) fica a janela central de sempre: lá a altura
+   * da tela é a do iframe, e uma folha da altura dele não faria sentido.
+   */
+  const embutido = useIsEmbedded();
+  const lateral = !embutido && !(typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('embed') === 'true');
+  /**
    * Quando a área de transferência recusa (iframe do site, conexão sem HTTPS,
    * permissão negada), o link aparece num campo para a pessoa copiar à mão.
    * Antes o botão dizia "copiado" sem esperar a resposta — e não tinha copiado.
@@ -74,343 +82,291 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
     }
   };
 
+  const temArteDeCapa = !!(event.banner_image_desktop || event.banner_url_desktop || event.banner_url_mobile);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* `semFechar`: o detalhe tem o próprio X, sobre a imagem. Com o padrão
-          por baixo eram dois X sobrepostos, um deles em inglês. */}
-      <DialogContent semFechar className="max-w-4xl p-0 overflow-hidden bg-background border-none sm:rounded-2xl shadow-2xl">
-        <div className="relative aspect-[21/9] md:aspect-[3/1] bg-slate-900 overflow-hidden">
-          {(event.banner_image_desktop || event.banner_url_desktop || event.banner_url_mobile) ? (
-            <img 
-              src={event.banner_image_desktop || event.banner_url_desktop || event.banner_url_mobile} 
+          por baixo eram dois X sobrepostos, um deles em inglês.
+          Esboço V2: dentro do app o detalhe abre numa folha lateral, como o
+          formulário; embutido no site (iframe), continua a janela central. */}
+      <DialogContent
+        semFechar
+        className={lateral
+          ? 'folha-lateral left-auto right-0 top-0 h-[100svh] max-h-[100svh] w-full translate-x-0 translate-y-0 content-start gap-0 overflow-y-auto rounded-none border-none p-0 sm:right-3 sm:top-3 sm:h-[calc(100svh-1.5rem)] sm:max-h-[calc(100svh-1.5rem)] sm:max-w-[720px] sm:rounded-[22px]'
+          : 'max-w-4xl gap-0 p-0 overflow-hidden bg-background border-none sm:rounded-2xl shadow-2xl'}
+      >
+        <div className={`relative overflow-hidden bg-slate-900 ${lateral ? 'aspect-[21/9]' : 'aspect-[21/9] md:aspect-[3/1]'}`}>
+          {temArteDeCapa ? (
+            <img
+              src={event.banner_image_desktop || event.banner_url_desktop || event.banner_url_mobile}
               alt={tituloEmTexto(event.title)}
-              className="w-full h-full object-cover opacity-80"
+              className="w-full h-full object-cover"
             />
           ) : (
-            /* Sem arte: a foto da unidade com a cor dela por cima (22/09/2026). */
-            /* Sem título na capa: o h2 logo abaixo já o escreve, e o bloco sobe
-               48 px sobre a capa, então os dois se sobrepunham (varredura de 25/09). */
+            /* Sem arte: a foto da unidade com a cor dela por cima (22/09/2026).
+               Sem título na capa: o h2 logo abaixo já o escreve (varredura de 25/09). */
             <CapaDaUnidade evento={event} comTitulo={false} prioridade className="select-none" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
-          <button 
+          <button
             type="button"
             onClick={() => onOpenChange(false)}
             aria-label="Fechar"
-            className="absolute top-4 right-4 p-2 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-md transition-all"
+            className="absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-black/35 text-white backdrop-blur-md transition-colors hover:bg-black/50"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="p-6 md:p-10 -mt-12 relative z-10">
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            <Badge className={`${UNIT_BG_COLORS[event.unit]} text-slate-900 border-none shadow-lg text-sm px-4 py-1`}>
-              {event.unit}
-            </Badge>
-            {/* O card da aba "Já aconteceram" tem o selo; o detalhe que abre a
-                partir dele, ou de um link antigo, não tinha. */}
-            {jaAconteceu(event) && (
-              <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-sm px-3 py-1">
-                Já aconteceu
-              </Badge>
+        <div className={`space-y-6 p-5 sm:p-7 ${lateral ? '' : 'md:p-10'}`}>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
+              <span className="inline-flex items-center gap-1.5 font-semibold text-foreground">
+                <span aria-hidden="true" className={`h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/10 ${UNIT_BG_COLORS[event.unit]}`} />
+                {event.unit}
+              </span>
+              {/* O card da aba "Já aconteceram" tem o selo; o detalhe que abre a
+                  partir dele, ou de um link antigo, não tinha. */}
+              {jaAconteceu(event) && <Badge variant="secondary" className="text-[13px]">Já aconteceu</Badge>}
+            </div>
+
+            {/* O h2 é o nome do diálogo: `asChild` faz o DialogTitle do Radix
+                usar este mesmo elemento, sem um segundo título. */}
+            <DialogTitle asChild>
+            <h2 className="text-2xl font-bold leading-tight tracking-tight text-foreground md:text-3xl">
+              <TituloDoEvento texto={event.title} />
+            </h2>
+            </DialogTitle>
+          </div>
+
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-3 rounded-2xl border border-border bg-card p-4 sm:grid-cols-3">
+            <div className="min-w-0">
+              <dt className="text-[13px] text-muted-foreground">Data</dt>
+              <dd className="font-medium text-foreground">{textoDaData(event, anoQuandoPreciso(event))}</dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-[13px] text-muted-foreground">Horário</dt>
+              <dd className="font-medium text-foreground">{textoDoHorario(event, { separador: ' - ' })}</dd>
+            </div>
+            <div className="min-w-0">
+              <dt className="text-[13px] text-muted-foreground">Local</dt>
+              <dd className="font-medium text-foreground">{event.location}</dd>
+              {event.visibility === 'publico' && enderecoDoLocal(event.location) && (
+                <dd className="text-xs text-muted-foreground" data-testid="endereco-detalhe">{enderecoDoLocal(event.location)}</dd>
+              )}
+            </div>
+          </dl>
+
+          {/* O clique no card abre este detalhe para todo mundo; a edição,
+              que antes vinha direto para o admin, fica aqui, explícita.
+              Editar é o único botão forte. */}
+          {(onEditar || onAlternarBanner || isInternalView) && (
+            <div className="flex flex-wrap gap-2">
+              {onEditar && (
+                <Button className="gap-2" onClick={() => onEditar(event)}>
+                  <Pencil className="h-4 w-4" /> Editar evento
+                </Button>
+              )}
+              {/* O checklist do evento, para baixar de novo depois do
+                  pop-up (22/09/2026). Acompanha as edições: é montado
+                  do evento como está agora. */}
+              {isInternalView && (
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  data-testid="baixar-checklist"
+                  onClick={async () => {
+                    try {
+                      const { nome } = await gerarChecklistPdf(event);
+                      toast.success('Checklist baixado', { description: nome });
+                    } catch (erro) {
+                      toast.error('Não deu para gerar o PDF', { description: erro instanceof Error ? erro.message : 'Tente de novo.' });
+                    }
+                  }}
+                >
+                  <ClipboardList className="h-4 w-4" /> Baixar checklist (PDF)
+                </Button>
+              )}
+              {onAlternarBanner && (
+                <Button variant="outline" className="gap-2" onClick={() => onAlternarBanner(event)}>
+                  {event.show_in_banner ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {event.show_in_banner ? 'Remover do banner' : 'Adicionar ao banner'}
+                </Button>
+              )}
+            </div>
+          )}
+
+          <div className="max-w-none">
+            {/* Endereços de inscrição ou de mapa colados na descrição viram
+                links; o resto continua texto. */}
+            <p className="text-base leading-relaxed text-muted-foreground whitespace-pre-wrap md:text-lg">
+              {event.description ? <TextoComLinks texto={event.description} /> : 'Nenhuma descrição detalhada disponível para este evento.'}
+            </p>
+          </div>
+
+          {/* Logística é combinação da equipe: quem leva o som, quem cuida
+              do lanche. Só o bloco de marketing era interno; este ficou de
+              fora da regra e aparecia para qualquer visitante. */}
+          {isInternalView &&
+            (event.target_audience || event.support_team || event.food_logistics || event.equipment_needed || event.printed_materials || event.transport_needed) && (
+            <Bloco titulo="Logística">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {event.target_audience && <Campo rotulo="Para quem">{event.target_audience}</Campo>}
+                {event.support_team && <Campo rotulo="Quem ajuda no dia">{event.support_team}</Campo>}
+                {event.food_items && event.food_items.length > 0 ? (
+                  <div className="col-span-1 md:col-span-2"><ResumoDeItens titulo="Alimentação" itens={event.food_items} copiar /></div>
+                ) : event.food_logistics && (
+                  <Campo rotulo="Alimentação" largo preformatado>{event.food_logistics}</Campo>
+                )}
+                {event.food_details && <Campo rotulo="Restrições e avisos sobre a comida" largo preformatado>{event.food_details}</Campo>}
+                {event.equipment_items && event.equipment_items.length > 0 ? (
+                  <div className="col-span-1 md:col-span-2"><ResumoDeItens titulo="Equipamentos" itens={event.equipment_items} copiar /></div>
+                ) : event.equipment_needed && (
+                  <Campo rotulo="Equipamentos">{event.equipment_needed}</Campo>
+                )}
+                {event.printed_materials && <Campo rotulo="Materiais Impressos">{event.printed_materials}</Campo>}
+                {(() => {
+                  const t = resumoDoTransporte(event);
+                  if (!t) return null;
+                  const apoio = motivoDoApoio(t);
+                  return (
+                    <Campo rotulo="Transporte" largo>
+                      {t.texto}
+                      {apoio && (
+                        <span className="mt-1 flex items-center gap-1.5 text-[13px] font-semibold text-destructive">
+                          <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />{apoio}
+                        </span>
+                      )}
+                    </Campo>
+                  );
+                })()}
+              </div>
+            </Bloco>
+          )}
+
+          {event.has_unit_collaboration && (
+            <Bloco titulo="Parcerias e Colaborações">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {event.collaborating_units.length > 0 && (
+                  <Campo rotulo="Unidades da ANA">{event.collaborating_units.join(', ')}</Campo>
+                )}
+                {event.external_collaborators.length > 0 && (
+                  <div className="col-span-1 md:col-span-2">
+                    <p className="text-[13px] text-muted-foreground">Instituições</p>
+                    <div className="mt-1.5 overflow-hidden rounded-2xl border border-border bg-card">
+                      {event.external_collaborators.map((ext, idx) => (
+                        <div key={idx} className="border-b border-border/70 px-4 py-2.5 last:border-b-0">
+                          <p className="text-sm font-semibold text-foreground">
+                            {typeof ext === 'string' ? ext : ext.name}
+                          </p>
+                          {typeof ext !== 'string' && ext.details && (
+                            <p className="mt-0.5 text-xs text-muted-foreground">{ext.details}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Bloco>
+          )}
+
+          {event.marketing_request && isInternalView && (
+            <Bloco titulo="Pedido ao marketing">
+              {/* Cobertura */}
+              {event.marketing_coverage && (
+                <div className="space-y-2 rounded-2xl border border-border bg-muted/40 p-4">
+                  <p className="text-sm font-semibold text-foreground">Cobertura do Evento Solicitada</p>
+                  <p className="text-sm text-foreground">
+                    Cobertura fotográfica e/ou vídeo solicitada pela unidade.
+                  </p>
+                  {(() => {
+                    const estado = estadoDaCobertura(event);
+                    if (estado === 'nao-pedida') return null;
+                    const cor = estado === 'confirmada' ? 'text-success' : estado === 'sem-marketing' ? 'text-warning' : 'text-muted-foreground';
+                    return (
+                      <p className={`inline-flex items-center gap-1.5 text-[13px] font-semibold ${cor}`}>
+                        <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
+                        {ROTULO_DA_COBERTURA[estado]}
+                      </p>
+                    );
+                  })()}
+                  <p className="text-xs text-muted-foreground">
+                    Em todo caso, a unidade registra o evento (fotos e vídeos pelo celular) e envia o material ao marketing.
+                  </p>
+                </div>
+              )}
+
+              {/* Demanda Gráfica */}
+              {temArte(event.marketing_items) && (
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-foreground">Arte ou material impresso</p>
+                  <div className="rounded-2xl border border-border bg-card p-4">
+                    <ResumoDoPedidoDeArte itens={event.marketing_items} />
+                  </div>
+                </div>
+              )}
+
+              {/* O que já está pronto, para o marketing não refazer. Aparece
+                  junto do pedido, seja qual for o pedido. */}
+              {event.printed_materials && (
+                <div className="rounded-2xl border border-border bg-card p-4">
+                  <p className="mb-1 text-[13px] text-muted-foreground">Já existe pronto</p>
+                  <p className="text-sm text-foreground break-all">{event.printed_materials}</p>
+                </div>
+              )}
+            </Bloco>
+          )}
+
+          <Bloco titulo="Compartilhar">
+            {/* Havia um botão "Instagram" aqui, sem ação nenhuma: o
+                Instagram não aceita compartilhar link pela web. Saiu em
+                08/09/2026; ficam os dois que funcionam. */}
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" className="gap-2" onClick={shareOnWhatsApp}>
+                <MessageCircle className="h-4 w-4" />
+                <span>WhatsApp</span>
+              </Button>
+              <Button variant="outline" className="gap-2" onClick={copyLink}>
+                <Copy className="h-4 w-4" />
+                <span>Copiar Link</span>
+              </Button>
+            </div>
+            {linkParaCopiar && (
+              <input
+                readOnly
+                aria-label="Link do evento para copiar"
+                value={linkParaCopiar}
+                onFocus={e => e.currentTarget.select()}
+                onClick={e => e.currentTarget.select()}
+                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-xs text-foreground"
+              />
             )}
-          </div>
-          
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-            <div className="flex-1 space-y-4">
-              {/* O h2 é o nome do diálogo: `asChild` faz o DialogTitle do Radix
-                  usar este mesmo elemento, sem um segundo título. */}
-              <DialogTitle asChild>
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground tracking-tight leading-tight">
-                <TituloDoEvento texto={event.title} />
-              </h2>
-              </DialogTitle>
-              
-              <div className="flex flex-wrap gap-6 text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                    <CalendarDays className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Data</p>
-                    <p className="font-medium">{textoDaData(event, anoQuandoPreciso(event))}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                    <Clock className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Horário</p>
-                    <p className="font-medium">{textoDoHorario(event, { separador: ' - ' })}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-                    <MapPin className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Local</p>
-                    <p className="font-medium">{event.location}</p>
-                    {event.visibility === 'publico' && enderecoDoLocal(event.location) && (
-                      <p className="text-xs text-muted-foreground" data-testid="endereco-detalhe">{enderecoDoLocal(event.location)}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="prose prose-slate max-w-none pt-6 border-t border-border">
-                {/* Endereços de inscrição ou de mapa colados na descrição viram
-                    links; o resto continua texto. */}
-                <p className="text-muted-foreground text-lg leading-relaxed whitespace-pre-wrap">
-                  {event.description ? <TextoComLinks texto={event.description} /> : 'Nenhuma descrição detalhada disponível para este evento.'}
-                </p>
-              </div>
-
-              {/* Logística é combinação da equipe: quem leva o som, quem cuida
-                  do lanche. Só o bloco de marketing era interno; este ficou de
-                  fora da regra e aparecia para qualquer visitante. Hoje os campos
-                  estão vazios nos eventos públicos, então ninguém viu nada — mas
-                  bastava alguém preencher "Alimentação". */}
-              {isInternalView &&
-                (event.target_audience || event.support_team || event.food_logistics || event.equipment_needed || event.printed_materials || event.transport_needed) && (
-                <div className="pt-6 border-t border-border space-y-4">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Logística</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {event.target_audience && (
-                      <div>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Para quem</p>
-                        <p className="text-foreground">{event.target_audience}</p>
-                      </div>
-                    )}
-                    {event.support_team && (
-                      <div>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Quem ajuda no dia</p>
-                        <p className="text-foreground">{event.support_team}</p>
-                      </div>
-                    )}
-                    {event.food_items && event.food_items.length > 0 ? (
-                      <div className="col-span-1 md:col-span-2"><ResumoDeItens titulo="Alimentação" itens={event.food_items} copiar /></div>
-                    ) : event.food_logistics && (
-                      <div className="col-span-1 md:col-span-2">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Alimentação</p>
-                        <p className="text-foreground whitespace-pre-wrap">{event.food_logistics}</p>
-                      </div>
-                    )}
-                    {event.food_details && (
-                      <div className="col-span-1 md:col-span-2">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Restrições e avisos sobre a comida</p>
-                        <p className="text-foreground whitespace-pre-wrap">{event.food_details}</p>
-                      </div>
-                    )}
-                    {event.equipment_items && event.equipment_items.length > 0 ? (
-                      <div className="col-span-1 md:col-span-2"><ResumoDeItens titulo="Equipamentos" itens={event.equipment_items} copiar /></div>
-                    ) : event.equipment_needed && (
-                      <div>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Equipamentos</p>
-                        <p className="text-foreground">{event.equipment_needed}</p>
-                      </div>
-                    )}
-                    {event.printed_materials && (
-                      <div>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Materiais Impressos</p>
-                        <p className="text-foreground">{event.printed_materials}</p>
-                      </div>
-                    )}
-                    {(() => {
-                      const t = resumoDoTransporte(event);
-                      if (!t) return null;
-                      const apoio = motivoDoApoio(t);
-                      return (
-                        <div className="col-span-1 md:col-span-2">
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Transporte</p>
-                          <p className="text-foreground">{t.texto}</p>
-                          {apoio && <p className="text-xs font-medium text-destructive">{apoio}</p>}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-              )}
-              
-              {event.has_unit_collaboration && (
-                <div className="pt-6 border-t border-border space-y-4">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Parcerias e Colaborações</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {event.collaborating_units.length > 0 && (
-                      <div>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Unidades da ANA</p>
-                        <p className="text-foreground">{event.collaborating_units.join(', ')}</p>
-                      </div>
-                    )}
-                    {event.external_collaborators.length > 0 && (
-                      <div className="col-span-1 md:col-span-2">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">Instituições</p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
-                          {event.external_collaborators.map((ext, idx) => (
-                            <div key={idx} className="bg-muted/50 rounded-lg p-3 border border-border">
-                              <p className="font-bold text-foreground text-sm">
-                                {typeof ext === 'string' ? ext : ext.name}
-                              </p>
-                              {typeof ext !== 'string' && ext.details && (
-                                <p className="text-xs text-muted-foreground mt-0.5">{ext.details}</p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {event.marketing_request && isInternalView && (
-                <div className="pt-6 border-t border-border space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Megaphone className="h-5 w-5 text-blue-500" />
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-blue-500">Pedido ao marketing</h3>
-                  </div>
-                  <div className="grid grid-cols-1 gap-6">
-                    {(event.marketing_coverage || (event.marketing_items && event.marketing_items.length > 0)) && (
-                      <div className="space-y-6">
-                        {/* Cobertura */}
-                        {event.marketing_coverage && (
-                          <div className="space-y-3">
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest flex items-center gap-1.5">
-                              <CheckCircle2 className="h-3 w-3 text-blue-500" /> Cobertura do Evento Solicitada
-                            </p>
-                            <div className="bg-blue-50 dark:bg-blue-400/10 rounded-xl p-4 border border-blue-100 dark:border-blue-400/30 space-y-2">
-                              <p className="text-blue-900 dark:text-blue-100 text-sm font-medium">
-                                Cobertura fotográfica e/ou vídeo solicitada pela unidade.
-                              </p>
-                              {(() => {
-                                const estado = estadoDaCobertura(event);
-                                if (estado === 'nao-pedida') return null;
-                                const classe = estado === 'confirmada'
-                                  ? 'bg-success/15 text-success border-success/40'
-                                  : estado === 'sem-marketing'
-                                    ? 'bg-amber-100 dark:bg-amber-400/15 text-amber-900 dark:text-amber-100 border-amber-300 dark:border-amber-400/30'
-                                    : 'bg-background text-muted-foreground border-border';
-                                return <Badge variant="outline" className={`text-[11px] font-medium ${classe}`}>{ROTULO_DA_COBERTURA[estado]}</Badge>;
-                              })()}
-                              <p className="text-[11px] text-blue-900/80 dark:text-blue-100/80">
-                                Em todo caso, a unidade registra o evento (fotos e vídeos pelo celular) e envia o material ao marketing.
-                              </p>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Demanda Gráfica */}
-                        {temArte(event.marketing_items) && (
-                          <div className="space-y-3">
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Arte ou material impresso</p>
-                            <div className="bg-muted/40 rounded-xl p-4 border border-border">
-                              <ResumoDoPedidoDeArte itens={event.marketing_items} />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {/* O que já está pronto, para o marketing não refazer. Aparece
-                        junto do pedido, seja qual for o pedido. `marketing_info`
-                        saiu: nunca teve campo nem dado. */}
-                    {event.printed_materials && (
-                      <div className="bg-muted/50 rounded-xl p-4 border border-border">
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-tighter mb-1">Já existe pronto</p>
-                        <p className="text-foreground text-sm break-all">{event.printed_materials}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="w-full md:w-72 space-y-6">
-              {/* O clique no card abre este detalhe para todo mundo; a edição,
-                  que antes vinha direto para o admin, fica aqui, explícita. */}
-              {(onEditar || onAlternarBanner || isInternalView) && (
-                <div className="bg-muted/50 rounded-2xl p-6 border border-border space-y-3">
-                  {/* O checklist do evento, para baixar de novo depois do
-                      pop-up (22/09/2026). Acompanha as edições: é montado
-                      do evento como está agora. */}
-                  {isInternalView && (
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2 border-border"
-                      data-testid="baixar-checklist"
-                      onClick={async () => {
-                        try {
-                          const { nome } = await gerarChecklistPdf(event);
-                          toast.success('Checklist baixado', { description: nome });
-                        } catch (erro) {
-                          toast.error('Não deu para gerar o PDF', { description: erro instanceof Error ? erro.message : 'Tente de novo.' });
-                        }
-                      }}
-                    >
-                      <ClipboardList className="h-4 w-4" /> Baixar checklist (PDF)
-                    </Button>
-                  )}
-                  {onEditar && (
-                    <Button className="w-full gap-2" onClick={() => onEditar(event)}>
-                      <Pencil className="h-4 w-4" /> Editar evento
-                    </Button>
-                  )}
-                  {onAlternarBanner && (
-                    <Button variant="outline" className="w-full gap-2 border-border" onClick={() => onAlternarBanner(event)}>
-                      {event.show_in_banner ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      {event.show_in_banner ? 'Remover do banner' : 'Adicionar ao banner'}
-                    </Button>
-                  )}
-                </div>
-              )}
-              <div className="bg-muted/50 rounded-2xl p-6 border border-border">
-                <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                  <Share2 className="h-4 w-4" /> Compartilhar
-                </h3>
-                {/* Havia um botão "Instagram" aqui, sem ação nenhuma: o
-                    Instagram não aceita compartilhar link pela web. Saiu em
-                    08/09/2026; ficam os dois que funcionam. */}
-                <div className="grid grid-cols-1 gap-3">
-                  <Button
-                    variant="outline"
-                    className="flex items-center justify-center gap-2 border-border hover:bg-green-50 hover:text-green-600 hover:border-green-200 dark:hover:bg-green-400/10 dark:hover:text-green-300 dark:hover:border-green-400/30"
-                    onClick={shareOnWhatsApp}
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    <span className="text-xs">WhatsApp</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="flex items-center justify-center gap-2 border-border"
-                    onClick={copyLink}
-                  >
-                    <Copy className="h-4 w-4" />
-                    <span className="text-xs">Copiar Link</span>
-                  </Button>
-                  {linkParaCopiar && (
-                    <input
-                      readOnly
-                      aria-label="Link do evento para copiar"
-                      value={linkParaCopiar}
-                      onFocus={e => e.currentTarget.select()}
-                      onClick={e => e.currentTarget.select()}
-                      className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground"
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-primary/5 rounded-2xl p-6 border border-primary/10">
-                <p className="text-xs text-primary font-bold uppercase tracking-widest mb-2">Informação</p>
-                <p className="text-sm text-muted-foreground">
-                  Este evento é {event.visibility === 'publico' ? 'público e aberto a todos' : 'interno para colaboradores'}.
-                </p>
-              </div>
-            </div>
-          </div>
+            <p className="text-[13px] text-muted-foreground">
+              Este evento é {event.visibility === 'publico' ? 'público e aberto a todos' : 'interno para colaboradores'}.
+            </p>
+          </Bloco>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Esboço V2: um bloco do detalhe, com título de bloco no lugar do rótulo em caixa alta. */
+function Bloco({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <section className="space-y-3 border-t border-border/70 pt-5">
+      <h3 className="text-[15px] font-semibold text-foreground">{titulo}</h3>
+      {children}
+    </section>
+  );
+}
+
+function Campo({ rotulo, largo = false, preformatado = false, children }: { rotulo: string; largo?: boolean; preformatado?: boolean; children: ReactNode }) {
+  return (
+    <div className={largo ? 'col-span-1 md:col-span-2' : ''}>
+      <p className="text-[13px] text-muted-foreground">{rotulo}</p>
+      <p className={`text-foreground ${preformatado ? 'whitespace-pre-wrap' : ''}`}>{children}</p>
+    </div>
   );
 }

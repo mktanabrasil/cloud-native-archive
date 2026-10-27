@@ -36,9 +36,9 @@ function BlocoDoEmail({ ultimo, reenviando, reenviar }: { ultimo: NonNullable<Re
 
   if (ultimo.status === 'enviado') {
     return (
-      <div className="space-y-1 rounded-lg border border-border bg-muted/30 p-3" data-testid="aviso-do-evento">
+      <div className="space-y-1 rounded-xl border border-border bg-muted/40 p-3" data-testid="aviso-do-evento">
         <p className="flex items-center gap-2 text-xs font-semibold text-foreground">
-          <Mail className="h-3.5 w-3.5 text-primary" />
+          <Mail className="h-3.5 w-3.5 text-success" />
           {textoDeEnviado(ultimo.destinatarios.length)} · {quando}
         </p>
         <p className="text-[11px] text-muted-foreground">
@@ -50,7 +50,7 @@ function BlocoDoEmail({ ultimo, reenviando, reenviar }: { ultimo: NonNullable<Re
 
   if (ultimo.status === 'falhou') {
     return (
-      <div role="alert" className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3" data-testid="aviso-do-evento">
+      <div role="alert" className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3" data-testid="aviso-do-evento">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-xs font-semibold text-foreground">Falhou o envio do aviso · {quando}</p>
@@ -64,7 +64,7 @@ function BlocoDoEmail({ ultimo, reenviando, reenviar }: { ultimo: NonNullable<Re
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 p-3" data-testid="aviso-do-evento">
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 p-3" data-testid="aviso-do-evento">
       <p className="flex items-center gap-2 text-xs text-muted-foreground">
         <Clock className="h-3.5 w-3.5" /> Aviso por e-mail aguardando envio · {quando}
       </p>

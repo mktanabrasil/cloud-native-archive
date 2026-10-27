@@ -26,7 +26,7 @@ export function PedidoDeArte({ pedido, onChange }: Props) {
     onChange(t === 'arte_whatsapp' ? { ...pedido, whatsapp: !pedido.whatsapp } : { ...pedido, cartaz: !pedido.cartaz, quantidade: pedido.cartaz ? null : pedido.quantidade });
 
   return (
-    <div className="space-y-3 rounded-md border border-border bg-card p-3 shadow-sm animate-in fade-in slide-in-from-top-1" data-testid="pedido-de-arte">
+    <div className="space-y-3 rounded-2xl border border-border bg-card p-3 animate-in fade-in slide-in-from-top-1" data-testid="pedido-de-arte">
       <div>
         <p className="text-sm font-semibold mb-2">
           O que você precisa? <span className="font-normal text-muted-foreground">— pode marcar os dois</span>
@@ -42,17 +42,17 @@ export function PedidoDeArte({ pedido, onChange }: Props) {
                 role="checkbox"
                 aria-checked={on}
                 onClick={() => alternar(t)}
-                className={`relative flex items-start gap-3 rounded-lg border p-3 text-left transition-colors ${on ? 'border-primary bg-primary/5' : 'border-border bg-background hover:bg-muted/50'}`}
+                className={`relative flex items-start gap-3 rounded-xl border p-3 text-left transition-colors ${on ? 'border-foreground/40 bg-accent' : 'border-border bg-card hover:bg-muted/50'}`}
                 data-testid={`arte-${t}`}
               >
-                <span className={`mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${on ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                <span className={`mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${on ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
                   <Icone className="h-4 w-4" />
                 </span>
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold">{ROTULO_DA_ARTE[t]}</span>
                   <span className="block text-xs text-muted-foreground">{DESCRICAO_DA_ARTE[t]}</span>
                 </span>
-                {on && <Check className="absolute right-2.5 top-2.5 h-4 w-4 text-primary" aria-hidden="true" />}
+                {on && <Check className="absolute right-2.5 top-2.5 h-4 w-4 text-foreground" aria-hidden="true" />}
               </button>
             );
           })}
