@@ -50,7 +50,7 @@ export default function CandidaturaDetalhePage() {
     }
   }
 
-  const atalho = <span className="flex items-center gap-3"><Link to={ROTAS_DO_CANDIDATO.minhaArea} className="text-foreground hover:text-primary">Minha área</Link><SinoDoCandidato /></span>;
+  const atalho = <span className="flex items-center gap-3"><Link to={ROTAS_DO_CANDIDATO.minhaArea} className="text-foreground hover:text-[hsl(var(--sel))]">Minha área</Link><SinoDoCandidato /></span>;
   const etapaVisivel = c ? rotuloDaEtapa(c.etapa, c.resultado) : '';
 
   return (
@@ -63,11 +63,11 @@ export default function CandidaturaDetalhePage() {
           <p className="text-muted-foreground">Candidatura não encontrada.</p>
         ) : (
           <>
-            <div className="grid gap-1 rounded-2xl bg-emerald-50 p-4 dark:bg-emerald-950/40">
-              <h1 className="text-xl font-bold leading-tight">{c.vaga?.titulo ?? 'Vaga encerrada'}</h1>
+            <div className="grid gap-1 rounded-[20px] border border-black/5 bg-card dark:border-white/5 p-5">
+              <h1 className="text-[24px] font-bold leading-tight">{c.vaga?.titulo ?? 'Vaga encerrada'}</h1>
               <span className="text-sm text-muted-foreground">Protocolo <b className="tabular-nums text-foreground">{c.protocolo}</b> · enviada em {dataEHora(c.created_at)}</span>
             </div>
-            <span className={`self-start rounded-full px-3 py-1 text-xs font-semibold ${c.retirada_em ? 'bg-muted text-muted-foreground' : 'bg-sky-50 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300'}`}>
+            <span className={`inline-flex items-center gap-1.5 self-start text-[13px] font-semibold ${c.retirada_em ? 'text-muted-foreground' : 'text-info'}`}><span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
               {c.retirada_em ? 'Retirada' : etapaVisivel}
             </span>
             <EtapasDaCandidatura etapa={c.etapa} resultado={c.resultado} retirada={!!c.retirada_em} />
@@ -75,13 +75,13 @@ export default function CandidaturaDetalhePage() {
             <MensagensDoCandidato candidatura={c.id} retirada={!!c.retirada_em} />
 
             {c.retirada_em ? (
-              <p className="rounded-xl bg-muted/60 p-3 text-sm text-muted-foreground">
+              <p className="rounded-2xl bg-muted/70 p-4 text-sm text-muted-foreground">
                 Você retirou esta candidatura em {dataEHora(c.retirada_em)}. Se a vaga ainda estiver aberta, dá para se candidatar de novo.
               </p>
             ) : (
               <>
-                <span className="mt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">O que você enviou</span>
-                <div className="grid gap-2 rounded-2xl bg-muted/60 p-4 text-sm">
+                <h2 className="mt-2 text-[15px] font-semibold">O que você enviou</h2>
+                <div className="grid gap-2.5 rounded-[20px] border border-black/5 bg-card dark:border-white/5 p-5 text-sm">
                   <div className="flex justify-between gap-3"><span className="text-muted-foreground">Perfil</span><b className="font-semibold">versão de {dataEHora(c.created_at).split(',')[0]}</b></div>
                   <div className="flex justify-between gap-3"><span className="text-muted-foreground">Currículo</span><b className="truncate font-semibold">{c.curriculo_nome ?? 'Sem currículo'}</b></div>
                   <div className="flex justify-between gap-3"><span className="text-muted-foreground">Requisitos marcados</span><b className="font-semibold">{c.requisitos.filter((r) => r.atende).length} de {c.requisitos.length}</b></div>
@@ -89,13 +89,13 @@ export default function CandidaturaDetalhePage() {
                 </div>
 
                 {retirando ? (
-                  <div className="flex flex-col gap-3 rounded-2xl bg-red-50 p-4 text-red-950 dark:bg-red-950/50 dark:text-red-100" role="alert">
-                    <p className="font-semibold">Retirar a candidatura?</p>
+                  <div className="flex flex-col gap-3 rounded-[20px] border border-destructive/30 bg-destructive/10 p-4" role="alert">
+                    <p className="font-semibold text-destructive">Retirar a candidatura?</p>
                     <p className="text-sm">Você deixa de participar deste processo. Se quiser, conte o motivo:</p>
                     <div className="flex flex-wrap gap-2">
                       {MOTIVOS.map((m) => (
                         <button key={m} type="button" aria-pressed={motivo === m} onClick={() => setMotivo(motivo === m ? null : m)}
-                          className={`rounded-full px-3 py-2 text-xs font-medium ${motivo === m ? 'bg-red-900 text-white dark:bg-red-200 dark:text-red-950' : 'bg-white/70 dark:bg-black/20'}`}>{m}</button>
+                          className={`min-h-11 rounded-xl border px-3 py-2 text-[13px] font-medium transition-colors ${motivo === m ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-card hover:bg-muted/60'}`}>{m}</button>
                       ))}
                     </div>
                     <div className="flex gap-2">
@@ -104,11 +104,11 @@ export default function CandidaturaDetalhePage() {
                     </div>
                   </div>
                 ) : (
-                  <Button variant="ghost" className="self-start text-red-700 hover:text-red-800 dark:text-red-400" onClick={() => setRetirando(true)}>Retirar candidatura</Button>
+                  <Button variant="ghost" className="self-start text-destructive hover:text-destructive" onClick={() => setRetirando(true)}>Retirar candidatura</Button>
                 )}
               </>
             )}
-            {erro && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-900 dark:bg-red-950/60 dark:text-red-100">{erro}</p>}
+            {erro && <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{erro}</p>}
           </>
         )}
       </div>

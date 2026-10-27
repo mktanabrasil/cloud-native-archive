@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useReduzMovimento } from '@/hooks/useReduzMovimento';
 import { AVIAO_CLARO, AVIAO_DO_LOGO_D, AVIAO_NO_QUADRADO, CANTO_DO_QUADRADO, VERDE_DO_LOGO, curvaDoVoo, transformDoAviao } from './aviaoDoLogo';
 
@@ -65,6 +65,7 @@ function fracoes(path: SVGPathElement | null, paradas: ReadonlyArray<readonly [n
 export function FraseEmEscada({ estreito = false }: { estreito?: boolean }) {
   const e = estreito ? ESCADA.estreito : ESCADA.largo;
   const reduz = useReduzMovimento();
+  const mascara = `vg-tampa-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const trilha = useRef<SVGPathElement>(null);
   const voa = useRef<SVGGElement>(null);
   const mais = useRef<SVGTextElement>(null);
@@ -126,12 +127,21 @@ export function FraseEmEscada({ estreito = false }: { estreito?: boolean }) {
 
   return (
     <svg viewBox={e.vb} className="h-auto w-full overflow-visible" role="img" aria-label="inspirar voos mais altos.">
-      <path ref={trilha} d={e.d} fill="none" stroke="hsl(var(--muted-foreground) / 0.45)" strokeWidth={estreito ? 2 : 2.5} strokeDasharray="7 9" strokeLinecap="round" />
-      {/* Tampa da cor do fundo: sai de cima da linha, e ela parece se desenhar. */}
+      {/* A tampa que "apaga" o traço (26/10/2026): antes era um traço da cor do
+          fundo por cima da linha; com a malha de cores atrás (esboço V2) a cor
+          lisa aparecia. Agora a mesma tampa, com a mesma animação vg-traca,
+          vive numa máscara: onde ela passa, a linha some, sobre qualquer fundo. */}
       {!reduz && (
-        <path d={e.d} fill="none" stroke="var(--vg-fundo, hsl(var(--background)))" strokeWidth={10} pathLength={1}
-          style={{ strokeDasharray: '1 1', animation: `vg-traca ${VOO_MS / 1000}s cubic-bezier(.45,0,.2,1) ${DECOLAGEM_MS / 1000}s both` }} />
+        <defs>
+          <mask id={mascara} maskUnits="userSpaceOnUse" x={-200} y={-200} width={2000} height={1200}>
+            <rect x={-200} y={-200} width={2000} height={1200} fill="#fff" />
+            <path d={e.d} fill="none" stroke="#000" strokeWidth={10} pathLength={1}
+              style={{ strokeDasharray: '1 1', animation: `vg-traca ${VOO_MS / 1000}s cubic-bezier(.45,0,.2,1) ${DECOLAGEM_MS / 1000}s both` }} />
+          </mask>
+        </defs>
       )}
+      <path ref={trilha} d={e.d} fill="none" stroke="hsl(var(--muted-foreground) / 0.45)" strokeWidth={estreito ? 2 : 2.5} strokeDasharray="7 9" strokeLinecap="round"
+        mask={reduz ? undefined : `url(#${mascara})`} />
       {e.paradas.map(([cx, cy, cor], i) => (
         <circle key={i} cx={cx} cy={cy} r={e.bolinha} fill={cor} data-parada={i}
           className={i < acesas ? (reduz ? undefined : 'vg-acende') : 'vg-apagada'} />

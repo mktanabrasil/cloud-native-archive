@@ -16,6 +16,9 @@ import {
  * Não selecionado pede confirmação (notícia definitiva). No celular, onde não
  * há arrastar, cada cartão tem "Mover para". Retiradas ficam fora do quadro.
  */
+/** A cor de cada etapa (a mesma da aba Processos), só no fio do topo da coluna. */
+const COR_DA_COLUNA = ['#01ADFF', '#FBCE00', '#81E2CF', '#0E6B58', 'hsl(var(--muted-foreground) / 0.35)'];
+
 export function QuadroDeCandidatos({ slug, lista, desde, aoMudar, podeFechar = true, naoLidas }: { slug: string; lista: CandidaturaRh[]; desde: Map<string, string>; aoMudar: () => void; podeFechar?: boolean; naoLidas?: Map<string, number> }) {
   const navigate = useNavigate();
   const [arrastando, setArrastando] = useState<string | null>(null);
@@ -53,35 +56,41 @@ export function QuadroDeCandidatos({ slug, lista, desde, aoMudar, podeFechar = t
     if (c) pedir(c, col);
   };
 
+  // Esboço V2: colunas sólidas; a cor da etapa fica só no fio do topo da coluna; selos em texto com bolinha.
+  const selo = (cor: string, texto: string) => (
+    <span className={`inline-flex items-center gap-1 font-semibold ${cor}`}><span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />{texto}</span>
+  );
+
   return (
     <>
-      <div className="grid snap-x grid-flow-col auto-cols-[minmax(220px,1fr)] gap-2.5 overflow-x-auto pb-2" data-testid="quadro">
-        {COLUNAS_DO_QUADRO.map(([col, rot]) => {
+      <div className="grid snap-x grid-flow-col auto-cols-[minmax(232px,1fr)] gap-3 overflow-x-auto pb-2" data-testid="quadro">
+        {COLUNAS_DO_QUADRO.map(([col, rot], n) => {
           const daColuna = ativas.filter((c) => colunaDe(c) === col);
           return (
             <section key={col} aria-label={rot}
               onDragOver={(e) => { e.preventDefault(); setSobre(col); }} onDragLeave={() => setSobre((s) => (s === col ? null : s))} onDrop={soltar(col)}
-              className={`flex min-h-[360px] snap-start flex-col gap-2 rounded-2xl p-2.5 transition-colors ${sobre === col ? 'bg-emerald-50 ring-2 ring-dashed ring-emerald-600 dark:bg-emerald-950/40' : 'bg-muted/60'}`}>
-              <h3 className="flex items-center justify-between px-1 text-[13px] font-semibold">{rot}<span className="font-normal text-muted-foreground">{daColuna.length}</span></h3>
-              {fechada(col) && <p className="px-1 text-[11px] text-muted-foreground">Só o RH move para cá.</p>}
+              className={`relative flex min-h-[360px] snap-start flex-col gap-2 overflow-hidden rounded-[20px] border bg-card p-2.5 pt-3.5 transition-colors ${sobre === col ? 'border-transparent bg-[hsl(var(--ativo))] outline-dashed outline-2 outline-[hsl(var(--sel,168_80%_27%))]' : 'border-black/5 dark:border-white/5'}`}>
+              <span className="absolute inset-x-0 top-0 h-[3px]" style={{ background: COR_DA_COLUNA[n] }} aria-hidden />
+              <h3 className="flex items-center justify-between px-1.5 text-[13.5px] font-semibold">{rot}<span className="font-normal tabular-nums text-[hsl(var(--fraco,0_0%_45%))]">{daColuna.length}</span></h3>
+              {fechada(col) && <p className="px-1.5 text-xs text-muted-foreground">Só o RH move para cá.</p>}
               {daColuna.map((c) => (
                 <article key={c.id} draggable={!fechada(col)} onDragStart={(e) => { e.dataTransfer.setData('text/plain', c.id); setArrastando(c.id); }} onDragEnd={() => setArrastando(null)}
-                  className={`flex cursor-grab flex-col gap-1 rounded-xl border border-border bg-background p-2.5 text-sm active:cursor-grabbing ${arrastando === c.id ? 'opacity-50' : ''} ${col === 'nao_selecionado' ? 'opacity-75' : ''}`}
+                  className={`flex cursor-grab flex-col gap-1.5 rounded-[14px] border border-border/80 bg-card p-3 text-sm transition-colors hover:border-foreground/20 active:cursor-grabbing ${arrastando === c.id ? 'opacity-50' : ''} ${col === 'nao_selecionado' ? 'opacity-75' : ''}`}
                   data-testid="cartao">
                   <button type="button" onClick={() => navigate(`/vagas/${slug}/candidatos/${c.id}`)} className="text-left">
-                    <b className="block truncate">{nomeDoCandidato(c)}</b>
-                    <span className="block truncate text-xs text-muted-foreground">{[lugarDe(c), escolaridadeDe(c)].filter((t) => t && t !== '—').join(' · ') || '—'}</span>
+                    <b className="block truncate font-semibold">{nomeDoCandidato(c)}</b>
+                    <span className="block truncate text-xs text-[hsl(var(--fraco,0_0%_45%))]">{[lugarDe(c), escolaridadeDe(c)].filter((t) => t && t !== '—').join(' · ') || '—'}</span>
                   </button>
-                  <div className="flex flex-wrap gap-1 text-[10.5px]">
-                    {c.requisitos.length > 0 && <span className="rounded bg-muted px-1.5 text-muted-foreground">{c.requisitos.filter((r) => r.atende).length} de {c.requisitos.length}</span>}
-                    {c.curriculo_caminho && <span className="rounded bg-muted px-1.5 text-muted-foreground">currículo</span>}
-                    {!c.aberta_em && <span className="rounded bg-red-50 px-1.5 font-bold text-red-800 dark:bg-red-950/60 dark:text-red-300">novo</span>}
-                    {naoLidas?.has(c.id) && <span className="rounded bg-sky-50 px-1.5 font-bold text-sky-800 dark:bg-sky-950/60 dark:text-sky-300">respondeu</span>}
-                    {c.etapa !== 'resultado' && c.aberta_em && estaParado(desde.get(c.id)) && <span className="rounded bg-amber-50 px-1.5 font-bold text-amber-900 dark:bg-amber-950/60 dark:text-amber-200">parado</span>}
+                  <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-[11.5px] text-muted-foreground">
+                    {c.requisitos.length > 0 && <span className="tabular-nums">{c.requisitos.filter((r) => r.atende).length} de {c.requisitos.length}</span>}
+                    {c.curriculo_caminho && <span>currículo</span>}
+                    {!c.aberta_em && selo('text-destructive', 'novo')}
+                    {naoLidas?.has(c.id) && selo('text-info', 'respondeu')}
+                    {c.etapa !== 'resultado' && c.aberta_em && estaParado(desde.get(c.id)) && selo('text-warning', 'parado')}
                   </div>
                   <label className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground sm:hidden">
                     Mover para
-                    <select aria-label={`Mover ${nomeDoCandidato(c)} para`} value={col} onChange={(e) => pedir(c, e.target.value as Coluna)} className="min-w-0 flex-1 rounded-md border border-border bg-background px-1.5 py-1 text-xs text-foreground">
+                    <select aria-label={`Mover ${nomeDoCandidato(c)} para`} value={col} onChange={(e) => pedir(c, e.target.value as Coluna)} className="h-9 min-w-0 flex-1 rounded-[10px] border border-input bg-card px-2 text-xs text-foreground">
                       {COLUNAS_DO_QUADRO.filter(([k]) => !fechada(k) || k === col).map(([k, r]) => <option key={k} value={k}>{r}</option>)}
                     </select>
                   </label>

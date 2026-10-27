@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, ExternalLink, Info } from 'lucide-react';
+import { ExternalLink, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { SeloDaArea } from './PecasDasVagas';
+import { COR_DA_AREA } from './PecasDasVagas';
 import { criarVaga, mensagemDoErro } from '@/lib/vagas/api';
 import { dadosDaImportacao, linhasDaImportacao } from '@/lib/vagas/importacao';
 import { AREAS, ROTULO_DA_AREA, type StatusDaVaga, type Vaga } from '@/lib/vagas/modelo';
@@ -65,7 +65,8 @@ export function ImportarVagasDialog({ open, onOpenChange, existentes, onImportad
 
   return (
     <Dialog open={open} onOpenChange={o => { if (!ocupado) onOpenChange(o); }}>
-      <DialogContent className="max-h-[95vh] overflow-y-auto sm:max-w-3xl" data-testid="importar-vagas">
+      {/* Esboço V2: lista longa abre numa folha lateral, como o formulário da vaga. */}
+      <DialogContent className="folha-lateral left-auto right-0 top-0 h-[100svh] max-h-[100svh] w-full translate-x-0 translate-y-0 overflow-y-auto rounded-none p-5 sm:right-3 sm:top-3 sm:h-[calc(100svh-1.5rem)] sm:max-h-[calc(100svh-1.5rem)] sm:max-w-[760px] sm:rounded-[22px] sm:p-6" data-testid="importar-vagas">
         <DialogHeader>
           <DialogTitle>Importar as vagas do site</DialogTitle>
           <DialogDescription>
@@ -73,8 +74,8 @@ export function ImportarVagasDialog({ open, onOpenChange, existentes, onImportad
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-muted/50 p-3 text-sm">
-          <b>{marcadas.size} marcadas</b>
+        <div className="flex flex-wrap items-center gap-2 rounded-[16px] border border-border bg-card px-3 py-2 text-sm">
+          <b className="tabular-nums">{marcadas.size} marcadas</b>
           <span className="text-muted-foreground">de {linhas.length}</span>
           <span className="flex-1" />
           <Button size="sm" variant="ghost" disabled={ocupado} onClick={() => setMarcadas(new Set(linhas.map((l, i) => (l.sugerida ? i : -1)).filter(i => i >= 0)))}>Só as sugeridas</Button>
@@ -86,24 +87,27 @@ export function ImportarVagasDialog({ open, onOpenChange, existentes, onImportad
           if (!daArea.length) return null;
           return (
             <section key={area} aria-label={ROTULO_DA_AREA[area]} className="space-y-1.5">
-              <div className="flex items-center gap-2 pt-2"><SeloDaArea area={area} /><span className="text-xs text-muted-foreground">{daArea.length}</span></div>
-              <ul className="divide-y divide-border rounded-xl border border-border">
+              <h3 className="flex items-center gap-2 pt-3 text-[15px] font-semibold">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/10" style={{ background: COR_DA_AREA[area] }} aria-hidden />
+                {ROTULO_DA_AREA[area]} <span className="font-normal tabular-nums text-[hsl(var(--fraco,0_0%_45%))]">{daArea.length}</span>
+              </h3>
+              <ul className="overflow-hidden rounded-[16px] border border-border bg-card">
                 {daArea.map(({ l, i }) => {
                   const id = `imp-${i}`;
                   return (
-                    <li key={i} className={`flex gap-3 p-3 ${l.jaImportada || l.item.duplicadaDe ? 'bg-muted/40' : ''}`} data-testid={`importar-${i}`}>
+                    <li key={i} className={`flex gap-3 border-b border-border/70 p-3 last:border-b-0 ${l.jaImportada || l.item.duplicadaDe ? 'bg-muted/40' : ''}`} data-testid={`importar-${i}`}>
                       <Checkbox id={id} className="mt-0.5" checked={marcadas.has(i)} disabled={ocupado} onCheckedChange={() => alternar(i)} aria-label={`Importar ${l.item.titulo}`} />
                       <label htmlFor={id} className="min-w-0 flex-1 cursor-pointer">
                         <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                           <b className="text-sm">{l.item.titulo}</b>
                           {l.item.original.toLowerCase() !== l.item.titulo.toLowerCase() && <span className="text-xs text-muted-foreground line-through">{l.item.original}</span>}
-                          {l.jaImportada && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 text-[11px] font-semibold text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"><Check className="h-3 w-3" /> já importada</span>}
-                          {l.item.duplicadaDe && <span className="rounded-full bg-amber-100 px-2 text-[11px] font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-200">mesmo Forms de “{l.item.duplicadaDe}”</span>}
+                          {l.jaImportada && <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-success"><span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />já importada</span>}
+                          {l.item.duplicadaDe && <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-warning"><span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />mesmo Forms de “{l.item.duplicadaDe}”</span>}
                         </span>
                         <span className="mt-0.5 block text-xs text-muted-foreground">{l.item.requisitos.join(' · ')}</span>
-                        {l.item.nota && <span className="mt-1 flex gap-1.5 text-xs text-sky-800 dark:text-sky-300"><Info className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />{l.item.nota}</span>}
+                        {l.item.nota && <span className="mt-1 flex gap-1.5 text-xs text-info"><Info className="mt-0.5 h-3 w-3 shrink-0" aria-hidden />{l.item.nota}</span>}
                       </label>
-                      <a href={l.item.link_externo} target="_blank" rel="noopener noreferrer" className="self-start rounded-md p-1 text-muted-foreground hover:text-foreground" aria-label={`Abrir o Forms de ${l.item.titulo}`}><ExternalLink className="h-4 w-4" /></a>
+                      <a href={l.item.link_externo} target="_blank" rel="noopener noreferrer" className="grid h-9 w-9 shrink-0 place-items-center self-start rounded-[10px] text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={`Abrir o Forms de ${l.item.titulo}`}><ExternalLink className="h-4 w-4" /></a>
                     </li>
                   );
                 })}
@@ -112,13 +116,13 @@ export function ImportarVagasDialog({ open, onOpenChange, existentes, onImportad
           );
         })}
 
-        <div className="sticky bottom-0 -mx-6 -mb-6 flex flex-col-reverse gap-2 border-t border-border bg-background px-6 py-4 sm:flex-row sm:items-center">
+        <div className="sticky bottom-0 -mx-1 flex flex-col-reverse gap-2 rounded-2xl border-t border-border bg-card/95 px-1 pb-1 pt-4 backdrop-blur sm:flex-row sm:items-center">
           {progresso
             ? <span className="text-sm" role="status">Importando {progresso.feitas} de {progresso.total}…</span>
             : <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>}
           <span className="flex-1" />
           <Button variant="outline" disabled={ocupado || marcadas.size === 0} onClick={() => importar('rascunho')}>Importar como rascunho</Button>
-          <Button disabled={ocupado || marcadas.size === 0} onClick={() => importar('publicada')}><Check className="h-4 w-4" /> Importar e publicar {marcadas.size}</Button>
+          <Button disabled={ocupado || marcadas.size === 0} onClick={() => importar('publicada')}>Importar e publicar {marcadas.size}</Button>
         </div>
       </DialogContent>
     </Dialog>

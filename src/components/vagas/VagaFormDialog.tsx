@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { COR_DA_AREA, ICONE_DA_AREA } from './PecasDasVagas';
+import { COR_DA_AREA } from './PecasDasVagas';
 import { atualizarVaga, criarVaga, listarPerguntas, mensagemDoErro, salvarPerguntas, type NovaPergunta } from '@/lib/vagas/api';
 import {
   AREAS, CONTRATACOES, MODALIDADES, ROTULO_DA_AREA, ROTULO_DA_CONTRATACAO, ROTULO_DA_MODALIDADE, TIPOS_DE_PERGUNTA,
@@ -105,35 +105,40 @@ export function VagaFormDialog({ open, onOpenChange, modo, vaga, todas, onSalva 
 
   return (
     <Dialog open={open} onOpenChange={o => { if (!salvando) onOpenChange(o); }}>
-      <DialogContent className="max-h-[95vh] overflow-y-auto sm:max-w-2xl" data-testid="form-vaga">
+      {/* Esboço V2: o formulário abre numa folha lateral (padrão do formulário de evento), com os passos como índice. */}
+      <DialogContent className="folha-lateral left-auto right-0 top-0 h-[100svh] max-h-[100svh] w-full translate-x-0 translate-y-0 overflow-y-auto rounded-none p-5 sm:right-3 sm:top-3 sm:h-[calc(100svh-1.5rem)] sm:max-h-[calc(100svh-1.5rem)] sm:max-w-[860px] sm:rounded-[22px] sm:p-6" data-testid="form-vaga">
         <DialogHeader>
           <DialogTitle>{titulo}</DialogTitle>
           <DialogDescription>{editando ? `${vaga!.codigo} · o endereço da vaga não muda.` : 'Um assunto por vez. Dá para salvar como rascunho em qualquer passo.'}</DialogDescription>
         </DialogHeader>
 
         {publicada && (
-          <div className="flex gap-2.5 rounded-xl bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/60 dark:text-amber-100" role="note">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <div className="flex gap-2.5 rounded-[16px] border border-border bg-card p-3 text-sm text-foreground" role="note">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden />
             <span>Esta vaga está publicada. O que você mudar aparece na hora para quem abrir a vaga.</span>
           </div>
         )}
 
-        <ol className="flex gap-1.5" aria-label="Passos">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-[150px_minmax(0,1fr)] md:gap-8">
+        {/* passos: tracinhos no celular, índice numerado na folha larga */}
+        <ol className="flex gap-1.5 md:sticky md:top-0 md:flex-col md:gap-1 md:self-start" aria-label="Passos">
           {PASSOS.map((p, i) => (
-            <li key={p} className="flex-1">
+            <li key={p} className="flex-1 md:flex-none">
               <button
                 type="button"
                 onClick={() => { if (i < passo || faltasParaSalvar(f).length === 0) setPasso(i); }}
                 aria-current={i === passo ? 'step' : undefined}
-                className="flex w-full flex-col gap-1 text-left"
+                className={`flex w-full flex-col gap-1 text-left md:grid md:grid-cols-[24px_1fr] md:items-center md:gap-2 md:rounded-xl md:px-1.5 md:py-1.5 md:text-[13px] md:transition-colors md:hover:bg-muted ${i === passo ? 'md:bg-[hsl(var(--ativo))]' : ''}`}
               >
-                <span className={`h-1.5 rounded-full ${i <= passo ? 'bg-[#81E2CF]' : 'bg-muted'}`} />
-                <span className={`hidden text-[11px] sm:block ${i === passo ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>{p}</span>
+                <span className={`h-1 rounded-full md:hidden ${i <= passo ? 'bg-[#81E2CF]' : 'bg-muted'}`} />
+                <span className={`hidden h-6 w-6 place-items-center rounded-full border text-[11px] font-semibold md:grid ${i < passo ? 'border-transparent bg-[#81E2CF] text-[#10201C]' : i === passo ? 'border-foreground text-foreground' : 'border-border text-muted-foreground'}`} aria-hidden>{i + 1}</span>
+                <span className={`hidden text-[11px] sm:block md:text-[13px] ${i === passo ? 'font-semibold text-foreground' : 'font-medium text-muted-foreground'}`}>{p}</span>
               </button>
             </li>
           ))}
         </ol>
 
+        <div className="flex min-w-0 flex-col gap-5">
         <div className="min-h-[300px] space-y-4">
           {passo === 0 && (
             <>
@@ -141,15 +146,14 @@ export function VagaFormDialog({ open, onOpenChange, modo, vaga, todas, onSalva 
                 <Input id="vg-titulo" value={f.titulo} maxLength={120} onChange={e => muda({ titulo: e.target.value })} placeholder="Educador Social de Música" />
               </Campo>
               <div>
-                <Label className="text-xs font-semibold">Área *</Label>
+                <Label className="text-[13px] font-semibold">Área *</Label>
                 <div className="mt-1.5 grid grid-cols-3 gap-2" role="radiogroup" aria-label="Área">
                   {AREAS.map(a => {
-                    const Icone = ICONE_DA_AREA[a];
                     const ativo = f.area === a;
                     return (
                       <button key={a} type="button" role="radio" aria-checked={ativo} onClick={() => muda({ area: a })}
-                        className={`flex items-center gap-2 rounded-xl border-2 p-3 text-sm font-semibold transition ${ativo ? 'border-foreground' : 'border-transparent bg-muted/60 hover:bg-muted'}`}>
-                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[#1F2322]" style={{ background: COR_DA_AREA[a] }}><Icone className="h-4 w-4" aria-hidden /></span>
+                        className={`flex min-h-[44px] items-center gap-2 rounded-[12px] border bg-card px-3 py-2.5 text-sm transition-colors ${ativo ? 'border-foreground font-semibold text-foreground' : 'border-input font-medium text-muted-foreground hover:text-foreground'}`}>
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/10" style={{ background: COR_DA_AREA[a] }} aria-hidden />
                         <span className="truncate">{ROTULO_DA_AREA[a]}</span>
                       </button>
                     );
@@ -160,17 +164,17 @@ export function VagaFormDialog({ open, onOpenChange, modo, vaga, todas, onSalva 
                 <Campo id="vg-cidade" rotulo="Cidade *"><Input id="vg-cidade" value={f.cidade} onChange={e => muda({ cidade: e.target.value })} /></Campo>
                 <Campo id="vg-carga" rotulo="Carga horária" dica="Como aparece no cartão: “40h semanais · tarde”."><Input id="vg-carga" value={f.carga_horaria} onChange={e => muda({ carga_horaria: e.target.value })} placeholder="40h semanais · tarde" /></Campo>
                 <Campo id="vg-contratacao" rotulo="Contratação">
-                  <select id="vg-contratacao" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={f.contratacao} onChange={e => muda({ contratacao: e.target.value as FormularioDaVaga['contratacao'] })}>
+                  <select id="vg-contratacao" className="h-10 w-full rounded-[12px] border border-input bg-card px-3 text-sm" value={f.contratacao} onChange={e => muda({ contratacao: e.target.value as FormularioDaVaga['contratacao'] })}>
                     {CONTRATACOES.map(c => <option key={c} value={c}>{ROTULO_DA_CONTRATACAO[c]}</option>)}
                   </select>
                 </Campo>
                 <Campo id="vg-modalidade" rotulo="Modalidade">
-                  <select id="vg-modalidade" className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={f.modalidade} onChange={e => muda({ modalidade: e.target.value as FormularioDaVaga['modalidade'] })}>
+                  <select id="vg-modalidade" className="h-10 w-full rounded-[12px] border border-input bg-card px-3 text-sm" value={f.modalidade} onChange={e => muda({ modalidade: e.target.value as FormularioDaVaga['modalidade'] })}>
                     {MODALIDADES.map(m => <option key={m} value={m}>{ROTULO_DA_MODALIDADE[m]}</option>)}
                   </select>
                 </Campo>
               </div>
-              <div className="space-y-2.5 rounded-xl bg-muted/50 p-3">
+              <div className="space-y-2.5 rounded-[16px] border border-border bg-card p-3.5">
                 <Interruptor id="vg-afirmativa" rotulo="Vaga afirmativa para pessoas com deficiência" ligado={f.afirmativa_pcd} aoMudar={v => muda({ afirmativa_pcd: v })} />
                 {!f.afirmativa_pcd && <Interruptor id="vg-aberta-pcd" rotulo="Aberta a pessoas com deficiência" ligado={f.aberta_pcd} aoMudar={v => muda({ aberta_pcd: v })} />}
                 {f.contratacao !== 'aprendiz' && <Interruptor id="vg-aprendiz" rotulo="Programa Jovem Aprendiz" ligado={f.aprendizagem} aoMudar={v => muda({ aprendizagem: v })} />}
@@ -219,13 +223,13 @@ export function VagaFormDialog({ open, onOpenChange, modo, vaga, todas, onSalva 
           {passo === 5 && <Revisao f={f} termos={termos} />}
 
           {tentouAvancar && faltas.length > 0 && (
-            <ul className="space-y-1 rounded-xl bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/60 dark:text-red-100" role="alert">
+            <ul className="space-y-1 rounded-[16px] border border-destructive/30 bg-card p-3 text-sm font-medium text-destructive" role="alert">
               {faltas.map(t => <li key={t}>{t}</li>)}
             </ul>
           )}
         </div>
 
-        <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:items-center">
+        <div className="sticky bottom-0 -mx-1 flex flex-col-reverse gap-2 rounded-2xl border-t border-border bg-card/95 px-1 pb-1 pt-4 backdrop-blur sm:flex-row sm:items-center">
           {passo > 0
             ? <Button type="button" variant="ghost" onClick={() => setPasso(p => p - 1)}><ArrowLeft className="h-4 w-4" /> Voltar</Button>
             : <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>}
@@ -237,10 +241,12 @@ export function VagaFormDialog({ open, onOpenChange, modo, vaga, todas, onSalva 
               <>
                 {!publicada && <Button type="button" variant="outline" disabled={salvando} onClick={() => gravar('revisao')}>Enviar para revisão</Button>}
                 <Button type="button" disabled={salvando || termos.length > 0} onClick={() => gravar('publicada')}>
-                  <Check className="h-4 w-4" /> {publicada ? 'Salvar e manter publicada' : 'Publicar'}
+                  {publicada ? 'Salvar e manter publicada' : 'Publicar'}
                 </Button>
               </>
             )}
+        </div>
+        </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -250,8 +256,8 @@ export function VagaFormDialog({ open, onOpenChange, modo, vaga, todas, onSalva 
 function Campo({ id, rotulo, dica, children }: { id: string; rotulo: string; dica?: string; children: React.ReactNode }) {
   return (
     <div>
-      <Label htmlFor={id} className="text-xs font-semibold">{rotulo}</Label>
-      <div className="mt-1">{children}</div>
+      <Label htmlFor={id} className="text-[13px] font-semibold">{rotulo}</Label>
+      <div className="mt-1.5">{children}</div>
       {dica && <p className="mt-1 text-xs text-muted-foreground">{dica}</p>}
     </div>
   );
@@ -272,11 +278,11 @@ function ListaDeItens({ id, rotulo, itens, aoMudar, exemplo }: { id: string; rot
   const incluir = () => { const novos = itensDoTexto(texto); if (novos.length) { aoMudar([...itens, ...novos]); setTexto(''); } };
   return (
     <div>
-      <Label htmlFor={id} className="text-xs font-semibold">{rotulo}</Label>
+      <Label htmlFor={id} className="text-[13px] font-semibold">{rotulo}</Label>
       {itens.length > 0 && (
         <ul className="mt-1.5 space-y-1.5">
           {itens.map((t, i) => (
-            <li key={`${t}-${i}`} className="flex items-center gap-2 rounded-lg bg-muted/60 py-1.5 pl-3 pr-1 text-sm">
+            <li key={`${t}-${i}`} className="flex items-center gap-2 rounded-[12px] border border-border bg-card py-1 pl-3 pr-1 text-sm">
               <Check className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
               <span className="flex-1">{t}</span>
               <Button type="button" variant="ghost" size="icon" className="h-7 w-7" aria-label={`Tirar “${t}”`} onClick={() => aoMudar(itens.filter((_, j) => j !== i))}><X className="h-3.5 w-3.5" /></Button>
@@ -293,7 +299,7 @@ function ListaDeItens({ id, rotulo, itens, aoMudar, exemplo }: { id: string; rot
           onPaste={e => { const t = e.clipboardData.getData('text'); if (t.includes('\n')) { e.preventDefault(); aoMudar([...itens, ...itensDoTexto(t)]); } }}
           placeholder={exemplo}
         />
-        <Button type="button" variant="outline" onClick={incluir} disabled={!texto.trim()}><Plus className="h-4 w-4" /> Incluir</Button>
+        <Button type="button" variant="outline" onClick={incluir} disabled={!texto.trim()}>Incluir</Button>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">Enter inclui. Colar uma lista inteira vira um item por linha.</p>
     </div>
@@ -308,7 +314,7 @@ function PassoDasPerguntas({ perguntas, banco, aoMudar }: { perguntas: NovaPergu
       <p className="text-sm text-muted-foreground">Perguntas que a pessoa responde ao se candidatar. Nesta fase a inscrição continua no Forms; elas ficam guardadas para quando a candidatura vier para o app.</p>
       {doBanco.length > 0 && (
         <div>
-          <p className="text-xs font-semibold">Do banco de perguntas</p>
+          <p className="text-[13px] font-semibold">Do banco de perguntas</p>
           <div className="mt-1.5 flex flex-wrap gap-2">
             {doBanco.map(b => (
               <Button key={b.id} type="button" variant="outline" size="sm" onClick={() => aoMudar([...perguntas, { texto: b.texto, tipo: b.tipo, opcoes: b.opcoes, obrigatoria: b.obrigatoria }])}>
@@ -319,13 +325,13 @@ function PassoDasPerguntas({ perguntas, banco, aoMudar }: { perguntas: NovaPergu
         </div>
       )}
       {perguntas.map((p, i) => (
-        <div key={i} className="space-y-2 rounded-xl border border-border p-3" data-testid={`pergunta-${i}`}>
+        <div key={i} className="space-y-2 rounded-[16px] border border-border bg-card p-3" data-testid={`pergunta-${i}`}>
           <div className="flex gap-2">
             <Input aria-label={`Pergunta ${i + 1}`} value={p.texto} onChange={e => troca(i, { texto: e.target.value })} placeholder="Por que você quer trabalhar na ANA?" />
             <Button type="button" variant="ghost" size="icon" aria-label={`Tirar pergunta ${i + 1}`} onClick={() => aoMudar(perguntas.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4" /></Button>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <select aria-label={`Tipo da pergunta ${i + 1}`} className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={p.tipo} onChange={e => troca(i, { tipo: e.target.value as TipoDePergunta })}>
+            <select aria-label={`Tipo da pergunta ${i + 1}`} className="h-10 rounded-[12px] border border-input bg-card px-2.5 text-sm" value={p.tipo} onChange={e => troca(i, { tipo: e.target.value as TipoDePergunta })}>
               {TIPOS_DE_PERGUNTA.map(t => <option key={t} value={t}>{ROTULO_DO_TIPO[t]}</option>)}
             </select>
             <label className="flex items-center gap-2 text-sm"><Switch checked={p.obrigatoria} onCheckedChange={v => troca(i, { obrigatoria: v })} aria-label={`Pergunta ${i + 1} obrigatória`} /> Obrigatória</label>
@@ -335,7 +341,7 @@ function PassoDasPerguntas({ perguntas, banco, aoMudar }: { perguntas: NovaPergu
           )}
         </div>
       ))}
-      <Button type="button" variant="outline" onClick={() => aoMudar([...perguntas, { texto: '', tipo: 'texto_curto', opcoes: [], obrigatoria: false }])}><Plus className="h-4 w-4" /> Nova pergunta</Button>
+      <Button type="button" variant="outline" onClick={() => aoMudar([...perguntas, { texto: '', tipo: 'texto_curto', opcoes: [], obrigatoria: false }])}>Nova pergunta</Button>
     </div>
   );
 }
@@ -346,16 +352,16 @@ function Revisao({ f, termos }: { f: FormularioDaVaga; termos: ReturnType<typeof
   return (
     <div className="space-y-4">
       {termos.length > 0 && (
-        <div className="rounded-xl bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/60 dark:text-red-100" role="alert" data-testid="termos-bloqueados">
-          <p className="font-semibold">Não dá para publicar com estes trechos:</p>
+        <div className="rounded-[16px] border border-destructive/30 bg-card p-3 text-sm text-foreground" role="alert" data-testid="termos-bloqueados">
+          <p className="font-semibold text-destructive">Não dá para publicar com estes trechos:</p>
           <ul className="mt-1 list-disc pl-5">{termos.map((t, i) => <li key={i}>“{t.trecho}” em {t.campo} ({t.motivo})</li>)}</ul>
-          <p className="mt-1.5 text-xs">A vaga não pode escolher pessoa por gênero, idade, aparência, estado civil, religião, raça ou gravidez. O rascunho pode ser salvo.</p>
+          <p className="mt-1.5 text-xs text-muted-foreground">A vaga não pode escolher pessoa por gênero, idade, aparência, estado civil, religião, raça ou gravidez. O rascunho pode ser salvo.</p>
         </div>
       )}
       {avisos.length > 0 && (
-        <ul className="space-y-1 rounded-xl bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/60 dark:text-amber-100">{avisos.map(a => <li key={a}>{a}</li>)}</ul>
+        <ul className="space-y-1 rounded-[16px] border border-border bg-card p-3 text-sm">{avisos.map(a => <li key={a} className="flex gap-2"><span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-warning" aria-hidden />{a}</li>)}</ul>
       )}
-      <div className="rounded-xl bg-muted/40 px-3">
+      <div className="rounded-[16px] border border-border bg-card px-4">
         {linha('Título', f.titulo)}
         {linha('Área', f.area ? ROTULO_DA_AREA[f.area] : '')}
         {linha('Onde e como', `${f.cidade} · ${ROTULO_DA_MODALIDADE[f.modalidade]} · ${ROTULO_DA_CONTRATACAO[f.contratacao]}${f.carga_horaria ? ` · ${f.carga_horaria}` : ''}`)}

@@ -20,7 +20,7 @@ export function EtapasDaCandidatura({ etapa, resultado = null, retirada = false 
           </div>
         ))}
       </div>
-      <div className="mt-1 flex justify-between text-[10.5px] text-muted-foreground">
+      <div className="mt-1 flex justify-between text-[11px] text-muted-foreground">
         {ETAPAS.map(([k, r], i) => <span key={k} className={i === atual ? 'font-semibold text-foreground' : undefined}>{i === ETAPAS.length - 1 && etapa === 'resultado' ? rotulo : r}</span>)}
       </div>
     </div>

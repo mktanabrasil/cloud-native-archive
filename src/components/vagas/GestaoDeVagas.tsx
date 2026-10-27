@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Copy, Download, ExternalLink, MoreHorizontal, Pencil, Plus, Search, Trash2, Users } from 'lucide-react';
+import { ExternalLink, MoreHorizontal, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { SeloDaArea } from './PecasDasVagas';
+import { COR_DA_AREA } from './PecasDasVagas';
 import { VagaFormDialog, type ModoDaVaga } from './VagaFormDialog';
 import { ImportarVagasDialog } from './ImportarVagasDialog';
 import { apagarVaga, listarTodasAsVagas, mensagemDoErro, mudarStatus } from '@/lib/vagas/api';
-import { PROXIMOS_STATUS, ROTULO_DO_STATUS, STATUS_DA_VAGA, type StatusDaVaga, type Vaga } from '@/lib/vagas/modelo';
+import { PROXIMOS_STATUS, ROTULO_DA_AREA, ROTULO_DO_STATUS, STATUS_DA_VAGA, type StatusDaVaga, type Vaga } from '@/lib/vagas/modelo';
 import { casaComBusca } from '@/lib/vagas/vitrine';
 import { contagemPorVaga } from '@/lib/vagas/rh';
 import { format } from 'date-fns';
@@ -20,13 +20,14 @@ import { format } from 'date-fns';
  * arquivada, e pede confirmação na própria linha.
  */
 
+// Esboço V2: a situação é texto com bolinha, sem pílula colorida.
 const COR_DO_STATUS: Record<StatusDaVaga, string> = {
-  rascunho: 'bg-muted text-foreground',
-  revisao: 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200',
-  publicada: 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200',
-  pausada: 'bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200',
-  encerrada: 'bg-stone-200 text-stone-800 dark:bg-stone-800 dark:text-stone-200',
-  arquivada: 'bg-stone-100 text-stone-500 dark:bg-stone-900 dark:text-stone-400',
+  rascunho: 'text-muted-foreground',
+  revisao: 'text-warning',
+  publicada: 'text-success',
+  pausada: 'text-info',
+  encerrada: 'text-muted-foreground',
+  arquivada: 'text-[hsl(var(--fraco,0_0%_45%))]',
 };
 
 const VERBO: Record<StatusDaVaga, string> = {
@@ -39,7 +40,11 @@ const VERBO: Record<StatusDaVaga, string> = {
 };
 
 export function SeloDoStatus({ status }: { status: StatusDaVaga }) {
-  return <span className={`inline-flex h-6 items-center rounded-full px-2.5 text-xs font-semibold ${COR_DO_STATUS[status]}`}>{ROTULO_DO_STATUS[status]}</span>;
+  return (
+    <span className={`inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] font-semibold ${COR_DO_STATUS[status]}`}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />{ROTULO_DO_STATUS[status]}
+    </span>
+  );
 }
 
 export function GestaoDeVagas() {
@@ -92,26 +97,31 @@ export function GestaoDeVagas() {
 
   return (
     <section className="mx-auto flex max-w-6xl flex-col gap-4 px-4 pb-12 pt-6 sm:px-6" aria-label="Gestão de vagas">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="mr-auto text-2xl font-bold">Gestão de vagas</h1>
-        <Button variant="outline" disabled={vagas === null} onClick={() => setImportando(true)}><Download className="h-4 w-4" /> Importar do site</Button>
-        <Button onClick={() => setForm({ modo: 'nova', vaga: null })}><Plus className="h-4 w-4" /> Nova vaga</Button>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="mr-auto">
+          <h1 className="text-[28px] font-bold leading-tight">Gestão de vagas</h1>
+          <p className="text-sm text-muted-foreground">Trabalhe Conosco · todas as vagas, de qualquer situação</p>
+        </div>
+        <Button variant="outline" disabled={vagas === null} onClick={() => setImportando(true)}>Importar do site</Button>
+        <Button onClick={() => setForm({ modo: 'nova', vaga: null })}>Nova vaga</Button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        <div className="inline-flex max-w-full gap-0.5 overflow-x-auto rounded-[14px] bg-muted p-1" role="group" aria-label="Filtrar por situação">
         {[null, ...STATUS_DA_VAGA].map(s => {
           const n = s === null ? (vagas?.length ?? 0) : contagem[s];
           if (s !== null && n === 0 && status !== s) return null;
           const ativo = status === s;
           return (
             <button key={s ?? 'todas'} type="button" aria-pressed={ativo} onClick={() => setStatus(s)}
-              className={`h-9 rounded-full px-3.5 text-sm font-medium transition ${ativo ? 'bg-foreground text-background' : 'bg-muted text-foreground hover:bg-muted/70'}`}>
-              {s === null ? 'Todas' : ROTULO_DO_STATUS[s]} · {n}
+              className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[10px] px-3 py-1.5 text-[13.5px] transition-colors ${ativo ? 'bg-card font-semibold text-foreground shadow-[0_1px_3px_hsl(165_30%_12%/0.12)]' : 'font-medium text-muted-foreground hover:text-foreground'}`}>
+              {s === null ? 'Todas' : ROTULO_DO_STATUS[s]}<span className="sr-only"> · </span><span className="tabular-nums text-[hsl(var(--fraco,0_0%_45%))]">{n}</span>
             </button>
           );
         })}
+        </div>
         <span className="flex-1" />
-        <label className="flex h-9 w-full items-center gap-2 rounded-full border border-input bg-background px-3 sm:w-64">
+        <label className="flex h-10 w-full items-center gap-2 rounded-[12px] border border-input bg-card px-3 sm:w-64">
           <Search className="h-4 w-4 text-muted-foreground" aria-hidden />
           <span className="sr-only">Buscar na gestão</span>
           <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Título ou código" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
@@ -119,25 +129,25 @@ export function GestaoDeVagas() {
       </div>
 
       {erro ? (
-        <div className="flex flex-col items-start gap-3 rounded-2xl border border-border bg-card p-6">
+        <div className="flex flex-col items-start gap-3 rounded-[20px] border border-black/5 bg-card p-6 dark:border-white/5">
           <p className="font-semibold">Não deu para carregar as vagas.</p>
           <Button variant="outline" onClick={carregar}>Tentar de novo</Button>
         </div>
       ) : vagas === null ? (
-        <div className="space-y-2" aria-busy="true">{[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>
+        <div className="space-y-2" aria-busy="true">{[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-16 rounded-[16px]" />)}</div>
       ) : vagas.length === 0 ? (
-        <div className="flex flex-col items-start gap-2 rounded-2xl bg-muted/60 p-6">
+        <div className="flex flex-col items-start gap-2 rounded-[20px] border border-black/5 bg-card p-6 dark:border-white/5">
           <p className="text-lg font-semibold">Nenhuma vaga ainda.</p>
           <p className="text-sm text-muted-foreground">Traga as vagas que estão hoje nos sites do Social e do GOE, ou crie uma do zero.</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <Button onClick={() => setImportando(true)}><Download className="h-4 w-4" /> Importar as vagas do site</Button>
-            <Button variant="outline" onClick={() => setForm({ modo: 'nova', vaga: null })}><Plus className="h-4 w-4" /> Nova vaga</Button>
+            <Button onClick={() => setImportando(true)}>Importar as vagas do site</Button>
+            <Button variant="outline" onClick={() => setForm({ modo: 'nova', vaga: null })}>Nova vaga</Button>
           </div>
         </div>
       ) : lista.length === 0 ? (
-        <p className="rounded-2xl bg-muted/60 p-6 text-sm text-muted-foreground">Nenhuma vaga com esse filtro.</p>
+        <p className="rounded-[20px] border border-dashed border-border p-6 text-sm text-muted-foreground">Nenhuma vaga com esse filtro.</p>
       ) : (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-5">
           {[
             ['Com candidatos novos', lista.filter(v => !!candidatos.get(v.id)?.novos)],
             ['Demais vagas', lista.filter(v => !candidatos.get(v.id)?.novos)],
@@ -145,23 +155,24 @@ export function GestaoDeVagas() {
             const vagasDoGrupo = grupo as Vaga[];
             const temNovos = lista.some(v => !!candidatos.get(v.id)?.novos);
             if (!vagasDoGrupo.length || (!temNovos && titulo === 'Com candidatos novos')) return null;
-            const destaque = titulo === 'Com candidatos novos';
             return (
               <section key={titulo as string} aria-label={titulo as string} className="flex flex-col gap-2">
                 {/* As vagas com candidato que ninguém abriu sobem (19/10/2026): a do teste estava lá embaixo. */}
-                {temNovos && <h3 className="mt-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">{titulo as string} · {vagasDoGrupo.length}</h3>}
-        <ul className={`divide-y divide-border rounded-2xl border border-border ${destaque ? 'bg-red-50/60 dark:bg-red-950/20' : 'bg-card'}`}>
+                {temNovos && <h3 className="text-[15px] font-semibold">{titulo as string} <span className="font-normal tabular-nums text-[hsl(var(--fraco,0_0%_45%))]">· {vagasDoGrupo.length}</span></h3>}
+        <ul className="overflow-hidden rounded-[20px] border border-black/5 bg-card dark:border-white/5">
           {vagasDoGrupo.map(v => (
-            <li key={v.id} className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:gap-4 sm:px-4" data-testid={`linha-${v.slug}`}>
+            <li key={v.id} className="flex flex-col gap-2.5 border-b border-border/70 px-4 py-3.5 last:border-b-0 sm:flex-row sm:items-center sm:gap-4" data-testid={`linha-${v.slug}`}>
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <SeloDaArea area={v.area} /><SeloDoStatus status={v.status} />
-                  <span className="text-xs tabular-nums text-muted-foreground">{v.codigo}</span>
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                  <p className="min-w-0 truncate font-semibold">{v.titulo}</p>
+                  <SeloDoStatus status={v.status} />
                 </div>
-                <p className="mt-1 truncate font-semibold">{v.titulo}</p>
-                <p className="text-xs text-muted-foreground">
-                  {v.publicada_em ? `Publicada em ${format(new Date(v.publicada_em), 'dd/MM/yyyy')}` : 'Nunca publicada'}
-                  {v.prazo ? ` · prazo ${format(new Date(v.prazo), 'dd/MM')}` : ''}
+                <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-[hsl(var(--fraco,0_0%_45%))]">
+                  <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                    <span className="h-2 w-2 shrink-0 rounded-full ring-1 ring-black/10" style={{ background: COR_DA_AREA[v.area] }} aria-hidden />{ROTULO_DA_AREA[v.area]}
+                  </span>
+                  <span>· <span className="tabular-nums">{v.codigo}</span></span>
+                  <span>· {v.publicada_em ? `Publicada em ${format(new Date(v.publicada_em), 'dd/MM/yyyy')}` : 'Nunca publicada'}{v.prazo ? ` · prazo ${format(new Date(v.prazo), 'dd/MM')}` : ''}</span>
                 </p>
               </div>
               {apagando === v.id ? (
@@ -172,13 +183,13 @@ export function GestaoDeVagas() {
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5">
-                  <Button size="sm" variant={candidatos.get(v.id)?.total ? 'default' : 'outline'} asChild>
+                  <Button size="sm" variant="outline" asChild>
                     <Link to={`/vagas/${v.slug}/candidatos`} data-testid={`candidatos-${v.slug}`}>
-                      <Users className="h-3.5 w-3.5" /> {candidatos.get(v.id)?.total ?? 0}
-                      {!!candidatos.get(v.id)?.novos && <span className="rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white">{candidatos.get(v.id)!.novos} {candidatos.get(v.id)!.novos === 1 ? 'novo' : 'novos'}</span>}
+                      <Users className="h-3.5 w-3.5" /> <span className="tabular-nums">{candidatos.get(v.id)?.total ?? 0}</span>
+                      {!!candidatos.get(v.id)?.novos && <span className="inline-flex items-center gap-1 text-xs font-semibold text-destructive"><span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />{candidatos.get(v.id)!.novos} {candidatos.get(v.id)!.novos === 1 ? 'novo' : 'novos'}</span>}
                     </Link>
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => setForm({ modo: 'editar', vaga: v })}><Pencil className="h-3.5 w-3.5" /> Editar</Button>
+                  <Button size="sm" variant="outline" onClick={() => setForm({ modo: 'editar', vaga: v })}>Editar</Button>
                   {v.status === 'publicada' && (
                     <Button size="sm" variant="ghost" asChild><Link to={`/vagas/${v.slug}`} target="_blank" aria-label={`Ver ${v.titulo} no portal`}><ExternalLink className="h-4 w-4" /></Link></Button>
                   )}
@@ -188,9 +199,9 @@ export function GestaoDeVagas() {
                         <p className="px-3 pb-1 pt-2 text-xs text-muted-foreground">Mudar para</p>
                         {PROXIMOS_STATUS[v.status].map(s => <ItemDoMenu key={s} onClick={() => { fechar(); trocar(v, s); }}>{VERBO[s]}</ItemDoMenu>)}
                         <div className="my-1 h-px bg-border" role="separator" />
-                        <ItemDoMenu onClick={() => { fechar(); setForm({ modo: 'duplicar', vaga: v }); }}><Copy className="h-4 w-4" /> Duplicar</ItemDoMenu>
+                        <ItemDoMenu onClick={() => { fechar(); setForm({ modo: 'duplicar', vaga: v }); }}>Duplicar</ItemDoMenu>
                         {(v.status === 'rascunho' || v.status === 'arquivada') && (
-                          <ItemDoMenu perigo onClick={() => { fechar(); setApagando(v.id); }}><Trash2 className="h-4 w-4" /> Apagar</ItemDoMenu>
+                          <ItemDoMenu perigo onClick={() => { fechar(); setApagando(v.id); }}>Apagar</ItemDoMenu>
                         )}
                       </>
                     )}
@@ -246,7 +257,7 @@ function MenuDaLinha({ titulo, children }: { titulo: string; children: (fechar: 
         <MoreHorizontal className="h-4 w-4" />
       </Button>
       {aberto && (
-        <div role="menu" className="absolute right-0 top-full z-20 mt-1 min-w-[210px] rounded-xl border border-border bg-popover py-1 text-popover-foreground shadow-lg">
+        <div role="menu" className="absolute right-0 top-full z-20 mt-1 min-w-[210px] rounded-[14px] border border-border bg-popover p-1 text-popover-foreground shadow-lg">
           {children(() => setAberto(false))}
         </div>
       )}
@@ -256,7 +267,7 @@ function MenuDaLinha({ titulo, children }: { titulo: string; children: (fechar: 
 
 function ItemDoMenu({ children, onClick, perigo = false }: { children: React.ReactNode; onClick: () => void; perigo?: boolean }) {
   return (
-    <button type="button" role="menuitem" onClick={onClick} className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none ${perigo ? 'text-destructive' : ''}`}>
+    <button type="button" role="menuitem" onClick={onClick} className={`flex w-full items-center gap-2 rounded-[10px] px-3 py-2 text-left text-sm hover:bg-muted focus-visible:bg-muted focus-visible:outline-none ${perigo ? 'text-destructive' : ''}`}>
       {children}
     </button>
   );

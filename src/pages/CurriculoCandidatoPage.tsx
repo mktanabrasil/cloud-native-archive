@@ -95,11 +95,11 @@ export default function CurriculoCandidatoPage() {
   const ext = (arquivo?.curriculo_nome ?? '').split('.').pop()?.toUpperCase().slice(0, 4) || 'PDF';
 
   return (
-    <MolduraDaConta atalho={<Link to={ROTAS_DO_CANDIDATO.minhaArea} className="text-foreground hover:text-primary">Minha área</Link>}>
+    <MolduraDaConta atalho={<Link to={ROTAS_DO_CANDIDATO.minhaArea} className="text-foreground hover:text-[hsl(var(--sel))]">Minha área</Link>}>
       <div className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5 px-4 pb-10 pt-4 sm:px-6">
         <div className="flex items-center justify-between">
           <h1 className="text-[26px] font-bold leading-tight sm:text-[30px]">Seu currículo</h1>
-          {tem && !enviando && <span className="flex items-center gap-1 text-sm font-semibold text-emerald-700 dark:text-emerald-400"><Check className="h-4 w-4" /> Recebido</span>}
+          {tem && !enviando && <span className="flex items-center gap-1 text-sm font-semibold text-success"><Check className="h-4 w-4" /> Recebido</span>}
         </div>
 
         <input ref={escolher} type="file" accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png" className="hidden" data-testid="escolher-curriculo" onChange={(e) => aoEscolher(e.target.files)} />
@@ -108,8 +108,8 @@ export default function CurriculoCandidatoPage() {
         {!carregado ? (
           <p className="text-muted-foreground">Abrindo…</p>
         ) : enviando ? (
-          <div className="flex items-center gap-3 rounded-2xl bg-muted/60 p-3" aria-live="polite">
-            <span className="grid h-14 w-11 shrink-0 place-items-center rounded-lg bg-[#FDE7E2] text-xs font-bold text-[#B23A25]">…</span>
+          <div className="flex items-center gap-3 rounded-[20px] border border-black/5 bg-card dark:border-white/5 p-3" aria-live="polite">
+            <span className="grid h-14 w-11 shrink-0 place-items-center rounded-lg bg-destructive/10 text-xs font-bold text-destructive">…</span>
             <div className="min-w-0 flex-1">
               <b className="block truncate text-sm">{enviando}</b>
               <span className="text-sm text-muted-foreground">Enviando…</span>
@@ -118,16 +118,16 @@ export default function CurriculoCandidatoPage() {
           </div>
         ) : tem ? (
           <>
-            <div className="flex items-center gap-3 rounded-2xl bg-muted/60 p-3">
-              <span className="grid h-14 w-11 shrink-0 place-items-center rounded-lg bg-[#FDE7E2] text-xs font-bold text-[#B23A25]">{ext}</span>
+            <div className="flex items-center gap-3 rounded-[20px] border border-black/5 bg-card dark:border-white/5 p-3">
+              <span className="grid h-14 w-11 shrink-0 place-items-center rounded-lg bg-destructive/10 text-xs font-bold text-destructive">{ext}</span>
               <div className="min-w-0">
                 <b className="block break-all text-sm">{arquivo!.curriculo_nome}</b>
                 <span className="text-sm text-muted-foreground">{tamanhoLegivel(arquivo!.curriculo_tamanho)} · enviado em {quando(arquivo!.curriculo_enviado_em)}</span>
               </div>
             </div>
             {confirmarRemocao ? (
-              <div className="flex flex-col gap-3 rounded-2xl bg-red-50 p-4 text-red-950 dark:bg-red-950/50 dark:text-red-100" role="alert">
-                <p className="font-semibold">Remover o currículo?</p>
+              <div className="flex flex-col gap-3 rounded-[20px] border border-destructive/30 bg-destructive/10 p-4" role="alert">
+                <p className="font-semibold text-destructive">Remover o currículo?</p>
                 <p className="text-sm">O arquivo é apagado. Seu perfil continua.</p>
                 <div className="flex gap-2">
                   <Button variant="ghost" onClick={() => setConfirmarRemocao(false)}>Cancelar</Button>
@@ -136,29 +136,29 @@ export default function CurriculoCandidatoPage() {
               </div>
             ) : (
               <div className="grid grid-cols-3 gap-2">
-                <Button variant="secondary" className="h-12 rounded-xl" onClick={ver}>Ver</Button>
-                <Button variant="secondary" className="h-12 rounded-xl" onClick={() => escolher.current?.click()}>Trocar</Button>
-                <Button variant="secondary" className="h-12 rounded-xl text-red-700 dark:text-red-400" onClick={() => setConfirmarRemocao(true)}>Remover</Button>
+                <Button variant="outline" className="h-12 rounded-xl" onClick={ver}>Ver</Button>
+                <Button variant="outline" className="h-12 rounded-xl" onClick={() => escolher.current?.click()}>Trocar</Button>
+                <Button variant="outline" className="h-12 rounded-xl text-destructive hover:text-destructive" onClick={() => setConfirmarRemocao(true)}>Remover</Button>
               </div>
             )}
             <ul className="flex flex-col gap-2 text-sm">
-              <li className="flex items-center gap-2"><span className="grid h-7 w-7 place-items-center rounded-lg bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"><Check className="h-4 w-4" /></span>Vale para todas as candidaturas</li>
-              <li className="flex items-center gap-2"><span className="grid h-7 w-7 place-items-center rounded-lg bg-sky-50 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300"><Lock className="h-4 w-4" /></span>Só o RH do processo vê</li>
+              <li className="flex items-center gap-2"><Check className="h-4 w-4 shrink-0 text-success" aria-hidden />Vale para todas as candidaturas</li>
+              <li className="flex items-center gap-2"><Lock className="h-4 w-4 shrink-0 text-[hsl(var(--sel))]" aria-hidden />Só o RH do processo vê</li>
             </ul>
           </>
         ) : (
           <>
-            <div className="flex flex-col items-center gap-3 rounded-[20px] bg-[#FFF5CC] p-5 text-center text-[#1F2322] dark:bg-[#3A3212] dark:text-foreground">
-              <FileUp className="h-10 w-10" aria-hidden />
+            <div className="flex flex-col items-center gap-3 rounded-[20px] border-2 border-dashed border-input bg-card p-6 text-center">
+              <FileUp className="h-10 w-10 text-muted-foreground" aria-hidden />
               <Button className="h-12 w-full rounded-xl" onClick={() => escolher.current?.click()}>Escolher arquivo</Button>
               <Button variant="outline" className="h-12 w-full rounded-xl" onClick={() => foto.current?.click()}><Camera className="h-4 w-4" /> Tirar foto do impresso</Button>
-              <span className="text-xs">PDF, JPG ou PNG · até {CURRICULO_MAX_MB} MB</span>
+              <span className="text-xs text-muted-foreground">PDF, JPG ou PNG · até {CURRICULO_MAX_MB} MB</span>
             </div>
-            <p className="flex items-center gap-2 text-sm text-muted-foreground"><Info className="h-4 w-4 shrink-0 text-sky-700 dark:text-sky-400" /> Sem currículo? Seu perfil já conta sua história.</p>
+            <p className="flex items-center gap-2 text-sm text-muted-foreground"><Info className="h-4 w-4 shrink-0 text-info" /> Sem currículo? Seu perfil já conta sua história.</p>
           </>
         )}
 
-        {erro && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-900 dark:bg-red-950/60 dark:text-red-100">{erro}</p>}
+        {erro && <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{erro}</p>}
       </div>
       <AbasDoCandidato />
     </MolduraDaConta>

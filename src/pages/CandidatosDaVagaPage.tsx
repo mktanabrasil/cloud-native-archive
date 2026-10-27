@@ -26,11 +26,12 @@ import { registrarAcesso } from '@/lib/vagas/auditoria';
 
 type Filtro = 'todas' | Etapa | 'retiradas';
 
+// Esboço V2: a etapa é texto com bolinha, na cor de texto legível.
 const COR_DA_ETAPA: Record<Etapa, string> = {
-  recebida: 'bg-sky-50 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300',
-  analise: 'bg-amber-50 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200',
-  entrevista: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300',
-  resultado: 'bg-muted text-foreground',
+  recebida: 'text-info',
+  analise: 'text-warning',
+  entrevista: 'text-success',
+  resultado: 'text-foreground',
 };
 
 const quando = (iso: string) => {
@@ -116,93 +117,97 @@ export default function CandidatosDaVagaPage() {
 
   const filtros: Array<[Filtro, string]> = [['todas', 'Todas'], ...ETAPAS.map(([k, r]) => [k, r] as [Filtro, string]), ['retiradas', 'Retiradas']];
 
+  // Esboço V2: abas segmentadas com contagem, etapa em texto com bolinha; a lista é uma só marcação
+  // que vira tabela no computador e linha empilhada no celular (sem rolar para o lado).
+  const segmento = 'inline-flex max-w-full gap-0.5 overflow-x-auto rounded-[14px] bg-muted p-1';
+  const opcao = (ativa: boolean) => `inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[10px] px-3 py-1.5 text-[13.5px] transition-colors ${ativa ? 'bg-card font-semibold text-foreground shadow-[0_1px_3px_hsl(165_30%_12%/0.12)]' : 'font-medium text-muted-foreground hover:text-foreground'}`;
+  const COLUNAS = 'md:grid md:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_90px_80px_96px_minmax(0,1.3fr)] md:items-center md:gap-4';
+
   return (
     <MolduraDasVagas>
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6 sm:px-6">
-        <Link to={isRh ? "/vagas?tela=processos" : "/vagas"} className="flex items-center gap-1 self-start text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> {isRh ? "Processos" : "Meus processos"}</Link>
+        <Link to={isRh ? "/vagas?tela=processos" : "/vagas"} className="flex min-h-[32px] items-center gap-1 self-start text-sm font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> {isRh ? "Processos" : "Meus processos"}</Link>
         {vaga === null ? (
           <p className="text-muted-foreground">Vaga não encontrada.</p>
         ) : (
           <>
             <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h1 className="text-2xl font-bold">{vaga?.titulo ?? 'Carregando…'}</h1>
-                {vaga && <p className="text-sm text-muted-foreground">{vaga.codigo} · {contagem.todas} {contagem.todas === 1 ? 'candidato' : 'candidatos'}</p>}
+              <div className="min-w-0">
+                <h1 className="text-[28px] font-bold leading-tight">{vaga?.titulo ?? 'Carregando…'}</h1>
+                {vaga && <p className="text-sm text-muted-foreground"><span className="tabular-nums">{vaga.codigo}</span> · {contagem.todas} {contagem.todas === 1 ? 'candidato' : 'candidatos'}</p>}
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {/* A planilha tem nome, e-mail e WhatsApp: só o RH, e cada download fica na auditoria (passo 6, 20/10/2026). */}
                 {isRh && <Button variant="outline" size="sm" disabled={!vistas.length} onClick={() => { baixarArquivo(csvDosCandidatos(vistas), `candidatos-${slug}.csv`); if (vaga) registrarAcesso('planilha.baixada', { vaga: vaga.id, detalhe: `${vistas.length} ${vistas.length === 1 ? 'linha' : 'linhas'}` }); }}><Download className="h-4 w-4" /> Baixar planilha</Button>}
-                {vaga && <Button asChild variant="outline" size="sm"><Link to={`/vagas/${vaga.slug}`}>Ver a vaga</Link></Button>}
+                {vaga && <Button asChild variant="ghost" size="sm"><Link to={`/vagas/${vaga.slug}`}>Ver a vaga</Link></Button>}
               </div>
             </div>
 
             {ver && (
-              <p className="flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:bg-amber-950/50 dark:text-amber-100">
+              <p className="flex flex-wrap items-center gap-2 self-start rounded-[16px] border border-border bg-card px-3.5 py-2 text-sm">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-warning" aria-hidden />
                 Mostrando só {ver === 'novos' ? 'os novos (ninguém abriu)' : ver === 'respostas' ? 'quem respondeu e ainda não foi lido' : 'os parados há 10+ dias'}.
-                <button type="button" className="font-semibold underline" onClick={() => { const p = new URLSearchParams(params); p.delete('ver'); setParams(p, { replace: true }); }}>Ver todos</button>
+                <button type="button" className="font-semibold text-[hsl(var(--sel,168_80%_27%))] hover:underline" onClick={() => { const p = new URLSearchParams(params); p.delete('ver'); setParams(p, { replace: true }); }}>Ver todos</button>
               </p>
             )}
 
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="inline-flex rounded-xl bg-muted p-1" role="group" aria-label="Quadro ou lista">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className={segmento} role="group" aria-label="Quadro ou lista">
                 {(['quadro', 'lista'] as const).map((v) => (
-                  <button key={v} type="button" aria-pressed={vista === v} onClick={() => escolherVista(v)}
-                    className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${vista === v ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'}`}>{v === 'quadro' ? 'Quadro' : 'Lista'}</button>
+                  <button key={v} type="button" aria-pressed={vista === v} onClick={() => escolherVista(v)} className={opcao(vista === v)}>{v === 'quadro' ? 'Quadro' : 'Lista'}</button>
                 ))}
               </div>
-              {vista === 'lista' && <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por etapa">
+              {vista === 'lista' && <div className={segmento} role="group" aria-label="Filtrar por etapa">
                 {filtros.map(([k, r]) => (
-                  <Button key={k} size="sm" variant={filtro === k ? 'default' : 'secondary'} className="h-8 rounded-full" onClick={() => setFiltro(k)}>
-                    {r}<span className="opacity-60">{contagem[k] ?? 0}</span>
-                  </Button>
+                  <button key={k} type="button" aria-pressed={filtro === k} className={opcao(filtro === k)} onClick={() => setFiltro(k)}>
+                    {r}<span className="tabular-nums text-[hsl(var(--fraco,0_0%_45%))]">{contagem[k] ?? 0}</span>
+                  </button>
                 ))}
               </div>}
+              <span className="flex-1" />
               <label className="relative w-full sm:w-72">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input aria-label="Buscar por nome ou cidade" placeholder="Buscar por nome ou cidade" className="pl-9" value={busca} onChange={(e) => setBusca(e.target.value)} />
               </label>
             </div>
 
-            {erro && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/60 dark:text-red-100">Não consegui carregar os candidatos. Recarregue a página.</p>}
+            {erro && <p role="alert" className="text-sm font-semibold text-destructive">Não consegui carregar os candidatos. Recarregue a página.</p>}
 
             {lista === null ? (
               <p className="text-sm text-muted-foreground">Carregando…</p>
             ) : vista === 'quadro' ? (
               <QuadroDeCandidatos slug={slug} lista={vistas} desde={desde} naoLidas={naoLidas} podeFechar={isRh} aoMudar={() => setVersao((n) => n + 1)} />
             ) : vistas.length === 0 ? (
-              <p className="rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">{(lista ?? []).length ? 'Ninguém nesta etapa.' : 'Ninguém se candidatou ainda.'}</p>
+              <p className="rounded-[20px] border border-dashed border-border p-6 text-sm text-muted-foreground">{(lista ?? []).length ? 'Ninguém nesta etapa.' : 'Ninguém se candidatou ainda.'}</p>
             ) : (
-              <div className="overflow-x-auto rounded-2xl border border-border">
-                <table className="w-full min-w-[820px] text-sm">
-                  <thead className="bg-muted/50 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                    <tr><th className="p-3">Candidato</th><th className="p-3">Formação</th><th className="p-3">Requisitos</th><th className="p-3">Currículo</th><th className="p-3">Enviada</th><th className="p-3">Etapa</th></tr>
-                  </thead>
-                  <tbody>
-                    {vistas.map((c) => {
-                      const nome = nomeDoCandidato(c);
-                      const ir = () => navigate(`/vagas/${slug}/candidatos/${c.id}`);
-                      return (
-                        <tr key={c.id} className="cursor-pointer border-t border-border hover:bg-muted/40" onClick={ir} data-testid="candidato">
-                          <td className="p-3">
-                            <button type="button" onClick={(e) => { e.stopPropagation(); ir(); }} className="flex items-center gap-2.5 text-left">
-                              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-50 text-xs font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">{iniciais(nome)}</span>
-                              <span><b className="block">{nome}</b><span className="text-xs text-muted-foreground">{lugarDe(c) || '—'}</span></span>
-                            </button>
-                          </td>
-                          <td className="p-3">{escolaridadeDe(c)}<span className="block text-xs text-muted-foreground">{experienciasDe(c).length ? `${experienciasDe(c).length} ${experienciasDe(c).length === 1 ? 'experiência' : 'experiências'}` : 'sem experiência'}</span></td>
-                          <td className="p-3 tabular-nums">{c.requisitos.length ? `${c.requisitos.filter((r) => r.atende).length} de ${c.requisitos.length}` : '—'}</td>
-                          <td className="p-3">{c.curriculo_caminho ? <span className="font-bold text-emerald-700 dark:text-emerald-400">✓</span> : <span className="text-muted-foreground">—</span>}</td>
-                          <td className="p-3">{quando(c.created_at)}</td>
-                          <td className="p-3">
-                            <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${c.retirada_em ? 'bg-muted text-muted-foreground' : COR_DA_ETAPA[c.etapa]}`}>{c.retirada_em ? 'Retirada' : rotuloDaEtapa(c.etapa, c.resultado)}</span>
-                            {!c.aberta_em && !c.retirada_em && <span className="ml-1.5 rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-800 dark:bg-red-950/60 dark:text-red-300">novo</span>}
-                            {naoLidas.has(c.id) && <span className="ml-1.5 rounded-full bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-sky-800 dark:bg-sky-950/60 dark:text-sky-300">respondeu</span>}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+              <div className="overflow-hidden rounded-[20px] border border-black/5 bg-card text-sm dark:border-white/5">
+                <div className={`hidden border-b border-border px-4 py-3 text-xs font-semibold text-muted-foreground ${COLUNAS}`} aria-hidden>
+                  <span>Candidato</span><span>Formação</span><span>Requisitos</span><span>Currículo</span><span>Enviada</span><span>Etapa</span>
+                </div>
+                {vistas.map((c) => {
+                  const nome = nomeDoCandidato(c);
+                  const ir = () => navigate(`/vagas/${slug}/candidatos/${c.id}`);
+                  const exp = experienciasDe(c).length;
+                  return (
+                    <div key={c.id} className={`flex cursor-pointer flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border/70 px-4 py-3 transition-colors last:border-b-0 hover:bg-muted/40 ${COLUNAS}`} onClick={ir} data-testid="candidato">
+                      <div className="basis-full md:basis-auto">
+                        <button type="button" onClick={(e) => { e.stopPropagation(); ir(); }} className="flex min-w-0 items-center gap-2.5 text-left">
+                          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-muted text-xs font-bold text-foreground">{iniciais(nome)}</span>
+                          <span className="min-w-0"><b className="block truncate font-semibold">{nome}</b><span className="text-xs text-[hsl(var(--fraco,0_0%_45%))]">{lugarDe(c) || '—'}</span></span>
+                        </button>
+                      </div>
+                      <div className="text-xs text-muted-foreground md:text-sm md:text-foreground">{escolaridadeDe(c)}<span className="hidden text-xs text-[hsl(var(--fraco,0_0%_45%))] md:block">{exp ? `${exp} ${exp === 1 ? 'experiência' : 'experiências'}` : 'sem experiência'}</span></div>
+                      <div className="text-xs tabular-nums text-muted-foreground md:text-sm md:text-foreground">{c.requisitos.length ? <>{c.requisitos.filter((r) => r.atende).length} de {c.requisitos.length}<span className="md:hidden"> requisitos</span></> : <span className="hidden md:inline">—</span>}</div>
+                      <div className="text-xs text-muted-foreground md:text-sm">{c.curriculo_caminho ? <><span className="font-bold text-success">✓</span><span className="md:hidden"> currículo</span></> : <span className="hidden md:inline">—</span>}</div>
+                      <div className="text-xs text-muted-foreground md:text-sm md:text-foreground">{quando(c.created_at)}</div>
+                      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                        <span className={`inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] font-semibold ${c.retirada_em ? 'text-muted-foreground' : COR_DA_ETAPA[c.etapa]}`}><span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />{c.retirada_em ? 'Retirada' : rotuloDaEtapa(c.etapa, c.resultado)}</span>
+                        {!c.aberta_em && !c.retirada_em && <span className="text-xs font-semibold text-destructive">novo</span>}
+                        {naoLidas.has(c.id) && <span className="text-xs font-semibold text-info">respondeu</span>}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </>

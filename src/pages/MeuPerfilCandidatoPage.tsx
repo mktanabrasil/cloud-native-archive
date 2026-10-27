@@ -55,7 +55,7 @@ function Campo({ id, rotulo, opcional, ajuda, children }: { id: string; rotulo: 
 function Escolha({ ativo, onClick, children }: { ativo: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <button type="button" onClick={onClick} aria-pressed={ativo}
-      className={`rounded-full px-4 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${ativo ? 'bg-foreground text-background' : 'bg-muted hover:bg-muted/70'}`}>
+      className={`min-h-11 rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${ativo ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-card hover:bg-muted/60'}`}>
       {children}
     </button>
   );
@@ -189,14 +189,14 @@ export default function MeuPerfilCandidatoPage() {
   const alternar = (t: Turno) => muda('disponibilidade', perfil.disponibilidade.includes(t) ? perfil.disponibilidade.filter((x) => x !== t) : [...perfil.disponibilidade, t]);
 
   return (
-    <MolduraDaConta atalho={<Link to={ROTAS_DO_CANDIDATO.minhaArea} className="text-foreground hover:text-primary">Minha área</Link>}>
+    <MolduraDaConta atalho={<Link to={ROTAS_DO_CANDIDATO.minhaArea} className="text-foreground hover:text-[hsl(var(--sel))]">Minha área</Link>}>
       <div className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-5 px-4 pb-10 pt-2 sm:px-6">
-        {volta && !pronto && <Link to={volta} className="self-start text-sm font-semibold text-sky-700 hover:underline dark:text-sky-400">‹ Voltar para a candidatura</Link>}
+        {volta && !pronto && <Link to={volta} className="self-start text-sm font-semibold text-[hsl(var(--sel))] hover:underline">‹ Voltar para a candidatura</Link>}
         <div className="flex flex-col gap-2">
           <PassosComAviao total={PASSOS_DO_PERFIL.length} atual={pronto ? ULTIMO : passo} concluidos={pronto ? feitos.map(() => true) : feitos} />
-          <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="flex items-center justify-between text-[13px] font-semibold text-muted-foreground">
             <span aria-live="polite">{pronto ? 'Perfil pronto' : `${passo + 1} de ${PASSOS_DO_PERFIL.length} · ${PASSOS_DO_PERFIL[passo]}`}</span>
-            {salvo && !pronto && <span className="flex items-center gap-1 normal-case tracking-normal text-emerald-700 dark:text-emerald-400"><Check className="h-3.5 w-3.5" /> Salvo</span>}
+            {salvo && !pronto && <span className="flex items-center gap-1 text-success"><Check className="h-3.5 w-3.5" /> Salvo</span>}
           </div>
         </div>
 
@@ -214,7 +214,7 @@ export default function MeuPerfilCandidatoPage() {
         ) : !carregado ? (
           <p className="text-muted-foreground">Abrindo o seu perfil…</p>
         ) : (
-          <form key={passo} onSubmit={continuar} noValidate className="vg-pergunta flex flex-col gap-4" aria-label={PERGUNTAS[passo]}>
+          <form key={passo} onSubmit={continuar} noValidate className="vg-pergunta flex flex-col gap-4 rounded-[22px] border border-black/5 bg-card p-5 sm:p-7 dark:border-white/5" aria-label={PERGUNTAS[passo]}>
             <h1 className="text-[26px] font-bold leading-tight sm:text-[30px]">{PERGUNTAS[passo]}</h1>
 
             {passo === 0 && (
@@ -243,7 +243,7 @@ export default function MeuPerfilCandidatoPage() {
                 <Campo id="pf-bairro" rotulo="Bairro" opcional ajuda="Ajuda a pensar na unidade mais perto de você.">
                   <Input id="pf-bairro" maxLength={80} placeholder="Ex.: Jardim Nilópolis" value={perfil.bairro} onChange={(e) => muda('bairro', e.target.value)} className={campoGrande} />
                 </Campo>
-                <p className="flex items-center gap-2 text-sm text-muted-foreground"><Info className="h-4 w-4 shrink-0 text-sky-700 dark:text-sky-400" /> CPF e RG só se você avançar no processo.</p>
+                <p className="flex items-center gap-2 text-sm text-muted-foreground"><Info className="h-4 w-4 shrink-0 text-info" /> CPF e RG só se você avançar no processo.</p>
               </>
             )}
 
@@ -265,7 +265,7 @@ export default function MeuPerfilCandidatoPage() {
               <>
                 <ul className="flex flex-col gap-2">
                   {exps.map((x) => (
-                    <li key={x.id} className="flex items-center gap-2 rounded-2xl bg-muted/60 p-3">
+                    <li key={x.id} className="flex items-center gap-2 rounded-2xl bg-muted/60 py-2 pl-4 pr-2">
                       <div className="min-w-0 flex-1">
                         <b className="block truncate">{x.funcao}</b>
                         <span className="block truncate text-sm text-muted-foreground">{x.onde} · {periodo(x)}</span>
@@ -276,7 +276,7 @@ export default function MeuPerfilCandidatoPage() {
                   ))}
                 </ul>
                 {rascunho ? (
-                  <div className="flex flex-col gap-3 rounded-2xl bg-muted/60 p-4" role="group" aria-label="Experiência">
+                  <div className="flex flex-col gap-3 rounded-2xl border border-border/70 p-4" role="group" aria-label="Experiência">
                     <Campo id="ex-funcao" rotulo="Função">
                       <Input id="ex-funcao" maxLength={120} placeholder="Ex.: Auxiliar de cozinha" value={rascunho.funcao} onChange={(e) => setRascunho({ ...rascunho, funcao: e.target.value })} className={campoGrande} />
                     </Campo>
@@ -306,11 +306,11 @@ export default function MeuPerfilCandidatoPage() {
                   </div>
                 ) : (
                   <button type="button" onClick={() => setRascunho({ ...EXP_VAZIA })}
-                    className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-50 font-semibold text-emerald-900 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-200">
+                    className="flex h-12 items-center justify-center gap-2 rounded-xl border border-dashed border-input font-semibold text-foreground transition-colors hover:bg-muted/50">
                     <Plus className="h-4 w-4" /> Adicionar experiência
                   </button>
                 )}
-                <p className="flex items-center gap-2 text-sm text-muted-foreground"><Info className="h-4 w-4 shrink-0 text-sky-700 dark:text-sky-400" /> Voluntariado e projetos contam.</p>
+                <p className="flex items-center gap-2 text-sm text-muted-foreground"><Info className="h-4 w-4 shrink-0 text-info" /> Voluntariado e projetos contam.</p>
               </>
             )}
 
@@ -325,7 +325,7 @@ export default function MeuPerfilCandidatoPage() {
               </>
             )}
 
-            {erro && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-900 dark:bg-red-950/60 dark:text-red-100">{erro}</p>}
+            {erro && <p role="alert" className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">{erro}</p>}
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
               {passo > 0 && <Button type="button" variant="ghost" className="h-12 rounded-xl" onClick={async () => { await gravar(passo); irPara(passo - 1); }}><ArrowLeft className="h-4 w-4" /> Voltar</Button>}

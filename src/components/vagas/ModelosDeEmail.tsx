@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { History, RotateCcw, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,7 +26,7 @@ function Previa({ chave, assunto, titulo, texto }: { chave: ChaveDoModelo; assun
     : chave === 'convite' ? { rotulo: 'Entrevista', valor: 'sexta-feira, 24/10 às 14:00', rodape: 'Presencial · Sede' } : null;
   const comCor = ['entrevista', 'aprovado', 'convite'].includes(chave);
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-white text-[#1F2322]" data-testid="previa">
+    <div className="overflow-hidden rounded-[16px] border border-border bg-white text-[#1F2322]" data-testid="previa">
       <div className="border-b border-border bg-[#F3F4F4] px-3 py-2 text-xs text-[#555]"><b>Assunto:</b> {preencher(assunto, EXEMPLO)}</div>
       <div className="flex flex-col gap-2.5 p-4 text-sm">
         <b className="text-[13px]">anabrasil</b>
@@ -104,21 +103,21 @@ export function ModelosDeEmail() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6 sm:px-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-2xl font-bold">Modelos de e-mail</h1>
-        <span className="text-sm text-muted-foreground">{MODELOS.length} modelos · cada mudança guarda a versão anterior</span>
+      <div>
+        <h1 className="text-[28px] font-bold leading-tight">Modelos de e-mail</h1>
+        <p className="text-sm text-muted-foreground">{MODELOS.length} modelos · cada mudança guarda a versão anterior</p>
       </div>
-      {erro && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/60 dark:text-red-100">Não consegui carregar os modelos. Recarregue a página.</p>}
+      {erro && <p role="alert" className="text-sm font-semibold text-destructive">Não consegui carregar os modelos. Recarregue a página.</p>}
       {modelos === null ? <p className="text-sm text-muted-foreground">Carregando…</p> : (
         <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-          <nav aria-label="Modelos" className="flex flex-col gap-1.5">
+          <nav aria-label="Modelos" className="flex flex-col self-start overflow-hidden rounded-[20px] border border-black/5 bg-card p-1.5 dark:border-white/5">
             {MODELOS.map((m) => {
               const linha = modelos.find((x) => x.chave === m.chave);
               return (
                 <button key={m.chave} type="button" onClick={() => trocar(m.chave)} aria-current={chave === m.chave ? 'true' : undefined}
-                  className={`rounded-xl px-3 py-2.5 text-left text-sm ${chave === m.chave ? 'bg-emerald-50 outline outline-2 outline-emerald-700 dark:bg-emerald-950/50 dark:outline-emerald-400' : 'bg-muted/60 hover:bg-muted'}`}>
-                  <b className="block">{m.nome}</b>
-                  <span className="text-xs text-muted-foreground">{m.quando}{linha && editado(linha) ? ' · editado' : ''}</span>
+                  className={`rounded-[14px] px-3 py-2.5 text-left text-sm transition-colors ${chave === m.chave ? 'bg-[hsl(var(--ativo))]' : 'hover:bg-muted'}`}>
+                  <b className={`block ${chave === m.chave ? 'font-semibold text-foreground' : 'font-medium text-foreground/85'}`}>{m.nome}</b>
+                  <span className="text-xs text-[hsl(var(--fraco,0_0%_45%))]">{m.quando}{linha && editado(linha) ? ' · editado' : ''}</span>
                 </button>
               );
             })}
@@ -126,42 +125,42 @@ export function ModelosDeEmail() {
 
           {atual && (
             <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <div className="flex min-w-0 flex-col gap-3">
-                <label className="grid gap-1 text-xs font-semibold">Assunto
+              <div className="flex min-w-0 flex-col gap-3.5 rounded-[20px] border border-black/5 bg-card p-5 dark:border-white/5">
+                <label className="grid gap-1.5 text-[13px] font-semibold">Assunto
                   <Input ref={refs.assunto} value={rascunho.assunto} maxLength={150} onFocus={() => setFoco('assunto')} onChange={(e) => setRascunho((r) => ({ ...r, assunto: e.target.value }))} />
                 </label>
-                <label className="grid gap-1 text-xs font-semibold">Título
+                <label className="grid gap-1.5 text-[13px] font-semibold">Título
                   <Input ref={refs.titulo} value={rascunho.titulo} maxLength={150} onFocus={() => setFoco('titulo')} onChange={(e) => setRascunho((r) => ({ ...r, titulo: e.target.value }))} />
                 </label>
-                <label className="grid gap-1 text-xs font-semibold">Texto <span className="font-normal text-muted-foreground">(linha em branco separa os parágrafos)</span>
+                <label className="grid gap-1.5 text-[13px] font-semibold">Texto <span className="font-normal text-muted-foreground">(linha em branco separa os parágrafos)</span>
                   <Textarea ref={refs.texto} rows={8} value={rascunho.texto} maxLength={2000} onFocus={() => setFoco('texto')} onChange={(e) => setRascunho((r) => ({ ...r, texto: e.target.value }))} />
                 </label>
                 <div className="flex flex-wrap items-center gap-1.5" aria-label="Inserir campo">
-                  <span className="text-xs text-muted-foreground">Inserir:</span>
+                  <span className="text-[13px] text-muted-foreground">Inserir:</span>
                   {info.campos.map((c) => (
                     <button key={c} type="button" title={DESCRICAO_DO_CAMPO[c]} onClick={() => inserir(c)}
-                      className="rounded-md bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-800 hover:bg-sky-100 dark:bg-sky-950/60 dark:text-sky-300">{`{${c}}`}</button>
+                      className="rounded-full border border-border px-2.5 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-muted">{`{${c}}`}</button>
                   ))}
                 </div>
-                <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-950 dark:bg-amber-950/50 dark:text-amber-100">
+                <p className="rounded-[12px] bg-muted px-3 py-2 text-xs text-muted-foreground">
                   {info.para === 'equipe' ? 'Este vai para a pessoa da equipe nomeada responsável.' : 'O e-mail nunca leva observações internas nem dados além do primeiro nome. Só entram os campos acima.'}
                   {info.campos.includes('mensagem') ? ' O {mensagem} é obrigatório: é onde entra o que foi escrito na ficha.' : ''}
                 </p>
-                {problema && <p role="alert" className="text-sm font-semibold text-red-700 dark:text-red-400">{problema}</p>}
+                {problema && <p role="alert" className="text-sm font-semibold text-destructive">{problema}</p>}
                 <div className="flex flex-wrap justify-between gap-2">
                   <span className="flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm" onClick={original} disabled={ocupado}><RotateCcw className="h-4 w-4" /> Voltar ao texto original</Button>
-                    <Button variant="outline" size="sm" onClick={abrirVersoes}><History className="h-4 w-4" /> Versões</Button>
+                    <Button variant="outline" size="sm" onClick={original} disabled={ocupado}>Voltar ao texto original</Button>
+                    <Button variant="ghost" size="sm" onClick={abrirVersoes}>Versões</Button>
                   </span>
                   <span className="flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm" onClick={testar} disabled={ocupado || !!problema}><Send className="h-4 w-4" /> Mandar teste para mim</Button>
+                    <Button variant="outline" size="sm" onClick={testar} disabled={ocupado || !!problema}>Mandar teste para mim</Button>
                     <Button size="sm" onClick={salvar} disabled={ocupado || !mudou || !!problema}>Salvar</Button>
                   </span>
                 </div>
-                {atual.atualizado_em && <span className="text-[11px] text-muted-foreground">Última mudança: {atual.atualizado_por ?? 'RH'} · {new Date(atual.atualizado_em).toLocaleString('pt-BR')}</span>}
+                {atual.atualizado_em && <span className="text-xs text-[hsl(var(--fraco,0_0%_45%))]">Última mudança: {atual.atualizado_por ?? 'RH'} · {new Date(atual.atualizado_em).toLocaleString('pt-BR')}</span>}
               </div>
-              <div className="flex min-w-0 flex-col gap-1.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Prévia, com dados de exemplo</span>
+              <div className="flex min-w-0 flex-col gap-2">
+                <h2 className="text-[15px] font-semibold">Prévia, com dados de exemplo</h2>
                 <Previa chave={chave} {...rascunho} />
               </div>
             </div>
@@ -177,8 +176,8 @@ export function ModelosDeEmail() {
           </DialogHeader>
           {versoes?.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma mudança ainda.</p>}
           {versoes?.map((v) => (
-            <div key={v.id} className="flex flex-col gap-1.5 rounded-xl bg-muted/60 p-3 text-sm" data-testid="versao">
-              <span className="text-xs text-muted-foreground">{v.por ?? 'RH'} · {new Date(v.em).toLocaleString('pt-BR')}</span>
+            <div key={v.id} className="flex flex-col gap-1.5 rounded-[16px] border border-border bg-card p-3.5 text-sm" data-testid="versao">
+              <span className="text-xs text-[hsl(var(--fraco,0_0%_45%))]">{v.por ?? 'RH'} · {new Date(v.em).toLocaleString('pt-BR')}</span>
               <b>{v.assunto}</b>
               <span className="line-clamp-3 whitespace-pre-line text-muted-foreground">{v.titulo} — {v.texto}</span>
               <Button size="sm" variant="outline" className="self-start" onClick={() => { setRascunho({ assunto: v.assunto, titulo: v.titulo, texto: v.texto }); setVersoes(null); }}>Usar esta</Button>

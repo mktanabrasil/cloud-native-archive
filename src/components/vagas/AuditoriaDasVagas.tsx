@@ -24,7 +24,7 @@ const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: 
 function Icone({ acao }: { acao: string }) {
   const I = acao === 'curriculo.aberto' ? FileText : acao === 'ficha.aberta' ? User : acao === 'planilha.baixada' ? Download
     : acao === 'candidato.movido' ? ArrowRightLeft : acao === 'mensagem.enviada' ? Mail : acao === 'responsavel.nomeado' ? Star : Briefcase;
-  return <span className="grid h-7 w-7 place-items-center rounded-lg bg-muted"><I className="h-3.5 w-3.5" aria-hidden /></span>;
+  return <span className="grid h-7 w-7 place-items-center rounded-[8px] bg-muted text-muted-foreground"><I className="h-3.5 w-3.5" aria-hidden /></span>;
 }
 
 const csv = (lista: Registro[]) => {
@@ -66,29 +66,39 @@ export function AuditoriaDasVagas() {
     catch { toast.error('Não deu para marcar. Tente de novo.'); }
   }
 
+  // Esboço V2: abas segmentadas para período e tipo; tabela sólida que vira lista empilhada no celular.
+  const segmento = 'inline-flex max-w-full gap-0.5 overflow-x-auto rounded-[14px] bg-muted p-1';
+  const opcao = (ativa: boolean) => `inline-flex shrink-0 items-center whitespace-nowrap rounded-[10px] px-3 py-1.5 text-[13.5px] transition-colors ${ativa ? 'bg-card font-semibold text-foreground shadow-[0_1px_3px_hsl(165_30%_12%/0.12)]' : 'font-medium text-muted-foreground hover:text-foreground'}`;
+  const pessoal = <span className="ml-2 inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-warning"><span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />dados pessoais</span>;
+
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Auditoria <span className="text-sm font-normal text-muted-foreground">· ninguém altera nem apaga</span></h1>
-        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Período e tipo">
-          {PERIODOS.map(([d, r]) => <Button key={r} size="sm" variant={dias === d ? 'default' : 'secondary'} className="h-8 rounded-full" onClick={() => setDias(d)}>{r}</Button>)}
-          <span className="w-2" />
-          <Button size="sm" variant={tipo === null ? 'default' : 'secondary'} className="h-8 rounded-full" onClick={() => setTipo(null)}>Tudo</Button>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[28px] font-bold leading-tight">Auditoria</h1>
+          <p className="text-sm text-muted-foreground">Trabalhe Conosco · ninguém altera nem apaga</p>
+        </div>
+        <Button variant="outline" disabled={!vistos.filtrada.length} onClick={() => baixarArquivo(csv(vistos.filtrada), `auditoria-vagas-${dias}-dias.csv`)}><Download className="h-4 w-4" /> Planilha</Button>
+      </div>
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Período e tipo">
+        <div className={segmento}>
+          {PERIODOS.map(([d, r]) => <button key={r} type="button" aria-pressed={dias === d} className={opcao(dias === d)} onClick={() => setDias(d)}>{r}</button>)}
+        </div>
+        <div className={segmento}>
+          <button type="button" aria-pressed={tipo === null} className={opcao(tipo === null)} onClick={() => setTipo(null)}>Tudo</button>
           {(Object.keys(TIPOS_DE_REGISTRO) as TipoDeRegistro[]).map((k) => (
-            <Button key={k} size="sm" variant={tipo === k ? 'default' : 'secondary'} className="h-8 rounded-full" onClick={() => setTipo(k)}>{TIPOS_DE_REGISTRO[k].rotulo}</Button>
+            <button key={k} type="button" aria-pressed={tipo === k} className={opcao(tipo === k)} onClick={() => setTipo(k)}>{TIPOS_DE_REGISTRO[k].rotulo}</button>
           ))}
-          <span className="w-2" />
-          <Button size="sm" variant="outline" className="h-8" disabled={!vistos.filtrada.length} onClick={() => baixarArquivo(csv(vistos.filtrada), `auditoria-vagas-${dias}-dias.csv`)}><Download className="h-4 w-4" /> Planilha</Button>
         </div>
       </div>
 
       {pendentes.map((a) => (
-        <div key={`${a.quem}-${a.hora}`} role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-900 dark:bg-red-950/50 dark:text-red-100" data-testid="alerta">
+        <div key={`${a.quem}-${a.hora}`} role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-destructive/30 bg-card px-4 py-3 text-sm text-foreground" data-testid="alerta">
           <span className="flex items-start gap-2">
-            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-            <span><b>Fora do comum:</b> {a.quem_nome ?? 'alguém'} abriu <b>{a.quantidade} fichas ou currículos</b> em 1 hora ({quando(a.hora)}){a.vagas ? `, em ${a.vagas}` : ''}.{a.media_por_dia !== null ? ` Costuma abrir ${String(a.media_por_dia).replace('.', ',')} por dia.` : ''}</span>
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-destructive" aria-hidden />
+            <span><b className="text-destructive">Fora do comum:</b> {a.quem_nome ?? 'alguém'} abriu <b>{a.quantidade} fichas ou currículos</b> em 1 hora ({quando(a.hora)}){a.vagas ? `, em ${a.vagas}` : ''}.{a.media_por_dia !== null ? ` Costuma abrir ${String(a.media_por_dia).replace('.', ',')} por dia.` : ''}</span>
           </span>
-          <Button size="sm" variant="outline" className="bg-background text-foreground" onClick={() => conferir(a)}>Marcar como conferido</Button>
+          <Button size="sm" variant="outline" onClick={() => conferir(a)}>Marcar como conferido</Button>
         </div>
       ))}
 
@@ -97,31 +107,50 @@ export function AuditoriaDasVagas() {
         <Input aria-label="Buscar por pessoa, vaga ou protocolo" placeholder="Pessoa, vaga ou protocolo" className="pl-9" value={busca} onChange={(e) => setBusca(e.target.value)} />
       </label>
 
-      {erro && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/60 dark:text-red-100">Não consegui abrir a auditoria. Recarregue a página.</p>}
+      {erro && <p role="alert" className="text-sm font-semibold text-destructive">Não consegui abrir a auditoria. Recarregue a página.</p>}
       {lista === null ? <p className="text-sm text-muted-foreground">Carregando…</p> : vistos.agrupada.length === 0 ? (
-        <p className="rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">Nenhum registro no período.</p>
+        <p className="rounded-[20px] border border-dashed border-border p-6 text-sm text-muted-foreground">Nenhum registro no período.</p>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-border">
-          <table className="w-full min-w-[760px] text-sm">
-            <thead className="bg-muted/50 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-              <tr><th className="w-10 p-3" /><th className="p-3">Quando</th><th className="p-3">Quem</th><th className="p-3">O quê</th><th className="p-3">Sobre</th></tr>
-            </thead>
-            <tbody>
-              {vistos.agrupada.map((r) => (
-                <tr key={r.id} className="border-t border-border align-top" data-testid="registro">
-                  <td className="p-3"><Icone acao={r.acao} /></td>
-                  <td className="whitespace-nowrap p-3 tabular-nums">{r.vezes > 1 ? `${quando(r.em)}–${hora(r.ate)}` : quando(r.em)}</td>
-                  <td className="p-3">{r.quem_nome ?? 'Sistema'}<span className="block text-xs text-muted-foreground">{ROTULO_DO_PAPEL[r.papel ?? ''] ?? ''}</span></td>
-                  <td className="p-3">
-                    {textoDoRegistro(r)}{r.vezes > 1 && <b> ×{r.vezes}</b>}
-                    {tocaDadosPessoais(r.acao) && <span className="ml-1.5 rounded-full bg-amber-50 px-2 py-0.5 text-[10.5px] font-bold text-amber-900 dark:bg-amber-950/60 dark:text-amber-200">dados pessoais</span>}
-                  </td>
-                  <td className="p-3">{[r.protocolo, r.vaga_titulo].filter(Boolean).join(' · ') || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          {/* computador: a tabela */}
+          <div className="hidden overflow-x-auto rounded-[20px] border border-black/5 bg-card dark:border-white/5 md:block">
+            <table className="w-full min-w-[760px] text-sm">
+              <thead className="text-left text-xs font-semibold text-muted-foreground">
+                <tr className="border-b border-border"><th className="w-10 py-3 pl-4 pr-1" /><th className="px-4 py-3">Quando</th><th className="px-4 py-3">Quem</th><th className="px-4 py-3">O quê</th><th className="px-4 py-3">Sobre</th></tr>
+              </thead>
+              <tbody>
+                {vistos.agrupada.map((r) => (
+                  <tr key={r.id} className="border-t border-border/70 align-top transition-colors hover:bg-muted/40" data-testid="registro">
+                    <td className="py-3 pl-4 pr-1"><Icone acao={r.acao} /></td>
+                    <td className="whitespace-nowrap px-4 py-3 tabular-nums">{r.vezes > 1 ? `${quando(r.em)}–${hora(r.ate)}` : quando(r.em)}</td>
+                    <td className="px-4 py-3">{r.quem_nome ?? 'Sistema'}<span className="block text-xs text-[hsl(var(--fraco,0_0%_45%))]">{ROTULO_DO_PAPEL[r.papel ?? ''] ?? ''}</span></td>
+                    <td className="px-4 py-3">
+                      {textoDoRegistro(r)}{r.vezes > 1 && <b> ×{r.vezes}</b>}
+                      {tocaDadosPessoais(r.acao) && pessoal}
+                    </td>
+                    <td className="px-4 py-3">{[r.protocolo, r.vaga_titulo].filter(Boolean).join(' · ') || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* celular: cada registro numa linha empilhada */}
+          <div className="overflow-hidden rounded-[20px] border border-black/5 bg-card dark:border-white/5 md:hidden">
+            {vistos.agrupada.map((r) => (
+              <div key={r.id} className="grid grid-cols-[28px_minmax(0,1fr)] gap-3 border-b border-border/70 px-4 py-3.5 last:border-b-0">
+                <Icone acao={r.acao} />
+                <div className="min-w-0 text-sm">
+                  <p>{textoDoRegistro(r)}{r.vezes > 1 && <b> ×{r.vezes}</b>}{tocaDadosPessoais(r.acao) && pessoal}</p>
+                  <p className="text-xs text-[hsl(var(--fraco,0_0%_45%))]">
+                    <span className="tabular-nums">{r.vezes > 1 ? `${quando(r.em)}–${hora(r.ate)}` : quando(r.em)}</span> · {r.quem_nome ?? 'Sistema'}{ROTULO_DO_PAPEL[r.papel ?? ''] ? ` (${ROTULO_DO_PAPEL[r.papel ?? '']})` : ''}
+                  </p>
+                  {(r.protocolo || r.vaga_titulo) && <p className="text-xs text-muted-foreground">{[r.protocolo, r.vaga_titulo].filter(Boolean).join(' · ')}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
       {lista && lista.length >= LIMITE_DA_LISTA && <p className="text-xs text-muted-foreground">Mostrando os {LIMITE_DA_LISTA} registros mais recentes. Diminua o período ou escolha um tipo para ver os outros.</p>}
     </div>

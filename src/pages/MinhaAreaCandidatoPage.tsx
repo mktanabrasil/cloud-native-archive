@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { ArrowRight, Briefcase, ChevronRight, FileUp, LogOut } from 'lucide-react';
+import { ArrowRight, ChevronRight, FileUp, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
@@ -25,8 +25,8 @@ function Anel({ pct }: { pct: number }) {
   const r = 22, c = 2 * Math.PI * r;
   return (
     <svg viewBox="0 0 52 52" className="h-14 w-14 shrink-0" role="img" aria-label={`${pct}% do perfil pronto`}>
-      <circle cx="26" cy="26" r={r} fill="none" stroke="hsl(var(--background))" strokeWidth="6" />
-      <circle cx="26" cy="26" r={r} fill="none" stroke="#0E6B58" strokeWidth="6" strokeLinecap="round"
+      <circle cx="26" cy="26" r={r} fill="none" stroke="hsl(var(--muted))" strokeWidth="6" />
+      <circle cx="26" cy="26" r={r} fill="none" stroke="hsl(var(--sel))" strokeWidth="6" strokeLinecap="round"
         strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)} transform="rotate(-90 26 26)" />
       <text x="26" y="30.5" textAnchor="middle" fontFamily="Poppins, system-ui, sans-serif" fontWeight={700} fontSize="13" fill="hsl(var(--foreground))">{pct}%</text>
     </svg>
@@ -36,8 +36,8 @@ function Anel({ pct }: { pct: number }) {
 /** O selo da candidatura na lista: "Responda ao RH" quando há convite ou pergunta esperando; "Nova mensagem" quando há o que ler. */
 function SeloDeMensagem({ lista }: { lista: Mensagem[] }) {
   const pendentes = pendentesDoCandidato(lista);
-  if (pendentes.length) return <span className="mt-1 block w-fit rounded-full bg-[#FDE7E2] px-2.5 py-0.5 text-[11px] font-bold text-[#B23A25] dark:bg-[#3F2320] dark:text-[#FF9C88]">{pendentes.some((m) => m.tipo === 'convite') ? 'Convite para entrevista' : 'Responda ao RH'}</span>;
-  if (lista.some((m) => m.autor === 'equipe' && !m.lida_em)) return <span className="mt-1 block w-fit rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-bold text-sky-800 dark:bg-sky-950/60 dark:text-sky-300">Nova mensagem</span>;
+  if (pendentes.length) return <span className="mt-1 flex w-fit items-center gap-1.5 text-[13px] font-semibold text-destructive"><span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />{pendentes.some((m) => m.tipo === 'convite') ? 'Convite para entrevista' : 'Responda ao RH'}</span>;
+  if (lista.some((m) => m.autor === 'equipe' && !m.lida_em)) return <span className="mt-1 flex w-fit items-center gap-1.5 text-[13px] font-semibold text-info"><span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />Nova mensagem</span>;
   return null;
 }
 
@@ -75,24 +75,24 @@ export default function MinhaAreaCandidatoPage() {
         </div>
 
         <section aria-label="Minhas candidaturas" className="flex flex-col gap-3">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Minhas candidaturas</span>
+          <h2 className="text-[15px] font-semibold">Minhas candidaturas</h2>
           {candidaturas === null ? null : candidaturas.length === 0 ? (
-            <div className="flex flex-col gap-3 rounded-[20px] bg-muted/60 p-5">
-              <p className="flex items-center gap-2 font-semibold"><Briefcase className="h-4 w-4" aria-hidden /> Nenhuma candidatura ainda.</p>
+            <div className="flex flex-col gap-3 rounded-[20px] border border-black/5 bg-card dark:border-white/5 p-5">
+              <p className="font-semibold">Nenhuma candidatura ainda.</p>
               <Button asChild className="h-12 self-start rounded-xl px-6"><Link to="/vagas">Ver vagas abertas <ArrowRight className="h-4 w-4" /></Link></Button>
             </div>
           ) : (
-            <ul className="flex flex-col gap-2.5">
+            <ul className="flex flex-col divide-y divide-border/70 overflow-hidden rounded-[20px] border border-black/5 bg-card dark:border-white/5">
               {candidaturas.map((c) => (
                 <li key={c.id}>
-                  <Link to={`${ROTAS_DO_CANDIDATO.minhaArea}/${c.id}`} className="flex flex-col gap-2.5 rounded-2xl bg-muted/60 p-4 hover:bg-muted" data-testid="candidatura">
+                  <Link to={`${ROTAS_DO_CANDIDATO.minhaArea}/${c.id}`} className="flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-muted/40 sm:px-5" data-testid="candidatura">
                     <span className="flex items-start justify-between gap-3">
                       <span className="min-w-0">
-                        <b className="block truncate">{c.vaga?.titulo ?? 'Vaga encerrada'}</b>
-                        <span className="text-xs text-muted-foreground">Protocolo {c.protocolo} · {dataEHora(c.created_at).split(',')[0]}{c.retirada_em ? ' · retirada' : ''}</span>
+                        <b className="block truncate font-display text-[16px] font-semibold">{c.vaga?.titulo ?? 'Vaga encerrada'}</b>
+                        <span className="text-[13px] tabular-nums text-muted-foreground">Protocolo {c.protocolo} · {dataEHora(c.created_at).split(',')[0]}{c.retirada_em ? ' · retirada' : ''}</span>
                         {!c.retirada_em && <SeloDeMensagem lista={mensagens.filter((m) => m.candidatura_id === c.id)} />}
                       </span>
-                      <ChevronRight className="h-5 w-5 shrink-0" aria-hidden />
+                      <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
                     </span>
                     <EtapasDaCandidatura etapa={c.etapa} resultado={c.resultado} retirada={!!c.retirada_em} />
                   </Link>
@@ -104,31 +104,31 @@ export default function MinhaAreaCandidatoPage() {
 
         <div className="grid gap-3 sm:grid-cols-2">
           <Link to={pct === 100 ? ROTAS_DO_CANDIDATO.meuPerfil : `${ROTAS_DO_CANDIDATO.meuPerfil}${primeiroQueFalta ? `?passo=${primeiroQueFalta}` : ''}`}
-            className="vg-sobe flex items-center gap-3 rounded-[20px] bg-emerald-50 p-4 transition-colors hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/70" data-testid="bloco-perfil">
+            className="vg-sobe flex items-center gap-3 rounded-[20px] border border-black/5 bg-card dark:border-white/5 p-4 transition-colors hover:border-black/10 dark:hover:border-white/15" data-testid="bloco-perfil">
             <Anel pct={pct} />
             <span className="min-w-0 flex-1">
-              <b className="block text-base">Meu perfil</b>
+              <b className="block font-display text-base font-semibold">Meu perfil</b>
               <span className="text-sm text-muted-foreground">{pct === 100 ? 'Pronto' : faltam.length === 1 ? 'Falta 1 passo' : `Faltam ${faltam.length} passos`}</span>
             </span>
-            <ChevronRight className="h-5 w-5" aria-hidden />
+            <ChevronRight className="h-5 w-5 text-muted-foreground" aria-hidden />
           </Link>
           <Link to={ROTAS_DO_CANDIDATO.curriculo}
-            className="vg-sobe flex items-center gap-3 rounded-[20px] bg-amber-50 p-4 transition-colors hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-950/70" style={{ ['--vg-i' as string]: 1 }} data-testid="bloco-curriculo">
-            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-background"><FileUp className="h-6 w-6" aria-hidden /></span>
+            className="vg-sobe flex items-center gap-3 rounded-[20px] border border-black/5 bg-card dark:border-white/5 p-4 transition-colors hover:border-black/10 dark:hover:border-white/15" style={{ ['--vg-i' as string]: 1 }} data-testid="bloco-curriculo">
+            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-muted"><FileUp className="h-6 w-6" aria-hidden /></span>
             <span className="min-w-0 flex-1">
-              <b className="block text-base">Currículo</b>
+              <b className="block font-display text-base font-semibold">Currículo</b>
               <span className="text-sm text-muted-foreground">{temCurriculo ? 'Recebido' : 'Ainda não enviado'}</span>
             </span>
-            <ChevronRight className="h-5 w-5" aria-hidden />
+            <ChevronRight className="h-5 w-5 text-muted-foreground" aria-hidden />
           </Link>
         </div>
 
         {dados && faltam.length > 0 && (
-          <ul className="flex flex-col gap-2" aria-label="O que falta no perfil">
+          <ul className="flex flex-col divide-y divide-border/70 overflow-hidden rounded-[20px] border border-black/5 bg-card dark:border-white/5" aria-label="O que falta no perfil">
             {faltam.map((f) => (
               <li key={f.passo}>
-                <Link to={`${ROTAS_DO_CANDIDATO.meuPerfil}${f.passo ? `?passo=${f.passo}` : ''}`} className="flex items-center justify-between rounded-xl bg-muted/60 px-3 py-2.5 text-sm hover:bg-muted">
-                  {f.nome} <span className="text-xs font-semibold text-[#B23A25] dark:text-[#FF9C88]">falta</span>
+                <Link to={`${ROTAS_DO_CANDIDATO.meuPerfil}${f.passo ? `?passo=${f.passo}` : ''}`} className="flex min-h-11 items-center justify-between px-4 py-2.5 text-sm transition-colors hover:bg-muted/40">
+                  {f.nome} <span className="flex items-center gap-1.5 text-[13px] font-semibold text-warning"><span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />falta</span>
                 </Link>
               </li>
             ))}
