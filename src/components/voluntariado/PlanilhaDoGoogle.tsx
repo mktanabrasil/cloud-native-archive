@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ExternalLink, FileSpreadsheet, RefreshCw } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,22 +41,22 @@ export function PlanilhaDoGoogle({ inscritos }: { inscritos: number }) {
     finally { setOcupado(false); }
   }
 
-  const caixa = 'flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4';
-  if (falhou) return <div className={caixa} role="alert"><span className="text-sm text-red-700 dark:text-red-400">Planilha do Google: {falhou}</span><Button variant="outline" size="sm" onClick={carregar}>Tentar de novo</Button></div>;
+  // Esboço V2: cartão sólido, título de bloco sem ícone, situação em texto com bolinha.
+  const caixa = 'flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-black/5 bg-card px-4 py-3.5 dark:border-white/5';
+  if (falhou) return <div className={caixa} role="alert"><span className="text-sm font-semibold text-destructive">Planilha do Google: {falhou}</span><Button variant="outline" size="sm" onClick={carregar}>Tentar de novo</Button></div>;
   if (!estado) return null;
 
   if (!estado.drive_conectado) {
-    return <div className={caixa} data-testid="planilha-google"><span className="text-sm text-muted-foreground"><FileSpreadsheet className="mr-1.5 inline h-4 w-4" />Para a planilha do Google, conecte antes o Drive na aba <b>Pizza da Alegria</b> (usa a mesma conta).</span></div>;
+    return <div className={caixa} data-testid="planilha-google"><span className="text-sm text-muted-foreground">Para a planilha do Google, conecte antes o Drive na aba <b>Pizza da Alegria</b> (usa a mesma conta).</span></div>;
   }
 
   if (!estado.planilha) {
     return (
       <div className={caixa} data-testid="planilha-google">
-        <span className="flex min-w-0 items-start gap-2 text-sm">
-          <FileSpreadsheet className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-400" />
-          <span><b>Planilha do Google que se atualiza sozinha</b><br /><span className="text-muted-foreground">Uma planilha só, no Setor Marketing, para compartilhar com a gestão. Antes de criar, apague as inscrições de teste: as {inscritos} de agora entram nela.</span></span>
+        <span className="min-w-0 flex-1 basis-72 text-sm">
+          <span><b className="block text-[15px] font-semibold">Planilha do Google que se atualiza sozinha</b><span className="text-muted-foreground">Uma planilha só, no Setor Marketing, para compartilhar com a gestão. Antes de criar, apague as inscrições de teste: as {inscritos} de agora entram nela.</span></span>
         </span>
-        <Button size="sm" disabled={ocupado} onClick={() => setConfirmando(true)}><FileSpreadsheet className="h-4 w-4" /> Criar planilha do Google</Button>
+        <Button variant="outline" size="sm" disabled={ocupado} onClick={() => setConfirmando(true)}>Criar planilha do Google</Button>
         <AlertDialog open={confirmando} onOpenChange={setConfirmando}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -76,20 +76,19 @@ export function PlanilhaDoGoogle({ inscritos }: { inscritos: number }) {
   const p = estado.planilha;
   return (
     <div className={caixa} data-testid="planilha-google">
-      <span className="flex min-w-0 items-start gap-2 text-sm">
-        <FileSpreadsheet className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-400" />
+      <span className="min-w-0 flex-1 basis-72 text-sm">
         <span>
-          <b>Planilha do Google</b> · se atualiza sozinha
-          <span className="block text-muted-foreground">
-            {p.erro ? <span className="text-red-700 dark:text-red-400">{p.erro}</span>
+          <span className="flex flex-wrap items-baseline gap-x-3"><b className="text-[15px] font-semibold">Planilha do Google</b><span className={`inline-flex items-center gap-1.5 text-[13px] font-semibold ${p.erro ? 'text-destructive' : estado.pendentes ? 'text-warning' : 'text-success'}`}><span className="h-1.5 w-1.5 rounded-full bg-current" />{p.erro ? 'Com erro' : estado.pendentes ? 'Pendente' : 'Em dia'}</span></span>
+          <span className="block text-muted-foreground">{'Se atualiza sozinha · '}
+            {p.erro ? <span className="text-destructive">{p.erro}</span>
               : estado.pendentes ? `${estado.pendentes} ${estado.pendentes === 1 ? 'inscrição ainda não entrou' : 'inscrições ainda não entraram'}.`
                 : 'Tudo em dia. Apagar aqui não tira a linha de lá.'}
           </span>
         </span>
       </span>
       <span className="flex flex-wrap gap-2">
-        {(estado.pendentes > 0 || p.erro) && <Button variant="outline" size="sm" disabled={ocupado} onClick={sincronizar}><RefreshCw className="h-4 w-4" /> Enviar agora</Button>}
-        <Button asChild size="sm"><a href={p.link} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /> Abrir planilha do Google</a></Button>
+        {(estado.pendentes > 0 || p.erro) && <Button variant="outline" size="sm" disabled={ocupado} onClick={sincronizar}>Enviar agora</Button>}
+        <Button asChild variant="outline" size="sm"><a href={p.link} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /> Abrir planilha do Google</a></Button>
       </span>
     </div>
   );

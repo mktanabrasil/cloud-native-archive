@@ -681,27 +681,21 @@ const CollapsibleSection: React.FC<{
   const [open, setOpen] = React.useState(defaultOpen);
   return (
     <div className={cn(
-      "overflow-hidden rounded-xl border transition-all",
-      open ? "border-primary/40 bg-card shadow-md" : "border-border bg-card/60 shadow-sm"
+      "overflow-hidden rounded-2xl border transition-colors",
+      open ? "border-foreground/25 bg-card" : "border-border bg-card"
     )}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
           "flex w-full items-center justify-between gap-2 px-3.5 py-3 text-left transition-colors",
-          open ? "bg-primary/5" : "hover:bg-muted/50"
+          open ? "bg-muted/40" : "hover:bg-muted/50"
         )}
       >
-        <span className="flex items-center gap-2.5 text-xs font-bold uppercase tracking-wide text-foreground">
-          <span className={cn(
-            "flex h-5 w-5 items-center justify-center rounded-md transition-colors",
-            open ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-          )}>
-            <span className={cn("h-1.5 w-1.5 rounded-full", open ? "bg-primary-foreground" : "bg-muted-foreground/60")} />
-          </span>
+        <span className="text-[13.5px] font-semibold text-foreground">
           {title}
         </span>
-        <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180 text-primary")} />
+        <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180 text-foreground")} />
       </button>
       {open && <div className="space-y-3 border-t bg-background/40 p-3">{children}</div>}
     </div>
@@ -3679,9 +3673,9 @@ ${menuConfig.searchEnabled ? `<div class="custom-spotlight-9982" onclick="if(eve
           description="Crie ferramentas para usar em sites de terceiros (WordPress, Elementor, etc)."
           actions={
             <>
-              <Button variant="outline" size="sm" className="h-7 text-[10px] uppercase tracking-wider font-bold" onClick={() => loadDemo('whatsapp')}>Demo Whats</Button>
-              <Button variant="outline" size="sm" className="h-7 text-[10px] uppercase tracking-wider font-bold" onClick={() => loadDemo('banner')}>Demo Banner</Button>
-              <Button variant="outline" size="sm" className="h-7 text-[10px] uppercase tracking-wider font-bold border-primary/40 text-primary" onClick={() => loadDemo('menu')}>Demo Menu c/ Submenu</Button>
+              <Button variant="ghost" size="sm" className="h-9 text-[13px]" onClick={() => loadDemo('whatsapp')}>Demo Whats</Button>
+              <Button variant="ghost" size="sm" className="h-9 text-[13px]" onClick={() => loadDemo('banner')}>Demo Banner</Button>
+              <Button variant="ghost" size="sm" className="h-9 text-[13px]" onClick={() => loadDemo('menu')}>Demo Menu c/ Submenu</Button>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant={currentTemplateId ? 'ghost' : 'outline'} className="gap-2" onClick={() => { setTemplateName(cleanName(templateName)); setCurrentTemplateId(null); }}>
@@ -3719,7 +3713,7 @@ ${menuConfig.searchEnabled ? `<div class="custom-spotlight-9982" onclick="if(eve
                   {isSaving ? 'Salvando...' : 'Salvar alterações'}
                 </Button>
               ) : null}
-              <Button className="md:w-auto w-full" variant="secondary" onClick={() => setViewMode('code')}>
+              <Button className="md:w-auto w-full" onClick={() => setViewMode('code')}>
                 Gerar Código para Copiar
               </Button>
             </>
@@ -3728,8 +3722,8 @@ ${menuConfig.searchEnabled ? `<div class="custom-spotlight-9982" onclick="if(eve
 
 
         {currentTemplateId && draftSavedAt && (
-          <Alert className="bg-amber-500/10 border-amber-500/30">
-            <Save className="h-4 w-4 text-amber-600" />
+          <Alert className="rounded-[20px] border-black/5 bg-card dark:border-white/5">
+            <Save className="h-4 w-4 text-warning" />
             <AlertTitle>Rascunho salvo automaticamente</AlertTitle>
             <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-sm">
@@ -3745,22 +3739,19 @@ ${menuConfig.searchEnabled ? `<div class="custom-spotlight-9982" onclick="if(eve
         <Dialog open={!!historyTemplate} onOpenChange={(o) => !o && setHistoryTemplate(null)}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><History className="h-4 w-4" /> Histórico de versões</DialogTitle>
+              <DialogTitle>Histórico de versões</DialogTitle>
               <DialogDescription>
                 {historyTemplate ? <>Versões anteriores de <strong>{cleanName(historyTemplate.name)}</strong>. Restaurar substitui a configuração atual (a atual é salva no histórico antes).</> : null}
               </DialogDescription>
             </DialogHeader>
             <div className="max-h-[50vh] space-y-2 overflow-y-auto py-2">
               {historyTemplate && getHistory(historyTemplate.id).length === 0 ? (
-                <div className="rounded-lg border border-dashed bg-muted/20 py-8 text-center text-sm text-muted-foreground">
+                <div className="rounded-2xl border border-dashed bg-muted/20 py-8 text-center text-sm text-muted-foreground">
                   Nenhuma versão anterior ainda. O histórico é criado ao sobrepor ou restaurar este modelo.
                 </div>
               ) : (
                 historyTemplate && getHistory(historyTemplate.id).map((entry: any, i: number) => (
-                  <div key={i} className="flex items-center gap-3 rounded-lg border bg-background p-3 text-sm">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                      <History className="h-4 w-4" />
-                    </span>
+                  <div key={i} className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background p-3 text-sm">
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{entry.note || 'Versão anterior'}</p>
                       <p className="text-[11px] text-muted-foreground">{new Date(entry.savedAt).toLocaleString('pt-BR')}</p>
@@ -3780,8 +3771,8 @@ ${menuConfig.searchEnabled ? `<div class="custom-spotlight-9982" onclick="if(eve
 
 
 
-        <Alert className="bg-primary/5 border-primary/20">
-          <ShieldAlert className="h-4 w-4 text-primary" />
+        <Alert className="rounded-[20px] border-black/5 bg-card dark:border-white/5">
+          <ShieldAlert className="h-4 w-4 text-muted-foreground" />
           <AlertTitle>Foco em Implementação Externa</AlertTitle>
           <AlertDescription>
             Tudo o que você configurar aqui gera um código independente para ser colado em outros sites. Nenhuma alteração afetará este sistema atual.
@@ -3793,31 +3784,31 @@ ${menuConfig.searchEnabled ? `<div class="custom-spotlight-9982" onclick="if(eve
           
           {/* Sidebar Configurações */}
           <div className="lg:col-span-4 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto lg:pr-1.5">
-            <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
-              <div className="border-b bg-muted/30 px-4 py-3">
+            <div className="overflow-hidden rounded-[20px] border border-black/5 bg-card dark:border-white/5">
+              <div className="border-b border-border/70 px-4 py-3.5">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-primary">Painel de edição</p>
-                    <h2 className="text-base font-semibold leading-tight">Ferramentas do widget</h2>
+                    <p className="text-[13px] text-muted-foreground">Painel de edição</p>
+                    <h2 className="text-[15px] font-semibold leading-tight">Ferramentas do widget</h2>
                   </div>
-                  <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold capitalize text-primary">{activeWidgetType}</span>
+                  <span className="rounded-full border border-border px-2.5 py-0.5 text-xs font-semibold capitalize text-foreground">{activeWidgetType}</span>
                 </div>
               </div>
 
               <Tabs defaultValue="widget" className="w-full">
                 <div className="border-b px-3 pt-3">
                   <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="widget" className="gap-1.5 text-xs"><LayoutGrid className="h-3.5 w-3.5" /> Widget</TabsTrigger>
-                    <TabsTrigger value="models" className="gap-1.5 text-xs"><FolderOpen className="h-3.5 w-3.5" /> Modelos{(() => { const n = savedTemplates.filter(t => t.type === activeWidgetType).length; return n > 0 ? <span className="rounded-full bg-primary/15 px-1.5 text-[9px] font-bold text-primary">{n}</span> : null; })()}</TabsTrigger>
-                    <TabsTrigger value="config" className="gap-1.5 text-xs"><Settings className="h-3.5 w-3.5" /> Editor</TabsTrigger>
+                    <TabsTrigger value="widget" className="gap-1.5 text-[13px]">Widget</TabsTrigger>
+                    <TabsTrigger value="models" className="gap-1.5 text-[13px]">Modelos{(() => { const n = savedTemplates.filter(t => t.type === activeWidgetType).length; return n > 0 ? <span className="text-xs font-normal tabular-nums text-[hsl(var(--fraco))]">{n}</span> : null; })()}</TabsTrigger>
+                    <TabsTrigger value="config" className="gap-1.5 text-[13px]">Editor</TabsTrigger>
                   </TabsList>
                 </div>
 
 
                 <TabsContent value="widget" className="m-0 focus-visible:outline-none">
               <section className="p-4">
-                <div className="mb-3 flex items-center gap-2">
-                  <Settings className="h-4 w-4" /> Tipo de Widget
+                <div className="mb-3 text-[15px] font-semibold">
+                  Tipo de Widget
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {([
@@ -3835,10 +3826,10 @@ ${menuConfig.searchEnabled ? `<div class="custom-spotlight-9982" onclick="if(eve
                         type="button"
                         onClick={() => setActiveWidgetType(type)}
                         className={cn(
-                          "group flex min-h-[96px] flex-col items-start gap-2 rounded-lg border p-3 text-left transition-all",
+                          "group flex min-h-[96px] flex-col items-start gap-2 rounded-2xl border p-3 text-left transition-colors",
                           active
-                            ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/30"
-                            : "border-border bg-background hover:-translate-y-0.5 hover:border-primary/40 hover:bg-muted/50 hover:shadow-sm"
+                            ? "border-[#81e2cf] bg-accent ring-1 ring-[#81e2cf]/50"
+                            : "border-border bg-card hover:border-[#81e2cf]/60 hover:bg-muted/50"
                         )}
                       >
                         <span className={cn(
@@ -3863,10 +3854,10 @@ ${menuConfig.searchEnabled ? `<div class="custom-spotlight-9982" onclick="if(eve
                 const filteredTemplates = savedTemplates.filter((t) => t.type === activeWidgetType);
                 return (
               <section className="p-4">
-                <div className="mb-3 flex items-center gap-2">
-                  <FolderOpen className="h-4 w-4" /> Modelos de <span className="font-semibold capitalize text-primary">{activeWidgetType}</span>
+                <div className="mb-3 flex items-center gap-1.5 text-[15px] font-semibold">
+                  Modelos de <span className="capitalize">{activeWidgetType}</span>
                   {filteredTemplates.length > 0 && (
-                    <span className="ml-auto rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">{filteredTemplates.length}</span>
+                    <span className="ml-auto rounded-full border border-border px-2 py-0.5 text-xs font-semibold tabular-nums">{filteredTemplates.length}</span>
                   )}
                 </div>
                 <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1.5">
@@ -3883,20 +3874,17 @@ ${menuConfig.searchEnabled ? `<div class="custom-spotlight-9982" onclick="if(eve
                     const hasUnsavedDraft = currentTemplateId === template.id && Boolean(draftSavedAt);
                     return (
                       <div key={template.id} className={cn(
-                        "group flex items-center gap-3 rounded-xl border p-3 text-sm transition-all",
+                        "group flex items-center gap-3 rounded-2xl border p-3 text-sm transition-colors",
                         currentTemplateId === template.id
-                          ? "bg-primary/10 border-primary shadow-sm ring-1 ring-primary/20"
-                          : "border-border bg-background hover:-translate-y-0.5 hover:bg-muted/50 hover:border-primary/30 hover:shadow-sm"
+                          ? "border-foreground/60 bg-muted ring-1 ring-foreground/20"
+                          : "border-border bg-background hover:border-foreground/30 hover:bg-muted/50"
                       )}>
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground group-hover:text-primary">
-                          <LayoutGrid className="h-4 w-4" />
-                        </span>
-                        <div className="flex min-w-0 flex-1 cursor-pointer flex-col" onClick={() => loadTemplate(template)}>
+                                                <div className="flex min-w-0 flex-1 cursor-pointer flex-col" onClick={() => loadTemplate(template)}>
                           <span className="truncate font-medium leading-tight">{cleanName(template.name)}</span>
                           <span className="mt-1 flex flex-wrap items-center gap-1.5">
-                            <span className="inline-flex w-fit items-center rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">{template.type}</span>
+                            <span className="inline-flex w-fit items-center rounded-full border border-border px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">{template.type}</span>
                             {(template.updated_at || template.created_at) && (
-                              <span className="text-[9px] text-muted-foreground">
+                              <span className="text-[11px] tabular-nums text-[hsl(var(--fraco))]">
                                 {new Date(template.updated_at || template.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                               </span>
                             )}
@@ -3904,21 +3892,21 @@ ${menuConfig.searchEnabled ? `<div class="custom-spotlight-9982" onclick="if(eve
                         </div>
 
                         {hasUnsavedDraft && (
-                          <span className="flex shrink-0 h-7 w-7 items-center justify-center text-amber-600" title="Há alterações não salvas neste modelo">
+                          <span className="flex shrink-0 h-7 w-7 items-center justify-center text-warning" title="Há alterações não salvas neste modelo">
                             <Edit className="h-3 w-3" />
                           </span>
                         )}
-                        <div className="flex shrink-0 items-center gap-0.5 opacity-60 transition-opacity group-hover:opacity-100">
+                        <div className="flex shrink-0 items-center gap-0.5">
 
                           {hasUnsavedDraft && (
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:bg-primary/10" title="Atualizar modelo com o rascunho" disabled={isSaving} onClick={() => overwriteWithDraft()}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" title="Atualizar modelo com o rascunho" aria-label="Atualizar modelo com o rascunho" disabled={isSaving} onClick={() => overwriteWithDraft()}>
                               <RefreshCw className="h-3 w-3" />
                             </Button>
                           )}
-                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Histórico de versões" onClick={() => setHistoryTemplate(template)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" title="Histórico de versões" aria-label="Histórico de versões" onClick={() => setHistoryTemplate(template)}>
                             <History className="h-3 w-3" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" title="Excluir modelo salvo" onClick={() => deleteTemplate(template.id)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" title="Excluir modelo salvo" aria-label="Excluir modelo salvo" onClick={() => deleteTemplate(template.id)}>
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
@@ -3936,11 +3924,8 @@ ${menuConfig.searchEnabled ? `<div class="custom-spotlight-9982" onclick="if(eve
                 <TabsContent value="config" className="m-0 focus-visible:outline-none">
               <section className="p-4">
                 <div className="sticky top-0 z-10 -mx-4 -mt-4 mb-4 flex items-center gap-2 border-b bg-card/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-card/80">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
-                    <Settings className="h-4 w-4" />
-                  </span>
                   <div className="leading-tight">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Configurações</p>
+                    <p className="text-[13px] text-muted-foreground">Configurações</p>
                     <p className="text-sm font-semibold capitalize">{activeWidgetType}</p>
                   </div>
                 </div>
@@ -5719,23 +5704,23 @@ ${menuConfig.searchEnabled ? `<div class="custom-spotlight-9982" onclick="if(eve
           <div className="lg:col-span-8 flex flex-col gap-6 relative">
             <div className="sticky top-24 space-y-6">
               <Card className="overflow-hidden flex flex-col min-h-[600px]">
-              <div className="border-b bg-muted/30 px-6 py-3 flex items-center justify-between shrink-0">
+              <div className="border-b border-border/70 px-4 py-3 sm:px-6 flex flex-wrap items-center justify-between gap-2 shrink-0">
                 <Tabs value={viewMode} onValueChange={setViewMode} className="w-auto">
                   <TabsList>
                     <TabsTrigger value="preview" className="gap-2">
-                      <Eye className="h-4 w-4" /> Preview
+                      Preview
                     </TabsTrigger>
                     <TabsTrigger value="site" className="gap-2">
-                      <Monitor className="h-4 w-4" /> Site
+                      Site
                     </TabsTrigger>
                     <TabsTrigger value="code" className="gap-2">
-                      <Code className="h-4 w-4" /> Código
+                      Código
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
 
                 {(viewMode === 'preview' || viewMode === 'site') && (
-                  <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
+                  <div className="flex items-center gap-1 bg-muted p-1 rounded-[12px]">
                     <Button 
                       variant={deviceView === 'desktop' ? 'secondary' : 'ghost'} 
                       size="icon" 
@@ -5771,7 +5756,7 @@ ${menuConfig.searchEnabled ? `<div class="custom-spotlight-9982" onclick="if(eve
                 {viewMode === 'preview' && (
                   <div className="w-full shrink-0">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Demo Interativo do Widget (clique e teste aqui)</span>
+                      <span className="text-[13px] font-semibold text-muted-foreground">Demo Interativo do Widget (clique e teste aqui)</span>
                       <div className="flex-1 h-px bg-border" />
                     </div>
                     <div className="w-full flex justify-center py-2">

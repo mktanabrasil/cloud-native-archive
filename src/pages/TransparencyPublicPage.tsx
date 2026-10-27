@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { DriveExplorer } from '@/pages/TransparencyPage';
+// O embed usa a versão de antes do redesenho (26/10/2026): o site já o incorpora.
+import { DriveExplorer } from '@/classico/TransparencyPage';
 import { InstitutionalFooterBar } from '@/components/news/InstitutionalFooterBar';
 import { useIframeHeightReporter } from '@/hooks/useIframeHeightReporter';
 

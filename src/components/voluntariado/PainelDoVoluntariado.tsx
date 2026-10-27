@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Copy, Download, Lock, RefreshCw, Trash2 } from 'lucide-react';
+import { Download, Lock, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -88,16 +88,21 @@ export function PainelDoVoluntariado() {
     finally { setApagando(null); }
   }
 
+  const numeros: Array<[string, string, boolean]> = [['Inscritos', String(daUnidade.length), false], ['Unidades', String(new Set(daUnidade.flatMap((i) => (i.unidade_id ? [i.unidade_id] : []))).size), false], ['Áreas sem ninguém', String(vazias), vazias > 0], ['Faltam', dias === 0 ? 'encerrado' : `${dias} ${dias === 1 ? 'dia' : 'dias'}`, false]];
+  // Uma lista só para computador e celular: na tela larga vira tabela (colunas),
+  // na estreita cada inscrição empilha em duas colunas, sem rolar para o lado.
+  const COLUNAS = 'lg:grid-cols-[92px_minmax(0,1.1fr)_136px_minmax(0,1.3fr)_88px_minmax(0,1fr)_minmax(0,1fr)_40px]';
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold">Voluntariado · Natal Feliz</h1>
+          <h1 className="text-[28px] font-bold leading-tight">Voluntariado · Natal Feliz</h1>
           <p className="text-sm text-muted-foreground">Funcionários, Alcance JNI e voluntários de fora · até {ULTIMO_DIA} · evento em 08/12</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={copiarLink}><Copy className="h-4 w-4" /> Copiar link do formulário</Button>
-          <Button variant="outline" size="sm" onClick={carregar}><RefreshCw className="h-4 w-4" /> Atualizar</Button>
+          <Button variant="ghost" size="sm" onClick={copiarLink}>Copiar link do formulário</Button>
+          <Button variant="outline" size="sm" onClick={carregar}>Atualizar</Button>
           <Button size="sm" disabled={!vistas.length} onClick={() => baixarArquivo(csvDasInscricoes(vistas), nomeDaPlanilha(unidade))}><Download className="h-4 w-4" /> Baixar planilha</Button>
         </div>
       </div>
@@ -107,69 +112,79 @@ export function PainelDoVoluntariado() {
       {/* As metas valem para todas as inscrições, então leem a lista inteira (sem o filtro de unidade). */}
       <MetasPorArea metas={metas} primeiras={Object.fromEntries(AREAS_DE_AJUDA.map((a) => [a.chave, (lista ?? []).filter((i) => i.opcao1 === a.chave).length]))} onSalvas={setMetas} />
 
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrar por unidade">
-        <Button size="sm" variant={unidade === null ? 'default' : 'secondary'} className="h-8 rounded-full" onClick={() => setUnidade(null)}>Todos</Button>
-        {unidades.map(([id, nome]) => (
-          <Button key={id} size="sm" variant={unidade === id ? 'default' : 'secondary'} className="h-8 rounded-full" onClick={() => setUnidade(id)}>{nome}</Button>
+      {/* Esboço V2: filtro por unidade/vínculo como abas segmentadas */}
+      <div className="inline-flex max-w-full gap-0.5 self-start overflow-x-auto rounded-[14px] bg-muted p-1" role="group" aria-label="Filtrar por unidade">
+        {([[null, 'Todos'], ...unidades] as Array<[string | null, string]>).map(([id, nome]) => (
+          <button
+            key={id ?? 'todos'}
+            type="button"
+            aria-pressed={unidade === id}
+            onClick={() => setUnidade(id)}
+            className={`shrink-0 whitespace-nowrap rounded-[10px] px-3 py-1.5 text-[13.5px] transition-colors ${unidade === id ? 'bg-card font-semibold text-foreground shadow-[0_1px_3px_hsl(165_30%_12%/0.12)]' : 'font-medium text-muted-foreground hover:text-foreground'}`}
+          >
+            {nome}
+          </button>
         ))}
       </div>
 
-      {erro && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/60 dark:text-red-100">Não consegui carregar as inscrições. Toque em Atualizar.</p>}
+      {erro && <p role="alert" className="inline-flex items-center gap-1.5 text-sm font-semibold text-destructive"><span className="h-1.5 w-1.5 rounded-full bg-current" />Não consegui carregar as inscrições. Toque em Atualizar.</p>}
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
-          {([['Inscritos', String(daUnidade.length), false], ['Unidades', String(new Set(daUnidade.flatMap((i) => (i.unidade_id ? [i.unidade_id] : []))).size), false], ['Áreas sem ninguém', String(vazias), vazias > 0], ['Faltam', dias === 0 ? 'encerrado' : `${dias} ${dias === 1 ? 'dia' : 'dias'}`, false]] as Array<[string, string, boolean]>).map(([r, v, alerta]) => (
-            <div key={r} className="flex flex-col gap-0.5 bg-card p-4" data-testid={`kpi-${r}`}>
-              <small className="text-[11px] uppercase tracking-wider text-muted-foreground">{r}</small>
-              <b className={`text-2xl tabular-nums ${alerta ? 'text-red-700 dark:text-red-400' : ''}`}>{v}</b>
-            </div>
-          ))}
-        </div>
-        <div className="flex flex-col gap-1.5 border-t border-border p-4" aria-label="Por área">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <b className="text-sm">Por área <span className="font-normal text-muted-foreground">(1ª opção /meta · a 2ª ao lado)</span></b>
-            {area && <button type="button" className="text-xs font-semibold underline" onClick={() => setArea(null)}>Ver todas as áreas</button>}
+      {/* Faixa de números (padrão do Dashboard): cor só no número que pede ação */}
+      <div className="glass-1 grid grid-cols-2 overflow-hidden rounded-[20px] lg:grid-cols-4">
+        {numeros.map(([r, v, alerta], n) => (
+          <div
+            key={r}
+            className={`border-black/10 p-4 dark:border-white/10 sm:px-5 ${n % 2 === 1 ? 'border-l' : ''} ${n >= 2 ? 'border-t lg:border-t-0' : ''} ${n === 2 ? 'lg:border-l' : ''}`}
+            data-testid={`kpi-${r}`}
+          >
+            <b className={`block font-display text-2xl font-bold tabular-nums sm:text-3xl ${alerta ? 'text-destructive' : ''}`}>{v}</b>
+            <span className="mt-0.5 block text-[13px] text-muted-foreground">{r}</span>
           </div>
-          {porArea.map((a) => (
-            <button key={a.chave} type="button" onClick={() => setArea(area === a.chave ? null : a.chave)} aria-pressed={area === a.chave}
-              className={`grid grid-cols-[minmax(0,190px)_minmax(0,1fr)_84px] items-center gap-2.5 rounded-lg px-1.5 py-0.5 text-left text-sm hover:bg-muted/60 ${area === a.chave ? 'bg-muted' : ''} ${a.primeira === 0 ? 'text-red-700 dark:text-red-400' : ''}`}
-              data-testid="barra-area">
-              <span className="truncate">{a.rotulo}</span>
-              <span className="h-2.5 rounded-full bg-muted"><span className="block h-full rounded-full bg-[#2F6B52]" style={{ width: `${(a.primeira / max) * 100}%` }} /></span>
-              <span className="text-right tabular-nums"><b>{a.primeira}</b>{a.meta ? <span className="text-xs text-muted-foreground">/{a.meta}</span> : null}{a.segunda ? <span className="text-xs text-muted-foreground"> +{a.segunda}</span> : null}</span>
-            </button>
-          ))}
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-1.5 rounded-[20px] border border-black/5 bg-card p-4 dark:border-white/5" aria-label="Por área">
+        <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+          <b className="text-[15px] font-semibold">Por área <span className="text-[13px] font-normal text-muted-foreground">(1ª opção /meta · a 2ª ao lado)</span></b>
+          {area && <button type="button" className="text-[13px] font-semibold text-[hsl(var(--sel))] hover:underline" onClick={() => setArea(null)}>Ver todas as áreas</button>}
         </div>
+        {porArea.map((a) => (
+          <button key={a.chave} type="button" onClick={() => setArea(area === a.chave ? null : a.chave)} aria-pressed={area === a.chave}
+            className={`grid min-h-9 grid-cols-[minmax(0,140px)_minmax(0,1fr)_76px] items-center gap-2.5 rounded-[10px] px-2 py-1 text-left text-sm transition-colors hover:bg-muted/60 sm:grid-cols-[minmax(0,190px)_minmax(0,1fr)_84px] ${area === a.chave ? 'bg-muted font-semibold' : ''} ${a.primeira === 0 ? 'text-destructive' : ''}`}
+            data-testid="barra-area">
+            <span className="truncate">{a.rotulo}</span>
+            <span className="h-2 rounded-full bg-muted"><span className="block h-full rounded-full bg-[#2F6B52] dark:bg-[#81E2CF]" style={{ width: `${(a.primeira / max) * 100}%` }} /></span>
+            <span className="text-right tabular-nums"><b>{a.primeira}</b>{a.meta ? <span className="text-xs text-muted-foreground">/{a.meta}</span> : null}{a.segunda ? <span className="text-xs text-muted-foreground"> +{a.segunda}</span> : null}</span>
+          </button>
+        ))}
       </div>
 
       {lista === null ? (
         <p className="text-sm text-muted-foreground">Carregando…</p>
       ) : vistas.length === 0 ? (
-        <p className="rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">{lista.length ? 'Ninguém com esse filtro.' : 'Nenhuma inscrição ainda. Copie o link do formulário e mande para as unidades.'}</p>
+        <p className="rounded-[20px] border border-dashed border-border p-6 text-sm text-muted-foreground">{lista.length ? 'Ninguém com esse filtro.' : 'Nenhuma inscrição ainda. Copie o link do formulário e mande para as unidades.'}</p>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-border">
-          <table className="w-full min-w-[980px] text-sm">
-            <thead className="bg-muted/50 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-              <tr><th className="p-3">Protocolo</th><th className="p-3">Nome</th><th className="p-3">WhatsApp</th><th className="p-3">Unidade / vínculo</th><th className="p-3">Horário</th><th className="p-3">1ª opção</th><th className="p-3">2ª opção</th><th className="p-3" /></tr>
-            </thead>
-            <tbody>
-              {vistas.map((i) => (
-                <tr key={i.id} className="border-t border-border" data-testid="inscricao">
-                  <td className="p-3 font-semibold tabular-nums">{i.protocolo}</td>
-                  <td className="p-3">{i.nome}</td>
-                  <td className="p-3"><a href={`https://wa.me/55${i.whatsapp}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-emerald-700 hover:underline dark:text-emerald-400">{whatsappLegivel(i.whatsapp)}</a></td>
-                  <td className="p-3">
-                    {i.unidade_nome ?? rotuloDoVinculo(i.vinculo)}
-                    {(i.indicado_por || i.igreja) && <small className="block text-xs text-muted-foreground">{[i.indicado_por && `indicado(a) por ${i.indicado_por}`, i.igreja].filter(Boolean).join(' · ')}</small>}
-                  </td>
-                  <td className="p-3">{rotuloDoHorario(i.horario) || '—'}</td>
-                  <td className="p-3">{rotuloDaAjuda(i.opcao1)}</td>
-                  <td className="p-3 text-muted-foreground">{i.opcao2 ? rotuloDaAjuda(i.opcao2) : '—'}</td>
-                  <td className="p-3 text-right"><Button variant="ghost" size="sm" aria-label={`Apagar ${i.protocolo}`} onClick={() => setApagando(i)}><Trash2 className="h-4 w-4" /></Button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="overflow-hidden rounded-[20px] border border-black/5 bg-card text-sm dark:border-white/5">
+          <div className={`hidden gap-3 border-b border-border px-4 py-3 text-xs font-semibold text-muted-foreground lg:grid ${COLUNAS}`} aria-hidden="true">
+            <span>Protocolo</span><span>Nome</span><span>WhatsApp</span><span>Unidade / vínculo</span><span>Horário</span><span>1ª opção</span><span>2ª opção</span><span />
+          </div>
+          <ul>
+            {vistas.map((i) => (
+              <li key={i.id} className={`grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 border-b border-border/70 px-4 py-3.5 transition-colors last:border-b-0 hover:bg-muted/40 lg:items-center lg:gap-3 lg:py-2.5 ${COLUNAS}`} data-testid="inscricao">
+                <span className="order-4 self-center text-right text-xs font-semibold tabular-nums text-[hsl(var(--fraco))] lg:order-none lg:text-left lg:text-sm lg:text-foreground">{i.protocolo}</span>
+                <span className="order-1 min-w-0 self-center font-semibold lg:order-none lg:font-normal">{i.nome}</span>
+                <span className="order-3 self-center"><a href={`https://wa.me/55${i.whatsapp}`} target="_blank" rel="noopener noreferrer" className="font-semibold tabular-nums text-[hsl(var(--sel))] hover:underline">{whatsappLegivel(i.whatsapp)}</a></span>
+                <span className="order-5 col-span-2 lg:order-none lg:col-span-1">
+                  {i.unidade_nome ?? rotuloDoVinculo(i.vinculo)}
+                  {(i.indicado_por || i.igreja) && <small className="block text-xs text-[hsl(var(--fraco))]">{[i.indicado_por && `indicado(a) por ${i.indicado_por}`, i.igreja].filter(Boolean).join(' · ')}</small>}
+                </span>
+                <span className="order-7 text-right text-muted-foreground lg:order-none lg:text-left lg:text-foreground">{rotuloDoHorario(i.horario) || '—'}</span>
+                <span className="order-6 lg:order-none"><span className="text-[hsl(var(--fraco))] lg:hidden">1ª </span>{rotuloDaAjuda(i.opcao1)}</span>
+                <span className="order-8 col-span-2 text-muted-foreground lg:order-none lg:col-span-1"><span className="text-[hsl(var(--fraco))] lg:hidden">2ª </span>{i.opcao2 ? rotuloDaAjuda(i.opcao2) : '—'}</span>
+                <span className="order-2 -mr-2 -mt-2 lg:order-none lg:m-0 lg:text-right"><Button variant="ghost" size="icon" className="h-11 w-11 text-muted-foreground hover:text-destructive lg:h-9 lg:w-9" aria-label={`Apagar ${i.protocolo}`} title="Apagar" onClick={() => setApagando(i)}><Trash2 className="h-4 w-4" /></Button></span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

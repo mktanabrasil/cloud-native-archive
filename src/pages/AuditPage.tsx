@@ -12,7 +12,6 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Select, 
   SelectContent, 
@@ -23,9 +22,8 @@ import {
 import { UNITS } from '@/types';
 import PageHeader from '@/components/PageHeader';
 import PageGuide from '@/components/PageGuide';
-import { History, Search, Filter } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 
 export default function AuditPage() {
   const { isManager, isAdmin, unit: userUnit, delegatedUnits, canViewAuditoria, loading: carregandoPapel } = useUserRole();
@@ -84,92 +82,106 @@ export default function AuditPage() {
     ? UNITS 
     : UNITS.filter(u => u === userUnit || delegatedUnits.includes(u));
 
+  const dataHora = (iso: string) => format(new Date(iso), 'dd/MM/yyyy HH:mm:ss', { locale: ptBR });
+  const detalhes = (d: unknown) => (d ? JSON.stringify(d) : '-');
+
   return (
-    <div className="space-y-6">
-      <PageHeader 
-        title="Logs de Auditoria" 
+    <div className="space-y-5">
+      <PageHeader
+        title="Logs de Auditoria"
         description="Histórico de ações realizadas no sistema"
       />
 
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <CardTitle className="text-lg font-medium flex items-center gap-2">
-              <Filter className="h-4 w-4" /> Filtros
-            </CardTitle>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input 
-                  placeholder="Buscar por ator, ação..." 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              
-              <Select value={filterUnit} onValueChange={setFilterUnit}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Unidade" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(isAdmin || isManager) && <SelectItem value="all">Todas as Unidades</SelectItem>}
-                  {!isAdmin && availableUnits.length > 1 && <SelectItem value="all">Todas Delegadas</SelectItem>}
-                  {availableUnits.map(u => (
-                    <SelectItem key={u} value={u}>{u}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border overflow-x-auto">
+      {/* Esboço V2: filtros soltos acima da tabela, sem cartão em volta */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative w-full sm:w-72">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <Input
+            placeholder="Buscar por ator, ação..."
+            aria-label="Buscar por ator, ação ou entidade"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
+        <Select value={filterUnit} onValueChange={setFilterUnit}>
+          <SelectTrigger className="w-full sm:w-[200px]" aria-label="Unidade">
+            <SelectValue placeholder="Unidade" />
+          </SelectTrigger>
+          <SelectContent>
+            {(isAdmin || isManager) && <SelectItem value="all">Todas as Unidades</SelectItem>}
+            {!isAdmin && availableUnits.length > 1 && <SelectItem value="all">Todas Delegadas</SelectItem>}
+            {availableUnits.map(u => (
+              <SelectItem key={u} value={u}>{u}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {!isLoading && (
+          <p className="text-[13px] tabular-nums text-muted-foreground sm:ml-auto">
+            {filteredLogs.length} {filteredLogs.length === 1 ? 'registro' : 'registros'}
+          </p>
+        )}
+      </div>
+
+      {isLoading ? (
+        <p className="rounded-[20px] border border-black/5 bg-card p-10 text-center text-sm text-muted-foreground dark:border-white/5">Carregando logs...</p>
+      ) : filteredLogs.length === 0 ? (
+        <p className="rounded-[20px] border border-dashed border-border p-10 text-center text-sm text-muted-foreground">Nenhum log encontrado.</p>
+      ) : (
+        <>
+          {/* computador: a tabela sólida; a ação vira texto, sem pílula */}
+          <div className="hidden overflow-hidden rounded-[20px] border border-black/5 bg-card dark:border-white/5 md:block">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Data/Hora</TableHead>
-                  <TableHead>Ator</TableHead>
-                  <TableHead>Ação</TableHead>
-                  <TableHead>Entidade</TableHead>
-                  <TableHead>Unidade</TableHead>
-                  <TableHead>Detalhes</TableHead>
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="h-11 px-4 text-xs font-semibold">Data/Hora</TableHead>
+                  <TableHead className="h-11 px-4 text-xs font-semibold">Ator</TableHead>
+                  <TableHead className="h-11 px-4 text-xs font-semibold">Ação</TableHead>
+                  <TableHead className="h-11 px-4 text-xs font-semibold">Entidade</TableHead>
+                  <TableHead className="h-11 px-4 text-xs font-semibold">Unidade</TableHead>
+                  <TableHead className="h-11 px-4 text-xs font-semibold">Detalhes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-10">Carregando logs...</TableCell>
+                {filteredLogs.map((log) => (
+                  <TableRow key={log.id} className="border-border/70 hover:bg-muted/40">
+                    <TableCell className="whitespace-nowrap px-4 tabular-nums text-muted-foreground">
+                      {dataHora(log.created_at)}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap px-4 font-semibold">{log.actor_name || 'Sistema'}</TableCell>
+                    <TableCell className="whitespace-nowrap px-4 capitalize">{log.action}</TableCell>
+                    <TableCell className="whitespace-nowrap px-4 capitalize text-muted-foreground">{log.entity_type}</TableCell>
+                    <TableCell className="whitespace-nowrap px-4">{log.unit || '-'}</TableCell>
+                    <TableCell className="max-w-[300px] truncate px-4 font-mono text-[11px] text-[hsl(var(--fraco))]" title={log.details ? detalhes(log.details) : undefined}>
+                      {detalhes(log.details)}
+                    </TableCell>
                   </TableRow>
-                ) : filteredLogs.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">Nenhum log encontrado.</TableCell>
-                  </TableRow>
-                ) : (
-                  filteredLogs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell className="whitespace-nowrap">
-                        {format(new Date(log.created_at), 'dd/MM/yyyy HH:mm:ss', { locale: ptBR })}
-                      </TableCell>
-                      <TableCell className="font-medium whitespace-nowrap">{log.actor_name || 'Sistema'}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize whitespace-nowrap">
-                          {log.action}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="capitalize whitespace-nowrap">{log.entity_type}</TableCell>
-                      <TableCell className="whitespace-nowrap">{log.unit || '-'}</TableCell>
-                      <TableCell className="max-w-[300px] truncate font-mono text-[10px]">
-                        {log.details ? JSON.stringify(log.details) : '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                ))}
               </TableBody>
             </Table>
           </div>
-        </CardContent>
-      </Card>
+
+          {/* celular: cada registro numa linha empilhada, sem rolar para o lado */}
+          <ul className="overflow-hidden rounded-[20px] border border-black/5 bg-card dark:border-white/5 md:hidden">
+            {filteredLogs.map((log) => (
+              <li key={log.id} className="grid gap-1 border-b border-border/70 px-4 py-3.5 last:border-b-0">
+                <div className="flex items-baseline justify-between gap-3">
+                  <b className="min-w-0 truncate font-semibold">{log.actor_name || 'Sistema'}</b>
+                  <span className="shrink-0 text-xs tabular-nums text-[hsl(var(--fraco))]">{dataHora(log.created_at)}</span>
+                </div>
+                <p className="text-sm">
+                  <span className="capitalize">{log.action}</span>
+                  <span className="text-muted-foreground"> · <span className="capitalize">{log.entity_type}</span>{log.unit ? ` · ${log.unit}` : ''}</span>
+                </p>
+                {log.details && (
+                  <p className="line-clamp-2 break-all font-mono text-[11px] leading-snug text-[hsl(var(--fraco))]">{detalhes(log.details)}</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       <PageGuide />
     </div>
   );

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Copy, ExternalLink, MonitorPlay, RefreshCcw } from 'lucide-react';
+import { Copy, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,19 +45,20 @@ export function AoVivoDaGestao() {
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4" data-testid="ao-vivo-da-gestao">
-      <span className="flex min-w-0 items-start gap-2 text-sm">
-        <MonitorPlay className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-400" />
-        <span><b>Painel ao vivo para a gestão</b><br /><span className="text-muted-foreground">Link com código secreto; só mostra o andamento (sem WhatsApp) e se atualiza sozinho.</span></span>
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-[20px] border border-black/5 bg-card px-4 py-3.5 dark:border-white/5" data-testid="ao-vivo-da-gestao">
+      {/* Esboço V2: título de bloco sem ícone; ações discretas */}
+      <span className="min-w-0 flex-1 basis-72 text-sm">
+        <b className="block text-[15px] font-semibold">Painel ao vivo para a gestão</b>
+        <span className="text-muted-foreground">Link com código secreto; só mostra o andamento (sem WhatsApp) e se atualiza sozinho.</span>
       </span>
       <span className="flex flex-wrap items-center gap-2">
-        <label className="flex items-center gap-1.5 text-xs font-semibold">Meta
-          <Input aria-label="Meta de voluntários" inputMode="numeric" className="h-8 w-20" placeholder="sem" value={meta} onChange={(e) => setMeta(e.target.value.replace(/\D/g, '').slice(0, 4))} />
+        <label className="flex items-center gap-1.5 text-[13px] font-semibold">Meta
+          <Input aria-label="Meta de voluntários" inputMode="numeric" className="h-9 w-20 tabular-nums" placeholder="sem" value={meta} onChange={(e) => setMeta(e.target.value.replace(/\D/g, '').slice(0, 4))} />
         </label>
         <Button variant="outline" size="sm" disabled={ocupado || (meta.trim() ? Number(meta) : null) === cfg.meta} onClick={salvarMeta}>Salvar meta</Button>
         <Button variant="outline" size="sm" onClick={copiar}><Copy className="h-4 w-4" /> Copiar link</Button>
         <Button asChild variant="outline" size="sm"><a href={link} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /> Abrir</a></Button>
-        <Button variant="ghost" size="sm" disabled={ocupado} onClick={() => setTrocando(true)}><RefreshCcw className="h-4 w-4" /> Trocar o link</Button>
+        <Button variant="ghost" size="sm" disabled={ocupado} onClick={() => setTrocando(true)}>Trocar o link</Button>
       </span>
       <AlertDialog open={trocando} onOpenChange={setTrocando}>
         <AlertDialogContent>
