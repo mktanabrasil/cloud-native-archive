@@ -302,12 +302,12 @@ export default function VoluntariadoPage() {
               )}
               {vinculo === 'comunidade' && (
                 <div className="mt-2 flex flex-col gap-2">
-                  <Pergunta>Alguém da ANA te indicou?</Pergunta>
+                  <Pergunta>Alguém da ANA ou do Alcance JNI te indicou?</Pergunta>
                   <Escolha marcada={indicado === true} onClick={() => { setIndicado(true); setErro(null); }}>Sim</Escolha>
                   <Escolha marcada={indicado === false} onClick={() => { setIndicado(false); setErro(null); }}>Não</Escolha>
                   {indicado && (
                     <label className="flex flex-col gap-1.5 text-sm font-semibold">Nome de quem te indicou
-                      <input className={campo} style={{ borderColor: COR.linha }} maxLength={120} placeholder="Nome do funcionário(a)" value={indicadoPor} onChange={(e) => { setIndicadoPor(e.target.value); setErro(null); }} />
+                      <input className={campo} style={{ borderColor: COR.linha }} maxLength={120} placeholder="Nome de quem te indicou" value={indicadoPor} onChange={(e) => { setIndicadoPor(e.target.value); setErro(null); }} />
                     </label>
                   )}
                   {/* Obrigatória desde 23/10/2026: Sim/Não e, se sim, qual. */}
