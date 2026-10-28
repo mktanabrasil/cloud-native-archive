@@ -76,6 +76,24 @@ export const AREAS_DE_AJUDA = [
 ] as const;
 
 export type AreaDeAjuda = (typeof AREAS_DE_AJUDA)[number]['chave'];
+
+/**
+ * O roteiro da cozinha por horário (28/10/2026): ao escolher o horário, a
+ * descrição da área passa a dizer o que a pessoa vai fazer nele. O Dia todo
+ * junta os três turnos. As outras áreas ainda não têm roteiro.
+ */
+export const ROTEIRO_POR_HORARIO: Partial<Record<AreaDeAjuda, Partial<Record<Horario, string>>>> = {
+  cozinha: {
+    manha: 'Das 7h às 12h: cortar frutas, lavar saladas, preparar o café da manhã e o almoço e ajudar a servir as refeições.',
+    tarde: 'Das 12h às 17h: ajudar a lavar a louça, organizar talheres e pratos, preparar o lanche da tarde e servir os refrigerantes.',
+    pos_evento: 'Das 17h às 20h: limpar a cozinha, organizar o refeitório e guardar talheres e itens da cozinha.',
+    dia_todo: 'Das 7h às 20h, um pouco de tudo: de manhã, preparar o café e o almoço (cortar frutas, lavar saladas) e ajudar a servir; à tarde, lavar a louça, organizar talheres e pratos, preparar o lanche e servir os refrigerantes; no fim do dia, limpar a cozinha e organizar o refeitório.',
+  },
+};
+
+/** A descrição da área: o roteiro do horário escolhido, se houver; senão, a de sempre. */
+export const descricaoDaArea = (chave: AreaDeAjuda, horario: Horario | null | undefined) =>
+  (horario && ROTEIRO_POR_HORARIO[chave]?.[horario]) || AREAS_DE_AJUDA.find((a) => a.chave === chave)?.descricao || '';
 export const rotuloDaAjuda = (k: string | null) => AREAS_DE_AJUDA.find((a) => a.chave === k)?.rotulo ?? (k ?? '');
 
 export type Vinculo = 'funcionario' | 'alcance' | 'comunidade';
