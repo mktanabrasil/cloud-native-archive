@@ -44,7 +44,7 @@ vi.mock('@/lib/voluntariado/api', () => ({
 
 const { default: Voluntariado } = await import('./VoluntariadoPage');
 const { PainelDoVoluntariado } = await import('@/components/voluntariado/PainelDoVoluntariado');
-const { tocarArea, pedeAvisoDeLotada, problemaDaEtapa2, mascaraDoWhatsapp, digitosDoWhatsapp, AREAS_DE_AJUDA, AREAS_POR_VINCULO, UNIDADES_DO_VOLUNTARIADO } = await import('@/lib/voluntariado/modelo');
+const { tocarArea, pedeAvisoDeLotada, problemaDaEtapa2, mascaraDoWhatsapp, digitosDoWhatsapp, AREAS_DE_AJUDA, AREAS_POR_VINCULO, descricaoDaArea, UNIDADES_DO_VOLUNTARIADO } = await import('@/lib/voluntariado/modelo');
 const { csvDasInscricoes } = await import('@/lib/voluntariado/planilha');
 
 const I = (o: Record<string, unknown>) => ({
@@ -61,6 +61,15 @@ beforeEach(() => {
 });
 
 describe('regras', () => {
+  it('a descrição da Cozinha segue o horário escolhido; as outras áreas não mudam (28/10/2026)', () => {
+    expect(descricaoDaArea('cozinha', null)).toBe(AREAS_DE_AJUDA[0].descricao);
+    expect(descricaoDaArea('cozinha', 'manha')).toMatch(/^Das 7h às 12h: cortar frutas/);
+    expect(descricaoDaArea('cozinha', 'tarde')).toMatch(/lanche da tarde/);
+    expect(descricaoDaArea('cozinha', 'pos_evento')).toMatch(/^Das 17h às 20h: limpar a cozinha/);
+    expect(descricaoDaArea('cozinha', 'dia_todo')).toMatch(/^Das 7h às 20h, um pouco de tudo/);
+    expect(descricaoDaArea('inflaveis', 'manha')).toBe(AREAS_DE_AJUDA.find((a) => a.chave === 'inflaveis')!.descricao);
+  });
+
   it('só as áreas do dia do evento; cada vínculo com as suas (23/10/2026)', () => {
     expect(AREAS_DE_AJUDA).toHaveLength(10); // as 3 tiradas continuam conhecidas, para quem já as escolheu
     expect(AREAS_DE_AJUDA.every((a) => a.descricao.length > 40)).toBe(true);
@@ -199,7 +208,7 @@ describe('formulário', () => {
     expect(screen.queryByRole('button', { name: /^Louvor Kids/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Presentes Kids/ })).toBeNull();
     const cozinha = screen.getByRole('button', { name: /^Cozinha \/ Servimento/ });
-    expect(cozinha).toHaveTextContent('mais de 1.500 refeições');
+    expect(cozinha).toHaveTextContent('Das 7h às 12h: cortar frutas'); // marcou Manhã: o roteiro da manhã
     fireEvent.click(cozinha);
     fireEvent.click(screen.getByRole('button', { name: /^Estações/ }));
     expect(cozinha).toHaveTextContent('1ª');

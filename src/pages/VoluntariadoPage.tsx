@@ -7,7 +7,7 @@ import { ROTULO_DA_AREA } from '@/lib/pizza/modelo';
 import { areasLotadas, enviarParaAPlanilha, inscrever } from '@/lib/voluntariado/api';
 import { salvarComprovante } from '@/lib/voluntariado/comprovante';
 import {
-  AREAS_DE_AJUDA, AREAS_POR_VINCULO, DIA_DO_EVENTO, GRUPO_DO_WHATSAPP, HORARIOS, MAPA_DO_TREINAMENTO, SOBRE_O_EVENTO, TEXTO_DO_HORARIO, TITULO_DAS_AREAS, TREINAMENTO, UNIDADES_DO_VOLUNTARIADO, ULTIMO_DIA, VINCULOS,
+  AREAS_DE_AJUDA, AREAS_POR_VINCULO, descricaoDaArea, DIA_DO_EVENTO, GRUPO_DO_WHATSAPP, HORARIOS, MAPA_DO_TREINAMENTO, SOBRE_O_EVENTO, TEXTO_DO_HORARIO, TITULO_DAS_AREAS, TREINAMENTO, UNIDADES_DO_VOLUNTARIADO, ULTIMO_DIA, VINCULOS,
   encerrado, mascaraDoWhatsapp, mensagemDoErro, pedeAvisoDeLotada, problemaDaEtapa2, rotuloDaAjuda, rotuloDoHorario, tocarArea,
   type AreaDeAjuda, type Horario, type Vinculo,
 } from '@/lib/voluntariado/modelo';
@@ -345,7 +345,7 @@ export default function VoluntariadoPage() {
                     <span className="min-w-0">
                       <b className="block text-[14px]">{a.rotulo}</b>
                       {lotada && <span className="mb-0.5 mt-0.5 inline-block rounded-md px-1.5 text-[11px] font-bold" style={{ background: COR.ouroClaro, color: '#5A4500' }} data-testid="lotada">Vagas preenchidas · só como 2ª opção</span>}
-                      <span className="block text-[12.5px] leading-snug" style={{ color: COR.mut }}>{a.descricao}</span>
+                      <span className="block text-[12.5px] leading-snug" style={{ color: COR.mut }}>{descricaoDaArea(k, horario)}</span>
                     </span>
                     <span className="grid h-7 min-w-7 place-items-center rounded-lg border-2 px-1 text-[11px] font-extrabold"
                       style={ordem === 1 ? { background: COR.verde, borderColor: COR.verde, color: '#fff' } : ordem === 2 ? { background: COR.ouro, borderColor: COR.ouro, color: '#3A2A00' } : { borderColor: COR.linha }}
