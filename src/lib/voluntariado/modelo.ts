@@ -5,7 +5,7 @@
  * abre para funcionários, o público e o Alcance JNI, em três etapas:
  *  1. o treinamento obrigatório de 28/11 no Recanto Maanaim (quem não pode, para ali);
  *  2. nome, WhatsApp, horário (um só) e vínculo: funcionário(a) informa a
- *     unidade; quem não é nem funcionário nem do JNI diz quem da ANA indicou
+ *     unidade; quem não é nem funcionário nem do JNI diz se alguém da ANA ou do Alcance indicou
  *     e, se quiser, a igreja;
  *  3. onde quer ajudar (1ª opção obrigatória, 2ª opcional), com as áreas do
  *     vínculo. Área que bateu a meta só entra como 2ª opção.
@@ -227,7 +227,7 @@ export function problemaDaEtapa2(d: DadosDaEtapa2): string | null {
   if (!d.horario) return 'Escolha o horário em que você pode ajudar.';
   if (!d.vinculo) return 'Conte se você é funcionário(a) da ANA, do Alcance JNI ou nenhum dos dois.';
   if (d.vinculo === 'funcionario' && !d.unidade) return 'Escolha a unidade em que você trabalha.';
-  if (d.vinculo === 'comunidade' && d.indicado === null) return 'Conte se alguém da ANA te indicou.';
+  if (d.vinculo === 'comunidade' && d.indicado === null) return 'Conte se alguém da ANA ou do Alcance JNI te indicou.';
   if (d.vinculo === 'comunidade' && d.indicado && d.indicadoPor.trim().length < 2) return 'Escreva o nome de quem te indicou.';
   if (d.vinculo === 'comunidade' && (d.temIgreja === null || d.temIgreja === undefined)) return 'Conte se você faz parte de alguma igreja.';
   if (d.vinculo === 'comunidade' && d.temIgreja && (d.igreja ?? '').trim().length < 2) return 'Escreva o nome da sua igreja.';

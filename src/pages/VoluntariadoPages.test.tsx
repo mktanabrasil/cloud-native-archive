@@ -247,7 +247,7 @@ describe('formulário', () => {
     quemSou(/^Nenhum dos dois/);
     expect(screen.queryByLabelText('Em qual unidade você trabalha?')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
-    expect(screen.getByRole('alert')).toHaveTextContent('Conte se alguém da ANA te indicou.');
+    expect(screen.getByRole('alert')).toHaveTextContent('Conte se alguém da ANA ou do Alcance JNI te indicou.');
     fireEvent.click(screen.getAllByRole('button', { name: 'Sim' })[0]);
     fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
     expect(screen.getByRole('alert')).toHaveTextContent('Escreva o nome de quem te indicou.');
@@ -271,7 +271,7 @@ describe('formulário', () => {
     etapa2();
     quemSou(/^Faço parte do Alcance JNI/);
     expect(screen.queryByLabelText('Em qual unidade você trabalha?')).toBeNull();
-    expect(screen.queryByText('Alguém da ANA te indicou?')).toBeNull();
+    expect(screen.queryByText('Alguém da ANA ou do Alcance JNI te indicou?')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
     expect(screen.getByText('Áreas para o Alcance JNI')).toBeInTheDocument();
     for (const a of ['Louvor Kids', 'Som', 'Recreação Kids', 'Presentes Kids']) expect(screen.getByRole('button', { name: new RegExp(`^${a}`) })).toBeInTheDocument();
