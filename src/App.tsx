@@ -31,7 +31,6 @@ import EnquetePublicaPage from "./pages/EnquetePublicaPage";
 import EnqueteResultadoPage from "./pages/EnqueteResultadoPage";
 import TransparencyPublicPage from "./pages/TransparencyPublicPage";
 import VagasPage from "./pages/VagasPage";
-import FabricaDeArtesPage from "./pages/FabricaDeArtesPage";
 import VagaPage from "./pages/VagaPage";
 import EntrarCandidatoPage from "./pages/EntrarCandidatoPage";
 import CriarContaCandidatoPage from "./pages/CriarContaCandidatoPage";
@@ -111,23 +110,6 @@ function JournalRoute({ children }: { children: React.ReactNode }) {
     toast.info('O Jornal é da comunicação e da gestão de cada unidade.', {
       id: 'jornal-sem-acesso',
       description: 'Você foi levado para a página inicial. Se precisa do Jornal, fale com a coordenação para liberar seu acesso.',
-    });
-    return <Navigate to="/" replace />;
-  }
-  return <>{children}</>;
-}
-
-/** Guarda de Artes: as mesmas pessoas do Jornal, com o mesmo aviso. */
-function ArtesRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading: authLoading } = useAuth();
-  const { canAccessArtes, loading: roleLoading } = useUserRole();
-
-  if (authLoading || roleLoading) return null;
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (!canAccessArtes) {
-    toast.info('A página de Artes é da comunicação e da gestão de cada unidade.', {
-      id: 'artes-sem-acesso',
-      description: 'Você foi levado para a página inicial. Se precisa pedir artes, fale com a coordenação para liberar seu acesso.',
     });
     return <Navigate to="/" replace />;
   }
@@ -228,10 +210,6 @@ const App = () => (
 
                   <Route path="/pizza-da-alegria/painel" element={
                     <ProtectedRoute><PizzaPainelPage /></ProtectedRoute>
-                  } />
-                  {/* Artes (29/10/2026): página própria, da comunicação e das gestoras. */}
-                  <Route path="/artes" element={
-                    <ArtesRoute><FabricaDeArtesPage /></ArtesRoute>
                   } />
                   <Route path="/marketing" element={
                     <ProtectedRoute><MarketingHubPage /></ProtectedRoute>

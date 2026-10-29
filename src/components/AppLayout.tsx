@@ -34,7 +34,6 @@ const COR_DA_AREA: Record<string, string> = {
   '/jornal-institucional': '#f37964',
   '/mercado-solidario': '#E2B979',
   '/vagas': '#81e2cf',
-  '/artes': '#E2B979',
   '/marketing': '#fbce00',
   '/usuarios': '#8A938F',
 };
@@ -65,7 +64,7 @@ export default function AppLayout() {
   const { isAuthenticated: temSessao, signOut, user } = useAuth();
   // Conta de candidato (Trabalhe Conosco) vê o app como visitante: sem menu da equipe.
   const isAuthenticated = temSessao && !ehCandidato(user);
-  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, canAccessArtes, isRh } = useUserRole();
+  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh } = useUserRole();
   // A bolinha em "Vagas": novos + respostas não lidas (passo 5, 20/10/2026).
   const avisosDeVagas = useAvisosDaEquipe(isRh || souResponsavel, location.pathname);
   const { eligible: betaEligible, rawEnabled: betaOn, toggleBeta } = useBetaPreference();
@@ -101,7 +100,6 @@ export default function AppLayout() {
     // Antes do `marketingOnly`: o Jornal tem regra própria, e a gestão de
     // unidade entra nele sem entrar nas outras páginas da comunicação.
     if (item.journalOnly) return canAccessJournal;
-    if (item.artesOnly) return canAccessArtes;
     // RH, ou quem é responsável por algum processo (passo 3, 19/10/2026).
     if (item.rhOnly) return isRh || souResponsavel;
     if (item.marketingOnly) return isMarketing;
@@ -204,7 +202,7 @@ export default function AppLayout() {
   // Marketing na doca, quem é do RH vê Vagas; o Mercado, menos usado, vai para
   // o "Mais". E a área em que a pessoa está nunca fica escondida no "Mais".
   const prioridade = (to: string) => {
-    const base = ['/', '/jornal-institucional', '/vagas', '/artes', '/marketing', '/mercado-solidario', '/usuarios'].indexOf(to);
+    const base = ['/', '/jornal-institucional', '/vagas', '/marketing', '/mercado-solidario', '/usuarios'].indexOf(to);
     if (to === '/marketing' && isMarketing) return -2;
     if (to === '/vagas' && (isRh || souResponsavel)) return -1;
     return base < 0 ? 99 : base;

@@ -184,8 +184,6 @@ export function useUserRole() {
 
   const isUnitManager = permissionLevel === 'gestor_unidade' && isActive && !!unit;
   const canAccessJournal = isMarketing || isUnitManager;
-  /** Artes (29/10/2026) é das mesmas pessoas do Jornal: quem pede arte é a gestora da unidade. */
-  const canAccessArtes = canAccessJournal;
 
   /**
    * Ainda carregando enquanto as permissões não forem desta pessoa (26/10/2026).
@@ -220,7 +218,6 @@ export function useUserRole() {
     isRh,
     isUnitManager,
     canAccessJournal,
-    canAccessArtes,
   };
 }
 
