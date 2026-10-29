@@ -106,7 +106,7 @@ export default function FabricaDeArtesPage() {
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">
       <div className="mb-4">
-        <h1 className="font-display text-[26px] font-bold tracking-[-0.02em] [text-wrap:balance]">Fábrica de Artes</h1>
+        <h1 className="font-display text-[26px] font-bold tracking-[-0.02em] [text-wrap:balance]">Artes</h1>
         <p className="mt-1 max-w-[62ch] text-sm text-muted-foreground">Responda e a ferramenta escolhe o padrão aprovado, monta a prévia e manda o pedido ao marketing. Sem IA: a escolha é por regras e os moldes são as artes já aprovadas.</p>
       </div>
 

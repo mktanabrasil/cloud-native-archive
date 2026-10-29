@@ -9,10 +9,8 @@ import AuditPage from '@/pages/AuditPage';
 import DesignManualPage from '@/pages/DesignManualPage';
 import TransparencyPage from '@/pages/TransparencyPage';
 import AdminToolboxPage from '@/pages/AdminToolboxPage';
-import FabricaDeArtesPage from '@/pages/FabricaDeArtesPage';
 
 const tabs = [
-  { value: 'artes', label: 'Fábrica de Artes', Component: FabricaDeArtesPage },
   { value: 'auditoria', label: 'Auditoria', Component: AuditPage },
   { value: 'design-manual', label: 'Manual Design', Component: DesignManualPage },
   { value: 'transparencia', label: 'Portal Transparência', Component: TransparencyPage },

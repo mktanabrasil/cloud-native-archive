@@ -53,7 +53,7 @@ export default function AppLayout() {
   const { isAuthenticated: temSessao, signOut, user } = useAuth();
   // Conta de candidato (Trabalhe Conosco) vê o app como visitante: sem menu da equipe.
   const isAuthenticated = temSessao && !ehCandidato(user);
-  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh } = useUserRole();
+  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, canAccessArtes, isRh } = useUserRole();
   // A bolinha em "Vagas": novos + respostas não lidas (passo 5, 20/10/2026).
   const avisosDeVagas = useAvisosDaEquipe(isRh || souResponsavel, location.pathname);
   const { eligible: betaEligible, rawEnabled: betaOn, toggleBeta } = useBetaPreference();
@@ -84,6 +84,7 @@ export default function AppLayout() {
         // Antes do `marketingOnly`: o Jornal tem regra própria, e a gestão de
         // unidade entra nele sem entrar nas outras páginas da comunicação.
         if (item.journalOnly) return canAccessJournal;
+        if (item.artesOnly) return canAccessArtes;
         // RH, ou quem é responsável por algum processo (passo 3, 19/10/2026).
         if (item.rhOnly) return isRh || souResponsavel;
         if (item.marketingOnly) return isMarketing;
