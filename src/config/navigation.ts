@@ -37,4 +37,5 @@ export const navItems: NavItem[] = [
   { to: '/design-manual', label: 'Manual Design', icon: BookOpen, requireAuth: true, marketingOnly: true, hidden: true },
   { to: '/portal-transparencia', label: 'Portal Transparência', icon: FileSearch, requireAuth: true, marketingOnly: true, hidden: true },
   { to: '/admin-toolbox', label: 'Widgets', icon: LayoutDashboard, requireAuth: true, marketingOnly: true, hidden: true },
+  { to: '/fabrica-de-artes', label: 'Fábrica de Artes', icon: Megaphone, requireAuth: true, marketingOnly: true, hidden: true },
 ];

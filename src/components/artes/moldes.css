@@ -1,0 +1,118 @@
+/* Os moldes da Fábrica de Artes (29/10/2026): base 1080 px de largura, 1em = largura/100.
+   Só desenho: as regras da identidade (Poppins, rodapé por setor, cores exatas) vivem aqui. */
+/* ===== moldes (base 1080 px de largura; 1em = W/100) ===== */
+.arte{font-family:Poppins,sans-serif;color:#1F2322;background:#f0eee4;overflow:hidden;position:relative;line-height:1.15}
+.arte *{box-sizing:border-box}
+.arte .foto{position:absolute;left:0;top:0;width:100%;background:#9fb9c2 center/cover;background-image:linear-gradient(135deg,#8fb3bd,#5f8a96 60%,#3d6b78)}
+.arte .foto.sem-rotulo::after{content:none}.arte .foto.vazia::after{content:"sua foto aqui";position:absolute;left:50%;top:45%;transform:translate(-50%,-50%);color:#fff;font-weight:600;font-size:3.2em;opacity:.85;letter-spacing:.02em}
+.arte .onda{position:absolute;left:0;width:100%;height:9em}
+.arte .rodape{position:absolute;left:0;bottom:0;width:100%;height:2.3em}
+.arte .rodape svg{width:100%;height:100%;display:block}
+.arte .logo{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:1.2em}
+.arte .logo svg{height:5em;width:auto}
+.arte .logo .un{font-weight:400;font-size:3.3em;border-left:.06em solid #484848;padding-left:.35em;line-height:1}
+.arte .forma{position:absolute;bottom:2.1em;width:15em;height:15em;border-radius:50%}
+.arte .forma.e{left:-7em}.arte .forma.d{right:-7em}
+.arte .miolo{position:absolute;left:0;width:100%;padding:0 7em;bottom:11.5em;overflow:hidden}
+.arte .pre{font-size:2.7em;font-weight:500}
+.arte .pre b{font-weight:700}
+.arte .t1{font-size:5.6em;font-weight:700;letter-spacing:-.02em;line-height:1.05}
+.arte .t2{font-size:9.6em;font-weight:800;letter-spacing:-.035em;line-height:.95;margin-top:.04em;word-break:break-word}
+.arte .apoio{font-size:2.8em;margin-top:.9em;line-height:1.35;max-width:92%}
+.arte .pal{display:grid;gap:.1em;border-left:.5em solid var(--c2);padding-left:1.2em;margin-top:1.1em}
+.arte .pal small{font-size:2.1em;letter-spacing:.2em;font-weight:600;color:var(--c2)}
+.arte .pal b{font-size:4em;font-weight:800;color:var(--c2)}
+.arte .info{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:2em;margin-top:2em}
+.arte .info div{display:grid;grid-template-columns:6em minmax(0,1fr);gap:1.2em;align-items:center;border-right:.12em solid rgba(0,0,0,.12);padding-right:1em;min-width:0}
+.arte .info div:last-child{border-right:0}
+.arte .info i{width:6em;height:6em;border-radius:50%;display:grid;place-items:center}
+.arte .info i svg{width:3.6em;height:3.6em}
+.arte .info b{font-size:2.7em;font-weight:700;display:block;line-height:1.1}
+.arte .info small{font-size:2em;display:block;color:#484848;line-height:1.25}
+.arte .fecho{display:grid;grid-template-columns:auto 1fr;margin-top:2.2em;border-radius:5em;overflow:hidden;background:#fff}
+.arte .fecho em{font-style:normal;font-weight:700;font-size:2.2em;letter-spacing:.14em;color:#fff;background:var(--c2);padding:1.1em 1.6em;display:grid;place-items:center;text-align:center;line-height:1.2}
+.arte .fecho span{font-size:3em;font-weight:700;display:flex;align-items:center;padding:0 .8em;gap:.5em;color:var(--c2)}
+/* cards (Almoço) */
+.arte .cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3em;margin-top:3em}
+.arte .card{background:#fff;border-radius:3em;padding:3.4em 2em 3em;text-align:center;box-shadow:0 .6em 2.4em rgba(20,40,36,.07)}
+.arte .card i{width:7em;height:7em;border-radius:50%;display:inline-grid;place-items:center;margin-bottom:1.5em}
+.arte .card i svg{width:3.4em;height:3.4em}
+.arte .card .r{font-size:2.1em;font-weight:700;letter-spacing:.18em;color:#484848}
+.arte .card .l{font-size:2.6em;font-weight:600;margin-top:.3em}
+.arte .card .v{font-size:6.4em;font-weight:800;letter-spacing:-.03em;line-height:1}
+.arte .card .d{font-size:2.3em;color:#484848;border-top:.08em solid rgba(0,0,0,.12);margin-top:1em;padding-top:1em;line-height:1.3}
+/* infantil */
+.arte .fredoka{font-family:Fredoka,Poppins,sans-serif;font-weight:700;font-size:11.5em;line-height:.95;letter-spacing:.01em;text-align:center;-webkit-text-stroke:.05em #fff;paint-order:stroke fill}
+.arte .fita{display:inline-block;background:#01adff;color:#fff;font-weight:700;font-size:3.6em;padding:.35em 1.4em;clip-path:polygon(0 0,100% 0,96% 50%,100% 100%,0 100%,4% 50%);letter-spacing:.08em;text-transform:uppercase}
+.arte .bolinhas{font-size:2.9em;line-height:1.45;margin-top:.8em}
+.arte .bolinhas span{display:inline-block;width:.55em;height:.55em;border-radius:50%;margin-right:.45em;vertical-align:middle}
+.arte .adesivos{display:flex;gap:2.2em;justify-content:center;margin-top:2.2em}
+.arte .adesivo{background:#fff;border:.6em solid #fff;border-radius:2.2em;padding:1.4em 2em;text-align:center;box-shadow:.6em .6em 0 var(--c1)}
+.arte .adesivo .r{font-size:1.8em;letter-spacing:.16em;font-weight:700;color:#484848}
+.arte .adesivo .v{font-size:4.2em;font-weight:800;line-height:1}
+.arte .adesivo .d{font-size:2em;color:#484848}
+.arte .adesivo:nth-child(1){transform:rotate(-3deg)}.arte .adesivo:nth-child(2){transform:rotate(2deg) translateY(1.2em)}.arte .adesivo:nth-child(3){transform:rotate(-2deg)}
+/* cronograma */
+.arte .pilula{display:inline-block;background:#fff;border-radius:5em;padding:.5em 1.6em;font-size:2.4em;font-weight:600}
+.arte .grade{display:grid;grid-template-columns:1fr 1fr;gap:1.6em;margin-top:1.8em}
+.arte .gi{background:#fff;border-radius:2.4em;padding:1.8em;display:grid;grid-template-columns:5.5em minmax(0,1fr);gap:1.4em;box-shadow:0 .6em 2.4em rgba(20,40,36,.07)}
+.arte .gi:last-child:nth-child(odd){grid-column:1/-1}
+.arte .gi i{width:5.5em;height:5.5em;border-radius:50%;display:grid;place-items:center;font-size:1em}
+.arte .gi i svg{width:3.4em;height:3.4em}
+.arte .gi .et{display:inline-block;font-size:2em;font-weight:700;letter-spacing:.12em;padding:.25em .8em;border-radius:1em;color:#1F2322}
+.arte .gi b{font-size:2.6em;display:block;margin-top:.3em}
+.arte .gi small{font-size:2em;display:block;color:#484848;line-height:1.3}
+.arte .marca{background:#fbce00;padding:0 .15em;border-radius:.2em}
+/* convocação */
+.arte .conv-bloco{position:absolute;left:0;width:100%;background:#81e2cf;padding:5em 7em}
+.arte .conv-tag{position:absolute;left:5em;top:4em;display:flex;align-items:center;gap:1.2em;color:#fff}
+.arte .conv-tag svg{height:5em;width:auto;filter:brightness(0) invert(1)}
+.arte .conv-tag span{border-left:.1em solid #fff;padding-left:1em;line-height:1.1}
+.arte .conv-tag b{display:block;font-size:3.2em}.arte .conv-tag small{font-size:2.3em}
+.arte .ante{font-size:2.6em;letter-spacing:.2em;font-weight:600}
+.arte .ante::before{content:"— "}
+.arte .gig{font-size:13em;font-weight:800;letter-spacing:-.04em;line-height:.92}
+.arte .gig::after{content:".";color:#f37964}
+.arte .faixa-am{display:inline-block;background:#fbce00;border-radius:5em;padding:.6em 1.8em;font-size:3em;margin-top:1.4em}
+.arte .conv-rod{position:absolute;left:0;bottom:0;width:100%;background:#1f2322;color:#fff;padding:4em 7em;display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:3em}
+.arte .conv-rod .k{font-size:2.1em;letter-spacing:.2em;opacity:.8}
+.arte .conv-rod b{font-size:4.6em;display:block;line-height:1;margin:.2em 0}
+.arte .conv-rod small{font-size:2.3em;display:block;opacity:.9;line-height:1.3}
+/* cartaz regras */
+.arte .reg-topo{position:absolute;left:0;top:0;width:100%;height:36%;background:linear-gradient(to top,rgba(31,35,34,.9),rgba(31,35,34,.2) 60%,transparent)}
+.arte .reg-t{position:absolute;left:7em;top:calc(36% - 14em);color:#fff}
+.arte .reg-t small{font-size:2.6em;letter-spacing:.25em;font-weight:600;display:block;margin-bottom:.4em}
+.arte .reg-t b{font-size:9em;font-weight:800;letter-spacing:-.03em;line-height:.95}
+.arte .reg-lista{display:grid;grid-template-columns:1fr 1fr;gap:2.4em 4em;margin-top:3em}
+.arte .reg-lista div{display:grid;grid-template-columns:6.5em minmax(0,1fr);gap:1em;align-items:start}
+.arte .reg-lista i{font-style:normal;font-weight:800;font-size:5.4em;line-height:.9}
+.arte .reg-lista b{font-size:3em;display:block}
+.arte .reg-lista small{font-size:2.3em;color:#484848;display:block;line-height:1.3;margin-top:.2em}
+.arte .reg-fecho{position:absolute;left:0;bottom:2.2em;width:100%;background:#1f2322;color:#fff;font-size:3.4em;font-weight:600;padding:.9em 2em;text-align:center}
+.arte .reg-fecho b{color:#81e2cf}
+/* placa */
+.arte.placa{background:#81e2cf}
+.arte.placa.aviso{background:#f37964}
+.arte .painel{position:absolute;left:6%;top:8.5%;width:88%;height:83%;background:#fff;border-radius:3em;display:grid;place-items:center;align-content:center;gap:3em;padding:4em;text-align:center}
+.arte .painel i{width:20em;height:20em;border-radius:50%;background:#81e2cf;display:grid;place-items:center}
+.arte.aviso .painel i{background:#f37964}
+.arte .painel i svg{width:10em;height:10em;color:#484848}
+.arte.aviso .painel i svg{color:#fff}
+.arte .painel b{font-size:8.6em;font-weight:700;text-transform:uppercase;color:#484848;line-height:1.1;text-wrap:balance;max-width:100%}
+.arte .painel .lg svg{height:7em;width:auto}
+.arte .painel .lg small{display:block;font-family:Georgia,serif;font-size:1.6em;color:#484848;letter-spacing:.05em;margin-top:.3em}
+/* campanha */
+.arte .camp-cap{position:absolute;left:0;top:0;width:100%;height:46%;background:linear-gradient(100deg,rgba(31,35,34,.92) 35%,rgba(31,35,34,.25) 70%,transparent)}
+.arte .camp-t{position:absolute;left:7em;top:12em;color:#fff;max-width:60%}
+.arte .camp-t small{font-size:2.4em;letter-spacing:.2em;font-weight:600;display:block;border-bottom:.12em solid #81e2cf;width:max-content;padding-bottom:.3em;margin-bottom:1em}
+.arte .camp-t b{font-size:7.4em;font-weight:800;line-height:1;letter-spacing:-.03em;display:block}
+.arte .camp-t b em{font-style:normal;background:#81e2cf;color:#1F2322;padding:0 .18em;border-radius:.12em}
+.arte .camp-lista{display:grid;gap:1.4em;margin-top:1.6em}
+.arte .camp-lista div{border-radius:2em;padding:1.5em 2.2em;color:#1F2322}
+.arte .camp-lista b{font-size:2.7em;display:block;margin-bottom:.2em}
+.arte .camp-lista small{font-size:2.2em;display:block;line-height:1.4}
+.arte .camp-contato{display:inline-flex;gap:1.4em;align-items:center;background:#1f2322;color:#fff;border-radius:5em;padding:.9em 2em;font-size:2.4em;font-weight:600;margin-top:1.6em}
+.arte .camp-contato i{width:1.6em;height:1.6em;border-radius:50%;background:#81e2cf;display:inline-block}
+.arte .embreve{position:absolute;inset:0;display:grid;place-items:center;align-content:center;gap:1em;padding:8em;text-align:center;background:#f0eee4}
+.arte .embreve b{font-size:6em;font-weight:800;letter-spacing:-.03em;line-height:1}
+.arte .embreve p{font-size:3em;color:#484848;margin:0;line-height:1.35}

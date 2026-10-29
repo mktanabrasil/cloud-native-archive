@@ -31,6 +31,7 @@ import EnquetePublicaPage from "./pages/EnquetePublicaPage";
 import EnqueteResultadoPage from "./pages/EnqueteResultadoPage";
 import TransparencyPublicPage from "./pages/TransparencyPublicPage";
 import VagasPage from "./pages/VagasPage";
+import FabricaDeArtesPage from "./pages/FabricaDeArtesPage";
 import VagaPage from "./pages/VagaPage";
 import EntrarCandidatoPage from "./pages/EntrarCandidatoPage";
 import CriarContaCandidatoPage from "./pages/CriarContaCandidatoPage";
@@ -210,6 +211,10 @@ const App = () => (
 
                   <Route path="/pizza-da-alegria/painel" element={
                     <ProtectedRoute><PizzaPainelPage /></ProtectedRoute>
+                  } />
+                  {/* Fábrica de Artes (PR 1, 29/10/2026): página do marketing, também como aba do hub. */}
+                  <Route path="/fabrica-de-artes" element={
+                    <MarketingRoute><FabricaDeArtesPage /></MarketingRoute>
                   } />
                   <Route path="/marketing" element={
                     <ProtectedRoute><MarketingHubPage /></ProtectedRoute>
