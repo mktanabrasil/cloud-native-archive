@@ -117,6 +117,23 @@ function JournalRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/** Guarda de Artes: as mesmas pessoas do Jornal, com o mesmo aviso. */
+function ArtesRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { canAccessArtes, loading: roleLoading } = useUserRole();
+
+  if (authLoading || roleLoading) return null;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!canAccessArtes) {
+    toast.info('A página de Artes é da comunicação e da gestão de cada unidade.', {
+      id: 'artes-sem-acesso',
+      description: 'Você foi levado para a página inicial. Se precisa pedir artes, fale com a coordenação para liberar seu acesso.',
+    });
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
+
 function AuthRedirect({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
   // Quem acabou de pedir acesso fica onde está: o `signUp` cria sessão por um
@@ -212,9 +229,9 @@ const App = () => (
                   <Route path="/pizza-da-alegria/painel" element={
                     <ProtectedRoute><PizzaPainelPage /></ProtectedRoute>
                   } />
-                  {/* Fábrica de Artes (PR 1, 29/10/2026): página do marketing, também como aba do hub. */}
-                  <Route path="/fabrica-de-artes" element={
-                    <MarketingRoute><FabricaDeArtesPage /></MarketingRoute>
+                  {/* Artes (29/10/2026): página própria, da comunicação e das gestoras. */}
+                  <Route path="/artes" element={
+                    <ArtesRoute><FabricaDeArtesPage /></ArtesRoute>
                   } />
                   <Route path="/marketing" element={
                     <ProtectedRoute><MarketingHubPage /></ProtectedRoute>

@@ -1,4 +1,4 @@
-import { Briefcase, Globe, LayoutDashboard, Calendar, Users, History, BookOpen, FileSearch, Megaphone, ShoppingBasket } from 'lucide-react';
+import { Briefcase, Globe, LayoutDashboard, Calendar, Users, History, BookOpen, FileSearch, Megaphone, Palette, ShoppingBasket } from 'lucide-react';
 
 export interface NavItem {
   to: string;
@@ -16,6 +16,8 @@ export interface NavItem {
    * Portal da Transparência e Widgets, que continuam só da comunicação.
    */
   journalOnly?: boolean;
+  /** Artes (29/10/2026): as mesmas pessoas do Jornal, mas é outra página e outro flag, para uma não arrastar a outra. */
+  artesOnly?: boolean;
   /**
    * Só RH e admin (vagas, 25/09/2026): o atalho para /vagas, onde eles veem
    * as abas Portal e Gestão. O candidato chega pelo endereço, sem menu.
@@ -31,11 +33,11 @@ export const navItems: NavItem[] = [
   { to: '/jornal-institucional', label: 'Jornal Institucional', icon: BookOpen, requireAuth: true, journalOnly: true },
   { to: '/mercado-solidario', label: 'Mercado Solidário', icon: ShoppingBasket },
   { to: '/vagas', label: 'Vagas', icon: Briefcase, requireAuth: true, rhOnly: true },
+  { to: '/artes', label: 'Artes', icon: Palette, requireAuth: true, artesOnly: true },
   { to: '/marketing', label: 'Marketing', icon: Megaphone, requireAuth: true, marketingOnly: true },
   { to: '/usuarios', label: 'Painel', icon: Users, requireAuth: true },
   { to: '/auditoria', label: 'Auditoria', icon: History, requireAuth: true, marketingOnly: true, hidden: true },
   { to: '/design-manual', label: 'Manual Design', icon: BookOpen, requireAuth: true, marketingOnly: true, hidden: true },
   { to: '/portal-transparencia', label: 'Portal Transparência', icon: FileSearch, requireAuth: true, marketingOnly: true, hidden: true },
   { to: '/admin-toolbox', label: 'Widgets', icon: LayoutDashboard, requireAuth: true, marketingOnly: true, hidden: true },
-  { to: '/fabrica-de-artes', label: 'Fábrica de Artes', icon: Megaphone, requireAuth: true, marketingOnly: true, hidden: true },
 ];
