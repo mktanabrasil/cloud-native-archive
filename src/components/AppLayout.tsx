@@ -39,7 +39,7 @@ const COR_DA_AREA: Record<string, string> = {
 };
 const ROTAS_DE_EVENTOS = ['/', '/visao-geral', '/calendario', '/eventos', '/lixeira'];
 // Páginas que moram no Marketing, mas com endereço próprio.
-const ROTAS_DO_MARKETING = ['/marketing', '/auditoria', '/design-manual', '/portal-transparencia', '/admin-toolbox', '/pizza-da-alegria/painel'];
+const ROTAS_DO_MARKETING = ['/marketing', '/auditoria', '/design-manual', '/portal-transparencia', '/admin-toolbox', '/pizza-da-alegria/painel', '/fabrica-de-artes'];
 const ROTULO_CURTO: Record<string, string> = { 'Jornal Institucional': 'Jornal', 'Mercado Solidário': 'Mercado' };
 
 export default function AppLayout() {
