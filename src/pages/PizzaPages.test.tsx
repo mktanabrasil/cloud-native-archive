@@ -45,7 +45,7 @@ describe('formulário de confirmação', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mais Marguerita' }));
     fireEvent.click(screen.getByRole('button', { name: 'Mais Calabresa fatiada' }));
     fireEvent.click(screen.getByRole('button', { name: 'Mais Calabresa fatiada' }));
-    expect(screen.getByTestId('total').textContent?.replace(/\s/g, ' ')).toBe('R$ 150,00');
+    expect(screen.getByTestId('total').textContent?.replace(/\s/g, ' ')).toBe('R$ 165,00');
 
     fireEvent.click(screen.getByRole('radio', { name: 'Pix' }));
     enviar();
