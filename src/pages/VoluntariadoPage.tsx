@@ -169,7 +169,7 @@ export default function VoluntariadoPage() {
     <div className="flex min-h-screen flex-col" style={{ background: COR.fundo, color: COR.tinta }}>
       <div className="mx-auto w-full max-w-[560px] flex-1">
         {/* A arte da campanha (22/10/2026). */}
-        <img src="/voluntariado-natal-feliz-capa.webp" alt="Natal Feliz, ANA Brasil: crianças sorrindo com presentes" width={1793} height={877} className="block aspect-[1793/877] w-full object-cover" data-testid="capa" />
+        <img src="/voluntariado-natal-feliz-capa.webp" alt="Natal Feliz, ANA Brasil: crianças sorrindo com presentes; apoio NZT, JNI e INCC" width={2000} height={1125} className="block aspect-[2000/1125] w-full object-cover" data-testid="capa" />
         <div className="flex flex-col gap-0.5 px-5 py-3.5 text-white" style={{ background: COR.vermelho }}>
           {feito ? (
             <>

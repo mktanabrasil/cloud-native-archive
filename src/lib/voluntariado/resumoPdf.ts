@@ -66,7 +66,8 @@ export async function desenharResumo(p: Painel, lidoEm: number): Promise<HTMLCan
   // Topo: capa, título e a hora da leitura.
   const [capa, logo] = await Promise.all([imagem('/voluntariado-natal-feliz-capa.webp'), imagem(anaLogo(50 * ESCALA).src)]);
   g.fillStyle = COR.verde; g.fillRect(0, 0, W, 170);
-  g.drawImage(capa, 0, 0, 348, 170);
+  // Capa 16:9 desde 09/11/2026 (com os apoiadores): 302 × 170 sem distorcer.
+  g.drawImage(capa, 0, 0, 302, 170);
   g.fillStyle = COR.creme;
   g.font = fonte(700, 12); g.fillText('RESUMO DAS INSCRIÇÕES', 382, 72);
   g.font = fonte(800, 30); g.fillText(`Dia do Voluntariado · Natal Feliz 2026`, 382, 108);

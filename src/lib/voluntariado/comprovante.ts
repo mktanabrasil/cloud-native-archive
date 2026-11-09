@@ -45,7 +45,7 @@ export async function desenharComprovante(d: DadosDoComprovante): Promise<Blob> 
   g.fillStyle = COR.fundo; g.fillRect(0, 0, LARGURA, rascunho.height);
 
   const capa = await carregarImagem(CAPA);
-  const alturaDaCapa = Math.round(LARGURA * 877 / 1793);
+  const alturaDaCapa = Math.round(LARGURA * 1125 / 2000);
   g.drawImage(capa, 0, 0, LARGURA, alturaDaCapa);
   g.fillStyle = COR.vermelho; g.fillRect(0, alturaDaCapa, LARGURA, 80);
   g.fillStyle = '#fff'; g.font = '700 30px Poppins'; g.textBaseline = 'middle';
