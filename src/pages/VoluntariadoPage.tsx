@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { CalendarDays, Check, Clock, Download, Heart, MapPin, Users } from 'lucide-react';
+import { CalendarDays, Check, Download, Heart, Users } from 'lucide-react';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import InstitutionalFooterBar from '@/components/news/InstitutionalFooterBar';
 import { findNewsUnit } from '@/lib/news/units';
@@ -7,7 +7,7 @@ import { ROTULO_DA_AREA } from '@/lib/pizza/modelo';
 import { areasLotadas, enviarParaAPlanilha, inscrever } from '@/lib/voluntariado/api';
 import { salvarComprovante } from '@/lib/voluntariado/comprovante';
 import {
-  AREAS_DE_AJUDA, AREAS_POR_VINCULO, descricaoDaArea, DIA_DO_EVENTO, GRUPO_DO_WHATSAPP, HORARIOS, MAPA_DO_TREINAMENTO, SOBRE_O_EVENTO, TEXTO_DO_HORARIO, TITULO_DAS_AREAS, TREINAMENTO, UNIDADES_DO_VOLUNTARIADO, ULTIMO_DIA, VINCULOS,
+  AREAS_DE_AJUDA, AREAS_POR_VINCULO, descricaoDaArea, DIA_DO_EVENTO, GRUPO_DO_WHATSAPP, HORARIOS, SOBRE_O_EVENTO, TEXTO_DO_HORARIO, TITULO_DAS_AREAS, TREINAMENTO, UNIDADES_DO_VOLUNTARIADO, ULTIMO_DIA, VINCULOS,
   encerrado, mascaraDoWhatsapp, mensagemDoErro, pedeAvisoDeLotada, problemaDaEtapa2, rotuloDaAjuda, rotuloDoHorario, tocarArea,
   type AreaDeAjuda, type Horario, type Vinculo,
 } from '@/lib/voluntariado/modelo';
@@ -65,10 +65,6 @@ function Escolha({ marcada, onClick, cor, children, detalhe }: { marcada: boolea
     </button>
   );
 }
-
-/** "horário a definir", com borda tracejada, enquanto o dado não chega. */
-const OuADefinir = ({ valor, texto }: { valor: string; texto: string }) =>
-  valor ? <b>{valor}</b> : <span className="inline-block rounded-md border-[1.5px] border-dashed px-1.5 font-semibold opacity-85" style={{ borderColor: COR.verde2 }}>{texto}</span>;
 
 export default function VoluntariadoPage() {
   useTituloDaAba('Natal Feliz · Dia do Voluntariado');
@@ -210,12 +206,10 @@ export default function VoluntariadoPage() {
                 <Users className="h-5 w-5" /> Entrar no grupo do WhatsApp
               </a>
             </div>
-            {/* No lugar do "a equipe entra em contato" (23/10/2026): os dados do treinamento já aqui. */}
+            {/* No lugar do "a equipe entra em contato" (23/10/2026): os dados do treinamento já aqui. Só a data desde 09/11/2026: local e horário ainda não existem. */}
             <div className="flex flex-col gap-2.5 rounded-2xl p-4 text-[13.5px]" style={{ background: COR.verdeClaro, color: COR.verde }} data-testid="treinamento">
               <b className="text-[14.5px]">Treinamento de Voluntários · obrigatório</b>
               <p className="flex items-start gap-2.5"><CalendarDays className="mt-0.5 h-4 w-4 shrink-0" /><span><small className="block text-[10.5px] uppercase tracking-wider opacity-75">Data</small><b>{TREINAMENTO.data}</b></span></p>
-              <p className="flex items-start gap-2.5"><Clock className="mt-0.5 h-4 w-4 shrink-0" /><span><small className="block text-[10.5px] uppercase tracking-wider opacity-75">Horário</small><OuADefinir valor={TREINAMENTO.horario} texto="a confirmar" /></span></p>
-              <p className="flex items-start gap-2.5"><MapPin className="mt-0.5 h-4 w-4 shrink-0" /><span><small className="block text-[10.5px] uppercase tracking-wider opacity-75">Local</small><b>{TREINAMENTO.local}</b> <span className="opacity-80">· mesmo local do Natal Feliz</span><br /><a href={MAPA_DO_TREINAMENTO} target="_blank" rel="noopener noreferrer" className="underline" data-testid="endereco-do-treinamento">{TREINAMENTO.endereco}</a></span></p>
             </div>
             <Erro />
             <button type="button" onClick={baixar} disabled={baixando} className={`${botao} flex items-center justify-center gap-2`} style={{ background: COR.verde }}>
@@ -254,7 +248,7 @@ export default function VoluntariadoPage() {
             <section className="flex flex-col gap-3">
               <Titulo n={1}>Antes de começar</Titulo>
               <p className="rounded-2xl border-2 px-3.5 py-3 text-[13.5px] leading-relaxed" style={{ borderColor: COR.ouro, background: COR.ouroClaro, color: '#5A4500' }} data-testid="aviso-do-treinamento">
-                <b>Para se voluntariar, é obrigatório participar do Treinamento de Voluntários</b>, no dia <b>{TREINAMENTO.dataCurta}, no {TREINAMENTO.local}</b>. É nele que você conhece a equipe, a sua área e como vai ser o dia.
+                <b>Para se voluntariar, é obrigatório participar do Treinamento de Voluntários</b>, no dia <b>{TREINAMENTO.dataCurta}</b>. É nele que você conhece a equipe, a sua área e como vai ser o dia.
               </p>
               <Pergunta>Você tem disponibilidade para participar do treinamento em {TREINAMENTO.dataCurta}?</Pergunta>
               <Escolha marcada={treino === 'sim'} onClick={() => setTreino('sim')}>Sim, posso participar</Escolha>

@@ -65,9 +65,8 @@ export async function desenharComprovante(d: DadosDoComprovante): Promise<Blob> 
   y += 56;
   const topo = y, folga = 40, x = MARGEM + folga - 8, larguraDoTexto = LARGURA - 2 * MARGEM - 2 * folga;
   const itens: Array<[string, string, boolean]> = [
+    // Só a data desde 09/11/2026: local e horário do treinamento ainda não existem.
     ['Data', TREINAMENTO.data, true],
-    ['Horário', TREINAMENTO.horario || '[a confirmar]', !!TREINAMENTO.horario],
-    ['Local', `${TREINAMENTO.local} · ${TREINAMENTO.endereco || '[endereço a definir]'}`, !!TREINAMENTO.endereco],
   ];
   const medida = document.createElement('canvas').getContext('2d')!;
   medida.font = '600 34px Poppins';
