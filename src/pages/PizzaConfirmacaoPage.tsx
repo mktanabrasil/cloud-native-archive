@@ -2,11 +2,10 @@ import { useRef, useState, type ReactNode } from 'react';
 import { Camera, Check, FileUp, Minus, Plus, X } from 'lucide-react';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import InstitutionalFooterBar from '@/components/news/InstitutionalFooterBar';
-import { findNewsUnit } from '@/lib/news/units';
 import { enviarConfirmacao, pedirCopiaParaODrive } from '@/lib/pizza/api';
 import {
   FORMAS, RETIRADA, ROTULO_DA_AREA, SABORES, UNIDADES_POR_AREA, comprovanteObrigatorio, encerrado, mensagemDoErro,
-  problemaDoArquivo, problemaDoEnvio, reais, resumoDosSabores, totalDePizzas, valor,
+  problemaDoArquivo, problemaDoEnvio, reais, resumoDosSabores, totalDePizzas, unidadeDaPizza, valor,
   type Forma, type Quantidades, type Sabor,
 } from '@/lib/pizza/modelo';
 
@@ -47,7 +46,7 @@ export default function PizzaConfirmacaoPage() {
   const arquivo = useRef<HTMLInputElement>(null);
 
   const pizzas = totalDePizzas(qtd);
-  const u = findNewsUnit(unidade);
+  const u = unidadeDaPizza(unidade);
   const fechado = encerrado();
 
   const mudar = (s: Sabor, d: number) => { setQtd((q) => ({ ...q, [s]: Math.max(0, Math.min(50, (q[s] ?? 0) + d)) })); setErro(null); };

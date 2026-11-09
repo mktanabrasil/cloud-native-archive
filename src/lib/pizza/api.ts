@@ -1,7 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { comMaiusculas } from '@/lib/vagas/maiusculas';
-import { findNewsUnit } from '@/lib/news/units';
-import { areaDaUnidade, type Forma, type Quantidades } from './modelo';
+import { areaDaUnidade, unidadeDaPizza, type Forma, type Quantidades } from './modelo';
 
 /** Uma confirmação, como o painel lê. */
 export interface Confirmacao {
@@ -28,7 +27,7 @@ const extensao = (f: File) => (f.name.match(/\.([a-z0-9]{2,5})$/i)?.[1] ?? (f.ty
  * sobe), depois a função do banco, que confere tudo e devolve o número.
  */
 export async function enviarConfirmacao(d: { nome: string; unidadeId: string; quantidades: Quantidades; forma: Forma; comprovante: File | null }): Promise<string> {
-  const unidade = findNewsUnit(d.unidadeId);
+  const unidade = unidadeDaPizza(d.unidadeId);
   if (!unidade) throw new Error('unidade_invalida');
   let caminho: string | null = null;
   if (d.comprovante) {

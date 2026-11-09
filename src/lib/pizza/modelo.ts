@@ -1,4 +1,4 @@
-import { ACTIVE_NEWS_UNITS, type NewsUnit } from '@/lib/news/units';
+import { ACTIVE_NEWS_UNITS, findNewsUnit, type NewsUnit } from '@/lib/news/units';
 
 /**
  * Pizza da Alegria (07/10/2026): confirmação de pagamento, só para controle.
@@ -9,7 +9,8 @@ import { ACTIVE_NEWS_UNITS, type NewsUnit } from '@/lib/news/units';
  * mesmos limites estão na função `confirmar_pizza` do banco.
  */
 
-export const PRECO = 50;
+/** R$ 55 desde 09/11/2026 (era R$ 50). O banco calcula o mesmo valor em `confirmar_pizza`. */
+export const PRECO = 55;
 export const PRAZO = new Date('2026-12-01T00:00:00-03:00');
 export const RETIRADA = 'sexta, 04/12/2026';
 
@@ -41,10 +42,19 @@ export const areaDaUnidade = (u: Pick<NewsUnit, 'type'>): Area => (u.type === 'N
 /** Fora das campanhas (Pizza e voluntariado do Natal Feliz), a pedido em 21/10/2026; no resto do app a unidade segue ativa. */
 export const FORA_DAS_CAMPANHAS = ['ana-oziel'];
 
+/** Fora só da Pizza, a pedido em 09/11/2026. */
+export const FORA_DA_PIZZA = ['ana-piaui'];
+
+/** O escritório não é unidade do app; existe só na Pizza (09/11/2026), no lugar da ANA Piauí. */
+export const ESCRITORIO_ADM: NewsUnit = { id: 'escritorio-adm', name: 'Escritório (ADM)', short: 'Escritório', type: 'NAVE', active: true, profileUnit: '' };
+
+/** A unidade da Pizza pelo id: as do app e o escritório. */
+export const unidadeDaPizza = (id: string | null | undefined): NewsUnit | undefined => (id === ESCRITORIO_ADM.id ? ESCRITORIO_ADM : findNewsUnit(id));
+
 /** As unidades do formulário, por área, na ordem do app. */
 export const UNIDADES_POR_AREA: Array<{ area: Area; unidades: NewsUnit[] }> = (['educacao', 'social'] as Area[]).map((area) => ({
   area,
-  unidades: ACTIVE_NEWS_UNITS.filter((u) => areaDaUnidade(u) === area && !FORA_DAS_CAMPANHAS.includes(u.id)),
+  unidades: [...ACTIVE_NEWS_UNITS, ESCRITORIO_ADM].filter((u) => areaDaUnidade(u) === area && !FORA_DAS_CAMPANHAS.includes(u.id) && !FORA_DA_PIZZA.includes(u.id)),
 }));
 
 export type Quantidades = Partial<Record<Sabor, number>>;
