@@ -21,7 +21,7 @@ export const COR_DA_UNIDADE: Record<string, string> = {
   'CEI Bem Querer Mayara Masson Christofoletti': '#F6DDF0', 'CEI Bem Querer Profa. Renata Ferramola': '#D9F2E4',
   'CEI Bem Querer Vandir Justino da Costa Dias': '#FBE7D7',
   // Quem não é funcionário não tem unidade: a linha vai pela cor do vínculo (23/10/2026).
-  'Alcance JNI': '#FFCC99', 'Voluntário(a)': '#E6E0D4',
+  'INCC': '#FFCC99', 'Voluntário(a)': '#E6E0D4',
 };
 export const corDaUnidade = (nome: string) => COR_DA_UNIDADE[nome] ?? '#EEEEEE';
 
@@ -40,7 +40,7 @@ export interface InscricaoAoVivo {
 /** `metas`: a meta de cada área que tem uma (23/10/2026). */
 export interface Acompanhamento { meta: number | null; agora: string; metas?: Record<string, number>; inscricoes: InscricaoAoVivo[] }
 
-/** A unidade de quem é funcionário; para os outros, o vínculo ("Alcance JNI", "Voluntário(a)"). */
+/** A unidade de quem é funcionário; para os outros, o vínculo ("INCC", "Voluntário(a)"). */
 export const grupoDe = (i: Pick<InscricaoAoVivo, 'unidade_nome' | 'vinculo'>) => i.unidade_nome ?? rotuloDoVinculo(i.vinculo ?? 'funcionario');
 
 export async function lerAcompanhamento(codigo: string): Promise<Acompanhamento> {
@@ -70,7 +70,7 @@ export interface Painel {
   vagas: { preenchidas: number; total: number };
   /** As áreas com meta que ainda não bateram, com quantas faltam. */
   precisam: Array<{ rotulo: string; faltam: number }>;
-  /** As unidades da Educação e, no fim, o Alcance JNI e os voluntários de fora. */
+  /** As unidades da Educação e, no fim, a INCC e os voluntários de fora. */
   porUnidade: Array<{ nome: string; n: number; cor: string; unidade: boolean }>;
   porVinculo: { funcionario: number; alcance: number; comunidade: number };
   porHorario: Array<{ chave: string; rotulo: string; detalhe: string; cor: string; n: number }>;
@@ -106,7 +106,7 @@ export function calcularPainel(a: Acompanhamento, agora = Date.now()): Painel {
   const precisam = comMeta.filter((x) => !x.lotada).map((x) => ({ rotulo: x.rotulo, faltam: x.meta! - x.primeira }));
 
   // Unidades do formulário (com zero) e alguma de fora que já tenha inscrição;
-  // depois, sempre no fim, o Alcance JNI e os voluntários de fora (23/10/2026).
+  // depois, sempre no fim, a INCC e os voluntários de fora (23/10/2026).
   const unidades = [...nomesDasUnidades];
   for (const i of lista) if (i.unidade_nome && !unidades.includes(i.unidade_nome)) unidades.push(i.unidade_nome);
   const porUnidade = [

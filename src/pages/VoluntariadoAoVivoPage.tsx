@@ -21,7 +21,7 @@ const RESERVA = '#A9D3C2';
 /** Quem são: paleta validada (dataviz) para três séries, sempre com rótulo ao lado. */
 const VINCULO = [
   { chave: 'funcionario', rotulo: 'Funcionários ANA', cor: '#0088CC' },
-  { chave: 'alcance', rotulo: 'Alcance JNI', cor: '#E8604A' },
+  { chave: 'alcance', rotulo: 'INCC', cor: '#E8604A' },
   { chave: 'comunidade', rotulo: 'Voluntários de fora', cor: '#1F9D6B' },
 ] as const;
 

@@ -83,7 +83,7 @@ describe('contas', () => {
     // Vagas das metas: só as áreas com meta; quem passou da meta não conta duas vezes.
     expect(p.vagas).toEqual({ preenchidas: 2, total: 7 });
     expect(p.precisam).toEqual([{ rotulo: 'Montagem / Desmontagem', faltam: 5 }]);
-    expect(p.porUnidade.slice(-2).map((u) => [u.nome, u.n])).toEqual([['Alcance JNI', 1], ['Voluntário(a)', 0]]);
+    expect(p.porUnidade.slice(-2).map((u) => [u.nome, u.n])).toEqual([['INCC', 1], ['Voluntário(a)', 0]]);
   });
 
   it('vagas: a área que passou da meta conta só até a meta', () => {
@@ -99,7 +99,7 @@ describe('contas', () => {
   it('últimas: a mais nova primeiro, com as áreas', () => {
     expect(p.ultimas[0]).toMatchObject({ nome: 'Ana Paula', areas: 'Infláveis', quem: 'CEI Bem Querer Prof. Anísio Spínola' });
     expect(p.ultimas[1].areas).toBe('Cozinha › Estações');
-    expect(p.ultimas.find((u) => u.nome === 'Paulo Martins')).toMatchObject({ quem: 'Alcance JNI', areas: 'Louvor' });
+    expect(p.ultimas.find((u) => u.nome === 'Paulo Martins')).toMatchObject({ quem: 'INCC', areas: 'Louvor' });
     expect(JSON.stringify(p)).not.toMatch(/whatsapp|protocolo/i);
   });
 
@@ -108,7 +108,7 @@ describe('contas', () => {
     const bloco = fn.slice(fn.indexOf('const AREA:'), fn.indexOf('};', fn.indexOf('const AREA:')));
     const chaves = [...bloco.matchAll(/(\w+): '/g)].map((m) => m[1]).sort();
     expect(chaves).toEqual(AREAS_DE_AJUDA.map((a) => a.chave).sort());
-    expect(Object.keys(COR_DA_UNIDADE)).toContain('Alcance JNI');
+    expect(Object.keys(COR_DA_UNIDADE)).toContain('INCC');
   });
 
   it('dia no fuso de Brasília', () => {
