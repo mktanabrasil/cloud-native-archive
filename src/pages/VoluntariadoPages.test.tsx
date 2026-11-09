@@ -175,7 +175,7 @@ describe('formulário', () => {
     // O evento é para as crianças, não mais para as famílias (26/10/2026).
     expect(sobre).toHaveTextContent('presentes para as crianças que atendemos');
     expect(sobre).not.toHaveTextContent('famílias');
-    expect(screen.getByTestId('aviso-do-treinamento')).toHaveTextContent('obrigatório participar do Treinamento de Voluntários, no dia 28/11, no Recanto Maanaim');
+    expect(screen.getByTestId('aviso-do-treinamento')).toHaveTextContent('obrigatório participar do Treinamento de Voluntários, no dia 28/11.');
     expect(screen.getByTestId('etapas')).toHaveTextContent('Etapa 1 de 3');
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Não tenho disponibilidade' }));
@@ -229,11 +229,10 @@ describe('formulário', () => {
     expect(screen.getByRole('link', { name: /Entrar no grupo do WhatsApp/ })).toHaveAttribute('href', 'https://chat.whatsapp.com/FnmKMVE3PXnEWKVYQY7ZEe');
     const treino = screen.getByTestId('treinamento');
     expect(treino).toHaveTextContent('Sábado, 28/11');
-    expect(treino).toHaveTextContent('a confirmar');
-    // Grafia com dois "a" e o endereço, que abre no Maps (23/10/2026).
-    expect(treino).toHaveTextContent('Recanto Maanaim · mesmo local do Natal Feliz');
-    expect(screen.getByTestId('endereco-do-treinamento')).toHaveTextContent('Rua Arcebispo Dom Luciano Mendes de Almeida, 50 - Swiss Park, Campinas - SP, 13049-446');
-    expect(screen.getByTestId('endereco-do-treinamento').getAttribute('href')).toMatch(/^https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=Recanto%20Maanaim/);
+    // Só a data desde 09/11/2026: sem horário e sem local do treinamento.
+    expect(treino).not.toHaveTextContent('Horário');
+    expect(treino).not.toHaveTextContent('Recanto Maanaim');
+    expect(screen.queryByTestId('endereco-do-treinamento')).toBeNull();
     expect(document.body.textContent).not.toMatch(/Manaim/);
     fireEvent.click(screen.getByRole('button', { name: /Baixar comprovante/ }));
     await waitFor(() => expect(banco.comprovantes).toHaveLength(1));
