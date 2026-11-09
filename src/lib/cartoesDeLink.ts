@@ -84,11 +84,11 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
     regra: 'RewriteRule ^voluntariado(/natalfeliz26)?/?$ /voluntariado.html [L]',
     titulo: 'Natal Feliz · Dia do Voluntariado',
     descricao: 'Neste Natal, seja o presente de alguém. Inscreva-se para ajudar no dia 08/12: inscrições até 15/11.',
-    // A arte final (22/10/2026), com a faixa do Dia do Voluntariado. Ao trocar
+    // A arte com os apoiadores NZT, JNI e INCC (09/11/2026). Ao trocar
     // a imagem, usar sempre um nome novo de arquivo: o WhatsApp guarda a prévia
     // pelo endereço.
-    imagem: '/og-voluntariado-3.jpg',
-    imagemAlt: 'Dia do Voluntariado, Natal Feliz 2026 da ANA Brasil: seja o presente de alguém, 08/12, inscrições até 15/11',
+    imagem: '/og-voluntariado-4.jpg',
+    imagemAlt: 'Natal Feliz 2026 da ANA Brasil, com apoio de NZT, JNI e INCC: crianças sorrindo com presentes',
   },
   {
     // O painel ao vivo da gestão (21/10/2026): link com código secreto.
@@ -96,7 +96,7 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
     regra: 'RewriteRule ^voluntariado/(natalfeliz26/)?acompanhar/ /voluntariado-acompanhar.html [L]',
     titulo: 'Dia do Voluntariado · ao vivo',
     descricao: 'O andamento das inscrições de voluntários do Natal Feliz, atualizado sozinho.',
-    imagem: '/og-voluntariado-3.jpg',
+    imagem: '/og-voluntariado-4.jpg',
     imagemAlt: 'Dia do Voluntariado, Natal Feliz 2026 da ANA Brasil: ao vivo',
   },
   {
