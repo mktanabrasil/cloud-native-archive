@@ -21,7 +21,7 @@ import { MetasPorArea } from './MetasPorArea';
  * contato do termo de voluntariado), filtros por unidade e área, a planilha
  * e o apagar (teste ou desistência). Desde 21/10/2026, também a planilha do
  * Google que se atualiza sozinha (PlanilhaDoGoogle). Desde 23/10/2026, o
- * vínculo e o horário de cada um, o filtro também por vínculo (Alcance JNI,
+ * vínculo e o horário de cada um, o filtro também por vínculo (INCC,
  * voluntários de fora) e as metas por área.
  */
 
@@ -43,7 +43,7 @@ export function PainelDoVoluntariado() {
   };
   useEffect(() => { if (isMarketing) carregar(); }, [isMarketing]);
 
-  // O filtro: as unidades de quem é funcionário e, como se fossem unidades, o Alcance JNI e os voluntários de fora.
+  // O filtro: as unidades de quem é funcionário e, como se fossem unidades, a INCC e os voluntários de fora.
   const grupo = (i: Inscricao) => i.unidade_id ?? i.vinculo;
   const unidades = useMemo(() => {
     const m = new Map<string, string>();
@@ -98,7 +98,7 @@ export function PainelDoVoluntariado() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[28px] font-bold leading-tight">Voluntariado · Natal Feliz</h1>
-          <p className="text-sm text-muted-foreground">Funcionários, Alcance JNI e voluntários de fora · até {ULTIMO_DIA} · evento em 08/12</p>
+          <p className="text-sm text-muted-foreground">Funcionários, INCC e voluntários de fora · até {ULTIMO_DIA} · evento em 08/12</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="ghost" size="sm" onClick={copiarLink}>Copiar link do formulário</Button>

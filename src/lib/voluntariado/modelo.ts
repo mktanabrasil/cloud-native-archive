@@ -2,10 +2,10 @@
  * Voluntariado do Natal Feliz (20/10/2026; em etapas desde 23/10/2026).
  *
  * Link público, como o da Pizza da Alegria. Desde 23/10/2026 o formulário
- * abre para funcionários, o público e o Alcance JNI, em três etapas:
+ * abre para funcionários, o público e a INCC, em três etapas:
  *  1. o treinamento obrigatório de 28/11 no Recanto Maanaim (quem não pode, para ali);
  *  2. nome, WhatsApp, horário (um só) e vínculo: funcionário(a) informa a
- *     unidade; quem não é nem funcionário nem do JNI diz se alguém da ANA ou do Alcance indicou
+ *     unidade; quem não é nem funcionário nem do JNI diz se alguém da ANA ou da INCC indicou
  *     e, se quiser, a igreja;
  *  3. onde quer ajudar (1ª opção obrigatória, 2ª opcional), com as áreas do
  *     vínculo. Área que bateu a meta só entra como 2ª opção.
@@ -43,8 +43,8 @@ export const TREINAMENTO = {
 /** O endereço no Google Maps, para abrir no celular. */
 export const MAPA_DO_TREINAMENTO = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${TREINAMENTO.local}, ${TREINAMENTO.endereco}`)}`;
 
-/** Os parceiros do Natal Feliz 2026 (JNI e Nazateen; a Hope Day saiu em 23/10/2026). */
-export const PARCEIROS = ['JNI', 'Nazateen'];
+/** Os parceiros do Natal Feliz 2026 (JNI, Nazateen e, desde 09/11/2026, INCC; a Hope Day saiu em 23/10/2026). */
+export const PARCEIROS = ['JNI', 'Nazateen', 'INCC'];
 /** "JNI, Nazateen e Hope Day" */
 export const parceirosPorExtenso = (l: readonly string[] = PARCEIROS) => (l.length > 1 ? `${l.slice(0, -1).join(', ')} e ${l[l.length - 1]}` : l.join(''));
 
@@ -69,10 +69,10 @@ export const AREAS_DE_AJUDA = [
   { chave: 'limpeza_pre', rotulo: 'Limpeza pré-evento', descricao: 'Limpar e preparar todo o espaço antes do evento. Esta atividade acontece na segunda-feira, 07/12.' },
   { chave: 'inflaveis', rotulo: 'Brinquedos infláveis', descricao: 'Acompanhar as crianças nos brinquedos infláveis e organizar as filas e as turmas.' },
   { chave: 'estacoes', rotulo: 'Estações', descricao: 'Apoiar as estações de atividades durante o evento, como manicure e barbearia. Outras estações ainda podem ser incluídas.' },
-  { chave: 'louvor_kids', rotulo: 'Louvor Kids', descricao: 'Para integrantes do Alcance JNI que servem no louvor: conduzir os momentos de louvor com as crianças.' },
-  { chave: 'som', rotulo: 'Som', descricao: 'Para integrantes do Alcance JNI: auxiliar na montagem e na operação do som.' },
-  { chave: 'recreacao_kids', rotulo: 'Recreação Kids', descricao: 'Para integrantes do Alcance JNI: conduzir as atividades de recreação com as crianças.' },
-  { chave: 'presentes_kids', rotulo: 'Presentes Kids', descricao: 'Para integrantes do Alcance JNI: organizar os presentes e auxiliar na entrega às crianças.' },
+  { chave: 'louvor_kids', rotulo: 'Louvor Kids', descricao: 'Para integrantes da INCC que servem no louvor: conduzir os momentos de louvor com as crianças.' },
+  { chave: 'som', rotulo: 'Som', descricao: 'Para integrantes da INCC: auxiliar na montagem e na operação do som.' },
+  { chave: 'recreacao_kids', rotulo: 'Recreação Kids', descricao: 'Para integrantes da INCC: conduzir as atividades de recreação com as crianças.' },
+  { chave: 'presentes_kids', rotulo: 'Presentes Kids', descricao: 'Para integrantes da INCC: organizar os presentes e auxiliar na entrega às crianças.' },
 ] as const;
 
 export type AreaDeAjuda = (typeof AREAS_DE_AJUDA)[number]['chave'];
@@ -100,7 +100,7 @@ export type Vinculo = 'funcionario' | 'alcance' | 'comunidade';
 
 export const VINCULOS: ReadonlyArray<{ chave: Vinculo; rotulo: string; detalhe: string; curto: string }> = [
   { chave: 'funcionario', rotulo: 'Sou funcionário(a) da ANA', detalhe: '', curto: 'Funcionário(a) ANA' },
-  { chave: 'alcance', rotulo: 'Faço parte do Alcance JNI', detalhe: 'parceiro do evento', curto: 'Alcance JNI' },
+  { chave: 'alcance', rotulo: 'Faço parte da INCC', detalhe: 'Alcance JNI e os demais ministérios', curto: 'INCC' },
   { chave: 'comunidade', rotulo: 'Nenhum dos dois', detalhe: 'quero ajudar como voluntário(a)', curto: 'Voluntário(a)' },
 ];
 export const rotuloDoVinculo = (v: string | null | undefined) => VINCULOS.find((x) => x.chave === v)?.curto ?? '';
@@ -129,7 +129,7 @@ export const areaNosPaineis = (chave: string, escolhidas: Iterable<string | null
 export const GRUPO_DO_WHATSAPP = 'https://chat.whatsapp.com/FnmKMVE3PXnEWKVYQY7ZEe';
 export const TITULO_DAS_AREAS: Record<Vinculo, string> = {
   funcionario: 'Áreas para funcionários da ANA',
-  alcance: 'Áreas para o Alcance JNI',
+  alcance: 'Áreas para a INCC',
   comunidade: 'Áreas abertas para voluntários',
 };
 
@@ -225,9 +225,9 @@ export function problemaDaEtapa2(d: DadosDaEtapa2): string | null {
   if (d.nome.trim().length < 3 || !/\s/.test(d.nome.trim())) return 'Escreva o seu nome completo.';
   if (!whatsappValido(d.whatsapp)) return 'Confira o telefone (WhatsApp), com DDD.';
   if (!d.horario) return 'Escolha o horário em que você pode ajudar.';
-  if (!d.vinculo) return 'Conte se você é funcionário(a) da ANA, do Alcance JNI ou nenhum dos dois.';
+  if (!d.vinculo) return 'Conte se você é funcionário(a) da ANA, da INCC ou nenhum dos dois.';
   if (d.vinculo === 'funcionario' && !d.unidade) return 'Escolha a unidade em que você trabalha.';
-  if (d.vinculo === 'comunidade' && d.indicado === null) return 'Conte se alguém da ANA ou do Alcance JNI te indicou.';
+  if (d.vinculo === 'comunidade' && d.indicado === null) return 'Conte se alguém da ANA ou da INCC te indicou.';
   if (d.vinculo === 'comunidade' && d.indicado && d.indicadoPor.trim().length < 2) return 'Escreva o nome de quem te indicou.';
   if (d.vinculo === 'comunidade' && (d.temIgreja === null || d.temIgreja === undefined)) return 'Conte se você faz parte de alguma igreja.';
   if (d.vinculo === 'comunidade' && d.temIgreja && (d.igreja ?? '').trim().length < 2) return 'Escreva o nome da sua igreja.';

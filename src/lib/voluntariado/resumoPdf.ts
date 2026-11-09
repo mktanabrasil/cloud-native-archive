@@ -23,7 +23,7 @@ const COR = {
 /** Quem são: as cores da paleta ANA na barra, e um tom mais escuro para o número (leitura). */
 const VINCULO = [
   { chave: 'funcionario', rotulo: 'Funcionários ANA', barra: '#01adff', texto: '#0077B3' },
-  { chave: 'alcance', rotulo: 'Alcance JNI', barra: '#f37964', texto: '#C24A35' },
+  { chave: 'alcance', rotulo: 'INCC', barra: '#f37964', texto: '#C24A35' },
   { chave: 'comunidade', rotulo: 'Voluntários de fora', barra: '#81e2cf', texto: '#1A7F5A' },
 ] as const;
 /** O rodapé do Social: as cinco faixas da paleta, na ordem. */

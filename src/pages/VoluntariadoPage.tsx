@@ -15,7 +15,7 @@ import {
 /**
  * /voluntariado/natalfeliz26 — inscrição de voluntários para o Natal Feliz
  * de 08/12/2026. Desde 23/10/2026, em três etapas e aberta a funcionários,
- * público e Alcance JNI (mockup aprovado em 23/10/2026):
+ * público e INCC (mockup aprovado em 23/10/2026):
  *  1. o treinamento obrigatório de 28/11 no Recanto Maanaim; quem não pode vê um
  *     agradecimento e o formulário para ali, sem gravar nada;
  *  2. nome, WhatsApp, horário e vínculo, com a pergunta que cada vínculo pede;
@@ -302,7 +302,7 @@ export default function VoluntariadoPage() {
               )}
               {vinculo === 'comunidade' && (
                 <div className="mt-2 flex flex-col gap-2">
-                  <Pergunta>Alguém da ANA ou do Alcance JNI te indicou?</Pergunta>
+                  <Pergunta>Alguém da ANA ou da INCC te indicou?</Pergunta>
                   <Escolha marcada={indicado === true} onClick={() => { setIndicado(true); setErro(null); }}>Sim</Escolha>
                   <Escolha marcada={indicado === false} onClick={() => { setIndicado(false); setErro(null); }}>Não</Escolha>
                   {indicado && (

@@ -79,7 +79,7 @@ describe('regras', () => {
     for (const k of ['montagem', 'decoracao', 'limpeza_pre'] as const) {
       expect(Object.values(AREAS_POR_VINCULO).flat()).not.toContain(k);
     }
-    // Presentes, Som, Louvor e Recreação são só do Alcance JNI.
+    // Presentes, Som, Louvor e Recreação são só da INCC.
     for (const k of ['presentes_kids', 'som', 'louvor_kids', 'recreacao_kids'] as const) {
       expect(AREAS_POR_VINCULO.funcionario).not.toContain(k);
       expect(AREAS_POR_VINCULO.comunidade).not.toContain(k);
@@ -170,7 +170,7 @@ describe('formulário', () => {
     expect(screen.getByTestId('dia-do-evento')).toHaveTextContent('08/12 · Natal Feliz');
     const sobre = screen.getByTestId('sobre-o-evento');
     expect(sobre).toHaveTextContent('Neste Natal, seja o presente de alguém');
-    expect(sobre).toHaveTextContent('em parceria com JNI e Nazateen');
+    expect(sobre).toHaveTextContent('em parceria com JNI, Nazateen e INCC');
     expect(sobre).not.toHaveTextContent('Hope Day');
     // O evento é para as crianças, não mais para as famílias (26/10/2026).
     expect(sobre).toHaveTextContent('presentes para as crianças que atendemos');
@@ -247,7 +247,7 @@ describe('formulário', () => {
     quemSou(/^Nenhum dos dois/);
     expect(screen.queryByLabelText('Em qual unidade você trabalha?')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
-    expect(screen.getByRole('alert')).toHaveTextContent('Conte se alguém da ANA ou do Alcance JNI te indicou.');
+    expect(screen.getByRole('alert')).toHaveTextContent('Conte se alguém da ANA ou da INCC te indicou.');
     fireEvent.click(screen.getAllByRole('button', { name: 'Sim' })[0]);
     fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
     expect(screen.getByRole('alert')).toHaveTextContent('Escreva o nome de quem te indicou.');
@@ -266,14 +266,14 @@ describe('formulário', () => {
     expect(screen.getByTestId('resumo')).toHaveTextContent('Igreja Batista do Bairro');
   });
 
-  it('Alcance JNI: segue direto para as 8 áreas dele', () => {
+  it('INCC: segue direto para as 8 áreas dele', () => {
     abrir();
     etapa2();
-    quemSou(/^Faço parte do Alcance JNI/);
+    quemSou(/^Faço parte da INCC/);
     expect(screen.queryByLabelText('Em qual unidade você trabalha?')).toBeNull();
-    expect(screen.queryByText('Alguém da ANA ou do Alcance JNI te indicou?')).toBeNull();
+    expect(screen.queryByText('Alguém da ANA ou da INCC te indicou?')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
-    expect(screen.getByText('Áreas para o Alcance JNI')).toBeInTheDocument();
+    expect(screen.getByText('Áreas para a INCC')).toBeInTheDocument();
     for (const a of ['Louvor Kids', 'Som', 'Recreação Kids', 'Presentes Kids']) expect(screen.getByRole('button', { name: new RegExp(`^${a}`) })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Estações/ })).toBeNull();
   });
@@ -282,7 +282,7 @@ describe('formulário', () => {
     banco.lotadas = ['cozinha'];
     abrir();
     etapa2();
-    quemSou(/^Faço parte do Alcance JNI/);
+    quemSou(/^Faço parte da INCC/);
     fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
     expect(await screen.findByTestId('lotada')).toHaveTextContent('Vagas preenchidas · só como 2ª opção');
     fireEvent.click(screen.getByRole('button', { name: /^Cozinha \/ Servimento/ }));
@@ -301,7 +301,7 @@ describe('formulário', () => {
   it('a vaga acaba enquanto a pessoa preenche: a área vira a 2ª opção', async () => {
     abrir();
     etapa2();
-    quemSou(/^Faço parte do Alcance JNI/);
+    quemSou(/^Faço parte da INCC/);
     fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
     fireEvent.click(screen.getByRole('button', { name: /^Cozinha \/ Servimento/ }));
     banco.erro = 'area_lotada';
@@ -314,7 +314,7 @@ describe('formulário', () => {
     banco.erro = 'ja_inscrito';
     abrir();
     etapa2();
-    quemSou(/^Faço parte do Alcance JNI/);
+    quemSou(/^Faço parte da INCC/);
     fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
     fireEvent.click(screen.getByRole('button', { name: /^Som/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Enviar inscrição' }));
@@ -349,7 +349,7 @@ describe('painel', () => {
     expect(bruna).toHaveTextContent('Voluntário(a)');
     expect(bruna).toHaveTextContent('indicado(a) por Carla · Igreja Batista');
     expect(bruna).toHaveTextContent('Tarde');
-    fireEvent.click(screen.getByRole('button', { name: 'Alcance JNI' }));
+    fireEvent.click(screen.getByRole('button', { name: 'INCC' }));
     expect(screen.getAllByTestId('inscricao')).toHaveLength(1);
     expect(screen.getByTestId('inscricao')).toHaveTextContent('Marcos Souza');
     expect(screen.getByTestId('kpi-Unidades')).toHaveTextContent('0');
