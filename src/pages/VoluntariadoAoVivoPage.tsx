@@ -168,7 +168,7 @@ export default function VoluntariadoAoVivoPage() {
       <div className="mx-auto grid max-w-[1400px] gap-3.5">
         {/* Topo: a capa da campanha, o selo "ao vivo" e o Baixar resumo. */}
         <header className="grid items-center gap-x-5 gap-y-3 overflow-hidden rounded-2xl bg-[#1E4D3A] pb-4 text-[#F6EEDF] md:grid-cols-[auto_minmax(0,1fr)_auto] md:pb-0">
-          <img src="/voluntariado-natal-feliz-capa.webp" alt="Natal Feliz, ANA Brasil: crianças sorrindo com presentes" width={1793} height={877} className="block aspect-[1793/877] w-full object-cover md:h-[124px] md:w-auto" data-testid="capa" />
+          <img src="/voluntariado-natal-feliz-capa.webp" alt="Natal Feliz, ANA Brasil: crianças sorrindo com presentes; apoio NZT, JNI e INCC" width={2000} height={1125} className="block aspect-[2000/1125] w-full object-cover md:h-[124px] md:w-auto" data-testid="capa" />
           <div className="px-5 md:px-0">
             <h1 className="text-2xl font-extrabold leading-tight">Dia do Voluntariado · Natal Feliz 2026</h1>
             <small className="block text-[13px] opacity-85">08/12 no {TREINAMENTO.local} · em parceria com {parceirosPorExtenso()} · inscrições até 15/11</small>
