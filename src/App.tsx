@@ -46,6 +46,7 @@ import CandidatosDaVagaPage from "./pages/CandidatosDaVagaPage";
 import FichaDoCandidatoPage from "./pages/FichaDoCandidatoPage";
 import PizzaConfirmacaoPage from "./pages/PizzaConfirmacaoPage";
 import PizzaPainelPage from "./pages/PizzaPainelPage";
+import { PizzaAcompanharPage, PizzaDashboardPage } from "./pages/PizzaDashboardPages";
 import VoluntariadoPage from "./pages/VoluntariadoPage";
 import VoluntariadoAoVivoPage, { AoVivoNoEnderecoNovo } from "./pages/VoluntariadoAoVivoPage";
 import { ROTAS_DO_CANDIDATO, ehCandidato } from "@/lib/vagas/conta";
@@ -154,6 +155,8 @@ const App = () => (
                 {/* Enquetes (23/09/2026): votar e acompanhar são públicos, fora
                     da barra do app, como a vitrine embutida. */}
                 <Route path="/pizza-da-alegria" element={<PizzaConfirmacaoPage />} />
+                {/* O dashboard da gestão (10/11/2026): link com código secreto, sem login. */}
+                <Route path="/pizza-da-alegria/acompanhar/:codigo" element={<PizzaAcompanharPage />} />
                 {/* Voluntariado do Natal Feliz (20/10/2026): inscrição pública dos funcionários. */}
                 <Route path="/voluntariado/natalfeliz26" element={<VoluntariadoPage />} />
                 {/* O primeiro link divulgado (/voluntariado) leva à campanha (21/10/2026). */}
@@ -210,6 +213,9 @@ const App = () => (
 
                   <Route path="/pizza-da-alegria/painel" element={
                     <ProtectedRoute><PizzaPainelPage /></ProtectedRoute>
+                  } />
+                  <Route path="/pizza-da-alegria/painel/dashboard" element={
+                    <ProtectedRoute><PizzaDashboardPage /></ProtectedRoute>
                   } />
                   <Route path="/marketing" element={
                     <ProtectedRoute><MarketingHubPage /></ProtectedRoute>

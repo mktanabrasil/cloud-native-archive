@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Lock, Sheet } from 'lucide-react';
+import { BarChart3, Link2, Lock, Sheet } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -7,6 +8,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { linkDaPlanilha, linkDoComprovante, listarConfirmacoes, marcarRetirada, pedirCopiaParaODrive, type Confirmacao } from '@/lib/pizza/api';
 import { FORMAS, ROTULO_DA_AREA, SABORES, reais, resumoDosSabores, rotuloDaForma } from '@/lib/pizza/modelo';
 import { DriveDaPizza } from './DriveDaPizza';
+import { codigoDaGestao, linkDaGestao } from '@/lib/pizza/dashboard';
 
 /**
  * O painel da Pizza da Alegria (mockup de 07/10/2026): só ADM (vínculo
@@ -96,6 +98,18 @@ export function PainelDaPizza() {
     }
   }
 
+  // O link do dashboard para a gestão (10/11/2026): sem login, com código secreto.
+  async function copiarLinkDaGestao() {
+    let link = '';
+    try {
+      link = linkDaGestao(await codigoDaGestao());
+      await navigator.clipboard.writeText(link);
+      toast.success('Link do dashboard para a gestão copiado.');
+    } catch {
+      if (link) toast.message(link); else toast.error('Não consegui buscar o link da gestão.');
+    }
+  }
+
   async function copiarLink() {
     try { await navigator.clipboard.writeText(LINK_DO_FORMULARIO); toast.success('Link do formulário copiado.'); }
     catch { toast.message(LINK_DO_FORMULARIO); }
@@ -117,6 +131,8 @@ export function PainelDaPizza() {
         <div className="flex flex-wrap gap-2">
           <Button variant="ghost" size="sm" onClick={copiarLink}>Copiar link do formulário</Button>
           <Button variant="outline" size="sm" onClick={carregar}>Atualizar</Button>
+          <Button variant="ghost" size="sm" onClick={copiarLinkDaGestao}><Link2 className="h-4 w-4" /> Copiar link da gestão</Button>
+          <Button variant="outline" size="sm" asChild><Link to="/pizza-da-alegria/painel/dashboard"><BarChart3 className="h-4 w-4" /> Dashboard</Link></Button>
           <Button size="sm" onClick={abrirPlanilha}><Sheet className="h-4 w-4" /> Abrir planilha</Button>
         </div>
       </div>

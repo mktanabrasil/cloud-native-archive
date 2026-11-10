@@ -92,6 +92,15 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
     imagemAlt: 'Natal Feliz 2026 da ANA Brasil, com apoio de NZT, JNI e INCC: crianças sorrindo com presentes',
   },
   {
+    // O dashboard da gestão (10/11/2026): link com código secreto.
+    arquivo: 'pizza-acompanhar.html',
+    regra: 'RewriteRule ^pizza-da-alegria/acompanhar/ /pizza-acompanhar.html [L]',
+    titulo: 'Pizza da Alegria · Acompanhamento',
+    descricao: 'Os pedidos da campanha, por unidade e por sabor, atualizados sozinhos.',
+    imagem: '/og-pizza-2.jpg',
+    imagemAlt: 'Pizza da Alegria 2026 da ANA Brasil: acompanhamento dos pedidos',
+  },
+  {
     // O painel ao vivo da gestão (21/10/2026): link com código secreto.
     arquivo: 'voluntariado-acompanhar.html',
     regra: 'RewriteRule ^voluntariado/(natalfeliz26/)?acompanhar/ /voluntariado-acompanhar.html [L]',
@@ -127,7 +136,7 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
   {
     // As páginas da equipe: pedem login e têm um cartão só.
     arquivo: 'app.html',
-    regra: 'RewriteRule ^(login|redefinir-senha|auth/confirm|visao-geral|calendario|usuarios|auditoria|design-manual|marketing|admin-toolbox|email-preview|pizza-da-alegria/painel)/?$ /app.html [L]',
+    regra: 'RewriteRule ^(login|redefinir-senha|auth/confirm|visao-geral|calendario|usuarios|auditoria|design-manual|marketing|admin-toolbox|email-preview|pizza-da-alegria/painel(/dashboard)?)/?$ /app.html [L]',
     titulo: 'ANA Brasil · Área da equipe',
     descricao: 'O app da ANA Brasil: eventos, jornal e comunicação das unidades. Entre com a sua conta.',
     imagem: '/og-app.jpg',
