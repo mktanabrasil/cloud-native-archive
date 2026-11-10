@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Download, Lock } from 'lucide-react';
+import { Lock, Sheet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useUserRole } from '@/hooks/useUserRole';
-import { baixarArquivo } from '@/lib/enquetes/planilha';
-import { linkDoComprovante, listarConfirmacoes, marcarRetirada, type Confirmacao } from '@/lib/pizza/api';
+import { linkDaPlanilha, linkDoComprovante, listarConfirmacoes, marcarRetirada, pedirCopiaParaODrive, type Confirmacao } from '@/lib/pizza/api';
 import { FORMAS, ROTULO_DA_AREA, SABORES, reais, resumoDosSabores, rotuloDaForma } from '@/lib/pizza/modelo';
-import { csvDasConfirmacoes, nomeDaPlanilha } from '@/lib/pizza/planilha';
 import { DriveDaPizza } from './DriveDaPizza';
 
 /**
@@ -78,8 +76,24 @@ export function PainelDaPizza() {
 
   async function retirar(c: Confirmacao, v: boolean) {
     setLista((l) => (l ?? []).map((x) => (x.id === c.id ? { ...x, retirada: v } : x)));
-    try { await marcarRetirada(c.id, v); }
-    catch { setLista((l) => (l ?? []).map((x) => (x.id === c.id ? { ...x, retirada: !v } : x))); toast.error('Não deu para marcar a retirada.'); }
+    try {
+      await marcarRetirada(c.id, v);
+      // A planilha do Drive acompanha a retirada (a função só reescreve se algo mudou).
+      pedirCopiaParaODrive();
+    } catch { setLista((l) => (l ?? []).map((x) => (x.id === c.id ? { ...x, retirada: !v } : x))); toast.error('Não deu para marcar a retirada.'); }
+  }
+
+  // Desde 10/11/2026 a planilha mora no Drive e se atualiza sozinha (no lugar do "Baixar planilha").
+  // A aba abre antes de esperar a função, senão o navegador bloqueia como pop-up.
+  async function abrirPlanilha() {
+    const aba = window.open('', '_blank');
+    try {
+      const url = await linkDaPlanilha();
+      if (aba) aba.location.href = url; else window.location.href = url;
+    } catch (e) {
+      aba?.close();
+      toast.error(`Não consegui abrir a planilha: ${e instanceof Error ? e.message : 'tente de novo'}.`);
+    }
   }
 
   async function copiarLink() {
@@ -103,7 +117,7 @@ export function PainelDaPizza() {
         <div className="flex flex-wrap gap-2">
           <Button variant="ghost" size="sm" onClick={copiarLink}>Copiar link do formulário</Button>
           <Button variant="outline" size="sm" onClick={carregar}>Atualizar</Button>
-          <Button size="sm" disabled={!vistas.length} onClick={() => baixarArquivo(csvDasConfirmacoes(vistas), nomeDaPlanilha(unidade))}><Download className="h-4 w-4" /> Baixar planilha</Button>
+          <Button size="sm" onClick={abrirPlanilha}><Sheet className="h-4 w-4" /> Abrir planilha</Button>
         </div>
       </div>
 

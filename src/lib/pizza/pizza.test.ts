@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { NEWS_UNITS } from '@/lib/news/units';
 import { UNIDADES_POR_AREA, areaDaUnidade, dataEHora, encerrado, formaDoMercadoPago, mensagemDoErro, problemaDoArquivo, problemaDoEnvio, reais, resumoDosSabores, totalDePizzas, valor } from './modelo';
-import { csvDasConfirmacoes, nomeDaPlanilha } from './planilha';
-import type { Confirmacao } from './api';
 
 const unidade = (id: string) => NEWS_UNITS.find((u) => u.id === id)!;
 
@@ -56,13 +54,5 @@ describe('Pizza da Alegria', () => {
     expect(problemaDoArquivo(new File([new Uint8Array(11 * 1024 * 1024)], 'c.jpg', { type: 'image/jpeg' }))).toMatch(/10 MB/);
     expect(mensagemDoErro(new Error('prazo_encerrado'))).toMatch(/30\/11/);
     expect(mensagemDoErro(new Error('comprovante_repetido'))).toMatch(/já foi enviado/);
-  });
-
-  it('planilha com uma coluna por sabor', () => {
-    const c: Confirmacao = { id: '1', numero: 'PZ-0001', nome: 'Maria Souza', unidade_id: 'ana-dic', unidade_nome: 'ANA DIC', area: 'social', sabores: { lombo: 2 }, quantidade: 2, total: 100, forma: 'pix', comprovante_caminho: 'envios/a.jpg', comprovante_nome: 'a.jpg', retirada: false, created_at: '2026-10-07T17:00:00Z' };
-    const linhas = csvDasConfirmacoes([c]).replace('\uFEFF', '').trim().split('\r\n');
-    expect(linhas[0]).toBe('Número;Quando;Nome;Unidade;Área;Marguerita;Frango;Calabresa fatiada;Muçarela;Lombo;Napolitana;Pizzas;Valor (R$);Pagamento;Comprovante;Retirada');
-    expect(linhas[1]).toMatch(/^PZ-0001;\d\d\/10\/2026 \d\d:\d\d;Maria Souza;ANA DIC;Social;0;0;0;0;2;0;2;100,00;Pix;sim;não$/);
-    expect(nomeDaPlanilha('ana-dic', new Date(2026, 9, 7))).toBe('pizza-da-alegria-ana-dic-07-10-2026.csv');
   });
 });
