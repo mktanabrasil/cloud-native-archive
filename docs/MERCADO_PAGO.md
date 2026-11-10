@@ -200,30 +200,45 @@ Já configurado no modo teste (09/11/2026):
 Se clicar no botão de girar a assinatura secreta, ela muda: atualize a
 `MP_WEBHOOK_SECRET` no Coolify e reinicie.
 
-### 5. O ambiente de teste do Mercado Pago não serve para cartão nem Pix
+### 5. Testar o cartão no ambiente de teste
 
-Tentado em 10/11/2026, com a página no computador (`VITE_PIZZA_PAGAR_ONLINE=sim`
-no `.env.local`, que não vai para o git, e `npm run dev`):
+Funcionou em 10/11/2026 (PZ-EJU8B, Mastercard de teste). O segredo é o
+**comprador de teste criado pela API**: as contas de comprador criadas pelo
+painel deixavam o botão Pagar desativado, e pagar como convidado dava "Você não
+pode pagar com um e-mail corporativo do Mercado Livre".
 
-- **Como convidado**, numa janela anônima, com qualquer e-mail: "Você não pode
-  pagar com um e-mail corporativo do Mercado Livre".
-- **Logado com a conta de comprador de teste**: o botão Pagar fica desativado,
-  com Mastercard, Visa e até com o saldo, mesmo com pedido novo e com os cookies
-  de terceiros liberados. Em 09/11 o saldo tinha passado (PZ-T52DN).
-- **Pix**: o Checkout Pro não tem Pix de teste. O Mercado Pago só testa Pix pela
-  API, numa order montada à mão.
+1. **Criar o comprador de teste** (uma vez; dica do assistente do Mercado Pago).
+   No PowerShell, com o Access Token de **teste** do app "ANA Brasil Campanhas":
+   ```powershell
+   $token = "<Access Token de teste>"
+   $headers = @{ Authorization = "Bearer $token" }
+   $body = @{ site_id = "MLB"; description = "Comprador de teste" } | ConvertTo-Json -Compress
+   Invoke-RestMethod -Method Post -Uri "https://api.mercadopago.com/users/test_user" -Headers $headers -ContentType "application/json" -Body $body
+   ```
+   A resposta traz o e-mail (`test_user_…@testuser.com`) e a senha do comprador.
+   Guarde-os num lugar seguro; não mande print com o token.
+2. **A página no computador**: `.env.local` com `VITE_PIZZA_PAGAR_ONLINE=sim` (não
+   vai para o git) e `npm run dev`. Abra `http://localhost:8080/pizza-da-alegria`
+   numa janela anônima.
+3. **O pedido**, com o nome `Teste Mercado Pago Apagar`: Pagar → popup → Confirmar
+   e pagar.
+4. **No Mercado Pago**, entre com o comprador do item 1 e pague com um cartão de
+   teste (titular `APRO` aprova, `OTHE` recusa; CPF `12345678909`).
+5. **"Voltar para …"** leva de volta ao localhost (o Mercado Pago só volta sozinho
+   para https). Confira: "Pagamento confirmado", o número, "Baixar comprovante" com
+   o nome, a forma ("Cartão de crédito Mastercard") e o código; a linha no painel
+   da Pizza; no Drive, o PDF de respostas e "PZ-XXXXX · comprovante.pdf".
 
-O nosso lado (criar o pedido, receber o aviso, aprovar, número, painel e Drive)
-já foi testado com o saldo, em 09/11. Cartão e Pix se testam em **produção**,
-com pedidos reais de R$ 55, depois devolvidos pelo painel do Mercado Pago (passo 6).
+**Pix** não tem teste no Checkout Pro (o Mercado Pago só testa Pix pela API, numa
+order montada à mão): testa-se em produção, no passo 6.
 
 Depois de qualquer teste, apague os pedidos no SQL Editor:
 ```sql
 delete from pizza_confirmacoes  where nome ilike 'teste mercado pago%';
 delete from pizza_pedidos_online where nome ilike 'teste mercado pago%';
 ```
-E apague a pasta "Teste Mercado Pago Apagar" no Drive (Pizza da Alegria 2026 /
-Social / Escritório (ADM)).
+E apague a pasta da pessoa de teste no Drive (Pizza da Alegria 2026 / Social /
+Escritório (ADM) / Teste Mercado Pago…).
 
 ### 6. Produção no Mercado Pago (numa sessão só, com quem recebe os códigos da conta)
 
