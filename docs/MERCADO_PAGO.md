@@ -282,8 +282,10 @@ Escritório (ADM) / Teste Mercado Pago…).
 
 ### 7. Ligar o pagamento online para todo mundo
 
-Em `src/lib/pizza/modelo.ts`, faça `pagarOnlineLigado` devolver `true`. Depois,
-faça o merge na `main`, que publica em um minuto. A partir daí, a página só
+Feito em 10/11/2026, depois do pedido real de teste (PZ-EF7S3, Pix, devolvido).
+Em `src/lib/pizza/modelo.ts`, `pagarOnlineLigado` passou a valer para todo mundo
+(só `VITE_PIZZA_PAGAR_ONLINE=nao` desliga, no computador de quem testa). Para
+desligar no site, volte a linha para `=== 'sim'` e faça o merge. A partir daí, a página só
 aceita pagamento online: some a confirmação com comprovante. As confirmações já
 enviadas continuam no painel.
 

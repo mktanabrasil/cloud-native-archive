@@ -38,8 +38,8 @@ const { PainelDaPizza } = await import('@/components/pizza/PainelDaPizza');
 beforeEach(() => {
   banco.enviados = []; banco.lista = []; banco.retiradas = []; banco.copias = 0; banco.drive = []; banco.online = []; banco.deNovo = []; banco.situacao = null; banco.comprovantes = [];
   banco.papel = { isMarketing: true, bondType: null, isActive: true, loading: false };
-  // Sem depender do .env.local de quem roda: o pagamento online começa desligado.
-  vi.stubEnv('VITE_PIZZA_PAGAR_ONLINE', '');
+  // Sem depender do .env.local de quem roda: nestes testes, o pagamento online começa desligado.
+  vi.stubEnv('VITE_PIZZA_PAGAR_ONLINE', 'nao');
 });
 
 const enviar = () => fireEvent.click(screen.getByRole('button', { name: 'Enviar confirmação' }));
@@ -105,8 +105,14 @@ describe('pagamento online (Mercado Pago)', () => {
     Object.defineProperty(window, 'location', { configurable: true, value: original });
   });
 
-  it('desligado, a página fica como antes', () => {
+  it('ligado sem nada no .env, como no site publicado', () => {
     vi.stubEnv('VITE_PIZZA_PAGAR_ONLINE', '');
+    render(<MemoryRouter><Confirmacao /></MemoryRouter>);
+    expect(screen.getByTestId('como-pagar')).toBeTruthy();
+  });
+
+  it('desligado, a página fica como antes', () => {
+    vi.stubEnv('VITE_PIZZA_PAGAR_ONLINE', 'nao');
     render(<MemoryRouter><Confirmacao /></MemoryRouter>);
     expect(screen.queryByTestId('como-pagar')).toBeNull();
     expect(screen.queryByRole('radio', { name: 'Mercado Pago' })).toBeNull();
