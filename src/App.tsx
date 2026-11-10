@@ -47,6 +47,7 @@ import FichaDoCandidatoPage from "./pages/FichaDoCandidatoPage";
 import PizzaConfirmacaoPage from "./pages/PizzaConfirmacaoPage";
 import PizzaPainelPage from "./pages/PizzaPainelPage";
 import { PizzaAcompanharPage, PizzaDashboardPage } from "./pages/PizzaDashboardPages";
+import PizzaRetiradaPage from "./pages/PizzaRetiradaPage";
 import VoluntariadoPage from "./pages/VoluntariadoPage";
 import VoluntariadoAoVivoPage, { AoVivoNoEnderecoNovo } from "./pages/VoluntariadoAoVivoPage";
 import { ROTAS_DO_CANDIDATO, ehCandidato } from "@/lib/vagas/conta";
@@ -157,6 +158,8 @@ const App = () => (
                 <Route path="/pizza-da-alegria" element={<PizzaConfirmacaoPage />} />
                 {/* O dashboard da gestão (10/11/2026): link com código secreto, sem login. */}
                 <Route path="/pizza-da-alegria/acompanhar/:codigo" element={<PizzaAcompanharPage />} />
+                {/* A retirada com leitor de QR Code (10/11/2026): tela cheia, confere o login ela mesma. */}
+                <Route path="/pizza-da-alegria/retirada" element={<PizzaRetiradaPage />} />
                 {/* Voluntariado do Natal Feliz (20/10/2026): inscrição pública dos funcionários. */}
                 <Route path="/voluntariado/natalfeliz26" element={<VoluntariadoPage />} />
                 {/* O primeiro link divulgado (/voluntariado) leva à campanha (21/10/2026). */}

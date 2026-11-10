@@ -2,6 +2,16 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import * as PDFLib from 'npm:pdf-lib@1.17.1';
 import { montarComprovante, montarPdf } from './pdf.ts';
 import { sincronizarPlanilha, linkDaPlanilha, type Auxiliares } from './planilha.ts';
+import qrcode from 'npm:qrcode-generator@1.4.4';
+
+/** O QR Code da retirada (10/11/2026): o mesmo endereço do comprovante em imagem (src/lib/pizza/qr.ts). */
+function matrizDoQr(numero: string): boolean[][] {
+  const qr = qrcode(0, 'M');
+  qr.addData(`https://app.anabrasil.org/pizza-da-alegria/retirada?n=${encodeURIComponent(numero)}`);
+  qr.make();
+  const n = qr.getModuleCount();
+  return Array.from({ length: n }, (_, r) => Array.from({ length: n }, (_, c) => qr.isDark(r, c)));
+}
 
 addEventListener('unhandledrejection', (e) => { console.error('[pizza-drive] promessa solta:', e.reason); e.preventDefault(); });
 addEventListener('error', (e) => { console.error('[pizza-drive] erro solto:', e.error); e.preventDefault(); });
@@ -221,7 +231,7 @@ async function copiarUma(admin: Admin, token: string, c: Conexao, linha: any, ca
       const pdf = await montarComprovante(PDFLib, {
         numero: linha.numero, nome: linha.nome, unidade: linha.unidade_nome, area: AREAS[linha.area] ?? linha.area,
         sabores, preco, forma: formaMp!, pagoEm: quando(linha.mp_aprovado_em ?? linha.created_at),
-        codigo: String(linha.mp_pagamento_id), retirada: RETIRADA,
+        codigo: String(linha.mp_pagamento_id), retirada: RETIRADA, qr: matrizDoQr(linha.numero),
       });
       await subir(token, pessoa, nomeComp, 'application/pdf', pdf);
     }

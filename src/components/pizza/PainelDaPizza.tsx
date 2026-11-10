@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BarChart3, Link2, Lock, Sheet } from 'lucide-react';
+import { BarChart3, Link2, Lock, ScanLine, Sheet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -134,6 +134,7 @@ export function PainelDaPizza() {
           <Button variant="ghost" size="sm" onClick={copiarLinkDaGestao}><Link2 className="h-4 w-4" /> Copiar link da gestão</Button>
           <Button variant="outline" size="sm" asChild><Link to="/pizza-da-alegria/painel/dashboard"><BarChart3 className="h-4 w-4" /> Dashboard</Link></Button>
           <Button size="sm" onClick={abrirPlanilha}><Sheet className="h-4 w-4" /> Abrir planilha</Button>
+          <Button size="sm" variant="outline" asChild><Link to="/pizza-da-alegria/retirada"><ScanLine className="h-4 w-4" /> Retirada com leitor</Link></Button>
         </div>
       </div>
 
