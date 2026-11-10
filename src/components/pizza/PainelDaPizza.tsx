@@ -98,7 +98,7 @@ export function PainelDaPizza() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[28px] font-bold leading-tight">Pizza da Alegria</h1>
-          <p className="text-sm text-muted-foreground">Confirmações de pagamento · até 30/11 · retirada 04/12</p>
+          <p className="text-sm text-muted-foreground">Confirmações de pagamento · até 30/11 · retirada 17/12, na Integração dos Funcionários</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="ghost" size="sm" onClick={copiarLink}>Copiar link do formulário</Button>

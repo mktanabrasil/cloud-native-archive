@@ -24,7 +24,7 @@ export interface DadosDoPdf {
   mercadoPago?: string | null;
   /** Pago online (10/11/2026): "Pix", "Cartão de crédito Visa"... */
   formaMp?: string | null;
-  retirada: string; // "Na unidade · sexta, 04/12/2026"
+  retirada: string; // "Integração dos Funcionários · quinta, 17/12/2026"
 }
 
 // deno-lint-ignore no-explicit-any
@@ -188,7 +188,8 @@ export async function montarPdf(lib: Lib, fontes: { regular: Uint8Array | null; 
   pg.drawRectangle({ x: M, y: y - altR, width: W - 2 * M, height: altR, color: C.marrom });
   texto('RETIRADA', M + 14, y - 17, { tam: 8, cor: C.creme, espaco: 1.2 });
   texto(d.retirada, M + 14, y - 34, { fonte: fb, tam: 12, cor: C.creme });
-  texto(corte(d.unidade, fb, 12, 220), W - M - 14, y - 27, { fonte: fb, tam: 12, cor: C.creme, direita: true });
+  // Desde 10/11/2026 a retirada é igual para todos: no lugar da unidade, o lembrete do comprovante.
+  texto('Apresentar o comprovante', W - M - 14, y - 27, { fonte: fb, tam: 11, cor: C.creme, direita: true });
 
   // Rodapé com o fio de cinco cores
   texto('Gerado automaticamente pelo app ANA Brasil · app.anabrasil.org', M, 22, { tam: 8, cor: C.rodape });
@@ -211,7 +212,7 @@ export interface DadosDoComprovante {
   forma: string; // "Pix", "Cartão de crédito Visa"
   pagoEm: string; // "10/11/2026 às 14:32"
   codigo: string; // id do pagamento no Mercado Pago
-  retirada: string; // "Na unidade · sexta, 04/12/2026"
+  retirada: string; // "quinta, 17/12/2026"
 }
 
 /**
@@ -304,7 +305,7 @@ export async function montarComprovante(lib: Lib, d: DadosDoComprovante): Promis
   const altR = 58;
   pg.drawRectangle({ x: M, y: y - altR, width: W - 2 * M, height: altR, color: C.creme });
   texto(`Retirada: ${d.retirada}`, M + 16, y - 22, { fonte: fb, tam: 12, cor: C.marrom });
-  texto(corte(`Na unidade ${d.unidade}. Basta mostrar este comprovante ou dizer o número.`, f, 10.5, W - 2 * M - 32), M + 16, y - 40, { tam: 10.5 });
+  texto('Na Integração dos Funcionários. Apresente este comprovante no dia.', M + 16, y - 40, { tam: 10.5 });
 
   // Rodapé com o fio de cinco cores
   texto('Pagamento confirmado pelo Mercado Pago · gerado pelo app ANA Brasil · app.anabrasil.org', M, 22, { tam: 8, cor: C.rodape });

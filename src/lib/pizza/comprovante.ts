@@ -22,7 +22,7 @@ export interface DadosDoComprovante {
   forma: string; // "Pix", "Cartão de crédito Visa"
   pagoEm: string; // "10/11/2026, 14:32"
   codigo: string; // id do pagamento no Mercado Pago
-  retirada: string; // "sexta, 04/12/2026"
+  retirada: string; // "quinta, 17/12/2026"
 }
 
 const COR = {
@@ -116,7 +116,7 @@ export async function desenharComprovante(d: DadosDoComprovante): Promise<Blob> 
   // Retirada
   y += 50;
   g.font = '400 28px Poppins';
-  const texto = quebrar(g, `Na sua unidade, ${d.unidade}. Mostre este comprovante ou diga o número.`, LARGURA - 2 * MARGEM - 64);
+  const texto = quebrar(g, 'Na Integração dos Funcionários. Apresente este comprovante no dia.', LARGURA - 2 * MARGEM - 64);
   const alturaRet = 100 + texto.length * 40;
   g.fillStyle = COR.creme; g.beginPath(); g.roundRect(MARGEM, y, LARGURA - 2 * MARGEM, alturaRet, 24); g.fill();
   g.fillStyle = COR.marrom; g.font = '700 32px Poppins'; g.fillText(`Retirada: ${d.retirada}`, MARGEM + 32, y + 62);
