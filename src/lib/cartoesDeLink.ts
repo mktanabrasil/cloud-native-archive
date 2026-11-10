@@ -73,8 +73,8 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
   {
     arquivo: 'pizza.html',
     regra: 'RewriteRule ^pizza-da-alegria/?$ /pizza.html [L]',
-    titulo: 'Pizza da Alegria · Confirmar pagamento',
-    descricao: 'Já pagou a sua pizza na unidade? Confirme aqui os sabores e anexe o comprovante.',
+    titulo: 'Pizza da Alegria · Pedir e pagar',
+    descricao: 'Peça a sua pizza e pague aqui, com Pix ou cartão. Retirada em 17/12, na Integração dos Funcionários.',
     imagem: '/og-pizza.jpg',
     imagemAlt: 'Pizza da Alegria, ANA Brasil: uma pizza para você, um Natal mais feliz para uma criança',
   },
