@@ -68,8 +68,9 @@ const FIO: Array<[number, number, string]> = [[0, 4, '#F5DFBB'], [4, 7, '#FBCE00
 function desenho(aba: number) {
   const faixa = (r0: number, r1: number, c0 = 0, c1 = N) => ({ sheetId: aba, startRowIndex: r0, endRowIndex: r1, startColumnIndex: c0, endColumnIndex: c1 });
   const corpo = (c0 = 0, c1 = N) => faixa(PRIMEIRA - 1, LINHAS_DA_GRADE, c0, c1);
-  const regra = (ranges: unknown[], condicao: unknown, fundo: string, texto: string, negrito = false) => ({
-    addConditionalFormatRule: { index: 0, rule: { ranges, booleanRule: { condition: condicao, format: { backgroundColor: rgb(fundo), textFormat: { foregroundColor: rgb(texto), bold: negrito } } } } },
+  // fundo null: a regra só muda o texto e o fundo da zebra continua.
+  const regra = (ranges: unknown[], condicao: unknown, fundo: string | null, texto: string, negrito = false) => ({
+    addConditionalFormatRule: { index: 0, rule: { ranges, booleanRule: { condition: condicao, format: { ...(fundo ? { backgroundColor: rgb(fundo) } : {}), textFormat: { foregroundColor: rgb(texto), bold: negrito } } } } },
   });
   const pedidos: unknown[] = [
     { updateSpreadsheetProperties: { properties: { title: NOME_DA_PLANILHA, locale: 'pt_BR', timeZone: 'America/Sao_Paulo', defaultFormat: { textFormat: { fontFamily: 'Poppins', fontSize: 10 } } }, fields: 'title,locale,timeZone,defaultFormat.textFormat' } },
@@ -102,13 +103,14 @@ function desenho(aba: number) {
     { setBasicFilter: { filter: { range: faixa(2, LINHAS_DA_GRADE) } } },
     // Só de leitura: o Sheets avisa antes de alguém editar a aba
     { addProtectedRange: { protectedRange: { range: { sheetId: aba }, description: 'Esta aba é reescrita pelo app a cada pedido e retirada. Edições aqui se perdem; crie uma aba nova para anotar.', warningOnly: true } } },
+    // Zebra pelas linhas alternadas do próprio Sheets, sem fórmula: a planilha é pt_BR e lá as
+    // fórmulas separam com ";" (a regra com AND(…,…) deu 400, 10/11/2026).
+    { addBanding: { bandedRange: { range: corpo(), rowProperties: { firstBandColorStyle: { rgbColor: rgb(C.branco) }, secondBandColorStyle: { rgbColor: rgb(C.zebra) } } } } },
   ];
   // Regras condicionais (a de índice 0 vale primeiro: a última adicionada fica no topo).
   pedidos.push(
-    regra([corpo()], { type: 'CUSTOM_FORMULA', values: [{ userEnteredValue: `=AND($A${PRIMEIRA}<>"",$A${PRIMEIRA}<>"Total",ISEVEN(ROW()))` }] }, C.zebra, C.tinta),
-    // O zero dos sabores fica apagado, sem perder a zebra (só a primeira regra que bate vale em cada célula).
-    regra([corpo(5, 11)], { type: 'CUSTOM_FORMULA', values: [{ userEnteredValue: `=AND($A${PRIMEIRA}<>"",$A${PRIMEIRA}<>"Total",F${PRIMEIRA}=0,ISODD(ROW()))` }] }, C.branco, C.apagado),
-    regra([corpo(5, 11)], { type: 'CUSTOM_FORMULA', values: [{ userEnteredValue: `=AND($A${PRIMEIRA}<>"",$A${PRIMEIRA}<>"Total",F${PRIMEIRA}=0,ISEVEN(ROW()))` }] }, C.zebra, C.apagado),
+    // O zero dos sabores fica apagado; só a cor do texto muda, a zebra continua.
+    regra([corpo(5, 11)], { type: 'NUMBER_EQ', values: [{ userEnteredValue: '0' }] }, null, C.apagado),
     regra([corpo(COL.pagamento, COL.pagamento + 1)], { type: 'TEXT_STARTS_WITH', values: [{ userEnteredValue: 'Na unidade' }] }, C.unidBg, C.unidTx),
     regra([corpo(COL.pagamento, COL.pagamento + 1)], { type: 'TEXT_STARTS_WITH', values: [{ userEnteredValue: 'Cartão' }] }, C.cartaoBg, C.cartaoTx),
     regra([corpo(COL.pagamento, COL.pagamento + 1)], { type: 'TEXT_STARTS_WITH', values: [{ userEnteredValue: 'Pix' }] }, C.pixBg, C.pixTx),
