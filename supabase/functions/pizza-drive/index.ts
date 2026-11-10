@@ -49,6 +49,8 @@ const POR_VEZ = 4;
 const SABORES: Record<string, string> = { marguerita: 'Marguerita', frango: 'Frango', calabresa: 'Calabresa fatiada', mucarela: 'Muçarela', lombo: 'Lombo', napolitana: 'Napolitana' };
 const FORMAS: Record<string, string> = { pix: 'Pix', credito: 'Crédito', debito: 'Débito', dinheiro: 'Dinheiro', pluxee: 'Vale Pluxee', mercado_pago: 'Mercado Pago' };
 const AREAS: Record<string, string> = { educacao: 'Educação', social: 'Social' };
+/** A retirada (10/11/2026): na Integração dos Funcionários, com o comprovante. A mesma data está em src/lib/pizza/modelo.ts. */
+const RETIRADA = 'quinta, 17/12/2026';
 
 /** A mesma regra de formaDoMercadoPago (src/lib/pizza/modelo.ts): "Pix", "Cartão de crédito Visa"... */
 const BANDEIRAS: Record<string, string> = { visa: 'Visa', master: 'Mastercard', elo: 'Elo', amex: 'American Express', hipercard: 'Hipercard', cabal: 'Cabal' };
@@ -213,7 +215,7 @@ async function copiarUma(admin: Admin, token: string, c: Conexao, linha: any, ca
       const pdf = await montarComprovante(PDFLib, {
         numero: linha.numero, nome: linha.nome, unidade: linha.unidade_nome, area: AREAS[linha.area] ?? linha.area,
         sabores, preco, forma: formaMp!, pagoEm: quando(linha.mp_aprovado_em ?? linha.created_at),
-        codigo: String(linha.mp_pagamento_id), retirada: 'sexta, 04/12/2026',
+        codigo: String(linha.mp_pagamento_id), retirada: RETIRADA,
       });
       await subir(token, pessoa, nomeComp, 'application/pdf', pdf);
     }
@@ -226,7 +228,7 @@ async function copiarUma(admin: Admin, token: string, c: Conexao, linha: any, ca
     const pdf = await montarPdf(PDFLib, SEM_FONTE_EXTRA, {
       numero: linha.numero, quando: quando(linha.created_at), nome: linha.nome, unidade: linha.unidade_nome,
       area: AREAS[linha.area] ?? linha.area, sabores, preco, forma: FORMAS[linha.forma] ?? linha.forma,
-      dinheiro: linha.forma === 'dinheiro', comprovante, mercadoPago: linha.mp_pagamento_id ?? null, formaMp, retirada: 'Na unidade · sexta, 04/12/2026',
+      dinheiro: linha.forma === 'dinheiro', comprovante, mercadoPago: linha.mp_pagamento_id ?? null, formaMp, retirada: `Integração dos Funcionários · ${RETIRADA}`,
     });
     const existente = await procurar(token, c.drive_id, pessoa, nomePdf, false);
     if (existente) await substituir(token, existente, 'application/pdf', pdf);

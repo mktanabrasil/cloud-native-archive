@@ -6,7 +6,7 @@ import InstitutionalFooterBar from '@/components/news/InstitutionalFooterBar';
 import { enviarConfirmacao, pagarDeNovo, pagarOnline, pedirCopiaParaODrive, situacaoDoPedido, type SituacaoOnline } from '@/lib/pizza/api';
 import { salvarComprovante, type DadosDoComprovante } from '@/lib/pizza/comprovante';
 import {
-  FORMAS, FORMAS_NA_UNIDADE, PRECO, RETIRADA, ROTULO_DA_AREA, SABORES, UNIDADES_POR_AREA, comprovanteObrigatorio, dataEHora, encerrado, formaDoMercadoPago, mensagemDoErro,
+  FORMAS, FORMAS_NA_UNIDADE, PRECO, RETIRADA, RETIRADA_AVISO, RETIRADA_COMPLETA, RETIRADA_LOCAL, ROTULO_DA_AREA, SABORES, UNIDADES_POR_AREA, comprovanteObrigatorio, dataEHora, encerrado, formaDoMercadoPago, mensagemDoErro,
   pagarOnlineLigado, problemaDoArquivo, problemaDoEnvio, reais, resumoDosSabores, totalDePizzas, unidadeDaPizza, valor,
   type Forma, type Quantidades, type Sabor,
 } from '@/lib/pizza/modelo';
@@ -163,7 +163,7 @@ function ConferirPedido({ nome, unidade, itens, total, enviando, erro, aoPagar, 
         style={{ background: COR.fundo, color: COR.tinta }}>
         <h2 id="conferir-titulo" className="text-lg font-bold">Confira o seu pedido</h2>
         <dl className="grid gap-1.5 text-sm">
-          {[['Nome', nome.trim()], ['Unidade', unidade], ['Retirada', `${RETIRADA[0].toUpperCase() + RETIRADA.slice(1)}, na unidade`]].map(([r, v]) => (
+          {[['Nome', nome.trim()], ['Unidade', unidade], ['Retirada', RETIRADA_COMPLETA]].map(([r, v]) => (
             <div key={r} className="flex justify-between gap-3"><dt style={{ color: COR.mut }}>{r}</dt><dd className="text-right font-semibold">{v}</dd></div>
           ))}
         </dl>
@@ -262,7 +262,7 @@ export default function PizzaConfirmacaoPage() {
         <img src="/pizza-da-alegria-faixa.webp" alt="Pizza da Alegria, ANA Brasil" className="block aspect-[1793/877] w-full object-cover" />
         <div className="flex flex-col gap-0.5 px-5 py-3.5 text-white" style={{ background: COR.vermelho }}>
           <b className="text-sm uppercase tracking-[0.06em]">{feito ? 'Pizza da Alegria' : online ? 'Pedir e pagar' : 'Confirmar pagamento'}</b>
-          <span className="text-[13px] opacity-90">{feito ? 'Obrigado por participar!' : online ? 'Peça e pague aqui, com Pix ou cartão · até 30/11 · retirada 04/12' : 'Já pagou na unidade? Confirme aqui · até 30/11 · retirada 04/12'}</span>
+          <span className="text-[13px] opacity-90">{feito ? 'Obrigado por participar!' : online ? 'Peça e pague aqui, com Pix ou cartão · até 30/11 · retirada 17/12' : 'Já pagou na unidade? Confirme aqui · até 30/11 · retirada 17/12'}</span>
         </div>
 
         {!feito && pedidoDeVolta ? (
@@ -273,12 +273,12 @@ export default function PizzaConfirmacaoPage() {
               <span className="grid h-16 w-16 place-items-center rounded-[20px] text-white" style={{ background: COR.verde }}><Check className="h-9 w-9" strokeWidth={2.6} /></span>
               <h1 className="text-xl font-bold">{feito.comprovante ? 'Pagamento confirmado' : 'Confirmação enviada'}</h1>
               <b className="text-3xl font-extrabold tracking-wide" style={{ color: COR.vermelhoEsc }} data-testid="numero">{feito.numero}</b>
-              {!feito.comprovante && <span className="text-sm" style={{ color: COR.mut }}>Tire um print desta tela.</span>}
+              {!feito.comprovante && <span className="text-sm" style={{ color: COR.mut }}>Tire um print desta tela e apresente na retirada.</span>}
             </div>
             <dl className="grid gap-2 rounded-2xl border-[1.5px] bg-white p-4 text-sm" style={{ borderColor: COR.linha }} data-testid="resumo">
               {(feito.comprovante
-                ? [['Pizzas', feito.resumo], ['Total', reais(feito.total)], ['Pagamento', `${feito.forma} · ${feito.comprovante.pagoEm}`], ['Retirada', `${RETIRADA}, ${feito.unidade}`]]
-                : [['Unidade', feito.unidade], ['Pizzas', feito.resumo], ['Total', `${reais(feito.total)} · ${feito.forma}`], ['Retirada', `${RETIRADA}, na unidade`]]
+                ? [['Pizzas', feito.resumo], ['Total', reais(feito.total)], ['Pagamento', `${feito.forma} · ${feito.comprovante.pagoEm}`], ['Retirada', RETIRADA_COMPLETA]]
+                : [['Unidade', feito.unidade], ['Pizzas', feito.resumo], ['Total', `${reais(feito.total)} · ${feito.forma}`], ['Retirada', RETIRADA_COMPLETA]]
               ).map(([r, v]) => (
                 <div key={r} className="flex justify-between gap-3"><dt style={{ color: COR.mut }}>{r}</dt><dd className="text-right font-semibold">{v}</dd></div>
               ))}
@@ -289,14 +289,14 @@ export default function PizzaConfirmacaoPage() {
                 <button type="button" onClick={baixar} disabled={baixando} className="flex h-14 items-center justify-center gap-2 rounded-2xl text-base font-bold text-white disabled:opacity-60" style={{ background: COR.verde }}>
                   <Download className="h-5 w-5" /> {baixando ? 'Gerando…' : 'Baixar comprovante'}
                 </button>
-                <small className="text-center text-xs" style={{ color: COR.mut }}>Uma imagem com o número, o pedido e o pagamento</small>
+                <small className="text-center text-xs" style={{ color: COR.mut }} data-testid="aviso-retirada">Uma imagem com o número, o pedido e o pagamento. {RETIRADA_AVISO}</small>
               </div>
             )}
           </div>
         ) : fechado ? (
           <div className="flex flex-col gap-3 px-5 py-10 text-center">
             <h1 className="text-xl font-bold">As confirmações foram encerradas em 30/11.</h1>
-            <p style={{ color: COR.mut }}>A retirada é na sua unidade, na {RETIRADA}.</p>
+            <p style={{ color: COR.mut }}>A retirada é na {RETIRADA_LOCAL}, {RETIRADA}. {RETIRADA_AVISO}</p>
           </div>
         ) : (
           <form className="flex flex-col gap-7 px-5 py-6" onSubmit={(e) => { e.preventDefault(); enviar(); }} noValidate aria-label="Confirmar pagamento">
@@ -314,13 +314,12 @@ export default function PizzaConfirmacaoPage() {
                   ))}
                 </select>
               </label>
-              {u && (
-                <div className="flex flex-col gap-1 rounded-2xl p-4" style={{ background: COR.marrom, color: COR.creme }} data-testid="retirada">
-                  <small className="text-[10.5px] uppercase tracking-[0.1em] opacity-80">Retirada</small>
-                  <b className="text-lg leading-tight">Na sua unidade: {u.name}</b>
-                  <span className="text-[13px] opacity-90">{RETIRADA[0].toUpperCase() + RETIRADA.slice(1)}</span>
-                </div>
-              )}
+              {/* Desde 10/11/2026 a retirada é na Integração dos Funcionários, igual para todas as unidades. */}
+              <div className="flex flex-col gap-1 rounded-2xl p-4" style={{ background: COR.marrom, color: COR.creme }} data-testid="retirada">
+                <small className="text-[10.5px] uppercase tracking-[0.1em] opacity-80">Retirada</small>
+                <b className="text-lg leading-tight">Na {RETIRADA_LOCAL}</b>
+                <span className="text-[13px] opacity-90">{RETIRADA[0].toUpperCase() + RETIRADA.slice(1)} · {RETIRADA_AVISO}</span>
+              </div>
             </Secao>
 
             <Secao n={2} titulo={online ? 'Sabores e quantidade' : 'Confirme os sabores de cada pizza'}>

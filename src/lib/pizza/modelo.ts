@@ -12,7 +12,16 @@ import { ACTIVE_NEWS_UNITS, findNewsUnit, type NewsUnit } from '@/lib/news/units
 /** R$ 55 desde 09/11/2026 (era R$ 50). O banco calcula o mesmo valor em `confirmar_pizza`. */
 export const PRECO = 55;
 export const PRAZO = new Date('2026-12-01T00:00:00-03:00');
-export const RETIRADA = 'sexta, 04/12/2026';
+/**
+ * A retirada (mudou em 10/11/2026): não é mais na unidade, e sim na
+ * Integração dos Funcionários, em 17/12/2026, apresentando o comprovante.
+ * Era "sexta, 04/12/2026, na unidade". A mesma data está na função pizza-drive.
+ */
+export const RETIRADA = 'quinta, 17/12/2026';
+export const RETIRADA_LOCAL = 'Integração dos Funcionários';
+/** "Quinta, 17/12/2026, na Integração dos Funcionários" */
+export const RETIRADA_COMPLETA = `${RETIRADA[0].toUpperCase() + RETIRADA.slice(1)}, na ${RETIRADA_LOCAL}`;
+export const RETIRADA_AVISO = 'Apresente o comprovante no dia da retirada.';
 
 export const SABORES = [
   ['marguerita', 'Marguerita'],

@@ -50,7 +50,7 @@ describe('formulário de confirmação', () => {
     expect(screen.getByRole('heading', { name: /Quem é você/ })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Nome completo'), { target: { value: 'maria aparecida souza' } });
     fireEvent.change(screen.getByLabelText('Unidade em que você trabalha'), { target: { value: 'cei-anisio-spinola' } });
-    expect(screen.getByTestId('retirada')).toHaveTextContent('Na sua unidade: CEI Bem Querer Prof. Anísio Spínola');
+    expect(screen.getByTestId('retirada')).toHaveTextContent('Na Integração dos FuncionáriosQuinta, 17/12/2026 · Apresente o comprovante no dia da retirada.');
 
     fireEvent.click(screen.getByRole('button', { name: 'Mais Marguerita' }));
     fireEvent.click(screen.getByRole('button', { name: 'Mais Calabresa fatiada' }));
@@ -136,6 +136,7 @@ describe('pagamento online (Mercado Pago)', () => {
     const popup = screen.getByRole('dialog', { name: 'Confira o seu pedido' });
     expect(popup).toHaveTextContent('maria souza');
     expect(popup).toHaveTextContent('ANA DIC');
+    expect(popup).toHaveTextContent('Quinta, 17/12/2026, na Integração dos Funcionários');
     expect(within(popup).getByTestId('itens-do-pedido').textContent?.replace(/\s/g, ' ')).toBe('2 × MargueritaR$ 110,001 × LomboR$ 55,00Total · 3 pizzasR$ 165,00');
     fireEvent.click(within(popup).getByRole('button', { name: 'Corrigir o pedido' }));
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -172,12 +173,14 @@ describe('pagamento online (Mercado Pago)', () => {
     expect(screen.getByTestId('numero')).toHaveTextContent('PZ-K7M2Q');
     expect(screen.getByTestId('resumo')).toHaveTextContent('Cartão de crédito Visa · 10/11/2026, 14:32');
     expect(screen.queryByText(/Tire um print/)).toBeNull();
+    expect(screen.getByTestId('resumo')).toHaveTextContent('Quinta, 17/12/2026, na Integração dos Funcionários');
+    expect(screen.getByTestId('aviso-retirada')).toHaveTextContent('Apresente o comprovante no dia da retirada.');
     expect(banco.copias).toBe(1);
     fireEvent.click(screen.getByRole('button', { name: /Baixar comprovante/ }));
     await vi.waitFor(() => expect(banco.comprovantes).toHaveLength(1));
     expect(banco.comprovantes[0]).toMatchObject({
       numero: 'PZ-K7M2Q', nome: 'Maria Souza', unidade: 'ANA DIC', itens: [{ sabor: 'Lombo', qtd: 2 }], preco: 55, total: 110,
-      forma: 'Cartão de crédito Visa', pagoEm: '10/11/2026, 14:32', codigo: 'PAY01ABC',
+      forma: 'Cartão de crédito Visa', pagoEm: '10/11/2026, 14:32', codigo: 'PAY01ABC', retirada: 'quinta, 17/12/2026',
     });
   });
 
