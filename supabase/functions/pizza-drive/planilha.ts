@@ -73,7 +73,9 @@ function desenho(aba: number) {
   });
   const pedidos: unknown[] = [
     { updateSpreadsheetProperties: { properties: { title: NOME_DA_PLANILHA, locale: 'pt_BR', timeZone: 'America/Sao_Paulo', defaultFormat: { textFormat: { fontFamily: 'Poppins', fontSize: 10 } } }, fields: 'title,locale,timeZone,defaultFormat.textFormat' } },
-    { updateSheetProperties: { properties: { sheetId: aba, title: ABA, tabColorStyle: { rgbColor: rgb(C.vermelho) }, gridProperties: { rowCount: LINHAS_DA_GRADE, columnCount: N, frozenRowCount: 3, frozenColumnCount: 1 } }, fields: 'title,tabColorStyle,gridProperties(rowCount,columnCount,frozenRowCount,frozenColumnCount)' } },
+    // Só as 3 linhas do topo ficam presas. Coluna presa não dá: o Sheets não junta o título (A1:Q1)
+    // atravessando coluna presa e solta (erro 400 no mergeCells, 10/11/2026).
+    { updateSheetProperties: { properties: { sheetId: aba, title: ABA, tabColorStyle: { rgbColor: rgb(C.vermelho) }, gridProperties: { rowCount: LINHAS_DA_GRADE, columnCount: N, frozenRowCount: 3, frozenColumnCount: 0 } }, fields: 'title,tabColorStyle,gridProperties(rowCount,columnCount,frozenRowCount,frozenColumnCount)' } },
     // Larguras e alturas
     ...LARGURAS.map((px, i) => ({ updateDimensionProperties: { range: { sheetId: aba, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 }, properties: { pixelSize: px }, fields: 'pixelSize' } })),
     { updateDimensionProperties: { range: { sheetId: aba, dimension: 'ROWS', startIndex: 0, endIndex: 1 }, properties: { pixelSize: 48 }, fields: 'pixelSize' } },
