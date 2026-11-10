@@ -12,8 +12,10 @@ import { desenharQr, linkDaRetirada } from './qr';
  * No celular abre o menu de compartilhar, que salva na galeria; no computador,
  * ou onde não houver o menu, baixa o arquivo (como no Voluntariado).
  *
- * Desde 10/11/2026 o quadro da retirada traz um QR Code com o número do pedido,
- * que a equipe lê na Integração dos Funcionários para dar baixa (qr.ts).
+ * Desde 10/11/2026 traz um QR Code com o número do pedido, que a equipe lê na
+ * Integração dos Funcionários para dar baixa (qr.ts). No mesmo dia virou
+ * 1080 × 1920, a proporção do celular, com o QR Code grande no centro (mockup:
+ * https://claude.ai/artifact/9SBAvUhduZ9fr21iGGJUuq).
  */
 
 export interface DadosDoComprovante {
@@ -36,6 +38,8 @@ const COR = {
 };
 const FIO = ['#F5DFBB', '#FBCE00', '#F37964', '#81E2CF', '#01ADFF'];
 const LARGURA = 1080;
+/** A proporção da tela do celular (9:16): a imagem abre ocupando a tela, sem faixas. */
+const ALTURA_MINIMA = 1920;
 const MARGEM = 72;
 
 const reais = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -53,104 +57,97 @@ function quebrar(g: CanvasRenderingContext2D, txt: string, max: number): string[
 }
 
 export async function desenharComprovante(d: DadosDoComprovante): Promise<Blob> {
-  await Promise.all(['400 26px Poppins', '600 30px Poppins', '700 30px Poppins', '800 56px Poppins'].map((f) => document.fonts?.load(f).catch(() => null)));
+  await Promise.all(['400 30px Poppins', '600 30px Poppins', '700 30px Poppins', '800 60px Poppins'].map((f) => document.fonts?.load(f).catch(() => null)));
   const rascunho = document.createElement('canvas');
-  rascunho.width = LARGURA; rascunho.height = 3000;
+  rascunho.width = LARGURA; rascunho.height = 3200;
   const g = rascunho.getContext('2d')!;
   g.fillStyle = COR.fundo; g.fillRect(0, 0, LARGURA, rascunho.height);
   const direita = LARGURA - MARGEM;
+  const centro = (t: string, y: number) => g.fillText(t, (LARGURA - g.measureText(t).width) / 2, y);
 
   // Topo vermelho
-  const topo = 250;
+  const topo = 230;
   g.fillStyle = COR.vermelho; g.fillRect(0, 0, LARGURA, topo);
   g.fillStyle = COR.branco;
-  g.font = '600 24px Poppins'; g.fillText('ANA BRASIL  ·  PIZZA DA ALEGRIA', MARGEM, 78);
-  g.font = '800 56px Poppins'; g.fillText('Comprovante de pagamento', MARGEM, 152);
-  g.font = '400 26px Poppins'; g.globalAlpha = 0.92; g.fillText('Campanha 2026 · compras até 30/11', MARGEM, 200); g.globalAlpha = 1;
+  g.font = '600 26px Poppins'; g.fillText('ANA BRASIL  ·  PIZZA DA ALEGRIA', MARGEM, 84);
+  g.font = '800 60px Poppins'; g.fillText('Comprovante de pagamento', MARGEM, 162);
 
-  // Número e selo "Pago"
-  let y = topo + 100;
-  g.fillStyle = COR.vermelhoEsc; g.font = '800 64px Poppins'; g.fillText(d.numero, MARGEM, y);
-  g.font = '700 26px Poppins';
-  const larguraSelo = g.measureText('PAGO').width + 48;
-  g.fillStyle = COR.seloBg; g.beginPath(); g.roundRect(direita - larguraSelo, y - 46, larguraSelo, 54, 27); g.fill();
-  g.fillStyle = COR.seloTx; g.fillText('PAGO', direita - larguraSelo + 24, y - 10);
-  y += 36;
-  g.fillStyle = COR.linha; g.fillRect(MARGEM, y, LARGURA - 2 * MARGEM, 3);
+  // O QR Code no centro, grande: é ele que a equipe lê na retirada
+  let y = topo + 60;
+  const ladoQr = 680, folga = 24;
+  const xCartao = (LARGURA - ladoQr - 2 * folga) / 2;
+  g.fillStyle = COR.branco; g.strokeStyle = COR.linha; g.lineWidth = 4;
+  g.beginPath(); g.roundRect(xCartao, y, ladoQr + 2 * folga, ladoQr + 2 * folga, 36); g.fill(); g.stroke();
+  desenharQr(g, linkDaRetirada(d.numero), xCartao + folga, y + folga, ladoQr, COR.tinta);
+  y += ladoQr + 2 * folga + 104;
 
-  // Rótulo à esquerda, valor à direita (quebra em linhas, alinhadas à direita)
+  // O número e o selo "Pago", centralizados
+  g.font = '800 84px Poppins';
+  const larguraNum = g.measureText(d.numero).width;
+  g.font = '700 30px Poppins';
+  const larguraSelo = g.measureText('PAGO').width + 52;
+  const xNum = (LARGURA - (larguraNum + 28 + larguraSelo)) / 2;
+  g.fillStyle = COR.vermelhoEsc; g.font = '800 84px Poppins'; g.fillText(d.numero, xNum, y);
+  const xSelo = xNum + larguraNum + 28;
+  g.fillStyle = COR.seloBg; g.beginPath(); g.roundRect(xSelo, y - 52, larguraSelo, 60, 30); g.fill();
+  g.fillStyle = COR.seloTx; g.font = '700 30px Poppins'; g.fillText('PAGO', xSelo + 26, y - 11);
+  y += 56;
+
+  // A faixa da retirada
+  const alturaFaixa = 156;
+  g.fillStyle = COR.marrom; g.beginPath(); g.roundRect(MARGEM, y, LARGURA - 2 * MARGEM, alturaFaixa, 28); g.fill();
+  g.fillStyle = COR.creme; g.font = '700 38px Poppins'; centro('Mostre este QR Code na retirada', y + 66);
+  g.font = '400 30px Poppins'; g.globalAlpha = 0.92;
+  centro(`${d.retirada[0].toUpperCase() + d.retirada.slice(1)} · Integração dos Funcionários`, y + 116); g.globalAlpha = 1;
+  y += alturaFaixa + 24;
+
+  // Os dados, menores: rótulo à esquerda, valor à direita
   const linha = (rotulo: string, valor: string, fonte = '600 30px Poppins') => {
-    y += 58;
+    y += 52;
     g.fillStyle = COR.mut; g.font = '400 28px Poppins'; g.fillText(rotulo, MARGEM, y);
     g.fillStyle = COR.tinta; g.font = fonte;
-    const max = LARGURA - 2 * MARGEM - 280;
-    const partes = quebrar(g, valor, max);
-    partes.forEach((p, i) => g.fillText(p, direita - g.measureText(p).width, y + i * 42));
-    y += (partes.length - 1) * 42;
+    const partes = quebrar(g, valor, LARGURA - 2 * MARGEM - 260);
+    partes.forEach((p, i) => g.fillText(p, direita - g.measureText(p).width, y + i * 40));
+    y += (partes.length - 1) * 40;
   };
   linha('Nome', d.nome);
   linha('Unidade', d.unidade);
 
-  // Os sabores, num quadro branco
-  y += 44;
-  const alturaItem = 62;
-  const alturaQuadro = (d.itens.length + 1) * alturaItem + 24;
+  y += 30;
+  const alturaItem = 54;
+  const alturaQuadro = (d.itens.length + 1) * alturaItem + 20;
   g.fillStyle = COR.branco; g.strokeStyle = COR.linha; g.lineWidth = 3;
-  g.beginPath(); g.roundRect(MARGEM, y, LARGURA - 2 * MARGEM, alturaQuadro, 24); g.fill(); g.stroke();
-  let yi = y + 12;
-  const dentro = MARGEM + 32, dentroDir = direita - 32;
+  g.beginPath(); g.roundRect(MARGEM, y, LARGURA - 2 * MARGEM, alturaQuadro, 22); g.fill(); g.stroke();
+  let yi = y + 10;
+  const dentro = MARGEM + 28, dentroDir = direita - 28;
   for (const it of d.itens) {
     yi += alturaItem;
-    g.fillStyle = COR.tinta; g.font = '400 30px Poppins'; g.fillText(`${it.qtd} × ${it.sabor}`, dentro, yi - 20);
-    const v = reais(it.qtd * d.preco); g.fillText(v, dentroDir - g.measureText(v).width, yi - 20);
+    g.fillStyle = COR.tinta; g.font = '400 28px Poppins'; g.fillText(`${it.qtd} × ${it.sabor}`, dentro, yi - 18);
+    const v = reais(it.qtd * d.preco); g.fillText(v, dentroDir - g.measureText(v).width, yi - 18);
     g.setLineDash([8, 8]); g.strokeStyle = COR.linha; g.lineWidth = 2;
     g.beginPath(); g.moveTo(dentro, yi); g.lineTo(dentroDir, yi); g.stroke(); g.setLineDash([]);
   }
   yi += alturaItem;
   const pizzas = d.itens.reduce((a, it) => a + it.qtd, 0);
-  g.fillStyle = COR.tinta; g.font = '700 32px Poppins';
-  g.fillText(`Total · ${pizzas} ${pizzas === 1 ? 'pizza' : 'pizzas'}`, dentro, yi - 20);
-  const t = reais(d.total); g.fillText(t, dentroDir - g.measureText(t).width, yi - 20);
-  y += alturaQuadro + 10;
+  g.fillStyle = COR.tinta; g.font = '700 30px Poppins';
+  g.fillText(`Total · ${pizzas} ${pizzas === 1 ? 'pizza' : 'pizzas'}`, dentro, yi - 18);
+  const t = reais(d.total); g.fillText(t, dentroDir - g.measureText(t).width, yi - 18);
+  y += alturaQuadro + 6;
 
-  // O pagamento
-  linha('Forma', d.forma);
-  linha('Pago em', d.pagoEm);
-  linha('Código da operação', d.codigo, '600 26px Poppins');
+  linha('Pagamento', `${d.forma} · ${d.pagoEm}`);
+  linha('Código da operação', d.codigo, '600 24px Poppins');
+  y += 64;
+  g.fillStyle = COR.mut; g.font = '400 22px Poppins'; centro('Pagamento confirmado pelo Mercado Pago · app.anabrasil.org', y);
+  y += 36;
 
-  // Retirada: o texto à esquerda, o QR Code à direita (com o número embaixo, para digitar se o leitor falhar)
-  y += 50;
-  const ladoQr = 236;
-  const larguraTexto = LARGURA - 2 * MARGEM - 64 - ladoQr - 32;
-  g.font = '700 32px Poppins';
-  const titulo = quebrar(g, `Retirada: ${d.retirada}`, larguraTexto);
-  g.font = '400 28px Poppins';
-  const texto = quebrar(g, 'Na Integração dos Funcionários. Apresente este QR Code no dia.', larguraTexto);
-  const alturaTexto = 40 + titulo.length * 44 + texto.length * 40;
-  const alturaRet = Math.max(alturaTexto + 32, ladoQr + 92);
-  g.fillStyle = COR.creme; g.beginPath(); g.roundRect(MARGEM, y, LARGURA - 2 * MARGEM, alturaRet, 24); g.fill();
-  const yTexto = y + (alturaRet - alturaTexto) / 2 + 30;
-  g.fillStyle = COR.marrom; g.font = '700 32px Poppins';
-  titulo.forEach((p, i) => g.fillText(p, MARGEM + 32, yTexto + 18 + i * 44));
-  g.fillStyle = COR.tinta; g.font = '400 28px Poppins';
-  texto.forEach((p, i) => g.fillText(p, MARGEM + 32, yTexto + 18 + titulo.length * 44 + 8 + i * 40));
-  const xQr = direita - 32 - ladoQr;
-  const yQr = y + 24;
-  g.fillStyle = COR.branco; g.beginPath(); g.roundRect(xQr - 8, yQr - 8, ladoQr + 16, ladoQr + 16, 16); g.fill();
-  desenharQr(g, linkDaRetirada(d.numero), xQr, yQr, ladoQr, COR.tinta);
-  g.fillStyle = COR.marrom; g.font = '700 26px Poppins';
-  const larguraNum = g.measureText(d.numero).width;
-  g.fillText(d.numero, xQr + (ladoQr - larguraNum) / 2, yQr + ladoQr + 46);
-  y += alturaRet + 56;
-  g.fillStyle = COR.mut; g.font = '400 22px Poppins'; g.fillText('Pagamento confirmado pelo Mercado Pago · app.anabrasil.org', MARGEM, y);
-  y += 44;
-
-  // O fio de cinco cores
+  // Pelo menos a altura da tela do celular (1080 × 1920); cresce se o pedido for longo.
+  const altura = Math.max(ALTURA_MINIMA, y + 16);
   const final = document.createElement('canvas');
-  final.width = LARGURA; final.height = y + 16;
+  final.width = LARGURA; final.height = altura;
   const f = final.getContext('2d')!;
+  f.fillStyle = COR.fundo; f.fillRect(0, 0, LARGURA, altura);
   f.drawImage(rascunho, 0, 0);
-  FIO.forEach((c, i) => { f.fillStyle = c; f.fillRect((LARGURA / 5) * i, y, LARGURA / 5 + 1, 16); });
+  FIO.forEach((c, i) => { f.fillStyle = c; f.fillRect((LARGURA / 5) * i, altura - 16, LARGURA / 5 + 1, 16); });
   return new Promise((ok, falha) => final.toBlob((b) => (b ? ok(b) : falha(new Error('comprovante_vazio'))), 'image/jpeg', 0.9));
 }
 
