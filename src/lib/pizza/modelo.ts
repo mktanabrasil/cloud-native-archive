@@ -48,11 +48,12 @@ export type Forma = (typeof FORMAS)[number][0];
 export const FORMAS_NA_UNIDADE = FORMAS.filter(([k]) => k !== 'mercado_pago');
 
 /**
- * Pagar online pelo Mercado Pago (Checkout Pro). Fica desligado até a função
- * `pizza-pagamento` e os segredos estarem no ar: um merge na main publica em
- * um minuto. Para testar no computador: VITE_PIZZA_PAGAR_ONLINE=sim no .env.local.
+ * Pagar online pelo Mercado Pago (Checkout Pro). LIGADO desde 10/11/2026, depois
+ * do pedido real de teste em produção (PZ-EF7S3, Pix). Para ver no computador a
+ * página antiga (confirmação com comprovante): VITE_PIZZA_PAGAR_ONLINE=nao no
+ * .env.local. Desligar para todo mundo = voltar esta linha para `=== 'sim'`.
  */
-export const pagarOnlineLigado = () => import.meta.env.VITE_PIZZA_PAGAR_ONLINE === 'sim';
+export const pagarOnlineLigado = () => import.meta.env.VITE_PIZZA_PAGAR_ONLINE !== 'nao';
 
 export type Area = 'educacao' | 'social';
 export const ROTULO_DA_AREA: Record<Area, string> = { educacao: 'Educação', social: 'Social' };
