@@ -1505,6 +1505,24 @@ export type Database = {
         }
         Relationships: []
       }
+      pizza_config: {
+        Row: {
+          atualizado_em: string
+          codigo_acompanhamento: string
+          id: number
+        }
+        Insert: {
+          atualizado_em?: string
+          codigo_acompanhamento: string
+          id?: number
+        }
+        Update: {
+          atualizado_em?: string
+          codigo_acompanhamento?: string
+          id?: number
+        }
+        Relationships: []
+      }
       voluntariado_config: {
         Row: {
           atualizado_em: string
@@ -1534,6 +1552,14 @@ export type Database = {
       acompanhamento_do_voluntariado: {
         Args: { p_codigo: string }
         Returns: Json
+      }
+      dados_do_dashboard_da_pizza: {
+        Args: { p_codigo?: string | null }
+        Returns: Json
+      }
+      trocar_codigo_da_pizza: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       trocar_codigo_do_voluntariado: {
         Args: Record<PropertyKey, never>
