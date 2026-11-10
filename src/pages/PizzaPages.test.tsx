@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -8,6 +8,9 @@ const banco = vi.hoisted(() => ({
   retiradas: [] as Array<[string, boolean]>,
   copias: 0,
   drive: [] as Array<Record<string, unknown>>,
+  online: [] as Array<Record<string, unknown>>,
+  deNovo: [] as string[],
+  situacao: null as Record<string, unknown> | null,
   papel: { isMarketing: true, bondType: null as string | null, isActive: true, loading: false },
 }));
 
@@ -21,6 +24,9 @@ vi.mock('@/lib/pizza/api', () => ({
   marcarRetirada: async (id: string, v: boolean) => { banco.retiradas.push([id, v]); },
   linkDoComprovante: async () => 'https://x',
   pedirCopiaParaODrive: () => { banco.copias++; },
+  pagarOnline: async (d: Record<string, unknown>) => { banco.online.push(d); return { pedido: 'p1', link: 'https://www.mercadopago.com.br/checkout/v1/redirect?order_id=ORD1' }; },
+  pagarDeNovo: async (p: string) => { banco.deNovo.push(p); return { pedido: p, link: 'https://www.mercadopago.com.br/checkout/v1/redirect?order_id=ORD2' }; },
+  situacaoDoPedido: async () => banco.situacao,
   chamarDrive: async (c: Record<string, unknown>) => { banco.drive.push(c); return c.estado ? { oauth_configurado: true, pode_conectar: banco.papel.isMarketing, conexao: null, pendentes: 2, com_erro: 0 } : { url: 'https://accounts.google.com/x' }; },
 }));
 
@@ -28,8 +34,10 @@ const { default: Confirmacao } = await import('./PizzaConfirmacaoPage');
 const { PainelDaPizza } = await import('@/components/pizza/PainelDaPizza');
 
 beforeEach(() => {
-  banco.enviados = []; banco.lista = []; banco.retiradas = []; banco.copias = 0; banco.drive = [];
+  banco.enviados = []; banco.lista = []; banco.retiradas = []; banco.copias = 0; banco.drive = []; banco.online = []; banco.deNovo = []; banco.situacao = null;
   banco.papel = { isMarketing: true, bondType: null, isActive: true, loading: false };
+  // Sem depender do .env.local de quem roda: o pagamento online começa desligado.
+  vi.stubEnv('VITE_PIZZA_PAGAR_ONLINE', '');
 });
 
 const enviar = () => fireEvent.click(screen.getByRole('button', { name: 'Enviar confirmação' }));
@@ -78,6 +86,61 @@ describe('formulário de confirmação', () => {
     expect(screen.queryByText(/chave pix/i)).toBeNull();
     expect(screen.queryByText(/enviar pagamento/i)).toBeNull();
     expect(screen.getByText('Confirmar pagamento')).toBeInTheDocument();
+  });
+});
+
+describe('pagamento online (Mercado Pago)', () => {
+  const PEDIDO = '0b9f3a2e-6f43-4c1e-9d55-2a7f8c1b0d11';
+  const assign = vi.fn();
+  const original = window.location;
+  beforeEach(() => {
+    vi.stubEnv('VITE_PIZZA_PAGAR_ONLINE', 'sim');
+    assign.mockReset();
+    Object.defineProperty(window, 'location', { configurable: true, value: { ...original, origin: 'https://app.anabrasil.org', assign } });
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    Object.defineProperty(window, 'location', { configurable: true, value: original });
+  });
+
+  it('desligado, a página fica como antes', () => {
+    vi.stubEnv('VITE_PIZZA_PAGAR_ONLINE', '');
+    render(<MemoryRouter><Confirmacao /></MemoryRouter>);
+    expect(screen.queryByTestId('como-pagar')).toBeNull();
+    expect(screen.queryByRole('radio', { name: 'Mercado Pago' })).toBeNull();
+    expect(screen.getByRole('radio', { name: 'Pix' })).toBeInTheDocument();
+  });
+
+  it('ligado, só se paga pelo Mercado Pago: sem pagar na unidade e sem comprovante', async () => {
+    render(<MemoryRouter><Confirmacao /></MemoryRouter>);
+    expect(screen.getByTestId('como-pagar')).toHaveTextContent('Pix ou cartão, pelo Mercado Pago');
+    expect(screen.queryByText(/na unidade\?/i)).toBeNull();
+    expect(screen.queryByRole('radiogroup', { name: 'Forma de pagamento' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: /Comprovante/ })).toBeNull();
+    fireEvent.change(screen.getByLabelText('Nome completo'), { target: { value: 'maria souza' } });
+    fireEvent.change(screen.getByLabelText('Unidade em que você trabalha'), { target: { value: 'ana-dic' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Mais Lombo' }));
+    fireEvent.click(screen.getByRole('button', { name: /Pagar R\$\s55,00 pelo Mercado Pago/ }));
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('https://www.mercadopago.com.br/checkout/v1/redirect?order_id=ORD1'));
+    expect(banco.online[0]).toMatchObject({ nome: 'maria souza', unidadeId: 'ana-dic', quantidades: { lombo: 1 } });
+    expect(banco.enviados).toHaveLength(0);
+  });
+
+  it('a volta aprovada mostra o número', async () => {
+    banco.situacao = { pedido: PEDIDO, status: 'aprovado', numero: 'PZ-K7M2Q', unidade: 'ANA DIC', unidade_id: 'ana-dic', sabores: { lombo: 2 }, quantidade: 2, total: 110, detalhe: 'accredited' };
+    render(<MemoryRouter initialEntries={[`/pizza-da-alegria?pedido=${PEDIDO}`]}><Confirmacao /></MemoryRouter>);
+    expect(await screen.findByRole('heading', { name: 'Confirmação enviada' })).toBeInTheDocument();
+    expect(screen.getByTestId('numero')).toHaveTextContent('PZ-K7M2Q');
+    expect(screen.getByText(/Mercado Pago/)).toBeInTheDocument();
+    expect(banco.copias).toBe(1);
+  });
+
+  it('a volta recusada oferece tentar de novo', async () => {
+    banco.situacao = { pedido: PEDIDO, status: 'recusado', numero: null, unidade: 'ANA DIC', unidade_id: 'ana-dic', sabores: { lombo: 1 }, quantidade: 1, total: 55, detalhe: 'rejected_by_issuer' };
+    render(<MemoryRouter initialEntries={[`/pizza-da-alegria?pedido=${PEDIDO}`]}><Confirmacao /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: /Tentar de novo/ }));
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('https://www.mercadopago.com.br/checkout/v1/redirect?order_id=ORD2'));
+    expect(banco.deNovo).toEqual([PEDIDO]);
   });
 });
 

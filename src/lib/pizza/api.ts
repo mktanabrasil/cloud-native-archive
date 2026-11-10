@@ -50,6 +50,52 @@ export async function enviarConfirmacao(d: { nome: string; unidadeId: string; qu
   return String(data);
 }
 
+// --- Pagamento online (Mercado Pago, 09/11/2026) ---------------------------------------------
+
+/** Chama a função `pizza-pagamento` e devolve o erro dela (prazo_encerrado etc.). */
+async function chamarPagamento<T>(corpo: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('pizza-pagamento', { body: corpo });
+  if (error) {
+    const ctx = (error as { context?: Response }).context;
+    const msg = ctx && typeof ctx.json === 'function' ? (await ctx.json().catch(() => null))?.error : null;
+    throw new Error(msg || error.message);
+  }
+  return data as T;
+}
+
+/** Reserva o pedido e devolve o endereço do Mercado Pago para pagar. */
+export async function pagarOnline(d: { nome: string; unidadeId: string; quantidades: Quantidades }): Promise<{ pedido: string; link: string }> {
+  const unidade = unidadeDaPizza(d.unidadeId);
+  if (!unidade) throw new Error('unidade_invalida');
+  return chamarPagamento({
+    acao: 'criar',
+    nome: comMaiusculas(d.nome, { pessoa: true }),
+    unidadeId: unidade.id,
+    unidadeNome: unidade.name,
+    area: areaDaUnidade(unidade),
+    sabores: Object.fromEntries(Object.entries(d.quantidades).filter(([, n]) => (n ?? 0) > 0)),
+    origem: window.location.origin,
+  });
+}
+
+/** Novo link de pagamento para um pedido recusado ou que expirou. */
+export const pagarDeNovo = (pedido: string) =>
+  chamarPagamento<{ pedido: string; link: string }>({ acao: 'pagar', pedido, origem: window.location.origin });
+
+export interface SituacaoOnline {
+  pedido: string;
+  status: 'pendente' | 'aprovado' | 'recusado' | 'cancelado' | 'estornado';
+  detalhe: string | null;
+  numero: string | null;
+  unidade_id: string;
+  unidade: string;
+  sabores: Record<string, number>;
+  quantidade: number;
+  total: number;
+}
+
+export const situacaoDoPedido = (pedido: string) => chamarPagamento<SituacaoOnline>({ acao: 'situacao', pedido });
+
 export async function listarConfirmacoes(): Promise<Confirmacao[]> {
   const { data, error } = await supabase.from('pizza_confirmacoes')
     .select('id, numero, nome, unidade_id, unidade_nome, area, sabores, quantidade, total, forma, comprovante_caminho, comprovante_nome, retirada, created_at')

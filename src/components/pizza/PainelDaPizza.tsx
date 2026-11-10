@@ -165,7 +165,7 @@ export function PainelDaPizza() {
                 <span className="order-6 col-span-2 lg:order-none lg:col-span-1">{resumoDosSabores(c.sabores)}</span>
                 <span className="order-4 text-right font-semibold tabular-nums lg:order-none lg:font-normal">{reais(c.total)}</span>
                 <span className="order-7 text-muted-foreground lg:order-none">{rotuloDaForma(c.forma)}</span>
-                <span className="order-8 text-right lg:order-none lg:text-left">{c.comprovante_caminho ? <button type="button" className="font-semibold text-[hsl(var(--sel))] hover:underline" onClick={() => ver(c)}>ver</button> : <span className="text-xs text-muted-foreground">sem anexo</span>}</span>
+                <span className="order-8 text-right lg:order-none lg:text-left">{c.comprovante_caminho ? <button type="button" className="font-semibold text-[hsl(var(--sel))] hover:underline" onClick={() => ver(c)}>ver</button> : <span className="text-xs text-muted-foreground">{c.forma === 'mercado_pago' ? 'pago online' : 'sem anexo'}</span>}</span>
                 <span className="order-2 lg:order-none">
                   <label className="flex min-h-11 cursor-pointer items-center justify-end gap-2 lg:min-h-0 lg:justify-start"><Checkbox checked={c.retirada} onCheckedChange={(v) => retirar(c, v === true)} aria-label={`Retirada ${c.numero}`} /> <span className={c.retirada ? 'text-[13px] font-semibold text-success' : 'text-[13px] text-muted-foreground lg:hidden'}>{c.retirada ? 'retirada' : 'a retirar'}</span></label>
                 </span>

@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.eventos-aviso]
 verify_jwt = false
+
+[functions.pizza-pagamento]
+verify_jwt = false

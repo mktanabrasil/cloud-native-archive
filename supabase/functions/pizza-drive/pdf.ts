@@ -20,6 +20,8 @@ export interface DadosDoPdf {
   forma: string; // "Pix"
   dinheiro: boolean;
   comprovante: { nome: string; tamanho: string; tipo: 'jpg' | 'png' | 'pdf' | 'outro'; bytes?: Uint8Array } | null;
+  /** Pago online: o número do pagamento no Mercado Pago, no lugar do comprovante. */
+  mercadoPago?: string | null;
   retirada: string; // "Na unidade · sexta, 04/12/2026"
 }
 
@@ -169,6 +171,9 @@ export async function montarPdf(lib: Lib, fontes: { regular: Uint8Array | null; 
     texto(corte(`${d.numero} · comprovante`, fb, 11, W - M - tx - 12), tx, y - 50, { fonte: fb, tam: 11 });
     texto(corte(`Anexado pela pessoa · ${d.comprovante.tamanho}`, f, 10, W - M - tx - 12), tx, y - 66, { tam: 10, cor: C.mut });
     texto('Na mesma pasta deste arquivo.', tx, y - 80, { tam: 10, cor: C.mut });
+  } else if (d.mercadoPago) {
+    texto('Pago pelo Mercado Pago', tx, y - 58, { fonte: fb, tam: 11 });
+    texto(corte(`Pagamento ${d.mercadoPago}`, f, 10, W - M - tx - 12), tx, y - 74, { tam: 10, cor: C.mut });
   } else {
     texto('Sem comprovante', tx, y - 58, { fonte: fb, tam: 11 });
     texto('No dinheiro o anexo é opcional.', tx, y - 74, { tam: 10, cor: C.mut });

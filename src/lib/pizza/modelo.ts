@@ -24,14 +24,26 @@ export const SABORES = [
 ] as const;
 export type Sabor = (typeof SABORES)[number][0];
 
+/** Todas as formas, para o painel e a conciliação. 'mercado_pago' é o pagamento online (09/11/2026). */
 export const FORMAS = [
   ['pix', 'Pix'],
   ['credito', 'Crédito'],
   ['debito', 'Débito'],
   ['dinheiro', 'Dinheiro'],
   ['pluxee', 'Vale Pluxee'],
+  ['mercado_pago', 'Mercado Pago'],
 ] as const;
 export type Forma = (typeof FORMAS)[number][0];
+
+/** As formas de quem pagou na unidade e confirma com comprovante. */
+export const FORMAS_NA_UNIDADE = FORMAS.filter(([k]) => k !== 'mercado_pago');
+
+/**
+ * Pagar online pelo Mercado Pago (Checkout Pro). Fica desligado até a função
+ * `pizza-pagamento` e os segredos estarem no ar: um merge na main publica em
+ * um minuto. Para testar no computador: VITE_PIZZA_PAGAR_ONLINE=sim no .env.local.
+ */
+export const pagarOnlineLigado = () => import.meta.env.VITE_PIZZA_PAGAR_ONLINE === 'sim';
 
 export type Area = 'educacao' | 'social';
 export const ROTULO_DA_AREA: Record<Area, string> = { educacao: 'Educação', social: 'Social' };
@@ -70,7 +82,7 @@ export const rotuloDaForma = (f: string) => FORMAS.find(([k]) => k === f)?.[1] ?
 export const resumoDosSabores = (q: Record<string, number>) =>
   SABORES.filter(([k]) => (q[k] ?? 0) > 0).map(([k, r]) => `${q[k]} ${r}`).join(' · ');
 
-export const comprovanteObrigatorio = (f: Forma | null) => f !== null && f !== 'dinheiro';
+export const comprovanteObrigatorio = (f: Forma | null) => f !== null && f !== 'dinheiro' && f !== 'mercado_pago';
 
 export const encerrado = (agora: Date = new Date()) => agora >= PRAZO;
 
@@ -102,5 +114,8 @@ export function mensagemDoErro(e: unknown): string {
   if (/comprovante_obrigatorio|comprovante_nao_encontrado/.test(t)) return 'O comprovante não chegou. Anexe de novo e envie.';
   if (/comprovante_repetido/.test(t)) return 'Este comprovante já foi enviado.';
   if (/nome_invalido/.test(t)) return 'Confira o seu nome.';
+  if (/pagamento_online_indisponivel/.test(t)) return 'O pagamento online não está disponível agora. Pague na unidade e confirme aqui.';
+  if (/ja_pago/.test(t)) return 'Este pedido já está pago.';
+  if (/falha_no_pagamento/.test(t)) return 'O Mercado Pago não respondeu. Tente de novo em alguns minutos.';
   return 'Não deu para enviar. Confira a internet e tente de novo.';
 }
