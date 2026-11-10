@@ -1,3 +1,5 @@
+import { desenharQr, linkDaRetirada } from './qr';
+
 /**
  * O comprovante do pagamento online da Pizza da Alegria (mockup aprovado em
  * 10/11/2026: https://claude.ai/artifact/YFLkrrZasjah83MbQnV3Ee), no lugar do
@@ -9,6 +11,9 @@
  *
  * No celular abre o menu de compartilhar, que salva na galeria; no computador,
  * ou onde não houver o menu, baixa o arquivo (como no Voluntariado).
+ *
+ * Desde 10/11/2026 o quadro da retirada traz um QR Code com o número do pedido,
+ * que a equipe lê na Integração dos Funcionários para dar baixa (qr.ts).
  */
 
 export interface DadosDoComprovante {
@@ -113,15 +118,29 @@ export async function desenharComprovante(d: DadosDoComprovante): Promise<Blob> 
   linha('Pago em', d.pagoEm);
   linha('Código da operação', d.codigo, '600 26px Poppins');
 
-  // Retirada
+  // Retirada: o texto à esquerda, o QR Code à direita (com o número embaixo, para digitar se o leitor falhar)
   y += 50;
+  const ladoQr = 236;
+  const larguraTexto = LARGURA - 2 * MARGEM - 64 - ladoQr - 32;
+  g.font = '700 32px Poppins';
+  const titulo = quebrar(g, `Retirada: ${d.retirada}`, larguraTexto);
   g.font = '400 28px Poppins';
-  const texto = quebrar(g, 'Na Integração dos Funcionários. Apresente este comprovante no dia.', LARGURA - 2 * MARGEM - 64);
-  const alturaRet = 100 + texto.length * 40;
+  const texto = quebrar(g, 'Na Integração dos Funcionários. Apresente este QR Code no dia.', larguraTexto);
+  const alturaTexto = 40 + titulo.length * 44 + texto.length * 40;
+  const alturaRet = Math.max(alturaTexto + 32, ladoQr + 92);
   g.fillStyle = COR.creme; g.beginPath(); g.roundRect(MARGEM, y, LARGURA - 2 * MARGEM, alturaRet, 24); g.fill();
-  g.fillStyle = COR.marrom; g.font = '700 32px Poppins'; g.fillText(`Retirada: ${d.retirada}`, MARGEM + 32, y + 62);
+  const yTexto = y + (alturaRet - alturaTexto) / 2 + 30;
+  g.fillStyle = COR.marrom; g.font = '700 32px Poppins';
+  titulo.forEach((p, i) => g.fillText(p, MARGEM + 32, yTexto + 18 + i * 44));
   g.fillStyle = COR.tinta; g.font = '400 28px Poppins';
-  texto.forEach((p, i) => g.fillText(p, MARGEM + 32, y + 108 + i * 40));
+  texto.forEach((p, i) => g.fillText(p, MARGEM + 32, yTexto + 18 + titulo.length * 44 + 8 + i * 40));
+  const xQr = direita - 32 - ladoQr;
+  const yQr = y + 24;
+  g.fillStyle = COR.branco; g.beginPath(); g.roundRect(xQr - 8, yQr - 8, ladoQr + 16, ladoQr + 16, 16); g.fill();
+  desenharQr(g, linkDaRetirada(d.numero), xQr, yQr, ladoQr, COR.tinta);
+  g.fillStyle = COR.marrom; g.font = '700 26px Poppins';
+  const larguraNum = g.measureText(d.numero).width;
+  g.fillText(d.numero, xQr + (ladoQr - larguraNum) / 2, yQr + ladoQr + 46);
   y += alturaRet + 56;
   g.fillStyle = COR.mut; g.font = '400 22px Poppins'; g.fillText('Pagamento confirmado pelo Mercado Pago · app.anabrasil.org', MARGEM, y);
   y += 44;

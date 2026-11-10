@@ -17,6 +17,8 @@ export interface Confirmacao {
   comprovante_caminho: string | null;
   comprovante_nome: string | null;
   retirada: boolean;
+  /** Quando deu baixa (para a busca por nome da tela de retirada). */
+  retirada_em?: string | null;
   created_at: string;
 }
 
@@ -102,7 +104,7 @@ export const situacaoDoPedido = (pedido: string) => chamarPagamento<SituacaoOnli
 
 export async function listarConfirmacoes(): Promise<Confirmacao[]> {
   const { data, error } = await supabase.from('pizza_confirmacoes')
-    .select('id, numero, nome, unidade_id, unidade_nome, area, sabores, quantidade, total, forma, comprovante_caminho, comprovante_nome, retirada, created_at')
+    .select('id, numero, nome, unidade_id, unidade_nome, area, sabores, quantidade, total, forma, comprovante_caminho, comprovante_nome, retirada, retirada_em, created_at')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data ?? []).map((l) => ({ ...l, total: Number(l.total), sabores: (l.sabores ?? {}) as Record<string, number> })) as Confirmacao[];

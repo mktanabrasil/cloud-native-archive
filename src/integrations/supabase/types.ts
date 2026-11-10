@@ -1561,6 +1561,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      registrar_retirada_pizza: {
+        Args: { p_numero: string }
+        Returns: Json
+      }
+      desfazer_retirada_pizza: {
+        Args: { p_numero: string }
+        Returns: undefined
+      }
       trocar_codigo_do_voluntariado: {
         Args: Record<PropertyKey, never>
         Returns: string

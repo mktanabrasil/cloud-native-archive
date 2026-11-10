@@ -213,6 +213,8 @@ export interface DadosDoComprovante {
   pagoEm: string; // "10/11/2026 às 14:32"
   codigo: string; // id do pagamento no Mercado Pago
   retirada: string; // "quinta, 17/12/2026"
+  /** O QR Code da retirada (10/11/2026): a matriz, true = quadradinho escuro. Feito em index.ts. */
+  qr?: boolean[][];
 }
 
 /**
@@ -301,11 +303,27 @@ export async function montarComprovante(lib: Lib, d: DadosDoComprovante): Promis
   linha('Código da operação', d.codigo, 10.5);
   y -= 14;
 
-  // Retirada
-  const altR = 58;
-  pg.drawRectangle({ x: M, y: y - altR, width: W - 2 * M, height: altR, color: C.creme });
-  texto(`Retirada: ${d.retirada}`, M + 16, y - 22, { fonte: fb, tam: 12, cor: C.marrom });
-  texto('Na Integração dos Funcionários. Apresente este comprovante no dia.', M + 16, y - 40, { tam: 10.5 });
+  // Retirada: o texto à esquerda e, desde 10/11/2026, o QR Code à direita, com o número embaixo
+  if (d.qr?.length) {
+    const lado = 92; // pt, com a margem branca de 4 módulos
+    const altR = lado + 40;
+    pg.drawRectangle({ x: M, y: y - altR, width: W - 2 * M, height: altR, color: C.creme });
+    texto(`Retirada: ${d.retirada}`, M + 16, y - altR / 2 + 10, { fonte: fb, tam: 12, cor: C.marrom });
+    texto('Na Integração dos Funcionários. Apresente este QR Code no dia.', M + 16, y - altR / 2 - 8, { tam: 10.5 });
+    const xQr = W - M - 16 - lado, yQr = y - 12 - lado; // canto de baixo à esquerda do QR
+    pg.drawRectangle({ x: xQr, y: yQr, width: lado, height: lado, color: C.branco });
+    const n = d.qr.length, passo = lado / (n + 8);
+    d.qr.forEach((linhaQr, r) => linhaQr.forEach((escuro, c) => {
+      if (escuro) pg.drawRectangle({ x: xQr + (c + 4) * passo, y: yQr + lado - (r + 5) * passo, width: passo + 0.05, height: passo + 0.05, color: C.tinta });
+    }));
+    const lnum = larg(fb, d.numero, 9);
+    texto(d.numero, xQr + (lado - lnum) / 2, yQr - 12, { fonte: fb, tam: 9, cor: C.marrom });
+  } else {
+    const altR = 58;
+    pg.drawRectangle({ x: M, y: y - altR, width: W - 2 * M, height: altR, color: C.creme });
+    texto(`Retirada: ${d.retirada}`, M + 16, y - 22, { fonte: fb, tam: 12, cor: C.marrom });
+    texto('Na Integração dos Funcionários. Apresente este comprovante no dia.', M + 16, y - 40, { tam: 10.5 });
+  }
 
   // Rodapé com o fio de cinco cores
   texto('Pagamento confirmado pelo Mercado Pago · gerado pelo app ANA Brasil · app.anabrasil.org', M, 22, { tam: 8, cor: C.rodape });
