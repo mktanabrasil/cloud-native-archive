@@ -5,6 +5,7 @@ import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import InstitutionalFooterBar from '@/components/news/InstitutionalFooterBar';
 import { enviarConfirmacao, pagarDeNovo, pagarOnline, pedirCopiaParaODrive, situacaoDoPedido, type SituacaoOnline } from '@/lib/pizza/api';
 import { salvarComprovante, type DadosDoComprovante } from '@/lib/pizza/comprovante';
+import { QrDaRetirada } from '@/components/pizza/QrDaRetirada';
 import {
   FORMAS, FORMAS_NA_UNIDADE, PRECO, RETIRADA, RETIRADA_AVISO, RETIRADA_COMPLETA, RETIRADA_LOCAL, ROTULO_DA_AREA, SABORES, UNIDADES_POR_AREA, comprovanteObrigatorio, dataEHora, encerrado, formaDoMercadoPago, mensagemDoErro,
   pagarOnlineLigado, problemaDoArquivo, problemaDoEnvio, reais, resumoDosSabores, totalDePizzas, unidadeDaPizza, valor,
@@ -275,6 +276,16 @@ export default function PizzaConfirmacaoPage() {
               <b className="text-3xl font-extrabold tracking-wide" style={{ color: COR.vermelhoEsc }} data-testid="numero">{feito.numero}</b>
               {!feito.comprovante && <span className="text-sm" style={{ color: COR.mut }}>Tire um print desta tela e apresente na retirada.</span>}
             </div>
+            {/* O QR Code da retirada também na tela (10/11/2026): dá para mostrar a própria tela no dia. */}
+            {feito.comprovante && (
+              <div className="flex flex-col items-center gap-2.5">
+                <div className="rounded-[22px] border-[1.5px] bg-white p-3" style={{ borderColor: COR.linha }}><QrDaRetirada numero={feito.numero} /></div>
+                <div className="w-full rounded-2xl px-4 py-2.5 text-center" style={{ background: COR.marrom, color: COR.creme }}>
+                  <b className="block text-[15px]">Mostre este QR Code na retirada</b>
+                  <span className="text-[13px] opacity-90">{RETIRADA_COMPLETA}</span>
+                </div>
+              </div>
+            )}
             <dl className="grid gap-2 rounded-2xl border-[1.5px] bg-white p-4 text-sm" style={{ borderColor: COR.linha }} data-testid="resumo">
               {(feito.comprovante
                 ? [['Pizzas', feito.resumo], ['Total', reais(feito.total)], ['Pagamento', `${feito.forma} · ${feito.comprovante.pagoEm}`], ['Retirada', RETIRADA_COMPLETA]]

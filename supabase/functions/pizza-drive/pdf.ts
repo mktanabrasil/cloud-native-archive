@@ -305,7 +305,7 @@ export async function montarComprovante(lib: Lib, d: DadosDoComprovante): Promis
 
   // Retirada: o texto à esquerda e, desde 10/11/2026, o QR Code à direita, com o número embaixo
   if (d.qr?.length) {
-    const lado = 92; // pt, com a margem branca de 4 módulos
+    const lado = 118; // pt (4,2 cm), com a margem branca de 4 módulos
     const altR = lado + 40;
     pg.drawRectangle({ x: M, y: y - altR, width: W - 2 * M, height: altR, color: C.creme });
     texto(`Retirada: ${d.retirada}`, M + 16, y - altR / 2 + 10, { fonte: fb, tam: 12, cor: C.marrom });
