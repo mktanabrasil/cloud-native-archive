@@ -124,6 +124,14 @@ export interface EstadoDoDrive {
   conexao: { google_email: string; pasta_link: string; conectado_por: string | null; conectado_em: string; erro: string | null } | null;
   pendentes: number;
   com_erro: number;
+  /** A planilha do Google (10/11/2026); null até a primeira escrita. */
+  planilha?: { link: string; atualizada_em: string | null; erro: string | null; pendente: boolean } | null;
+}
+
+/** O link da planilha "Pizza da Alegria 2026 · Pedidos". Na primeira vez, a função cria a planilha. */
+export async function linkDaPlanilha(): Promise<string> {
+  const r = await chamarDrive<{ link: string }>({ planilha: true });
+  return r.link;
 }
 
 /** Chama a função do Drive como a pessoa logada, com a mensagem de erro dela. */

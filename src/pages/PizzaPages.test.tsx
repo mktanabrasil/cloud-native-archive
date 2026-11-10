@@ -29,6 +29,7 @@ vi.mock('@/lib/pizza/api', () => ({
   pagarOnline: async (d: Record<string, unknown>) => { banco.online.push(d); return { pedido: 'p1', link: 'https://www.mercadopago.com.br/checkout/v1/redirect?order_id=ORD1' }; },
   pagarDeNovo: async (p: string) => { banco.deNovo.push(p); return { pedido: p, link: 'https://www.mercadopago.com.br/checkout/v1/redirect?order_id=ORD2' }; },
   situacaoDoPedido: async () => banco.situacao,
+  linkDaPlanilha: async () => { banco.drive.push({ planilha: true }); return 'https://docs.google.com/spreadsheets/d/PLAN1/edit'; },
   chamarDrive: async (c: Record<string, unknown>) => { banco.drive.push(c); return c.estado ? { oauth_configurado: true, pode_conectar: banco.papel.isMarketing, conexao: null, pendentes: 2, com_erro: 0 } : { url: 'https://accounts.google.com/x' }; },
 }));
 
@@ -224,6 +225,20 @@ describe('painel', () => {
 
     fireEvent.click(within(screen.getByTestId('confirmacao')).getByRole('checkbox', { name: 'Retirada PZ-0002' }));
     expect(banco.retiradas).toEqual([['1', true]]);
+    // A planilha do Drive acompanha a retirada.
+    await vi.waitFor(() => expect(banco.copias).toBe(1));
+  });
+
+  it('"Abrir planilha" abre a planilha do Drive numa aba nova (não baixa mais arquivo)', async () => {
+    const aba = { location: { href: '' }, close: vi.fn() };
+    const abrir = vi.spyOn(window, 'open').mockReturnValue(aba as unknown as Window);
+    render(<MemoryRouter><PainelDaPizza /></MemoryRouter>);
+    expect(screen.queryByRole('button', { name: /Baixar planilha/ })).toBeNull();
+    fireEvent.click(await screen.findByRole('button', { name: /Abrir planilha/ }));
+    expect(abrir).toHaveBeenCalledWith('', '_blank');
+    await vi.waitFor(() => expect(aba.location.href).toBe('https://docs.google.com/spreadsheets/d/PLAN1/edit'));
+    expect(banco.drive).toContainEqual({ planilha: true });
+    abrir.mockRestore();
   });
 
   it('o ADM (financeiro) entra; a gestora não', async () => {

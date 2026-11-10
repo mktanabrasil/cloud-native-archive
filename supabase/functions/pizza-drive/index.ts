@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import * as PDFLib from 'npm:pdf-lib@1.17.1';
 import { montarComprovante, montarPdf } from './pdf.ts';
+import { sincronizarPlanilha, linkDaPlanilha, type Auxiliares } from './planilha.ts';
 
 addEventListener('unhandledrejection', (e) => { console.error('[pizza-drive] promessa solta:', e.reason); e.preventDefault(); });
 addEventListener('error', (e) => { console.error('[pizza-drive] erro solto:', e.error); e.preventDefault(); });
@@ -27,7 +28,10 @@ addEventListener('error', (e) => { console.error('[pizza-drive] erro solto:', e.
  * repassa ao painel). A chave de renovação fica em `pizza_drive_conexao`,
  * que só a chave de serviço lê.
  *
- * Arquivos desta função: index.ts e pdf.ts (o desenho do PDF).
+ * Desde 10/11/2026 também mantém a planilha "Pizza da Alegria 2026 · Pedidos"
+ * (planilha.ts), só de leitura, reescrita depois de cada mudança.
+ *
+ * Arquivos desta função: index.ts, pdf.ts (o desenho do PDF) e planilha.ts.
  */
 
 const cors = {
@@ -65,6 +69,8 @@ function formaDoMercadoPago(tipo: string | null | undefined, bandeira: string | 
 
 // deno-lint-ignore no-explicit-any
 type Admin = any;
+
+const AUX: Auxiliares = { sabores: SABORES, formas: FORMAS, areas: AREAS, formaDoMercadoPago };
 
 interface Conexao { refresh_token: string; google_email: string; drive_id: string; pasta_id: string; conectado_por: string | null; conectado_em: string; erro: string | null }
 
@@ -266,6 +272,18 @@ async function copiarPendentes(admin: Admin): Promise<{ copiadas: number; falhar
   return { copiadas, falharam, pendentes: count ?? 0 };
 }
 
+/** A planilha, depois da cópia: só escreve se algo mudou (ou se forcar). Nunca derruba a resposta. */
+async function atualizarPlanilha(admin: Admin, forcar = false) {
+  try {
+    const { data: c } = await admin.from('pizza_drive_conexao').select('*').eq('id', 1).maybeSingle();
+    if (!c) return { escrita: false, motivo: 'Drive não conectado' };
+    const token = await tokenDaConexao(admin, c as Conexao);
+    return await sincronizarPlanilha(admin, token, (c as Conexao).pasta_id, AUX, forcar);
+  } catch (e) {
+    return { escrita: false, motivo: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 // --- Entrada ------------------------------------------------------------------------------
 
 Deno.serve(async (req) => {
@@ -280,11 +298,16 @@ Deno.serve(async (req) => {
   let corpo: any = {};
   try { corpo = await req.json(); } catch { /* vazio = copiar pendentes */ }
 
-  const pedeEquipe = corpo.estado || corpo.oauth_url || corpo.oauth_code || corpo.desconectar || corpo.sincronizar;
+  const pedeEquipe = corpo.estado || corpo.oauth_url || corpo.oauth_code || corpo.desconectar || corpo.sincronizar || corpo.planilha;
   if (!pedeEquipe) {
-    // O formulário público: só copia o que estiver pendente.
-    try { return json(await copiarPendentes(admin)); }
-    catch (e) { return json({ error: e instanceof Error ? e.message : String(e) }, 500); }
+    // O formulário público (e o painel, depois de marcar uma retirada): copia o
+    // que estiver pendente e reescreve a planilha se algo mudou. Não devolve
+    // dado de ninguém.
+    let copia: unknown;
+    try { copia = await copiarPendentes(admin); }
+    catch (e) { copia = { error: e instanceof Error ? e.message : String(e) }; }
+    const planilha = await atualizarPlanilha(admin);
+    return json({ ...(copia as object), planilha: { escrita: planilha.escrita } });
   }
 
   // Daqui para baixo, só a equipe do painel.
@@ -302,7 +325,9 @@ Deno.serve(async (req) => {
       const { data: c } = await admin.from('pizza_drive_conexao').select('google_email, drive_id, pasta_id, conectado_por, conectado_em, erro').eq('id', 1).maybeSingle();
       const { count: pendentes } = await admin.from('pizza_confirmacoes').select('id', { count: 'exact', head: true }).is('drive_copiado_em', null);
       const { count: comErro } = await admin.from('pizza_confirmacoes').select('id', { count: 'exact', head: true }).is('drive_copiado_em', null).not('drive_erro', 'is', null);
+      const { data: pl } = await admin.from('pizza_planilha').select('planilha_id, atualizada_em, erro, pendente').eq('id', 1).maybeSingle();
       return json({
+        planilha: pl?.planilha_id ? { link: linkDaPlanilha(pl.planilha_id), atualizada_em: pl.atualizada_em, erro: pl.erro, pendente: pl.pendente } : null,
         oauth_configurado: !!OAUTH_CLIENT_ID && !!OAUTH_CLIENT_SECRET,
         pode_conectar: !!ehComunicacao,
         conexao: c ? { google_email: c.google_email, pasta_link: `https://drive.google.com/drive/folders/${c.pasta_id}`, conectado_por: c.conectado_por, conectado_em: c.conectado_em, erro: c.erro } : null,
@@ -310,7 +335,17 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (corpo.sincronizar) return json(await copiarPendentes(admin));
+    if (corpo.sincronizar) {
+      const copia = await copiarPendentes(admin);
+      return json({ ...copia, planilha: await atualizarPlanilha(admin) });
+    }
+
+    // "Abrir planilha": cria na primeira vez e devolve o link (qualquer pessoa do painel).
+    if (corpo.planilha) {
+      const r = await atualizarPlanilha(admin, !!corpo.forcar);
+      if (!r.link) return json({ error: r.motivo ?? 'A planilha ainda não existe.' }, 400);
+      return json(r);
+    }
 
     if (!ehComunicacao) return json({ error: 'Conectar o Drive é da comunicação.' }, 403);
     if (!OAUTH_CLIENT_ID || !OAUTH_CLIENT_SECRET) return json({ error: 'GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET não estão no servidor.' }, 500);
