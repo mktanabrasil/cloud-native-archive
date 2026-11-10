@@ -75,7 +75,8 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
     regra: 'RewriteRule ^pizza-da-alegria/?$ /pizza.html [L]',
     titulo: 'Pizza da Alegria · Pedir e pagar',
     descricao: 'Peça a sua pizza e pague aqui, com Pix ou cartão. Retirada em 17/12, na Integração dos Funcionários.',
-    imagem: '/og-pizza.jpg',
+    // og-pizza-2.jpg (10/11/2026): a mesma arte com 98 KB (era 204 KB) e nome novo; a prévia não carregava no WhatsApp.
+    imagem: '/og-pizza-2.jpg',
     imagemAlt: 'Pizza da Alegria, ANA Brasil: uma pizza para você, um Natal mais feliz para uma criança',
   },
   {
