@@ -42,10 +42,8 @@ const DRIVE_COMPARTILHADO_ID = '0APNkRBP8bmw_Uk9PVA';
 const PASTA_RAIZ = 'Pizza da Alegria 2026';
 // Poucas por chamada: o servidor encerra a função que passa do tempo (07/10/2026).
 const POR_VEZ = 4;
-const PRECO = 50;
-
 const SABORES: Record<string, string> = { marguerita: 'Marguerita', frango: 'Frango', calabresa: 'Calabresa fatiada', mucarela: 'Muçarela', lombo: 'Lombo', napolitana: 'Napolitana' };
-const FORMAS: Record<string, string> = { pix: 'Pix', credito: 'Crédito', debito: 'Débito', dinheiro: 'Dinheiro', pluxee: 'Vale Pluxee' };
+const FORMAS: Record<string, string> = { pix: 'Pix', credito: 'Crédito', debito: 'Débito', dinheiro: 'Dinheiro', pluxee: 'Vale Pluxee', mercado_pago: 'Mercado Pago' };
 const AREAS: Record<string, string> = { educacao: 'Educação', social: 'Social' };
 
 // deno-lint-ignore no-explicit-any
@@ -194,8 +192,9 @@ async function copiarUma(admin: Admin, token: string, c: Conexao, linha: any, ca
       .map(([k, q]) => ({ sabor: SABORES[k] ?? k, qtd: Number(q) }));
     const pdf = await montarPdf(PDFLib, SEM_FONTE_EXTRA, {
       numero: linha.numero, quando: quando(linha.created_at), nome: linha.nome, unidade: linha.unidade_nome,
-      area: AREAS[linha.area] ?? linha.area, sabores, preco: PRECO, forma: FORMAS[linha.forma] ?? linha.forma,
-      dinheiro: linha.forma === 'dinheiro', comprovante, retirada: 'Na unidade · sexta, 04/12/2026',
+      // O preço de cada linha sai do que foi gravado (R$ 50 até 09/11/2026, R$ 55 depois).
+      area: AREAS[linha.area] ?? linha.area, sabores, preco: Number(linha.total) / Number(linha.quantidade), forma: FORMAS[linha.forma] ?? linha.forma,
+      dinheiro: linha.forma === 'dinheiro', comprovante, mercadoPago: linha.mp_pagamento_id ?? null, retirada: 'Na unidade · sexta, 04/12/2026',
     });
     const existente = await procurar(token, c.drive_id, pessoa, nomePdf, false);
     if (existente) await substituir(token, existente, 'application/pdf', pdf);
