@@ -87,6 +87,10 @@ export interface SituacaoOnline {
   status: 'pendente' | 'aprovado' | 'recusado' | 'cancelado' | 'estornado';
   detalhe: string | null;
   numero: string | null;
+  /** Para o comprovante (10/11/2026). */
+  nome?: string;
+  /** Só depois da aprovação: lido da order no Mercado Pago pela função. */
+  pagamento?: { codigo: string | null; forma: string | null; bandeira: string | null; aprovado_em: string | null } | null;
   unidade_id: string;
   unidade: string;
   sabores: Record<string, number>;

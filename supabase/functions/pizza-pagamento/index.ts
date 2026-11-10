@@ -148,6 +148,13 @@ async function aplicarOrder(admin: Admin, o: Order): Promise<string | null> {
     const pago = Number(o.total_paid_amount ?? o.total_amount);
     const { data, error } = await admin.rpc('pizza_aprovar_online', { p_pedido: pedidoId, p_pagamento_id: pagamentoId, p_valor: pago });
     if (error) throw new Error(`aprovar ${pedidoId}: ${error.message}`);
+    // Para o comprovante (10/11/2026): a forma e a bandeira vêm da order; a hora
+    // é a primeira vez que o servidor viu a aprovação (o aviso chega mais de uma vez).
+    const metodo = pagamento?.payment_method ?? {};
+    const { error: e2 } = await admin.from('pizza_confirmacoes')
+      .update({ mp_forma: metodo.type ?? null, mp_bandeira: metodo.id ?? null, mp_aprovado_em: new Date().toISOString() })
+      .eq('mp_pagamento_id', pagamentoId).is('mp_aprovado_em', null);
+    if (e2) console.error('[pizza-pagamento] detalhes do pagamento', pedidoId, e2.message);
     return String(data);
   }
   const { data: atual } = await admin.from('pizza_pedidos_online').select('status').eq('id', pedidoId).maybeSingle();
@@ -228,13 +235,16 @@ async function situacao(admin: Admin, c: Record<string, unknown>) {
   const pedidoId = String(c.pedido ?? '');
   if (!UUID.test(pedidoId)) throw new ErroDoPedido(400, 'pedido_invalido');
   const ler = () => admin.from('pizza_pedidos_online')
-    .select('id, unidade_id, unidade_nome, sabores, quantidade, total, status, mp_order_id, mp_status_detalhe, confirmacao:pizza_confirmacoes(numero)')
+    .select('id, nome, unidade_id, unidade_nome, sabores, quantidade, total, status, mp_order_id, mp_status_detalhe, confirmacao:pizza_confirmacoes(numero, mp_pagamento_id, mp_forma, mp_bandeira, mp_aprovado_em)')
     .eq('id', pedidoId).maybeSingle();
   let { data: pedido } = await ler();
   if (!pedido) throw new ErroDoPedido(404, 'pedido_nao_encontrado');
 
-  // O aviso pode atrasar: lê a order no Mercado Pago.
-  if (pedido.status === 'pendente' && pedido.mp_order_id) {
+  // O aviso pode atrasar: lê a order no Mercado Pago. Também quando já aprovou
+  // mas ainda faltam a forma e a hora do comprovante (aprovação no meio do
+  // caminho ou gravação que falhou): a aprovação repetida não duplica nada.
+  const semDetalhes = pedido.status === 'aprovado' && pedido.confirmacao && !pedido.confirmacao.mp_aprovado_em;
+  if ((pedido.status === 'pendente' || semDetalhes) && pedido.mp_order_id) {
     try {
       await aplicarOrder(admin, await mp('GET', `/v1/orders/${pedido.mp_order_id}`));
       ({ data: pedido } = await ler());
@@ -246,6 +256,14 @@ async function situacao(admin: Admin, c: Record<string, unknown>) {
     status: pedido.status,
     detalhe: pedido.mp_status_detalhe,
     numero: pedido.confirmacao?.numero ?? null,
+    // Para o comprovante (10/11/2026). Só existem depois da aprovação.
+    nome: pedido.nome,
+    pagamento: pedido.confirmacao ? {
+      codigo: pedido.confirmacao.mp_pagamento_id,
+      forma: pedido.confirmacao.mp_forma,
+      bandeira: pedido.confirmacao.mp_bandeira,
+      aprovado_em: pedido.confirmacao.mp_aprovado_em,
+    } : null,
     unidade_id: pedido.unidade_id,
     unidade: pedido.unidade_nome,
     sabores: pedido.sabores,

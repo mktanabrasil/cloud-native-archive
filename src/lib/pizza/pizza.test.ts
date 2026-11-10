@@ -1,12 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { NEWS_UNITS } from '@/lib/news/units';
-import { UNIDADES_POR_AREA, areaDaUnidade, encerrado, mensagemDoErro, problemaDoArquivo, problemaDoEnvio, reais, resumoDosSabores, totalDePizzas, valor } from './modelo';
+import { UNIDADES_POR_AREA, areaDaUnidade, dataEHora, encerrado, formaDoMercadoPago, mensagemDoErro, problemaDoArquivo, problemaDoEnvio, reais, resumoDosSabores, totalDePizzas, valor } from './modelo';
 import { csvDasConfirmacoes, nomeDaPlanilha } from './planilha';
 import type { Confirmacao } from './api';
 
 const unidade = (id: string) => NEWS_UNITS.find((u) => u.id === id)!;
 
 describe('Pizza da Alegria', () => {
+  it('a forma do pagamento online, como o Mercado Pago devolve', () => {
+    expect(formaDoMercadoPago('bank_transfer', 'pix')).toBe('Pix');
+    expect(formaDoMercadoPago('credit_card', 'visa')).toBe('Cartão de crédito Visa');
+    expect(formaDoMercadoPago('credit_card', 'master')).toBe('Cartão de crédito Mastercard');
+    expect(formaDoMercadoPago('debit_card', 'debelo')).toBe('Cartão de débito Elo');
+    expect(formaDoMercadoPago('credit_card', 'nova')).toBe('Cartão de crédito');
+    expect(formaDoMercadoPago('account_money', 'account_money')).toBe('Saldo no Mercado Pago');
+    expect(formaDoMercadoPago(null, null)).toBe('Mercado Pago');
+    expect(dataEHora('2026-11-10T17:32:00Z')).toBe('10/11/2026, 14:32');
+    expect(dataEHora(null)).toBe('');
+  });
+
   it('CEIs e GOE em Educação; as unidades ANA em Social', () => {
     expect(areaDaUnidade(unidade('goe'))).toBe('educacao');
     expect(areaDaUnidade(unidade('cei-anisio-spinola'))).toBe('educacao');

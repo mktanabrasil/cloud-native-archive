@@ -75,6 +75,31 @@ export const totalDePizzas = (q: Quantidades) => Object.values(q).reduce((a: num
 export const valor = (pizzas: number) => pizzas * PRECO;
 export const reais = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+/** As bandeiras como o Mercado Pago as chama (payment_method.id), no débito com "deb" na frente. */
+const BANDEIRAS: Record<string, string> = { visa: 'Visa', master: 'Mastercard', elo: 'Elo', amex: 'American Express', hipercard: 'Hipercard', cabal: 'Cabal' };
+
+/**
+ * A forma do pagamento online, para a tela e o comprovante (10/11/2026):
+ * "Pix", "Cartão de crédito Visa", "Cartão de débito Elo", "Saldo no Mercado Pago".
+ * Vem da order no Mercado Pago (payment_method.type e .id). A mesma regra está na função pizza-drive.
+ */
+export function formaDoMercadoPago(tipo: string | null | undefined, bandeira: string | null | undefined): string {
+  const b = BANDEIRAS[(bandeira ?? '').replace(/^deb/, '')] ?? '';
+  if (bandeira === 'pix' || tipo === 'bank_transfer') return 'Pix';
+  if (tipo === 'credit_card') return b ? `Cartão de crédito ${b}` : 'Cartão de crédito';
+  if (tipo === 'debit_card') return b ? `Cartão de débito ${b}` : 'Cartão de débito';
+  if (tipo === 'account_money' || bandeira === 'account_money') return 'Saldo no Mercado Pago';
+  return 'Mercado Pago';
+}
+
+/** "10/11/2026, 14:32", no horário de Brasília. */
+export const dataEHora = (iso: string | null | undefined) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
+
 export const rotuloDoSabor = (s: string) => SABORES.find(([k]) => k === s)?.[1] ?? s;
 export const rotuloDaForma = (f: string) => FORMAS.find(([k]) => k === f)?.[1] ?? f;
 
@@ -114,7 +139,8 @@ export function mensagemDoErro(e: unknown): string {
   if (/comprovante_obrigatorio|comprovante_nao_encontrado/.test(t)) return 'O comprovante não chegou. Anexe de novo e envie.';
   if (/comprovante_repetido/.test(t)) return 'Este comprovante já foi enviado.';
   if (/nome_invalido/.test(t)) return 'Confira o seu nome.';
-  if (/pagamento_online_indisponivel/.test(t)) return 'O pagamento online não está disponível agora. Pague na unidade e confirme aqui.';
+  // Sem pagamento na unidade desde 09/11/2026: não mandar a pessoa para lá.
+  if (/pagamento_online_indisponivel/.test(t)) return 'O pagamento online está fora do ar agora. Tente de novo em alguns minutos.';
   if (/ja_pago/.test(t)) return 'Este pedido já está pago.';
   if (/falha_no_pagamento/.test(t)) return 'O Mercado Pago não respondeu. Tente de novo em alguns minutos.';
   return 'Não deu para enviar. Confira a internet e tente de novo.';

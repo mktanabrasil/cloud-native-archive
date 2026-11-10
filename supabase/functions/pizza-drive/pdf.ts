@@ -22,6 +22,8 @@ export interface DadosDoPdf {
   comprovante: { nome: string; tamanho: string; tipo: 'jpg' | 'png' | 'pdf' | 'outro'; bytes?: Uint8Array } | null;
   /** Pago online: o número do pagamento no Mercado Pago, no lugar do comprovante. */
   mercadoPago?: string | null;
+  /** Pago online (10/11/2026): "Pix", "Cartão de crédito Visa"... */
+  formaMp?: string | null;
   retirada: string; // "Na unidade · sexta, 04/12/2026"
 }
 
@@ -161,7 +163,7 @@ export async function montarPdf(lib: Lib, fontes: { regular: Uint8Array | null; 
     } catch { /* imagem que não abre: fica o quadro */ }
   }
   if (!desenhou) {
-    const rot = !d.comprovante ? 'sem anexo' : d.comprovante.tipo === 'pdf' ? 'PDF' : 'FOTO';
+    const rot = !d.comprovante ? (d.mercadoPago ? 'PAGO' : 'sem anexo') : d.comprovante.tipo === 'pdf' ? 'PDF' : 'FOTO';
     // deno-lint-ignore no-explicit-any
     const lr = (fb as any).widthOfTextAtSize(rot, 10);
     texto(rot, mx + (mw - lr) / 2, my + mh / 2 - 4, { fonte: fb, tam: 10, cor: C.mut });
@@ -172,8 +174,9 @@ export async function montarPdf(lib: Lib, fontes: { regular: Uint8Array | null; 
     texto(corte(`Anexado pela pessoa · ${d.comprovante.tamanho}`, f, 10, W - M - tx - 12), tx, y - 66, { tam: 10, cor: C.mut });
     texto('Na mesma pasta deste arquivo.', tx, y - 80, { tam: 10, cor: C.mut });
   } else if (d.mercadoPago) {
-    texto('Pago pelo Mercado Pago', tx, y - 58, { fonte: fb, tam: 11 });
-    texto(corte(`Pagamento ${d.mercadoPago}`, f, 10, W - M - tx - 12), tx, y - 74, { tam: 10, cor: C.mut });
+    texto(corte(`Pago pelo Mercado Pago${d.formaMp ? ` · ${d.formaMp}` : ''}`, fb, 11, W - M - tx - 12), tx, y - 50, { fonte: fb, tam: 11 });
+    texto(corte(`Operação ${d.mercadoPago}`, f, 10, W - M - tx - 12), tx, y - 66, { tam: 10, cor: C.mut });
+    texto(`${d.numero} · comprovante, na mesma pasta.`, tx, y - 80, { tam: 10, cor: C.mut });
   } else {
     texto('Sem comprovante', tx, y - 58, { fonte: fb, tam: 11 });
     texto('No dinheiro o anexo é opcional.', tx, y - 74, { tam: 10, cor: C.mut });
@@ -190,6 +193,121 @@ export async function montarPdf(lib: Lib, fontes: { regular: Uint8Array | null; 
   // Rodapé com o fio de cinco cores
   texto('Gerado automaticamente pelo app ANA Brasil · app.anabrasil.org', M, 22, { tam: 8, cor: C.rodape });
   texto('Página 1 de 1', W - M, 22, { tam: 8, cor: C.rodape, direita: true });
+  const fio = ['#F5DFBB', '#FBCE00', '#F37964', '#81E2CF', '#01ADFF'];
+  fio.forEach((c, i) => pg.drawRectangle({ x: (W / 5) * i, y: 0, width: W / 5, height: 7, color: cor(lib, c) }));
+
+  return await doc.save();
+}
+
+// --- O comprovante do pagamento online (10/11/2026) -------------------------------------------
+
+export interface DadosDoComprovante {
+  numero: string;
+  nome: string;
+  unidade: string;
+  area: string;
+  sabores: Array<{ sabor: string; qtd: number }>;
+  preco: number;
+  forma: string; // "Pix", "Cartão de crédito Visa"
+  pagoEm: string; // "10/11/2026 às 14:32"
+  codigo: string; // id do pagamento no Mercado Pago
+  retirada: string; // "Na unidade · sexta, 04/12/2026"
+}
+
+/**
+ * "PZ-XXXXX · comprovante.pdf" (mockup aprovado em 10/11/2026:
+ * https://claude.ai/artifact/YFLkrrZasjah83MbQnV3Ee). O mesmo conteúdo da
+ * imagem que a pessoa baixa na tela, mas feito aqui, com os dados que o
+ * servidor leu do Mercado Pago: o arquivo do Drive não passa pelo celular.
+ */
+export async function montarComprovante(lib: Lib, d: DadosDoComprovante): Promise<Uint8Array> {
+  const doc = await lib.PDFDocument.create();
+  doc.setTitle(`${d.numero} · comprovante de pagamento`);
+  doc.setAuthor('ANA Brasil');
+  doc.setCreator('app.anabrasil.org');
+  const f = await doc.embedFont(lib.StandardFonts.Helvetica);
+  const fb = await doc.embedFont(lib.StandardFonts.HelveticaBold);
+
+  const W = 595, H = 842, M = 40;
+  const pg = doc.addPage([W, H]);
+  const C = {
+    vermelho: cor(lib, '#D8463A'), vermelhoEsc: cor(lib, '#A9322A'), creme: cor(lib, '#F4E7D2'), amarelo: cor(lib, '#FBCE00'),
+    marrom: cor(lib, '#6B2E1C'), tinta: cor(lib, '#2B1A14'), mut: cor(lib, '#7A6359'), linha: cor(lib, '#EADBC8'),
+    branco: lib.rgb(1, 1, 1), seloBg: cor(lib, '#E3F2E9'), seloTx: cor(lib, '#1E6B41'), rodape: cor(lib, '#9A8478'),
+  };
+  // deno-lint-ignore no-explicit-any
+  const larg = (fonte: any, t: string, tam: number) => fonte.widthOfTextAtSize(t, tam);
+  const texto = (t: string, x: number, y: number, o: { fonte?: unknown; tam?: number; cor?: unknown; direita?: boolean; espaco?: number } = {}) => {
+    const fonte = o.fonte ?? f; const tam = o.tam ?? 11;
+    const l = larg(fonte, t, tam) + (o.espaco ?? 0) * t.length;
+    pg.drawText(t, { x: o.direita ? x - l : x, y, size: tam, font: fonte, color: o.cor ?? C.tinta, characterSpacing: o.espaco });
+  };
+  const corte = (t: string, fonte: unknown, tam: number, max: number) => {
+    let s = t; while (s.length > 1 && larg(fonte, s, tam) > max) s = s.slice(0, -1);
+    return s === t ? t : s.slice(0, -1) + '…';
+  };
+
+  // Topo vermelho, com a marca
+  const topo = 124;
+  pg.drawRectangle({ x: 0, y: H - topo, width: W, height: topo, color: C.vermelho });
+  const k = 138 / LOGO_CAIXA.largura;
+  for (const p of LOGO) pg.drawSvgPath(p, { x: M, y: H - 18, scale: k, color: C.creme });
+  texto('Comprovante de pagamento', M, H - 72, { fonte: fb, tam: 24, cor: C.branco });
+  texto('PIZZA DA ALEGRIA · CAMPANHA 2026', M, H - 92, { tam: 8.5, cor: C.branco, espaco: 1.2 });
+  texto('Compras até 30/11', M, H - 106, { tam: 9, cor: C.branco });
+
+  // Número e selo "Pago"
+  let y = H - topo - 50;
+  texto(d.numero, M, y, { fonte: fb, tam: 30, cor: C.vermelhoEsc });
+  const ls = larg(fb, 'PAGO', 11) + 28;
+  pg.drawRectangle({ x: W - M - ls, y: y - 4, width: ls, height: 24, color: C.seloBg });
+  texto('PAGO', W - M - ls + 14, y + 4, { fonte: fb, tam: 11, cor: C.seloTx });
+  y -= 18;
+  pg.drawLine({ start: { x: M, y }, end: { x: W - M, y }, thickness: 1.5, color: C.linha });
+  y -= 26;
+
+  const linha = (rot: string, val: string, tam = 12) => {
+    texto(rot, M, y, { tam: 11, cor: C.mut });
+    texto(corte(val, fb, tam, W - 2 * M - 170), W - M, y, { fonte: fb, tam, direita: true });
+    y -= 22;
+  };
+  linha('Nome', d.nome);
+  linha('Unidade', d.unidade);
+  linha('Área', d.area);
+  y -= 10;
+
+  // Os sabores
+  const alturaItem = 24;
+  const alturaQuadro = (d.sabores.length + 1) * alturaItem + 12;
+  pg.drawRectangle({ x: M, y: y - alturaQuadro, width: W - 2 * M, height: alturaQuadro, color: C.branco, borderColor: C.linha, borderWidth: 1.5 });
+  let yi = y - 6;
+  let pizzas = 0;
+  for (const s of d.sabores) {
+    yi -= alturaItem;
+    texto(`${s.qtd} × ${s.sabor}`, M + 16, yi + 8, { tam: 11 });
+    texto(reais(s.qtd * d.preco), W - M - 16, yi + 8, { tam: 11, direita: true });
+    pg.drawLine({ start: { x: M + 16, y: yi }, end: { x: W - M - 16, y: yi }, thickness: 0.8, color: C.linha, dashArray: [3, 3] });
+    pizzas += s.qtd;
+  }
+  yi -= alturaItem;
+  texto(`Total · ${pizzas} ${pizzas === 1 ? 'pizza' : 'pizzas'}`, M + 16, yi + 8, { fonte: fb, tam: 12.5 });
+  texto(reais(pizzas * d.preco), W - M - 16, yi + 8, { fonte: fb, tam: 12.5, direita: true });
+  y -= alturaQuadro + 28;
+
+  // O pagamento
+  linha('Forma', d.forma);
+  linha('Pago em', d.pagoEm);
+  linha('Código da operação', d.codigo, 10.5);
+  y -= 14;
+
+  // Retirada
+  const altR = 58;
+  pg.drawRectangle({ x: M, y: y - altR, width: W - 2 * M, height: altR, color: C.creme });
+  texto(`Retirada: ${d.retirada}`, M + 16, y - 22, { fonte: fb, tam: 12, cor: C.marrom });
+  texto(corte(`Na unidade ${d.unidade}. Basta mostrar este comprovante ou dizer o número.`, f, 10.5, W - 2 * M - 32), M + 16, y - 40, { tam: 10.5 });
+
+  // Rodapé com o fio de cinco cores
+  texto('Pagamento confirmado pelo Mercado Pago · gerado pelo app ANA Brasil · app.anabrasil.org', M, 22, { tam: 8, cor: C.rodape });
   const fio = ['#F5DFBB', '#FBCE00', '#F37964', '#81E2CF', '#01ADFF'];
   fio.forEach((c, i) => pg.drawRectangle({ x: (W / 5) * i, y: 0, width: W / 5, height: 7, color: cor(lib, c) }));
 

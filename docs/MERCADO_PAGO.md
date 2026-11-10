@@ -78,6 +78,10 @@ segredos, teste e, por último, o botão.
    `supabase/migrations/20261109200000_pizza_mercado_pago_permissoes.sql`. Ela
    tira das contas `anon` e `authenticated` a permissão de executar as funções
    novas. Sem ela, qualquer pessoa poderia aprovar um pedido sem pagar.
+4c. Faça o mesmo com
+   `supabase/migrations/20261110120000_pizza_pagamento_detalhes.sql` (10/11/2026).
+   Ela acrescenta as colunas da forma de pagamento, da bandeira e da hora da
+   aprovação, que o comprovante mostra.
 5. Confira numa nova query:
    ```sql
    select to_regclass('public.pizza_pedidos_online') as tabela,
@@ -87,7 +91,12 @@ segredos, teste e, por último, o botão.
             where conname = 'pizza_forma_check') as formas;
    ```
    O esperado é `tabela = pizza_pedidos_online`, `funcoes = 3`, e `formas`
-   contendo `'mercado_pago'`.
+   contendo `'mercado_pago'`. Para a 4c:
+   ```sql
+   select count(*) from information_schema.columns
+    where table_name = 'pizza_confirmacoes' and column_name in ('mp_forma', 'mp_bandeira', 'mp_aprovado_em');
+   ```
+   O esperado é `3`.
 
 Nada muda para quem usa o app agora: a migração só acrescenta coisas.
 
@@ -191,39 +200,94 @@ Já configurado no modo teste (09/11/2026):
 Se clicar no botão de girar a assinatura secreta, ela muda: atualize a
 `MP_WEBHOOK_SECRET` no Coolify e reinicie.
 
-### 5. Testar no computador
+### 5. O ambiente de teste do Mercado Pago não serve para cartão nem Pix
 
-1. Crie `.env.local` na raiz do projeto com `VITE_PIZZA_PAGAR_ONLINE=sim` (o
-   arquivo não vai para o git) e rode `npm run dev`.
-2. Em `/pizza-da-alegria`, escolha os sabores, toque em **Pagar … pelo Mercado Pago** e pague com uma **conta de
-   comprador de teste** (painel → Contas de teste), numa janela anônima. Use os
-   cartões de teste do Mercado Pago. O nome do titular decide o resultado: `APRO`
-   aprova e `OTHE` recusa.
-3. Confira:
-   - aprovado: aparece o número PZ-XXXXX e a linha entra no painel da Pizza com
-     "pago online";
-   - recusado: aparece "Tentar de novo";
-   - no painel do Mercado Pago, **Webhooks → Notificações enviadas** mostra o
-     aviso com resposta 200.
+Tentado em 10/11/2026, com a página no computador (`VITE_PIZZA_PAGAR_ONLINE=sim`
+no `.env.local`, que não vai para o git, e `npm run dev`):
 
-   No localhost, o Mercado Pago não volta sozinho (só volta para https). Use o
-   botão "Voltar ao site" da página do Mercado Pago.
+- **Como convidado**, numa janela anônima, com qualquer e-mail: "Você não pode
+  pagar com um e-mail corporativo do Mercado Livre".
+- **Logado com a conta de comprador de teste**: o botão Pagar fica desativado,
+  com Mastercard, Visa e até com o saldo, mesmo com pedido novo e com os cookies
+  de terceiros liberados. Em 09/11 o saldo tinha passado (PZ-T52DN).
+- **Pix**: o Checkout Pro não tem Pix de teste. O Mercado Pago só testa Pix pela
+  API, numa order montada à mão.
 
-### 6. Produção no Mercado Pago
+O nosso lado (criar o pedido, receber o aviso, aprovar, número, painel e Drive)
+já foi testado com o saldo, em 09/11. Cartão e Pix se testam em **produção**,
+com pedidos reais de R$ 55, depois devolvidos pelo painel do Mercado Pago (passo 6).
 
-No painel, ative as **credenciais de produção** (o Mercado Pago pede dados da
-empresa e do site). Depois:
-- no Coolify, troque `MP_ACCESS_TOKEN` pelo token de **produção**;
-- no painel, configure o webhook na aba **Produção**, com a mesma URL e o mesmo
-  evento, e troque `MP_WEBHOOK_SECRET` pela assinatura de produção;
-- reinicie o serviço no Coolify.
+Depois de qualquer teste, apague os pedidos no SQL Editor:
+```sql
+delete from pizza_confirmacoes  where nome ilike 'teste mercado pago%';
+delete from pizza_pedidos_online where nome ilike 'teste mercado pago%';
+```
+E apague a pasta "Teste Mercado Pago Apagar" no Drive (Pizza da Alegria 2026 /
+Social / Escritório (ADM)).
+
+### 6. Produção no Mercado Pago (numa sessão só, com quem recebe os códigos da conta)
+
+1. **Credenciais de produção.** No painel do Mercado Pago, abra a aplicação
+   "ANA Brasil Campanhas" e ative as **credenciais de produção**. O Mercado Pago
+   pede o ramo, o site (`https://app.anabrasil.org`) e aceita os termos. Os dados
+   e os termos são da ANA: quem preenche é a conta da ANA.
+2. **Chave Pix.** Na conta do Mercado Pago da ANA, confira se há uma chave Pix
+   cadastrada (o CNPJ). Sem chave, o Pix não aparece no checkout.
+3. **Webhook de produção.** Em **Webhooks → Configurar notificações**, aba
+   **Modo produtivo**: URL
+   `https://supabase.anabrasil.org/functions/v1/pizza-pagamento?webhook=1`, evento
+   **Order (Mercado Pago)**. Salve e copie a **assinatura secreta** de produção.
+4. **Segredos no Coolify.** Em **Environment Variables** do serviço do Supabase,
+   troque `MP_ACCESS_TOKEN` pelo Access Token de **produção** (começa com
+   `APP_USR-`, na aba de produção das Credenciais) e `MP_WEBHOOK_SECRET` pela
+   assinatura do item 3. Os valores ficam só no Coolify: nunca em chat, e-mail ou
+   arquivo do repositório.
+5. **Recriar só o container das funções** (não use o Restart do serviço, ver o
+   incidente acima). No terminal do servidor:
+   ```bash
+   cd /data/coolify/services/77y98omf51tsbpv1atnprpct
+   docker compose up -d --pull never --no-deps supabase-edge-functions
+   ```
+6. **Funções atualizadas.** Copie por cima as versões de 10/11/2026:
+   `supabase/functions/pizza-pagamento/index.ts` e, da `pizza-drive`, `index.ts` e
+   `pdf.ts` (como no passo 2).
+7. **Simular o aviso.** No painel, **Webhooks → Simular notificação**, evento
+   Order, no modo produtivo. Tem de responder **200**; **401** é a assinatura errada.
+8. **Dois pedidos reais**, pela página no computador (`npm run dev` com o
+   `.env.local`), com o nome `Teste Mercado Pago Apagar`:
+   - um de R$ 55 no **cartão**;
+   - um de R$ 55 no **Pix**.
+
+   Em cada um, confira: o número e o botão "Baixar comprovante" na tela; a linha
+   no painel da Pizza com "pago online"; a pasta no Drive com
+   "PZ-XXXXX · comprovante.pdf" e o PDF de respostas; no painel do Mercado Pago,
+   **Webhooks → Notificações enviadas** com resposta 200.
+9. **Devolver e apagar.** Devolva os dois pagamentos pelo painel do Mercado Pago
+   (Atividade → o pagamento → Devolver) e rode o SQL de limpeza do passo 5.
 
 ### 7. Ligar o pagamento online para todo mundo
 
 Em `src/lib/pizza/modelo.ts`, faça `pagarOnlineLigado` devolver `true`. Depois,
 faça o merge na `main`, que publica em um minuto. A partir daí, a página só
-aceita pagamento pelo Mercado Pago: some a confirmação com comprovante. As
-confirmações já enviadas continuam no painel.
+aceita pagamento online: some a confirmação com comprovante. As confirmações já
+enviadas continuam no painel.
+
+## O comprovante (10/11/2026)
+
+Mockup aprovado: https://claude.ai/artifact/YFLkrrZasjah83MbQnV3Ee
+
+- **Na tela**, depois da aprovação: "Baixar comprovante" gera uma imagem JPEG no
+  celular (`src/lib/pizza/comprovante.ts`), como no Voluntariado.
+- **No Drive**: "PZ-XXXXX · comprovante.pdf", ao lado do PDF de respostas,
+  montado pela função `pizza-drive` (`montarComprovante`, em `pdf.ts`). O arquivo
+  do Drive não passa pelo celular de ninguém.
+- **Os dados do pagamento** vêm da order no Mercado Pago, lidos pela função
+  `pizza-pagamento`: a forma (`payment_method.type`), a bandeira
+  (`payment_method.id`) e o código da operação (o id do pagamento). A API de
+  Orders não devolve o final do cartão nem a data de aprovação, então a hora é a
+  primeira vez que o servidor viu o pagamento aprovado (`mp_aprovado_em`).
+- Se a página perguntar a situação antes de a forma e a hora estarem gravadas, a
+  função lê a order de novo e completa (a aprovação repetida não duplica).
 
 ## Conciliação
 

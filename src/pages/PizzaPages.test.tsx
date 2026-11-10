@@ -11,6 +11,7 @@ const banco = vi.hoisted(() => ({
   online: [] as Array<Record<string, unknown>>,
   deNovo: [] as string[],
   situacao: null as Record<string, unknown> | null,
+  comprovantes: [] as Array<Record<string, unknown>>,
   papel: { isMarketing: true, bondType: null as string | null, isActive: true, loading: false },
 }));
 
@@ -18,6 +19,7 @@ globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() } }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
 vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => banco.papel }));
+vi.mock('@/lib/pizza/comprovante', () => ({ salvarComprovante: async (d: Record<string, unknown>) => { banco.comprovantes.push(d); return 'baixado'; } }));
 vi.mock('@/lib/pizza/api', () => ({
   enviarConfirmacao: async (d: Record<string, unknown>) => { banco.enviados.push(d); return 'PZ-0137'; },
   listarConfirmacoes: async () => banco.lista,
@@ -34,7 +36,7 @@ const { default: Confirmacao } = await import('./PizzaConfirmacaoPage');
 const { PainelDaPizza } = await import('@/components/pizza/PainelDaPizza');
 
 beforeEach(() => {
-  banco.enviados = []; banco.lista = []; banco.retiradas = []; banco.copias = 0; banco.drive = []; banco.online = []; banco.deNovo = []; banco.situacao = null;
+  banco.enviados = []; banco.lista = []; banco.retiradas = []; banco.copias = 0; banco.drive = []; banco.online = []; banco.deNovo = []; banco.situacao = null; banco.comprovantes = [];
   banco.papel = { isMarketing: true, bondType: null, isActive: true, loading: false };
   // Sem depender do .env.local de quem roda: o pagamento online começa desligado.
   vi.stubEnv('VITE_PIZZA_PAGAR_ONLINE', '');
@@ -111,28 +113,72 @@ describe('pagamento online (Mercado Pago)', () => {
     expect(screen.getByRole('radio', { name: 'Pix' })).toBeInTheDocument();
   });
 
+  const pedir = () => {
+    fireEvent.change(screen.getByLabelText('Nome completo'), { target: { value: 'maria souza' } });
+    fireEvent.change(screen.getByLabelText('Unidade em que você trabalha'), { target: { value: 'ana-dic' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Mais Lombo' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mais Marguerita' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mais Marguerita' }));
+  };
+
+  it('o botão diz só "Pagar" e o valor; o Mercado Pago fica na linha de baixo', () => {
+    render(<MemoryRouter><Confirmacao /></MemoryRouter>);
+    pedir();
+    expect(screen.getByRole('button', { name: /^Pagar R\$\s165,00$/ })).toBeInTheDocument();
+    expect(screen.getByTestId('processado')).toHaveTextContent('Pagamento seguro, processado pelo Mercado Pago');
+    expect(screen.queryByRole('button', { name: /pelo Mercado Pago/ })).toBeNull();
+  });
+
+  it('o popup mostra o pedido; "Corrigir o pedido" e o Esc fecham sem pagar', () => {
+    render(<MemoryRouter><Confirmacao /></MemoryRouter>);
+    pedir();
+    fireEvent.click(screen.getByRole('button', { name: /^Pagar R\$/ }));
+    const popup = screen.getByRole('dialog', { name: 'Confira o seu pedido' });
+    expect(popup).toHaveTextContent('maria souza');
+    expect(popup).toHaveTextContent('ANA DIC');
+    expect(within(popup).getByTestId('itens-do-pedido').textContent?.replace(/\s/g, ' ')).toBe('2 × MargueritaR$ 110,001 × LomboR$ 55,00Total · 3 pizzasR$ 165,00');
+    fireEvent.click(within(popup).getByRole('button', { name: 'Corrigir o pedido' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /^Pagar R\$/ }));
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(banco.online).toHaveLength(0);
+  });
+
   it('ligado, só se paga pelo Mercado Pago: sem pagar na unidade e sem comprovante', async () => {
     render(<MemoryRouter><Confirmacao /></MemoryRouter>);
-    expect(screen.getByTestId('como-pagar')).toHaveTextContent('Pix ou cartão, pelo Mercado Pago');
+    expect(screen.getByTestId('como-pagar')).toHaveTextContent('Pix ou cartão');
     expect(screen.queryByText(/na unidade\?/i)).toBeNull();
     expect(screen.queryByRole('radiogroup', { name: 'Forma de pagamento' })).toBeNull();
     expect(screen.queryByRole('heading', { name: /Comprovante/ })).toBeNull();
     fireEvent.change(screen.getByLabelText('Nome completo'), { target: { value: 'maria souza' } });
     fireEvent.change(screen.getByLabelText('Unidade em que você trabalha'), { target: { value: 'ana-dic' } });
     fireEvent.click(screen.getByRole('button', { name: 'Mais Lombo' }));
-    fireEvent.click(screen.getByRole('button', { name: /Pagar R\$\s55,00 pelo Mercado Pago/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Pagar R\$\s55,00$/ }));
+    expect(banco.online).toHaveLength(0); // ainda não: primeiro o popup
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Confirmar e pagar R\$\s55,00/ }));
     await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('https://www.mercadopago.com.br/checkout/v1/redirect?order_id=ORD1'));
     expect(banco.online[0]).toMatchObject({ nome: 'maria souza', unidadeId: 'ana-dic', quantidades: { lombo: 1 } });
     expect(banco.enviados).toHaveLength(0);
   });
 
-  it('a volta aprovada mostra o número', async () => {
-    banco.situacao = { pedido: PEDIDO, status: 'aprovado', numero: 'PZ-K7M2Q', unidade: 'ANA DIC', unidade_id: 'ana-dic', sabores: { lombo: 2 }, quantidade: 2, total: 110, detalhe: 'accredited' };
+  it('a volta aprovada mostra o número, o pagamento e baixa o comprovante', async () => {
+    banco.situacao = {
+      pedido: PEDIDO, status: 'aprovado', numero: 'PZ-K7M2Q', nome: 'Maria Souza', unidade: 'ANA DIC', unidade_id: 'ana-dic', sabores: { lombo: 2 }, quantidade: 2, total: 110, detalhe: 'accredited',
+      pagamento: { codigo: 'PAY01ABC', forma: 'credit_card', bandeira: 'visa', aprovado_em: '2026-11-10T17:32:00Z' },
+    };
     render(<MemoryRouter initialEntries={[`/pizza-da-alegria?pedido=${PEDIDO}`]}><Confirmacao /></MemoryRouter>);
-    expect(await screen.findByRole('heading', { name: 'Confirmação enviada' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Pagamento confirmado' })).toBeInTheDocument();
     expect(screen.getByTestId('numero')).toHaveTextContent('PZ-K7M2Q');
-    expect(screen.getByText(/Mercado Pago/)).toBeInTheDocument();
+    expect(screen.getByTestId('resumo')).toHaveTextContent('Cartão de crédito Visa · 10/11/2026, 14:32');
+    expect(screen.queryByText(/Tire um print/)).toBeNull();
     expect(banco.copias).toBe(1);
+    fireEvent.click(screen.getByRole('button', { name: /Baixar comprovante/ }));
+    await vi.waitFor(() => expect(banco.comprovantes).toHaveLength(1));
+    expect(banco.comprovantes[0]).toMatchObject({
+      numero: 'PZ-K7M2Q', nome: 'Maria Souza', unidade: 'ANA DIC', itens: [{ sabor: 'Lombo', qtd: 2 }], preco: 55, total: 110,
+      forma: 'Cartão de crédito Visa', pagoEm: '10/11/2026, 14:32', codigo: 'PAY01ABC',
+    });
   });
 
   it('a volta recusada oferece tentar de novo', async () => {

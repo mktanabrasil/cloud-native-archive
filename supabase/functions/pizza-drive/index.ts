@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import * as PDFLib from 'npm:pdf-lib@1.17.1';
-import { montarPdf } from './pdf.ts';
+import { montarComprovante, montarPdf } from './pdf.ts';
 
 addEventListener('unhandledrejection', (e) => { console.error('[pizza-drive] promessa solta:', e.reason); e.preventDefault(); });
 addEventListener('error', (e) => { console.error('[pizza-drive] erro solto:', e.error); e.preventDefault(); });
@@ -11,6 +11,10 @@ addEventListener('error', (e) => { console.error('[pizza-drive] erro solto:', e.
  *
  *   Pizza da Alegria 2026 / Educação|Social / <unidade> / <pessoa> /
  *     "PZ-0137 · comprovante.jpg" e "PZ-0137 · Maria Aparecida Souza.pdf"
+ *
+ * Pago online (10/11/2026): no lugar do comprovante que a pessoa anexava,
+ * "PZ-0137 · comprovante.pdf", montado aqui com os dados que a função
+ * pizza-pagamento leu do Mercado Pago (montarComprovante, em pdf.ts).
  *
  * O banco e o Storage são a fonte; o Drive é espelho. Quem chama:
  *  - o formulário público, logo depois de cada envio (sem login): só processa
@@ -45,6 +49,17 @@ const POR_VEZ = 4;
 const SABORES: Record<string, string> = { marguerita: 'Marguerita', frango: 'Frango', calabresa: 'Calabresa fatiada', mucarela: 'Muçarela', lombo: 'Lombo', napolitana: 'Napolitana' };
 const FORMAS: Record<string, string> = { pix: 'Pix', credito: 'Crédito', debito: 'Débito', dinheiro: 'Dinheiro', pluxee: 'Vale Pluxee', mercado_pago: 'Mercado Pago' };
 const AREAS: Record<string, string> = { educacao: 'Educação', social: 'Social' };
+
+/** A mesma regra de formaDoMercadoPago (src/lib/pizza/modelo.ts): "Pix", "Cartão de crédito Visa"... */
+const BANDEIRAS: Record<string, string> = { visa: 'Visa', master: 'Mastercard', elo: 'Elo', amex: 'American Express', hipercard: 'Hipercard', cabal: 'Cabal' };
+function formaDoMercadoPago(tipo: string | null | undefined, bandeira: string | null | undefined): string {
+  const b = BANDEIRAS[(bandeira ?? '').replace(/^deb/, '')] ?? '';
+  if (bandeira === 'pix' || tipo === 'bank_transfer') return 'Pix';
+  if (tipo === 'credit_card') return b ? `Cartão de crédito ${b}` : 'Cartão de crédito';
+  if (tipo === 'debit_card') return b ? `Cartão de débito ${b}` : 'Cartão de débito';
+  if (tipo === 'account_money' || bandeira === 'account_money') return 'Saldo no Mercado Pago';
+  return 'Mercado Pago';
+}
 
 // deno-lint-ignore no-explicit-any
 type Admin = any;
@@ -182,19 +197,36 @@ async function copiarUma(admin: Admin, token: string, c: Conexao, linha: any, ca
     comprovante = { nome: nomeArq, tamanho: tamanho(bytes.length), tipo: t.tipo, bytes };
   }
 
+  const sabores = Object.entries(linha.sabores ?? {})
+    .filter(([, q]) => Number(q) > 0)
+    .sort(([a], [b]) => Object.keys(SABORES).indexOf(a) - Object.keys(SABORES).indexOf(b))
+    .map(([k, q]) => ({ sabor: SABORES[k] ?? k, qtd: Number(q) }));
+  // O preço de cada linha sai do que foi gravado (R$ 50 até 09/11/2026, R$ 55 depois).
+  const preco = Number(linha.total) / Number(linha.quantidade);
+
+  // Pago online (10/11/2026): o comprovante é feito aqui, uma vez só, como o anexado.
+  const online = linha.forma === 'mercado_pago' && !!linha.mp_pagamento_id;
+  const formaMp = online ? formaDoMercadoPago(linha.mp_forma, linha.mp_bandeira) : null;
+  if (online) {
+    const nomeComp = `${linha.numero} · comprovante.pdf`;
+    if (!(await procurar(token, c.drive_id, pessoa, nomeComp, false))) {
+      const pdf = await montarComprovante(PDFLib, {
+        numero: linha.numero, nome: linha.nome, unidade: linha.unidade_nome, area: AREAS[linha.area] ?? linha.area,
+        sabores, preco, forma: formaMp!, pagoEm: quando(linha.mp_aprovado_em ?? linha.created_at),
+        codigo: String(linha.mp_pagamento_id), retirada: 'sexta, 04/12/2026',
+      });
+      await subir(token, pessoa, nomeComp, 'application/pdf', pdf);
+    }
+  }
+
   const nomePdf = `${linha.numero} · ${limpo(linha.nome)}.pdf`;
   // O PDF é sempre refeito: se já existe (cópia refeita), o conteúdo é trocado
   // no mesmo arquivo, sem duplicar. O comprovante, não: esse nunca muda.
   {
-    const sabores = Object.entries(linha.sabores ?? {})
-      .filter(([, q]) => Number(q) > 0)
-      .sort(([a], [b]) => Object.keys(SABORES).indexOf(a) - Object.keys(SABORES).indexOf(b))
-      .map(([k, q]) => ({ sabor: SABORES[k] ?? k, qtd: Number(q) }));
     const pdf = await montarPdf(PDFLib, SEM_FONTE_EXTRA, {
       numero: linha.numero, quando: quando(linha.created_at), nome: linha.nome, unidade: linha.unidade_nome,
-      // O preço de cada linha sai do que foi gravado (R$ 50 até 09/11/2026, R$ 55 depois).
-      area: AREAS[linha.area] ?? linha.area, sabores, preco: Number(linha.total) / Number(linha.quantidade), forma: FORMAS[linha.forma] ?? linha.forma,
-      dinheiro: linha.forma === 'dinheiro', comprovante, mercadoPago: linha.mp_pagamento_id ?? null, retirada: 'Na unidade · sexta, 04/12/2026',
+      area: AREAS[linha.area] ?? linha.area, sabores, preco, forma: FORMAS[linha.forma] ?? linha.forma,
+      dinheiro: linha.forma === 'dinheiro', comprovante, mercadoPago: linha.mp_pagamento_id ?? null, formaMp, retirada: 'Na unidade · sexta, 04/12/2026',
     });
     const existente = await procurar(token, c.drive_id, pessoa, nomePdf, false);
     if (existente) await substituir(token, existente, 'application/pdf', pdf);
