@@ -27,12 +27,21 @@ const ABA = 'Pedidos';
 const PRIMEIRA = 4;
 const LINHAS_DA_GRADE = 3000;
 const ORDEM_DOS_SABORES = ['marguerita', 'frango', 'calabresa', 'mucarela', 'lombo', 'napolitana'];
-const COLUNAS = ['Nº', 'Pedido em', 'Nome', 'Unidade', 'Área', 'Marguerita', 'Frango', 'Calabresa', 'Muçarela', 'Lombo', 'Napolitana', 'Pizzas', 'Valor', 'Pagamento', 'Código da operação', 'Retirada', 'Retirada em'];
-const LARGURAS = [92, 130, 230, 290, 90, 96, 80, 96, 92, 76, 100, 72, 108, 220, 250, 118, 130];
+/**
+ * Uma linha por PESSOA (10/11/2026, versão 2 do desenho): quem fez mais de um
+ * pedido aparece uma vez, com as pizzas somadas e os números dos pedidos juntos.
+ * A pessoa é o WhatsApp; os pedidos de antes do WhatsApp se juntam por nome
+ * (sem acento) e unidade. As colunas de sabores, Valor, Pagamento e Retirada
+ * ficam nas mesmas posições da versão 1.
+ */
+const COLUNAS = ['Nome', 'WhatsApp', 'Unidade', 'Área', 'Pedidos', 'Marguerita', 'Frango', 'Calabresa', 'Muçarela', 'Lombo', 'Napolitana', 'Pizzas', 'Valor', 'Pagamento', 'Primeiro pedido', 'Retirada', 'Retirada em'];
+const LARGURAS = [230, 140, 290, 90, 190, 96, 80, 96, 92, 76, 100, 72, 108, 220, 140, 118, 130];
+export const VERSAO_DO_DESENHO = 2;
 const N = COLUNAS.length; // 17: A a Q
 const COL = { valor: 12, pagamento: 13, retirada: 15 };
 export const RETIRADA_SIM = '✓ Retirada';
 export const RETIRADA_NAO = 'A retirar';
+export const RETIRADA_PARCIAL = '◐';
 
 class ErroPlanilha extends Error { constructor(public status: number, msg: string) { super(msg); } }
 
@@ -58,7 +67,7 @@ const C = {
   marrom: '#6B2E1C', creme: '#F4E7D2', vermelho: '#D8463A', vermelhoEsc: '#A9322A', coral: '#F37964',
   tinta: '#2B1A14', zebra: '#FFF8EE', branco: '#FFFFFF', apagado: '#C9BBAA',
   pixBg: '#DDF3EE', pixTx: '#12695A', cartaoBg: '#DCEEFA', cartaoTx: '#0A5E8E', unidBg: '#FFF1BF', unidTx: '#7A5A00',
-  retBg: '#D4F5EC', retTx: '#12695A',
+  retBg: '#D4F5EC', retTx: '#12695A', parcialBg: '#FFF1BF', parcialTx: '#7A5A00',
 };
 /** O fio de cinco cores da ANA, em blocos de colunas (A-D, E-G, H-K, L-N, O-Q). */
 const FIO: Array<[number, number, string]> = [[0, 4, '#F5DFBB'], [4, 7, '#FBCE00'], [7, 11, '#F37964'], [11, 14, '#81E2CF'], [14, 17, '#01ADFF']];
@@ -94,7 +103,7 @@ function desenho(aba: number) {
     { repeatCell: { range: faixa(2, 3, COL.valor, COL.valor + 1), cell: { userEnteredFormat: { horizontalAlignment: 'RIGHT' } }, fields: 'userEnteredFormat.horizontalAlignment' } },
     // Corpo
     { repeatCell: { range: corpo(), cell: { userEnteredFormat: { verticalAlignment: 'MIDDLE', wrapStrategy: 'CLIP' } }, fields: 'userEnteredFormat(verticalAlignment,wrapStrategy)' } },
-    { repeatCell: { range: corpo(0, 1), cell: { userEnteredFormat: { textFormat: { foregroundColor: rgb(C.vermelhoEsc), bold: true } } }, fields: 'userEnteredFormat.textFormat' } },
+    ...colunasV2(aba),
     { repeatCell: { range: corpo(5, 12), cell: { userEnteredFormat: { horizontalAlignment: 'CENTER', textFormat: { bold: true } } }, fields: 'userEnteredFormat(horizontalAlignment,textFormat)' } },
     { repeatCell: { range: corpo(COL.valor, COL.valor + 1), cell: { userEnteredFormat: { horizontalAlignment: 'RIGHT', numberFormat: { type: 'CURRENCY', pattern: '"R$" #,##0.00' } } }, fields: 'userEnteredFormat(horizontalAlignment,numberFormat)' } },
     { repeatCell: { range: corpo(COL.pagamento, COL.pagamento + 1), cell: { userEnteredFormat: { horizontalAlignment: 'CENTER' } }, fields: 'userEnteredFormat.horizontalAlignment' } },
@@ -115,10 +124,33 @@ function desenho(aba: number) {
     regra([corpo(COL.pagamento, COL.pagamento + 1)], { type: 'TEXT_STARTS_WITH', values: [{ userEnteredValue: 'Cartão' }] }, C.cartaoBg, C.cartaoTx),
     regra([corpo(COL.pagamento, COL.pagamento + 1)], { type: 'TEXT_STARTS_WITH', values: [{ userEnteredValue: 'Pix' }] }, C.pixBg, C.pixTx),
     regra([corpo(COL.retirada, COL.retirada + 1)], { type: 'TEXT_EQ', values: [{ userEnteredValue: RETIRADA_NAO }] }, C.creme, C.marrom),
+    regraParcial(aba),
     regra([corpo(COL.retirada, COL.retirada + 1)], { type: 'TEXT_EQ', values: [{ userEnteredValue: RETIRADA_SIM }] }, C.retBg, C.retTx, true),
     regra([corpo()], { type: 'CUSTOM_FORMULA', values: [{ userEnteredValue: `=$A${PRIMEIRA}="Total"` }] }, C.creme, C.marrom, true),
   );
   return pedidos;
+}
+
+/** Versão 2: Nome em negrito escuro, os números dos pedidos em vermelho, larguras novas. */
+function colunasV2(aba: number) {
+  const corpo = (c0: number, c1: number) => ({ sheetId: aba, startRowIndex: PRIMEIRA - 1, endRowIndex: LINHAS_DA_GRADE, startColumnIndex: c0, endColumnIndex: c1 });
+  return [
+    { repeatCell: { range: corpo(0, 1), cell: { userEnteredFormat: { textFormat: { foregroundColor: rgb(C.tinta), bold: true } } }, fields: 'userEnteredFormat.textFormat' } },
+    { repeatCell: { range: corpo(4, 5), cell: { userEnteredFormat: { textFormat: { foregroundColor: rgb(C.vermelhoEsc), bold: true } } }, fields: 'userEnteredFormat.textFormat' } },
+  ];
+}
+/** "◐ 1 de 2 retirados": amarelo (o símbolo no começo separa do "✓ Retirada"; o Sheets não diferencia maiúscula). */
+function regraParcial(aba: number) {
+  const range = { sheetId: aba, startRowIndex: PRIMEIRA - 1, endRowIndex: LINHAS_DA_GRADE, startColumnIndex: COL.retirada, endColumnIndex: COL.retirada + 1 };
+  return { addConditionalFormatRule: { index: 0, rule: { ranges: [range], booleanRule: { condition: { type: 'TEXT_STARTS_WITH', values: [{ userEnteredValue: RETIRADA_PARCIAL }] }, format: { backgroundColor: rgb(C.parcialBg), textFormat: { foregroundColor: rgb(C.parcialTx), bold: true } } } } } };
+}
+/** Leva a planilha criada na versão 1 (uma linha por pedido) à versão 2. */
+function ajustesV2(aba: number) {
+  return [
+    ...LARGURAS.map((px, i) => ({ updateDimensionProperties: { range: { sheetId: aba, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 }, properties: { pixelSize: px }, fields: 'pixelSize' } })),
+    ...colunasV2(aba),
+    regraParcial(aba),
+  ];
 }
 
 // --- Conteúdo ---------------------------------------------------------------------------------
@@ -131,24 +163,44 @@ const dataHora = (iso: string | null) => {
 };
 const reais = (n: number) => 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+/** "João Conceição" e "joao  conceicao" são a mesma pessoa. */
+const comparavel = (t: string) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+/** "(19) 99876-5432" */
+export function whatsapp(d: string | null | undefined): string {
+  const s = String(d ?? '').replace(/\D/g, '');
+  if (s.length === 11) return `(${s.slice(0, 2)}) ${s.slice(2, 7)}-${s.slice(7)}`;
+  if (s.length === 10) return `(${s.slice(0, 2)}) ${s.slice(2, 6)}-${s.slice(6)}`;
+  return s;
+}
+/** A pessoa: o WhatsApp; sem ele (pedidos de antes de 10/11), nome e unidade. */
+// deno-lint-ignore no-explicit-any
+export const chaveDaPessoa = (c: any) => (c.telefone ? `w:${c.telefone}` : `n:${comparavel(c.nome)}|${c.unidade_id ?? c.unidade_nome}`);
+
 // deno-lint-ignore no-explicit-any
 export function linhasDaPlanilha(lista: any[], aux: Auxiliares, agora: string) {
+  // deno-lint-ignore no-explicit-any
+  const grupos = new Map<string, any[]>();
+  for (const c of lista) { const k = chaveDaPessoa(c); grupos.set(k, [...(grupos.get(k) ?? []), c]); }
   const somaSab = ORDEM_DOS_SABORES.map(() => 0);
   let pizzas = 0, valor = 0, retirados = 0;
-  const linhas = lista.map((c) => {
-    const q = ORDEM_DOS_SABORES.map((k, i) => { const n = Number(c.sabores?.[k] ?? 0); somaSab[i] += n; return n; });
-    const online = c.forma === 'mercado_pago';
-    const pagamento = online ? aux.formaDoMercadoPago(c.mp_forma, c.mp_bandeira) : `Na unidade · ${aux.formas[c.forma] ?? c.forma}`;
-    pizzas += Number(c.quantidade); valor += Number(c.total); if (c.retirada) retirados++;
+  const linhas = [...grupos.values()].map((ps) => {
+    const primeiro = ps[0];
+    const q = ORDEM_DOS_SABORES.map((k, i) => { const n = ps.reduce((a, c) => a + Number(c.sabores?.[k] ?? 0), 0); somaSab[i] += n; return n; });
+    const qtd = ps.reduce((a, c) => a + Number(c.quantidade), 0);
+    const val = ps.reduce((a, c) => a + Number(c.total), 0);
+    const formas = [...new Set(ps.map((c) => (c.forma === 'mercado_pago' ? aux.formaDoMercadoPago(c.mp_forma, c.mp_bandeira) : `Na unidade · ${aux.formas[c.forma] ?? c.forma}`)))];
+    const ret = ps.filter((c) => c.retirada);
+    pizzas += qtd; valor += val; retirados += ret.length;
+    const retirada = ret.length === ps.length ? RETIRADA_SIM : ret.length === 0 ? RETIRADA_NAO : `${RETIRADA_PARCIAL} ${ret.length} de ${ps.length} retirados`;
+    const ultimaRetirada = ret.map((c) => c.retirada_em).filter(Boolean).sort().pop() ?? null;
     return [
-      c.numero, dataHora(c.created_at), c.nome, c.unidade_nome, aux.areas[c.area] ?? c.area, ...q,
-      Number(c.quantidade), Number(c.total), pagamento, c.mp_pagamento_id ?? '—',
-      c.retirada ? RETIRADA_SIM : RETIRADA_NAO, dataHora(c.retirada_em),
+      primeiro.nome, whatsapp(ps.find((c) => c.telefone)?.telefone), primeiro.unidade_nome, aux.areas[primeiro.area] ?? primeiro.area,
+      ps.map((c) => c.numero).join(', '), ...q, qtd, val, formas.join(' + '), dataHora(primeiro.created_at), retirada, dataHora(ultimaRetirada),
     ];
   });
-  const pedidos = lista.length;
-  const total = ['Total', '', `${pedidos} ${pedidos === 1 ? 'pedido' : 'pedidos'}`, '', '', ...somaSab, pizzas, valor, '', '', `${retirados} de ${pedidos}`, ''];
-  const titulo = `PIZZA DA ALEGRIA 2026   ·   ${pedidos} ${pedidos === 1 ? 'pedido' : 'pedidos'} · ${pizzas} ${pizzas === 1 ? 'pizza' : 'pizzas'} · ${reais(valor)} · ${retirados} ${retirados === 1 ? 'retirado' : 'retirados'}   ·   atualizada em ${dataHora(agora)}`;
+  const pedidos = lista.length, pessoas = linhas.length;
+  const total = ['Total', '', `${pessoas} ${pessoas === 1 ? 'pessoa' : 'pessoas'}`, '', `${pedidos} ${pedidos === 1 ? 'pedido' : 'pedidos'}`, ...somaSab, pizzas, valor, '', '', `${retirados} de ${pedidos}`, ''];
+  const titulo = `PIZZA DA ALEGRIA 2026   ·   ${pessoas} ${pessoas === 1 ? 'pessoa' : 'pessoas'} · ${pedidos} ${pedidos === 1 ? 'pedido' : 'pedidos'} · ${pizzas} ${pizzas === 1 ? 'pizza' : 'pizzas'} · ${reais(valor)} · ${retirados} ${retirados === 1 ? 'retirado' : 'retirados'}   ·   atualizada em ${dataHora(agora)}`;
   return { titulo, linhas: pedidos ? [...linhas, total] : [] };
 }
 
@@ -192,11 +244,14 @@ export async function sincronizarPlanilha(admin: Admin, token: string, pastaId: 
     if (!p.desenhada_em) {
       // O batchUpdate é tudo ou nada: ou o desenho entra inteiro, ou nada muda e a próxima chamada tenta de novo.
       await g(token, 'POST', `https://sheets.googleapis.com/v4/spreadsheets/${planilha}:batchUpdate`, { requests: desenho(aba) });
-      await admin.from('pizza_planilha').update({ desenhada_em: new Date().toISOString() }).eq('id', 1);
+      await admin.from('pizza_planilha').update({ desenhada_em: new Date().toISOString(), desenho_versao: VERSAO_DO_DESENHO }).eq('id', 1);
+    } else if ((p.desenho_versao ?? 1) < VERSAO_DO_DESENHO) {
+      await g(token, 'POST', `https://sheets.googleapis.com/v4/spreadsheets/${planilha}:batchUpdate`, { requests: ajustesV2(aba) });
+      await admin.from('pizza_planilha').update({ desenho_versao: VERSAO_DO_DESENHO }).eq('id', 1);
     }
 
     const { data: lista, error } = await admin.from('pizza_confirmacoes')
-      .select('numero, nome, unidade_nome, area, sabores, quantidade, total, forma, mp_pagamento_id, mp_forma, mp_bandeira, retirada, retirada_em, created_at')
+      .select('numero, nome, unidade_id, unidade_nome, area, sabores, quantidade, total, forma, mp_pagamento_id, mp_forma, mp_bandeira, retirada, retirada_em, telefone, created_at')
       .order('created_at');
     if (error) throw new Error(`não li os pedidos: ${error.message}`);
     const { titulo, linhas } = linhasDaPlanilha(lista ?? [], aux, agora);

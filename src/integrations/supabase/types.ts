@@ -388,7 +388,9 @@ export type Database = {
           quantidade: number
           retirada: boolean
           retirada_em: string | null
+          retirada_por: string | null
           sabores: Json
+          telefone: string | null
           total: number
           unidade_id: string
           unidade_nome: string
@@ -1560,6 +1562,10 @@ export type Database = {
       trocar_codigo_da_pizza: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      meus_pedidos_da_pizza: {
+        Args: { p_nome: string; p_telefone: string }
+        Returns: Json
       }
       registrar_retirada_pizza: {
         Args: { p_numero: string }

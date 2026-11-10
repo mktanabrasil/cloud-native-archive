@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useUserRole } from '@/hooks/useUserRole';
 import { linkDaPlanilha, linkDoComprovante, listarConfirmacoes, marcarRetirada, pedirCopiaParaODrive, type Confirmacao } from '@/lib/pizza/api';
-import { FORMAS, ROTULO_DA_AREA, SABORES, reais, resumoDosSabores, rotuloDaForma } from '@/lib/pizza/modelo';
+import { FORMAS, ROTULO_DA_AREA, SABORES, reais, resumoDosSabores, rotuloDaForma, whatsappFormatado } from '@/lib/pizza/modelo';
 import { DriveDaPizza } from './DriveDaPizza';
 import { codigoDaGestao, linkDaGestao } from '@/lib/pizza/dashboard';
 
@@ -192,7 +192,7 @@ export function PainelDaPizza() {
                 <span className="order-5 col-span-2 text-muted-foreground lg:order-none lg:col-span-1 lg:text-foreground">
                   {c.unidade_nome}<span className="lg:hidden"> · </span><span className="text-xs text-[hsl(var(--fraco))] lg:block">{ROTULO_DA_AREA[c.area]}</span>
                 </span>
-                <span className="order-3 min-w-0 font-semibold lg:order-none lg:font-normal">{c.nome}</span>
+                <span className="order-3 min-w-0 font-semibold lg:order-none lg:font-normal">{c.nome}{c.telefone && <small className="block text-xs font-normal text-muted-foreground" data-testid="whatsapp">{whatsappFormatado(c.telefone)}</small>}</span>
                 <span className="order-6 col-span-2 lg:order-none lg:col-span-1">{resumoDosSabores(c.sabores)}</span>
                 <span className="order-4 text-right font-semibold tabular-nums lg:order-none lg:font-normal">{reais(c.total)}</span>
                 <span className="order-7 text-muted-foreground lg:order-none">{rotuloDaForma(c.forma)}</span>

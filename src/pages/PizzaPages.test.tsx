@@ -12,6 +12,8 @@ const banco = vi.hoisted(() => ({
   deNovo: [] as string[],
   situacao: null as Record<string, unknown> | null,
   comprovantes: [] as Array<Record<string, unknown>>,
+  meus: [] as Array<[string, string]>,
+  respostaMeus: { pagos: [], pendentes: [] } as { pagos: Array<Record<string, unknown>>; pendentes: Array<Record<string, unknown>> },
   papel: { isMarketing: true, bondType: null as string | null, isActive: true, loading: false },
 }));
 
@@ -29,6 +31,7 @@ vi.mock('@/lib/pizza/api', () => ({
   pagarOnline: async (d: Record<string, unknown>) => { banco.online.push(d); return { pedido: 'p1', link: 'https://www.mercadopago.com.br/checkout/v1/redirect?order_id=ORD1' }; },
   pagarDeNovo: async (p: string) => { banco.deNovo.push(p); return { pedido: p, link: 'https://www.mercadopago.com.br/checkout/v1/redirect?order_id=ORD2' }; },
   situacaoDoPedido: async () => banco.situacao,
+  meusPedidos: async (n: string, t: string) => { banco.meus.push([n, t]); return banco.respostaMeus; },
   linkDaPlanilha: async () => { banco.drive.push({ planilha: true }); return 'https://docs.google.com/spreadsheets/d/PLAN1/edit'; },
   chamarDrive: async (c: Record<string, unknown>) => { banco.drive.push(c); return c.estado ? { oauth_configurado: true, pode_conectar: banco.papel.isMarketing, conexao: null, pendentes: 2, com_erro: 0 } : { url: 'https://accounts.google.com/x' }; },
 }));
@@ -37,7 +40,7 @@ const { default: Confirmacao } = await import('./PizzaConfirmacaoPage');
 const { PainelDaPizza } = await import('@/components/pizza/PainelDaPizza');
 
 beforeEach(() => {
-  banco.enviados = []; banco.lista = []; banco.retiradas = []; banco.copias = 0; banco.drive = []; banco.online = []; banco.deNovo = []; banco.situacao = null; banco.comprovantes = [];
+  banco.enviados = []; banco.lista = []; banco.retiradas = []; banco.copias = 0; banco.drive = []; banco.online = []; banco.deNovo = []; banco.situacao = null; banco.comprovantes = []; banco.meus = []; banco.respostaMeus = { pagos: [], pendentes: [] };
   banco.papel = { isMarketing: true, bondType: null, isActive: true, loading: false };
   // Sem depender do .env.local de quem roda: nestes testes, o pagamento online começa desligado.
   vi.stubEnv('VITE_PIZZA_PAGAR_ONLINE', 'nao');
@@ -122,6 +125,7 @@ describe('pagamento online (Mercado Pago)', () => {
 
   const pedir = () => {
     fireEvent.change(screen.getByLabelText('Nome completo'), { target: { value: 'maria souza' } });
+    fireEvent.change(screen.getByLabelText(/^WhatsApp com DDD/), { target: { value: '19998765432' } });
     fireEvent.change(screen.getByLabelText('Unidade em que você trabalha'), { target: { value: 'ana-dic' } });
     fireEvent.click(screen.getByRole('button', { name: 'Mais Lombo' }));
     fireEvent.click(screen.getByRole('button', { name: 'Mais Marguerita' }));
@@ -162,12 +166,58 @@ describe('pagamento online (Mercado Pago)', () => {
     fireEvent.change(screen.getByLabelText('Nome completo'), { target: { value: 'maria souza' } });
     fireEvent.change(screen.getByLabelText('Unidade em que você trabalha'), { target: { value: 'ana-dic' } });
     fireEvent.click(screen.getByRole('button', { name: 'Mais Lombo' }));
+    // Sem WhatsApp não passa (10/11/2026).
+    fireEvent.click(screen.getByRole('button', { name: /^Pagar R\$\s55,00$/ }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Escreva o seu WhatsApp com DDD.');
+    const whats = screen.getByLabelText(/^WhatsApp com DDD/);
+    fireEvent.change(whats, { target: { value: '19998765432' } });
+    expect(whats).toHaveValue('(19) 99876-5432');
     fireEvent.click(screen.getByRole('button', { name: /^Pagar R\$\s55,00$/ }));
     expect(banco.online).toHaveLength(0); // ainda não: primeiro o popup
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: /Confirmar e pagar R\$\s55,00/ }));
     await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('https://www.mercadopago.com.br/checkout/v1/redirect?order_id=ORD1'));
-    expect(banco.online[0]).toMatchObject({ nome: 'maria souza', unidadeId: 'ana-dic', quantidades: { lombo: 1 } });
+    expect(banco.online[0]).toMatchObject({ nome: 'maria souza', telefone: '(19) 99876-5432', unidadeId: 'ana-dic', quantidades: { lombo: 1 } });
     expect(banco.enviados).toHaveLength(0);
+  });
+
+  it('nome e WhatsApp de quem já pediu abrem "Seus pedidos": QR Code, comprovante e pagar o que ficou', async () => {
+    banco.respostaMeus = {
+      pagos: [{ numero: 'PZ-7KQ2M', nome: 'Maria Souza', unidade_nome: 'ANA DIC', sabores: { frango: 1 }, quantidade: 1, total: 55, mp_forma: 'bank_transfer', mp_bandeira: 'pix', codigo: 'PAY01X', pago_em: '2026-11-10T17:32:00Z', retirada: false }],
+      pendentes: [{ pedido: PEDIDO, sabores: { lombo: 2 }, quantidade: 2, total: 110, status: 'cancelado', criado_em: '2026-11-12T12:00:00Z' }],
+    };
+    render(<MemoryRouter><Confirmacao /></MemoryRouter>);
+    fireEvent.change(screen.getByLabelText('Nome completo'), { target: { value: 'Maria Souza' } });
+    fireEvent.change(screen.getByLabelText(/^WhatsApp com DDD/), { target: { value: '19998765432' } });
+    const janela = await screen.findByTestId('seus-pedidos', {}, { timeout: 3000 });
+    expect(banco.meus).toEqual([['Maria Souza', '(19) 99876-5432']]);
+    expect(within(janela).getByText('Você já tem pedidos, Maria')).toBeInTheDocument();
+    expect(within(janela).getByTestId('pedido-pago')).toHaveTextContent('1 Frango · R$ 55,00');
+    expect(within(janela).getByTestId('pedido-sem-pagar')).toHaveTextContent('Pagamento não concluído');
+    // O comprovante de novo, já com o QR Code
+    fireEvent.click(within(janela).getByRole('button', { name: 'Ver QR Code e baixar comprovante' }));
+    expect(within(janela).getByTestId('qr-na-tela')).toBeInTheDocument();
+    fireEvent.click(within(janela).getByRole('button', { name: /Baixar comprovante/ }));
+    await vi.waitFor(() => expect(banco.comprovantes[0]).toMatchObject({ numero: 'PZ-7KQ2M', forma: 'Pix', codigo: 'PAY01X', total: 55 }));
+    fireEvent.click(within(janela).getByRole('button', { name: 'Voltar aos meus pedidos' }));
+    // Pagar o pedido que ficou sem pagar
+    fireEvent.click(within(janela).getByRole('button', { name: 'Pagar este pedido' }));
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('https://www.mercadopago.com.br/checkout/v1/redirect?order_id=ORD2'));
+    expect(banco.deNovo).toEqual([PEDIDO]);
+  });
+
+  it('"Fazer outro pedido" fecha e não abre de novo para a mesma pessoa; sem pedidos, nada aparece', async () => {
+    banco.respostaMeus = { pagos: [{ numero: 'PZ-7KQ2M', nome: 'Maria Souza', unidade_nome: 'ANA DIC', sabores: { frango: 1 }, quantidade: 1, total: 55, mp_forma: 'bank_transfer', mp_bandeira: 'pix', codigo: 'PAY01X', pago_em: '2026-11-10T17:32:00Z', retirada: false }], pendentes: [] };
+    render(<MemoryRouter><Confirmacao /></MemoryRouter>);
+    fireEvent.change(screen.getByLabelText('Nome completo'), { target: { value: 'Maria Souza' } });
+    fireEvent.change(screen.getByLabelText(/^WhatsApp com DDD/), { target: { value: '19998765432' } });
+    fireEvent.click(within(await screen.findByTestId('seus-pedidos', {}, { timeout: 3000 })).getByRole('button', { name: 'Fazer outro pedido' }));
+    expect(screen.queryByTestId('seus-pedidos')).toBeNull();
+    // O formulário segue preenchido
+    expect(screen.getByLabelText('Nome completo')).toHaveValue('Maria Souza');
+    fireEvent.change(screen.getByLabelText('Nome completo'), { target: { value: 'Maria Souza ' } });
+    await new Promise((r) => setTimeout(r, 900));
+    expect(screen.queryByTestId('seus-pedidos')).toBeNull();
+    expect(banco.meus).toHaveLength(1);
   });
 
   it('a volta aprovada mostra o número, o pagamento e baixa o comprovante', async () => {
