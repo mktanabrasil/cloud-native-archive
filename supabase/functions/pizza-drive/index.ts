@@ -222,24 +222,27 @@ async function copiarUma(admin: Admin, token: string, c: Conexao, linha: any, ca
   // O preço de cada linha sai do que foi gravado (R$ 50 até 09/11/2026, R$ 55 depois).
   const preco = Number(linha.total) / Number(linha.quantidade);
 
-  // Pago online (10/11/2026): o comprovante é feito aqui, uma vez só, como o anexado.
+  // Pago online (10/11/2026): o comprovante é feito aqui, com os dados que a função
+  // pizza-pagamento leu do Mercado Pago. Desde 10/11/2026 (QR Code da retirada) ele é
+  // refeito a cada cópia, no mesmo arquivo, como o PDF de respostas: zerar
+  // drive_copiado_em atualiza os comprovantes antigos sem apagar nada no Drive.
   const online = linha.forma === 'mercado_pago' && !!linha.mp_pagamento_id;
   const formaMp = online ? formaDoMercadoPago(linha.mp_forma, linha.mp_bandeira) : null;
   if (online) {
     const nomeComp = `${linha.numero} · comprovante.pdf`;
-    if (!(await procurar(token, c.drive_id, pessoa, nomeComp, false))) {
-      const pdf = await montarComprovante(PDFLib, {
-        numero: linha.numero, nome: linha.nome, unidade: linha.unidade_nome, area: AREAS[linha.area] ?? linha.area,
-        sabores, preco, forma: formaMp!, pagoEm: quando(linha.mp_aprovado_em ?? linha.created_at),
-        codigo: String(linha.mp_pagamento_id), retirada: RETIRADA, qr: matrizDoQr(linha.numero),
-      });
-      await subir(token, pessoa, nomeComp, 'application/pdf', pdf);
-    }
+    const pdf = await montarComprovante(PDFLib, {
+      numero: linha.numero, nome: linha.nome, unidade: linha.unidade_nome, area: AREAS[linha.area] ?? linha.area,
+      sabores, preco, forma: formaMp!, pagoEm: quando(linha.mp_aprovado_em ?? linha.created_at),
+      codigo: String(linha.mp_pagamento_id), retirada: RETIRADA, qr: matrizDoQr(linha.numero),
+    });
+    const existente = await procurar(token, c.drive_id, pessoa, nomeComp, false);
+    if (existente) await substituir(token, existente, 'application/pdf', pdf);
+    else await subir(token, pessoa, nomeComp, 'application/pdf', pdf);
   }
 
   const nomePdf = `${linha.numero} · ${limpo(linha.nome)}.pdf`;
   // O PDF é sempre refeito: se já existe (cópia refeita), o conteúdo é trocado
-  // no mesmo arquivo, sem duplicar. O comprovante, não: esse nunca muda.
+  // no mesmo arquivo, sem duplicar. O comprovante anexado (foto da pessoa) não muda.
   {
     const pdf = await montarPdf(PDFLib, SEM_FONTE_EXTRA, {
       numero: linha.numero, quando: quando(linha.created_at), nome: linha.nome, unidade: linha.unidade_nome,
