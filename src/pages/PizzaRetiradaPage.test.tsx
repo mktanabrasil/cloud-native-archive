@@ -72,6 +72,24 @@ describe('retirada com leitor', () => {
     expect(r).toHaveTextContent('Não entregue de novo.');
   });
 
+  it('a mesma pessoa tem mais pedidos: "Registrar todos" dá baixa em tudo e soma o que entregar', async () => {
+    e.resposta = { status: 'registrada', pedido: PEDIDO, outros: [{ numero: 'PZ-4HN9R', sabores: { frango: 2 }, quantidade: 2 }] };
+    abrir();
+    await screen.findByTestId('contador');
+    bipar('PZ-7KQ2M');
+    const outros = await screen.findByTestId('outros-pedidos');
+    expect(outros).toHaveTextContent('Maria tem mais 1 pedido a retirar');
+    expect(outros).toHaveTextContent('PZ-4HN9R · 2 Frango');
+    e.resposta = { status: 'registrada', pedido: { ...PEDIDO, numero: 'PZ-4HN9R', sabores: { frango: 2 }, quantidade: 2 }, outros: [] };
+    fireEvent.click(within(outros).getByRole('button', { name: 'Registrar todos' }));
+    await vi.waitFor(() => expect(e.registros).toEqual(['PZ-7KQ2M', 'PZ-4HN9R']));
+    const r = await screen.findByTestId('resultado');
+    await vi.waitFor(() => expect(r).toHaveTextContent('PZ-7KQ2M + PZ-4HN9R'));
+    expect(r).toHaveTextContent('Entregar: 1 Marguerita, 2 Frango, 2 Calabresa fatiada');
+    expect(screen.queryByTestId('outros-pedidos')).toBeNull();
+    expect(within(screen.getByTestId('recentes')).getByText('PZ-4HN9R')).toBeInTheDocument();
+  });
+
   it('código que não é da Pizza', async () => {
     e.resposta = { status: 'nao_encontrado' };
     abrir();

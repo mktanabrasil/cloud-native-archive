@@ -122,8 +122,27 @@ export const comprovanteObrigatorio = (f: Forma | null) => f !== null && f !== '
 export const encerrado = (agora: Date = new Date()) => agora >= PRAZO;
 
 /** O que falta para enviar; null quando está tudo certo. */
-export function problemaDoEnvio(d: { nome: string; unidade: string | null; quantidades: Quantidades; forma: Forma | null; comprovante: File | null }): string | null {
+/** O WhatsApp (10/11/2026): só os dígitos; vale com 10 ou 11 e DDD de 11 a 99. */
+export const soDigitos = (t: string) => t.replace(/\D/g, '');
+export const whatsappValido = (t: string) => {
+  const d = soDigitos(t);
+  return (d.length === 10 || d.length === 11) && Number(d.slice(0, 2)) >= 11;
+};
+/** "(19) 99876-5432", enquanto a pessoa digita. */
+export function whatsappFormatado(t: string): string {
+  const d = soDigitos(t).slice(0, 11);
+  if (!d) return '';
+  if (d.length <= 2) return `(${d}`;
+  const ddd = d.slice(0, 2), resto = d.slice(2);
+  if (resto.length <= 4) return `(${ddd}) ${resto}`;
+  const corte = resto.length > 8 ? 5 : 4;
+  return `(${ddd}) ${resto.slice(0, corte)}-${resto.slice(corte)}`;
+}
+
+export function problemaDoEnvio(d: { nome: string; telefone?: string; unidade: string | null; quantidades: Quantidades; forma: Forma | null; comprovante: File | null }): string | null {
   if (d.nome.trim().length < 3) return 'Escreva o seu nome completo.';
+  // O WhatsApp só é pedido no pagamento online (a confirmação de quem pagou na unidade segue sem ele).
+  if (d.forma === 'mercado_pago' && !whatsappValido(d.telefone ?? '')) return 'Escreva o seu WhatsApp com DDD.';
   if (!d.unidade) return 'Escolha a unidade em que você trabalha.';
   if (totalDePizzas(d.quantidades) === 0) return 'Confirme pelo menos uma pizza.';
   if (!d.forma) return 'Escolha como você pagou.';

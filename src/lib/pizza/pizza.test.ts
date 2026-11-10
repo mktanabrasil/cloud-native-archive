@@ -48,6 +48,20 @@ describe('Pizza da Alegria', () => {
     expect(problemaDoEnvio({ ...base, nome: 'Ma' })).toMatch(/nome/);
   });
 
+  it('o WhatsApp: com DDD, 10 ou 11 dígitos, formatado enquanto digita', async () => {
+    const { whatsappValido, whatsappFormatado, problemaDoEnvio } = await import('./modelo');
+    expect(whatsappValido('(19) 99876-5432')).toBe(true);
+    expect(whatsappValido('1932345678')).toBe(true);
+    expect(whatsappValido('99876-5432')).toBe(false);
+    expect(whatsappValido('(09) 99876-5432')).toBe(false);
+    expect(whatsappFormatado('19998765432')).toBe('(19) 99876-5432');
+    expect(whatsappFormatado('1932345678')).toBe('(19) 3234-5678');
+    expect(whatsappFormatado('199')).toBe('(19) 9');
+    const base = { nome: 'Maria Souza', unidade: 'ana-dic', quantidades: { lombo: 1 }, forma: 'mercado_pago' as const, comprovante: null };
+    expect(problemaDoEnvio({ ...base, telefone: '' })).toMatch(/WhatsApp/);
+    expect(problemaDoEnvio({ ...base, telefone: '(19) 99876-5432' })).toBeNull();
+  });
+
   it('arquivo e mensagens de erro', () => {
     expect(problemaDoArquivo(new File(['x'], 'c.pdf', { type: 'application/pdf' }))).toBeNull();
     expect(problemaDoArquivo(new File(['x'], 'c.docx', { type: 'application/msword' }))).toMatch(/foto ou um PDF/);

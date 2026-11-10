@@ -58,7 +58,7 @@ function bipe(tipo: ResultadoDaRetirada['status'] | 'erro') {
   } catch { /* sem som, segue */ }
 }
 
-function Resultado({ r }: { r: ResultadoDaRetirada | 'erro' }) {
+function Resultado({ r, aoRegistrarTodos, ocupado }: { r: ResultadoDaRetirada | 'erro'; aoRegistrarTodos?: () => void; ocupado?: boolean }) {
   if (r === 'erro') {
     return (
       <div className="flex flex-col gap-1.5 rounded-2xl p-5" style={{ background: ESTADO.nao_encontrado.bg, color: ESTADO.nao_encontrado.tx }} role="status" data-testid="resultado">
@@ -88,6 +88,20 @@ function Resultado({ r }: { r: ResultadoDaRetirada | 'erro' }) {
         </span>
       )}
       {r.status === 'nao_encontrado' && <span className="text-[15px]" style={{ color: COR.tinta }}>O código lido não é de um pedido da Pizza. Confira o número no comprovante ou procure pelo nome.</span>}
+      {/* A mesma pessoa tem outros pedidos a retirar (10/11/2026): entrega tudo de uma vez. */}
+      {r.status !== 'nao_encontrado' && !!r.outros?.length && (
+        <div className="mt-2 flex flex-col gap-2 rounded-xl border-2 border-dashed p-3" style={{ borderColor: c.tx, color: COR.tinta }} data-testid="outros-pedidos">
+          <b className="text-[15px]">{p!.nome.split(' ')[0]} tem mais {r.outros.length} {r.outros.length === 1 ? 'pedido' : 'pedidos'} a retirar</b>
+          <ul className="flex flex-col gap-0.5 text-[14px]">
+            {r.outros.map((o) => <li key={o.numero}><b>{o.numero}</b> · {resumoDosSabores(o.sabores).replace(/ · /g, ', ')}</li>)}
+          </ul>
+          {aoRegistrarTodos && (
+            <button type="button" onClick={aoRegistrarTodos} disabled={ocupado} className="self-start rounded-xl px-4 py-2.5 text-[15px] font-bold text-white disabled:opacity-60" style={{ background: COR.vermelho }}>
+              Registrar todos
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -143,6 +157,36 @@ export default function PizzaRetiradaPage() {
       setTexto('');
       focar();
     }
+  }
+
+  /** "Registrar todos": dá baixa nos outros pedidos da mesma pessoa e mostra tudo o que entregar. */
+  async function registrarTodos() {
+    const base = resultado;
+    if (ocupado || !base || base === 'erro' || base.status === 'nao_encontrado' || !base.outros?.length) return;
+    setOcupado(true);
+    const feitos: PedidoNaRetirada[] = base.status === 'registrada' ? [base.pedido] : [];
+    try {
+      for (const o of base.outros) {
+        const r = await registrarRetirada(o.numero);
+        if (r.status === 'registrada') feitos.push(r.pedido);
+      }
+    } catch {
+      setResultado('erro'); bipe('erro'); setOcupado(false); carregar(); focar();
+      return;
+    }
+    const sabores: Record<string, number> = {};
+    feitos.forEach((p) => Object.entries(p.sabores).forEach(([k, n]) => { sabores[k] = (sabores[k] ?? 0) + Number(n); }));
+    setRecentes((l) => [...feitos.filter((p) => !l.some((x) => x.numero === p.numero)).reverse(), ...l].slice(0, 12));
+    setResultado({
+      status: 'registrada',
+      pedido: { ...base.pedido, numero: feitos.map((p) => p.numero).join(' + '), sabores, quantidade: feitos.reduce((a, p) => a + p.quantidade, 0) },
+      outros: [],
+    });
+    bipe('registrada');
+    atualizarPlanilha();
+    carregar();
+    setOcupado(false);
+    focar();
   }
 
   async function desfazer(p: PedidoNaRetirada) {
@@ -269,7 +313,7 @@ export default function PizzaRetiradaPage() {
           </ul>
         )}
 
-        {resultado && <Resultado r={resultado} />}
+        {resultado && <Resultado r={resultado} aoRegistrarTodos={registrarTodos} ocupado={ocupado} />}
 
         <div className="flex flex-col gap-2">
           <h2 className="text-[15px] font-semibold">Últimas retiradas</h2>

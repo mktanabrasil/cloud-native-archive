@@ -200,9 +200,17 @@ const tipoDoArquivo = (caminho: string): { tipo: 'jpg' | 'png' | 'pdf' | 'outro'
 
 // deno-lint-ignore no-explicit-any
 async function copiarUma(admin: Admin, token: string, c: Conexao, linha: any, cache: Map<string, string>) {
-  const area = await pastaFilha(token, c.drive_id, c.pasta_id, AREAS[linha.area] ?? 'Outras', cache);
-  const unidade = await pastaFilha(token, c.drive_id, area, limpo(linha.unidade_nome), cache);
-  const pessoa = await pastaFilha(token, c.drive_id, unidade, limpo(linha.nome), cache);
+  // Uma pasta por pessoa (10/11/2026): com WhatsApp, todos os pedidos dela vão para a
+  // pasta do primeiro pedido, mesmo que o nome tenha sido escrito diferente depois.
+  let dono = { nome: linha.nome, unidade_nome: linha.unidade_nome, area: linha.area };
+  if (linha.telefone) {
+    const { data: primeiro } = await admin.from('pizza_confirmacoes').select('nome, unidade_nome, area')
+      .eq('telefone', linha.telefone).order('created_at').limit(1).maybeSingle();
+    if (primeiro) dono = primeiro;
+  }
+  const area = await pastaFilha(token, c.drive_id, c.pasta_id, AREAS[dono.area] ?? 'Outras', cache);
+  const unidade = await pastaFilha(token, c.drive_id, area, limpo(dono.unidade_nome), cache);
+  const pessoa = await pastaFilha(token, c.drive_id, unidade, limpo(dono.nome), cache);
 
   let comprovante: { nome: string; tamanho: string; tipo: 'jpg' | 'png' | 'pdf' | 'outro'; bytes?: Uint8Array } | null = null;
   if (linha.comprovante_caminho) {

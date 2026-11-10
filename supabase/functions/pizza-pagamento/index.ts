@@ -215,6 +215,13 @@ async function criar(admin: Admin, c: Record<string, unknown>) {
   });
   if (error) throw new ErroDoPedido(400, error.message);
   const linha = Array.isArray(data) ? data[0] : data;
+  // O WhatsApp (10/11/2026): só dígitos, 10 ou 11. Gravado à parte da reserva, para
+  // esta função funcionar antes e depois da migração 20261110230000_pizza_whatsapp.
+  const telefone = String(c.telefone ?? '').replace(/\D/g, '');
+  if (telefone.length >= 10 && telefone.length <= 11) {
+    const { error: erroTel } = await admin.from('pizza_pedidos_online').update({ telefone }).eq('id', linha.id);
+    if (erroTel) console.error('[pizza-pagamento] WhatsApp não gravado:', erroTel.message);
+  }
   const { data: pedido } = await admin.from('pizza_pedidos_online').select('id, quantidade, total, sabores').eq('id', linha.id).single();
   const link = await criarOrder(admin, pedido, origemDeVolta(c.origem));
   return { pedido: pedido.id, link };

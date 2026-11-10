@@ -3,12 +3,14 @@ import { useSearchParams } from 'react-router-dom';
 import { Camera, Check, Clock, Download, FileUp, Minus, Plus, X } from 'lucide-react';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import InstitutionalFooterBar from '@/components/news/InstitutionalFooterBar';
-import { enviarConfirmacao, pagarDeNovo, pagarOnline, pedirCopiaParaODrive, situacaoDoPedido, type SituacaoOnline } from '@/lib/pizza/api';
+import { enviarConfirmacao, meusPedidos, pagarDeNovo, pagarOnline, pedirCopiaParaODrive, situacaoDoPedido, type MeusPedidos, type SituacaoOnline } from '@/lib/pizza/api';
+import { SeusPedidos } from '@/components/pizza/SeusPedidos';
+import { semAcento } from '@/lib/pizza/qr';
 import { salvarComprovante, type DadosDoComprovante } from '@/lib/pizza/comprovante';
 import { QrDaRetirada } from '@/components/pizza/QrDaRetirada';
 import {
   FORMAS, FORMAS_NA_UNIDADE, PRECO, RETIRADA, RETIRADA_AVISO, RETIRADA_COMPLETA, RETIRADA_LOCAL, ROTULO_DA_AREA, SABORES, UNIDADES_POR_AREA, comprovanteObrigatorio, dataEHora, encerrado, formaDoMercadoPago, mensagemDoErro,
-  pagarOnlineLigado, problemaDoArquivo, problemaDoEnvio, reais, resumoDosSabores, totalDePizzas, unidadeDaPizza, valor,
+  pagarOnlineLigado, problemaDoArquivo, problemaDoEnvio, reais, resumoDosSabores, soDigitos, totalDePizzas, unidadeDaPizza, valor, whatsappFormatado, whatsappValido,
   type Forma, type Quantidades, type Sabor,
 } from '@/lib/pizza/modelo';
 
@@ -190,6 +192,11 @@ export default function PizzaConfirmacaoPage() {
   const [params, setParams] = useSearchParams();
   const pedidoDeVolta = params.get('pedido');
   const [nome, setNome] = useState('');
+  // O WhatsApp (10/11/2026): com o nome, reconhece quem já pediu ("Seus pedidos").
+  const [telefone, setTelefone] = useState('');
+  const [meus, setMeus] = useState<MeusPedidos | null>(null);
+  const dispensados = useRef(new Set<string>());
+  const [pagandoPendente, setPagandoPendente] = useState<string | null>(null);
   const [unidade, setUnidade] = useState<string>('');
   const [qtd, setQtd] = useState<Quantidades>({});
   // Ligado, só se paga pelo Mercado Pago (sem pagamento na unidade, decisão de 09/11/2026).
@@ -209,6 +216,27 @@ export default function PizzaConfirmacaoPage() {
   const u = unidadeDaPizza(unidade);
   const fechado = encerrado();
 
+  // Nome e WhatsApp preenchidos: procura os pedidos dessa pessoa (uma vez por combinação).
+  const chaveDaPessoa = `${semAcento(nome.trim()).replace(/\s+/g, ' ')}|${soDigitos(telefone)}`;
+  useEffect(() => {
+    if (!online || feito || nome.trim().length < 3 || !whatsappValido(telefone) || dispensados.current.has(chaveDaPessoa)) return;
+    let vale = true;
+    const t = window.setTimeout(() => {
+      meusPedidos(nome, telefone)
+        .then((r) => { if (vale && (r.pagos.length || r.pendentes.length) && !dispensados.current.has(chaveDaPessoa)) setMeus(r); })
+        .catch(() => { /* sem a lista, o formulário segue normal */ });
+    }, 700);
+    return () => { vale = false; window.clearTimeout(t); };
+  }, [online, feito, nome, telefone, chaveDaPessoa]);
+
+  function outroPedido() { dispensados.current.add(chaveDaPessoa); setMeus(null); }
+
+  async function pagarPendente(pedido: string) {
+    setPagandoPendente(pedido);
+    try { const { link } = await pagarDeNovo(pedido); window.location.assign(link); }
+    catch (e) { setPagandoPendente(null); setMeus(null); dispensados.current.add(chaveDaPessoa); setErro(mensagemDoErro(e)); }
+  }
+
   const mudar = (s: Sabor, d: number) => { setQtd((q) => ({ ...q, [s]: Math.max(0, Math.min(50, (q[s] ?? 0) + d)) })); setErro(null); };
 
   function anexar(lista: FileList | null) {
@@ -222,7 +250,7 @@ export default function PizzaConfirmacaoPage() {
   }
 
   async function enviar() {
-    const p = problemaDoEnvio({ nome, unidade: unidade || null, quantidades: qtd, forma, comprovante });
+    const p = problemaDoEnvio({ nome, telefone, unidade: unidade || null, quantidades: qtd, forma, comprovante });
     if (p) { setErro(p); return; }
     if (forma === 'mercado_pago') { setErro(null); setConferindo(true); return; }
     setEnviando(true); setErro(null);
@@ -242,7 +270,7 @@ export default function PizzaConfirmacaoPage() {
   async function pagar() {
     setEnviando(true); setErro(null);
     try {
-      const { link } = await pagarOnline({ nome, unidadeId: unidade, quantidades: qtd });
+      const { link } = await pagarOnline({ nome, telefone, unidadeId: unidade, quantidades: qtd });
       window.location.assign(link); // segue "enviando" até a página do Mercado Pago abrir
     } catch (e) {
       setErro(mensagemDoErro(e)); setEnviando(false); // o popup fica aberto, com o erro
@@ -315,6 +343,13 @@ export default function PizzaConfirmacaoPage() {
               <label className="flex flex-col gap-1.5 text-sm font-semibold">Nome completo
                 <input className={campo} style={{ borderColor: COR.linha }} autoComplete="name" maxLength={120} value={nome} onChange={(e) => { setNome(e.target.value); setErro(null); }} />
               </label>
+              {online && (
+                <label className="flex flex-col gap-1.5 text-sm font-semibold">WhatsApp com DDD
+                  <input className={campo} style={{ borderColor: COR.linha }} type="tel" inputMode="numeric" autoComplete="tel-national" placeholder="(19) 99999-9999"
+                    value={telefone} onChange={(e) => { setTelefone(whatsappFormatado(e.target.value)); setErro(null); }} />
+                  <span className="text-xs font-normal" style={{ color: COR.mut }}>Para achar os seus pedidos se você voltar aqui.</span>
+                </label>
+              )}
               <label className="flex flex-col gap-1.5 text-sm font-semibold">Unidade em que você trabalha
                 <select className={campo} style={{ borderColor: COR.linha }} value={unidade} onChange={(e) => { setUnidade(e.target.value); setErro(null); }}>
                   <option value="">Escolha a unidade</option>
@@ -399,6 +434,9 @@ export default function PizzaConfirmacaoPage() {
           </form>
         )}
       </div>
+      {meus && !conferindo && (
+        <SeusPedidos dados={meus} nome={nome} aoOutroPedido={outroPedido} aoPagar={pagarPendente} pagando={pagandoPendente} />
+      )}
       {conferindo && (
         <ConferirPedido
           nome={nome} unidade={u?.name ?? ''} itens={itensDoPedido(qtd as Record<string, number>)} total={valor(pizzas)}
