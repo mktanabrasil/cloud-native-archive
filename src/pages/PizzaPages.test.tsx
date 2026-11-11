@@ -21,6 +21,7 @@ globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() } }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
 vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => banco.papel }));
+vi.mock('@/lib/pizza/rankingArte', () => ({ desenharRanking: async () => new Blob(['x'], { type: 'image/jpeg' }), salvarRanking: async () => 'baixado' }));
 vi.mock('@/lib/pizza/comprovante', () => ({ salvarComprovante: async (d: Record<string, unknown>) => { banco.comprovantes.push(d); return 'baixado'; } }));
 vi.mock('@/lib/pizza/api', () => ({
   enviarConfirmacao: async (d: Record<string, unknown>) => { banco.enviados.push(d); return 'PZ-0137'; },
@@ -289,6 +290,21 @@ describe('painel', () => {
     await vi.waitFor(() => expect(aba.location.href).toBe('https://docs.google.com/spreadsheets/d/PLAN1/edit'));
     expect(banco.drive).toContainEqual({ planilha: true });
     abrir.mockRestore();
+  });
+
+  it('"Ranking para o WhatsApp" mostra a arte e a mensagem com quem lidera', async () => {
+    globalThis.URL.createObjectURL ??= () => 'blob:x';
+    globalThis.URL.revokeObjectURL ??= () => {};
+    banco.lista = [
+      CONF({ id: '1', numero: 'PZ-0002', nome: 'Roberto Alves', unidade_id: 'ana-dic', unidade_nome: 'ANA DIC', quantidade: 3, total: 165 }),
+      CONF({ id: '2', numero: 'PZ-0001', nome: 'Luciana', unidade_id: 'escritorio-adm', unidade_nome: 'Escritório (ADM)', quantidade: 1 }),
+    ];
+    render(<MemoryRouter><PainelDaPizza /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: /Ranking para o WhatsApp/ }));
+    const janela = await screen.findByRole('dialog', { name: 'Ranking para o WhatsApp' });
+    expect((within(janela).getByLabelText('Mensagem para o grupo') as HTMLTextAreaElement).value).toContain('🥇 *ANA DIC* lidera entre as unidades, com 3 pizzas!');
+    expect(await within(janela).findByRole('img', { name: 'Arte do ranking da Pizza da Alegria' })).toBeInTheDocument();
+    expect(within(janela).getByRole('button', { name: /Baixar imagem/ })).toBeEnabled();
   });
 
   it('o ADM (financeiro) entra; a gestora não', async () => {
