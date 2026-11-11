@@ -3,7 +3,7 @@ import type { MarketingItem } from '@/types';
 import { PEDIDO_VAZIO, comPedidoDeArte, errosDoPedidoDeArte, itensAntigosDeArte, lerPedidoDeArte, limparPedidoDeArte, pilulasDoPedido, temArte } from './arte';
 
 const antigo: MarketingItem = { type: 'demanda_grafica', item: 'Cartaz', description: 'A3, colorido' };
-// O cartaz é de pedido antigo (desde 11/11/2026 o pedido é de rede social), mas continua lido e gravado.
+// `cartaz` é o A4 plastificado (11/11/2026; antes "Cartaz A4", o mesmo tipo).
 const pedido = { whatsapp: true, story: true, cartaz: true, quantidade: 6, legenda: 'Vem comemorar!', conteudo: 'Título, data, endereço' };
 
 describe('ler e gravar o pedido', () => {
@@ -13,7 +13,7 @@ describe('ler e gravar o pedido', () => {
       antigo,
       { type: 'arte_whatsapp', item: 'Arte para o WhatsApp', description: '', legenda: 'Vem comemorar!', conteudo: 'Título, data, endereço' },
       { type: 'story_instagram', item: 'Story do Instagram', description: '', legenda: 'Vem comemorar!', conteudo: 'Título, data, endereço' },
-      { type: 'cartaz_a4', item: 'Cartaz A4', description: '', legenda: 'Vem comemorar!', conteudo: 'Título, data, endereço', quantidade: 6 },
+      { type: 'cartaz_a4', item: 'A4 plastificado', description: '', legenda: 'Vem comemorar!', conteudo: 'Título, data, endereço', quantidade: 6 },
     ]);
     expect(lerPedidoDeArte(itens)).toEqual(pedido);
     expect(itensAntigosDeArte(itens)).toEqual([antigo]);
@@ -29,7 +29,7 @@ describe('ler e gravar o pedido', () => {
 
   it('limpar apara e tira a quantidade inválida; só cartaz não guarda legenda obrigatória', () => {
     const itens = limparPedidoDeArte(comPedidoDeArte([], { whatsapp: false, story: false, cartaz: true, quantidade: 0, legenda: '  ', conteudo: ' Título ' }));
-    expect(itens).toEqual([{ type: 'cartaz_a4', item: 'Cartaz A4', description: '', legenda: '', conteudo: 'Título', quantidade: undefined }]);
+    expect(itens).toEqual([{ type: 'cartaz_a4', item: 'A4 plastificado', description: '', legenda: '', conteudo: 'Título', quantidade: undefined }]);
   });
 });
 
@@ -38,26 +38,26 @@ describe('validação', () => {
     expect(errosDoPedidoDeArte(PEDIDO_VAZIO, false)).toBeUndefined();
   });
   it('aberto sem escolha, sem conteúdo, sem legenda no WhatsApp, sem quantidade no cartaz', () => {
-    expect(errosDoPedidoDeArte(PEDIDO_VAZIO, true)).toMatch(/marque o formato/i);
+    expect(errosDoPedidoDeArte(PEDIDO_VAZIO, true)).toMatch(/marque o que precisa: whatsapp, story do instagram, a4 plastificado/i);
     expect(errosDoPedidoDeArte({ ...pedido, conteudo: '' }, true)).toMatch(/o que precisa estar na arte/i);
     expect(errosDoPedidoDeArte({ ...pedido, legenda: '' }, true)).toMatch(/legenda/i);
-    expect(errosDoPedidoDeArte({ ...pedido, quantidade: null }, true)).toMatch(/quantos cartazes/i);
+    expect(errosDoPedidoDeArte({ ...pedido, quantidade: null }, true)).toMatch(/quantas cópias do a4 plastificado/i);
     expect(errosDoPedidoDeArte({ ...pedido, whatsapp: false, legenda: '' }, true)).toBeUndefined();
     expect(errosDoPedidoDeArte(pedido, true)).toBeUndefined();
   });
 });
 
 describe('pílulas', () => {
-  it('"Cartaz A4 · 6" quando tem quantidade', () => {
-    expect(pilulasDoPedido(pedido)).toEqual(['Arte para o WhatsApp', 'Story do Instagram', 'Cartaz A4 · 6']);
-    expect(pilulasDoPedido({ ...pedido, quantidade: null, whatsapp: false, story: false })).toEqual(['Cartaz A4']);
+  it('"A4 plastificado · 6" quando tem quantidade', () => {
+    expect(pilulasDoPedido(pedido)).toEqual(['Arte para o WhatsApp', 'Story do Instagram', 'A4 plastificado · 6']);
+    expect(pilulasDoPedido({ ...pedido, quantidade: null, whatsapp: false, story: false })).toEqual(['A4 plastificado']);
   });
 });
 
 describe('legenda só com WhatsApp (varredura de 25/09/2026)', () => {
   it('desmarcou o WhatsApp: a legenda escrita antes não é gravada no cartaz', () => {
     const itens = limparPedidoDeArte(comPedidoDeArte([], { whatsapp: false, story: false, cartaz: true, quantidade: 4, legenda: 'Vem!', conteudo: 'Título' }));
-    expect(itens).toEqual([{ type: 'cartaz_a4', item: 'Cartaz A4', description: '', legenda: '', conteudo: 'Título', quantidade: 4 }]);
+    expect(itens).toEqual([{ type: 'cartaz_a4', item: 'A4 plastificado', description: '', legenda: '', conteudo: 'Título', quantidade: 4 }]);
   });
 });
 
@@ -67,5 +67,19 @@ describe('rede social (11/11/2026)', () => {
     expect(errosDoPedidoDeArte(s, true)).toBeUndefined();
     expect(limparPedidoDeArte(comPedidoDeArte([], s))).toEqual([{ type: 'story_instagram', item: 'Story do Instagram', description: '', legenda: '', conteudo: 'Título e data' }]);
     expect(lerPedidoDeArte(comPedidoDeArte([], s))).toMatchObject({ story: true, whatsapp: false, cartaz: false });
+  });
+});
+
+describe('Arte / impressa (11/11/2026)', () => {
+  it('o pedido antigo de "Cartaz A4" é lido como A4 plastificado, com a quantidade', () => {
+    const antigoCartaz: MarketingItem[] = [{ type: 'cartaz_a4', item: 'Cartaz A4', description: '', legenda: '', conteudo: 'Título', quantidade: 3 }];
+    expect(lerPedidoDeArte(antigoCartaz)).toMatchObject({ cartaz: true, quantidade: 3 });
+    expect(pilulasDoPedido(lerPedidoDeArte(antigoCartaz))).toEqual(['A4 plastificado · 3']);
+  });
+
+  it('rede social e A4 juntos: um item de cada', () => {
+    const ambos = { ...PEDIDO_VAZIO, story: true, cartaz: true, quantidade: 2, conteudo: 'Título' };
+    expect(errosDoPedidoDeArte(ambos, true)).toBeUndefined();
+    expect(limparPedidoDeArte(comPedidoDeArte([], ambos)).map(i => i.type)).toEqual(['story_instagram', 'cartaz_a4']);
   });
 });

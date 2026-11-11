@@ -12,7 +12,7 @@ import { pistaDoEstoque } from './itens';
  *
  * Depois de criar, salvar ou enviar, a gestora pode baixar um PDF com o que
  * fazer, montado só do que ela preencheu: transporte vira "confirmar a VAN",
- * alimento que a ANA providencia vira um item, cartaz vira "imprimir N",
+ * alimento que a ANA providencia vira um item, o A4 plastificado vira "imprimir N",
  * e assim por diante. Três colunas fixas — Antes, No dia, Depois. O que não
  * foi preenchido não aparece.
  *
@@ -92,8 +92,8 @@ export function montarChecklist(e: Partial<AppEvent>): Checklist {
     const arte = lerPedidoDeArte(e.marketing_items);
     if (arte.whatsapp) antes.push('Receber a arte do marketing e mandar nos grupos das famílias');
     if (arte.story) antes.push('Receber do marketing a arte do story do Instagram');
-    if (arte.cartaz) antes.push(`Imprimir ${arte.quantidade ? `${arte.quantidade} ${arte.quantidade === 1 ? 'cartaz' : 'cartazes'}` : 'os cartazes'} A4 e plastificar`);
-    if (arte.cartaz) noDia.push('Colar os cartazes na unidade');
+    if (arte.cartaz) antes.push(`Imprimir ${arte.quantidade ? `${arte.quantidade} ${arte.quantidade === 1 ? 'cópia' : 'cópias'}` : 'as cópias'} A4 e plastificar`);
+    if (arte.cartaz) noDia.push('Fixar os A4 plastificados na unidade');
   }
 
   // Parcerias
@@ -137,7 +137,7 @@ export function resumoDoEvento(e: Partial<AppEvent>): Array<[string, string]> {
     const arte = lerPedidoDeArte(e.marketing_items);
     if (arte.whatsapp) partes.push('arte WhatsApp');
     if (arte.story) partes.push('story Instagram');
-    if (arte.cartaz) partes.push(arte.quantidade ? `${arte.quantidade} cartazes` : 'cartaz');
+    if (arte.cartaz) partes.push(arte.quantidade && arte.quantidade > 1 ? `${arte.quantidade} A4 plastificados` : 'A4 plastificado');
     if (partes.length) linhas.push(['Marketing', partes.join(' + ')]);
   }
   return linhas;

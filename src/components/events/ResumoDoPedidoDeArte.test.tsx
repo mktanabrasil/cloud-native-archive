@@ -23,7 +23,8 @@ describe('ResumoDoPedidoDeArte', () => {
     render(<ResumoDoPedidoDeArte itens={itens} />);
     const r = screen.getByTestId('resumo-do-pedido-de-arte');
     expect(r).toHaveTextContent('Arte para o WhatsApp');
-    expect(r).toHaveTextContent('Cartaz A4 · 6');
+    // O pedido antigo de "Cartaz A4" aparece como A4 plastificado (11/11/2026).
+    expect(r).toHaveTextContent('A4 plastificado · 6');
     expect(r).toHaveTextContent('Legenda');
     expect(r).toHaveTextContent('Vem comemorar!');
     expect(r).toHaveTextContent('Na arte');

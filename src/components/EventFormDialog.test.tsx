@@ -664,7 +664,7 @@ describe('os combinados da cobertura', () => {
     render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
 
     fireEvent.click(screen.getByRole('switch', { name: /fotos e vídeo no dia/i }));
-    fireEvent.click(screen.getByRole('switch', { name: /rede social/i }));
+    fireEvent.click(screen.getByRole('switch', { name: /^arte . impressa/i }));
     fireEvent.click(screen.getByRole('checkbox', { name: /whatsapp/i }));
     fireEvent.change(screen.getByLabelText(/legenda para a mensagem/i), { target: { value: 'Vem!' } });
     fireEvent.change(screen.getByLabelText(/o que precisa estar na arte/i), { target: { value: 'Título e data' } });
@@ -697,15 +697,15 @@ describe('o pop-up com o checklist (22/09/2026)', () => {
 });
 
 describe('varredura de 25/09/2026: o que não pode passar calado', () => {
-  it('um pedido antigo de cartaz A4 continua aparecendo e ainda precisa de quantidade', async () => {
+  it('um pedido antigo de "Cartaz A4" aparece como A4 plastificado e ainda precisa de quantidade', async () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
     const evento = { ...eventoGravado(), marketing_request: true, marketing_items: [{ type: 'cartaz_a4' as const, item: 'Cartaz A4', description: '', legenda: '', conteudo: 'Título' }] };
     render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
 
-    expect(screen.getByRole('checkbox', { name: /cartaz a4/i })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('checkbox', { name: /a4 plastificado/i })).toHaveAttribute('aria-checked', 'true');
     fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
 
-    expect((await screen.findAllByText(/quantos cartazes/i, { selector: 'p' })).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/quantas cópias do a4 plastificado/i, { selector: 'p' })).length).toBeGreaterThan(0);
     expect(espiao.updateEvent).not.toHaveBeenCalled();
   });
 
@@ -744,7 +744,7 @@ describe('varredura de 25/09/2026: o que não pode passar calado', () => {
 describe('o pedido de arte (22/09/2026)', () => {
   const ligarPedido = () => {
     fireEvent.click(screen.getByRole('switch', { name: /pedido ao marketing/i }));
-    fireEvent.click(screen.getByRole('switch', { name: /rede social/i }));
+    fireEvent.click(screen.getByRole('switch', { name: /^arte . impressa/i }));
   };
 
   it('ligado sem escolha, o envio para e diz o que falta', async () => {
@@ -756,16 +756,16 @@ describe('o pedido de arte (22/09/2026)', () => {
     expect(screen.queryByLabelText(/legenda para a mensagem/i)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
-    expect((await screen.findAllByText(/marque o formato: whatsapp, story do instagram/i)).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(/marque o que precisa: whatsapp, story do instagram, a4 plastificado/i)).length).toBeGreaterThan(0);
     expect(espiao.addEvent).not.toHaveBeenCalled();
   });
 
-  it('WhatsApp e story: legenda e conteúdo vão gravados, um item por escolha (rede social, 11/11/2026)', async () => {
+  it('WhatsApp e story: legenda e conteúdo vão gravados, um item por escolha (11/11/2026)', async () => {
     espiao.papel = { ...espiao.papel, isMarketing: true };
     abrir();
     preencher();
     ligarPedido();
-    expect(screen.queryByRole('checkbox', { name: /cartaz a4/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /a4 plastificado/i })).toHaveAttribute('aria-checked', 'false');
 
     fireEvent.click(screen.getByRole('checkbox', { name: /whatsapp/i }));
     fireEvent.click(screen.getByRole('checkbox', { name: /story do instagram/i }));
@@ -802,9 +802,59 @@ describe('o pedido de arte (22/09/2026)', () => {
     const evento = { ...eventoGravado(), marketing_request: true, marketing_items: [{ type: 'demanda_grafica' as const, item: 'Cartaz', description: 'A3 colorido' }] };
     render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
 
-    expect(screen.getByRole('switch', { name: /rede social/i })).toBeChecked();
+    expect(screen.getByRole('switch', { name: /^arte . impressa/i })).toBeChecked();
     expect(screen.getByTestId('arte-pedido-antigo')).toHaveTextContent('Arte (pedido antigo) · Cartaz');
     expect(screen.getByTestId('arte-pedido-antigo')).toHaveTextContent('A3 colorido');
+  });
+});
+
+describe('Arte / impressa (11/11/2026)', () => {
+  const ligarPedido = () => {
+    fireEvent.click(screen.getByRole('switch', { name: /pedido ao marketing/i }));
+    fireEvent.click(screen.getByRole('switch', { name: /^arte . impressa/i }));
+  };
+
+  it('dois grupos: arte para rede social (WhatsApp, story) e impressa (A4 plastificado)', () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    ligarPedido();
+    const social = screen.getByRole('group', { name: 'Arte para rede social' });
+    expect(within(social).getAllByRole('checkbox').map(c => c.textContent)).toEqual([expect.stringMatching(/^WhatsApp/), expect.stringMatching(/^Story do Instagram/)]);
+    const impressa = screen.getByRole('group', { name: 'Impressa' });
+    expect(within(impressa).getAllByRole('checkbox').map(c => c.textContent)).toEqual([expect.stringMatching(/^A4 plastificado/)]);
+    expect(screen.queryByLabelText(/quantas cópias/i)).not.toBeInTheDocument();
+  });
+
+  it('A4 plastificado com rede social: pede quantas cópias e grava um item de cada', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    preencher();
+    ligarPedido();
+    fireEvent.click(screen.getByRole('checkbox', { name: /story do instagram/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /a4 plastificado/i }));
+    fireEvent.change(screen.getByLabelText(/o que precisa estar na arte/i), { target: { value: 'Título e data' } });
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
+    expect((await screen.findAllByText(/quantas cópias do a4 plastificado/i, { selector: 'p' })).length).toBeGreaterThan(0);
+    expect(espiao.addEvent).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText(/quantas cópias/i), { target: { value: '6' } });
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
+    expect((espiao.addEvent.mock.calls[0][0] as AppEvent).marketing_items).toEqual([
+      { type: 'story_instagram', item: 'Story do Instagram', description: '', legenda: '', conteudo: 'Título e data' },
+      { type: 'cartaz_a4', item: 'A4 plastificado', description: '', legenda: '', conteudo: 'Título e data', quantidade: 6 },
+    ]);
+  });
+
+  it('só o story, num evento com pedido antigo, ainda pede o que vai na arte', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    const evento = { ...eventoGravado(), marketing_request: true, marketing_items: [{ type: 'demanda_grafica' as const, item: 'Cartaz', description: 'A3' }] };
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+    fireEvent.click(screen.getByRole('checkbox', { name: /story do instagram/i }));
+    fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
+
+    expect((await screen.findAllByText(/o que precisa estar na arte: título/i, { selector: 'p' })).length).toBeGreaterThan(0);
+    expect(espiao.updateEvent).not.toHaveBeenCalled();
   });
 });
 

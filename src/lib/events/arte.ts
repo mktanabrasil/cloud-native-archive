@@ -8,41 +8,46 @@ import type { MarketingItem, TipoDeArte } from '@/types';
  * — mais a **legenda** da mensagem, **o que precisa estar na arte** e, com
  * cartaz, **quantos**.
  *
- * 11/11/2026 (pedido dele): o interruptor virou **"Rede social"**, e a escolha
- * é do formato — **WhatsApp** e/ou **Story do Instagram**. O cartaz A4 saiu do
- * pedido novo; os pedidos antigos de cartaz continuam legíveis (e editáveis
- * só para desmarcar), para o marketing não perder o que já foi pedido.
+ * 11/11/2026 (pedido dele): o interruptor virou "Rede social", com WhatsApp
+ * e/ou Story do Instagram, e o cartaz saiu. No mesmo dia ele achou "Rede
+ * social" vago (mockup aprovado): o interruptor é **"Arte / impressa"**, com
+ * dois grupos que dá para marcar juntos — **arte para rede social** (WhatsApp,
+ * Story do Instagram) e **impressa** (**A4 plastificado**, com quantas cópias).
  *
  * Por baixo continua `marketing_items` (JSON): um item por escolha, com os
- * tipos `arte_whatsapp`, `story_instagram` e (antigo) `cartaz_a4`. Legenda e
+ * tipos `arte_whatsapp`, `story_instagram` e `cartaz_a4` (o A4 plastificado;
+ * os pedidos antigos de "Cartaz A4" são o mesmo tipo e aparecem assim). Legenda e
  * conteúdo valem para o pedido inteiro e viajam em cada item (lidos do
  * primeiro). O tipo mais antigo `demanda_grafica` segue legível como
  * "Arte (pedido antigo)".
  */
 
-/** As escolhas do pedido novo, na ordem dos cartões. */
-export const TIPOS_DE_ARTE: TipoDeArte[] = ['arte_whatsapp', 'story_instagram'];
-/** Todos os tipos que contam como pedido de arte, inclusive o antigo. */
-const TODOS_OS_TIPOS: TipoDeArte[] = ['arte_whatsapp', 'story_instagram', 'cartaz_a4'];
+/** Arte para rede social, na ordem dos cartões. */
+export const TIPOS_DE_REDE_SOCIAL: TipoDeArte[] = ['arte_whatsapp', 'story_instagram'];
+/** Impressa. */
+export const TIPOS_IMPRESSOS: TipoDeArte[] = ['cartaz_a4'];
+/** Todos os tipos do pedido, na ordem dos cartões. */
+export const TIPOS_DE_ARTE: TipoDeArte[] = [...TIPOS_DE_REDE_SOCIAL, ...TIPOS_IMPRESSOS];
+const TODOS_OS_TIPOS = TIPOS_DE_ARTE;
 
 /** Como o marketing lê (detalhe, resumo, checklist). */
 export const ROTULO_DA_ARTE: Record<TipoDeArte, string> = {
   arte_whatsapp: 'Arte para o WhatsApp',
   story_instagram: 'Story do Instagram',
-  cartaz_a4: 'Cartaz A4',
+  cartaz_a4: 'A4 plastificado',
 };
 
 /** Como a unidade escolhe no formulário: o formato. */
 export const FORMATO_DA_ARTE: Record<TipoDeArte, string> = {
   arte_whatsapp: 'WhatsApp',
   story_instagram: 'Story do Instagram',
-  cartaz_a4: 'Cartaz A4',
+  cartaz_a4: 'A4 plastificado',
 };
 
 export const DESCRICAO_DA_ARTE: Record<TipoDeArte, string> = {
   arte_whatsapp: 'imagem para os grupos das famílias',
   story_instagram: 'vertical, para o story',
-  cartaz_a4: 'pedido antigo · impresso e plastificado',
+  cartaz_a4: 'impresso e plastificado, para a unidade',
 };
 
 export const LIMITE_LEGENDA = 1000;
@@ -51,9 +56,9 @@ export const LIMITE_CONTEUDO = 1000;
 export interface PedidoDeArte {
   whatsapp: boolean;
   story: boolean;
-  /** Só pedido antigo: não há mais como marcar. */
+  /** A4 plastificado (tipo `cartaz_a4`). */
   cartaz: boolean;
-  /** Quantos cartazes, quando `cartaz`. */
+  /** Quantas cópias do A4, quando `cartaz`. */
   quantidade: number | null;
   legenda: string;
   conteudo: string;
@@ -118,20 +123,20 @@ export function limparPedidoDeArte(itens: MarketingItem[] | null | undefined): M
 }
 
 /**
- * O que falta no pedido, para a validação. `aberto` é o interruptor "Rede
- * social" ligado: com ele ligado e nada marcado, o pedido não diz nada ao
+ * O que falta no pedido, para a validação. `aberto` é o interruptor "Arte /
+ * impressa" ligado: com ele ligado e nada marcado, o pedido não diz nada ao
  * marketing.
  */
 export function errosDoPedidoDeArte(pedido: PedidoDeArte, aberto: boolean): string | undefined {
   if (!aberto) return undefined;
-  if (!algumaEscolha(pedido)) return 'Marque o formato: WhatsApp, story do Instagram — ou desligue esta opção';
+  if (!algumaEscolha(pedido)) return 'Marque o que precisa: WhatsApp, story do Instagram, A4 plastificado — ou desligue esta opção';
   if (!pedido.conteudo.trim()) return 'Diga o que precisa estar na arte: título, data, endereço, logos…';
   if (pedido.whatsapp && !pedido.legenda.trim()) return 'Escreva a legenda que vai junto da arte no WhatsApp';
-  if (pedido.cartaz && (!pedido.quantidade || pedido.quantidade < 1)) return 'Diga quantos cartazes';
+  if (pedido.cartaz && (!pedido.quantidade || pedido.quantidade < 1)) return 'Diga quantas cópias do A4 plastificado';
   return undefined;
 }
 
-/** "Arte para o WhatsApp" · "Story do Instagram" · "Cartaz A4 · 6" — as pílulas do detalhe. */
+/** "Arte para o WhatsApp" · "Story do Instagram" · "A4 plastificado · 6" — as pílulas do detalhe. */
 export function pilulasDoPedido(pedido: PedidoDeArte): string[] {
   const p: string[] = [];
   if (pedido.whatsapp) p.push(ROTULO_DA_ARTE.arte_whatsapp);

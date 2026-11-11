@@ -47,7 +47,7 @@ describe('montarChecklist', () => {
       'Confirmar com Parceiro · Padaria Sol: Frango assado, 25 kg',
       'Reservar som, projetor (temos 1) — HDMI',
       'Receber a arte do marketing e mandar nos grupos das famílias',
-      'Imprimir 6 cartazes A4 e plastificar',
+      'Imprimir 6 cópias A4 e plastificar',
       'Confirmar com Padaria Sol (parceiro)',
       'Avisar as famílias do dia e do horário',
       'Confirmar quem ajuda no dia: voluntários',
@@ -58,7 +58,7 @@ describe('montarChecklist', () => {
       'Montar e testar som, projetor antes de começar',
       'Recolher os equipamentos ao fim',
       'Registrar com fotos e vídeos pelo celular (a unidade registra, mesmo com o marketing presente)',
-      'Colar os cartazes na unidade',
+      'Fixar os A4 plastificados na unidade',
       'Lista de presença',
     ]);
     expect(c.depois).toEqual(['Devolver os equipamentos', 'Mandar as fotos e os vídeos para o marketing', 'Registrar no relatório da unidade']);
@@ -88,7 +88,7 @@ describe('resumoDoEvento', () => {
       ['Transporte', 'VAN 13/14 · 12 + 1 marketing'],
       ['Alimentação', 'almoço, café da manhã / da tarde · 2 a providenciar'],
       ['Equipamentos', 'som, projetor'],
-      ['Marketing', 'cobertura + arte WhatsApp + 6 cartazes'],
+      ['Marketing', 'cobertura + arte WhatsApp + 6 A4 plastificados'],
     ]);
     expect(resumoDoEvento({ title: 'x' })).toEqual([]);
   });

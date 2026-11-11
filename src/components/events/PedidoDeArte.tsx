@@ -3,17 +3,18 @@ import type { TipoDeArte } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { DESCRICAO_DA_ARTE, FORMATO_DA_ARTE, LIMITE_CONTEUDO, LIMITE_LEGENDA, TIPOS_DE_ARTE, type PedidoDeArte as Pedido } from '@/lib/events/arte';
+import { DESCRICAO_DA_ARTE, FORMATO_DA_ARTE, LIMITE_CONTEUDO, LIMITE_LEGENDA, TIPOS_DE_REDE_SOCIAL, TIPOS_IMPRESSOS, type PedidoDeArte as Pedido } from '@/lib/events/arte';
 
 /**
- * O sub-formulário do pedido de rede social (11/11/2026; antes, desde
- * 22/09/2026, "arte ou material impresso").
+ * O sub-formulário do pedido "Arte / impressa" (11/11/2026, mockup aprovado;
+ * desde 22/09/2026 era "arte ou material impresso", e por umas horas de
+ * 11/11 foi "Rede social").
  *
- * O formato em cartões grandes, que dá para marcar juntos: WhatsApp e Story do
- * Instagram. Embaixo, a legenda (só faz sentido com WhatsApp) e o que precisa
- * estar na arte. O cartaz A4 saiu: só aparece num pedido antigo que já o
- * tinha, para dar para ver e desmarcar. Os anexos do marketing moram logo
- * abaixo, no bloco de fora.
+ * Cartões grandes em dois grupos, que dá para marcar juntos: **arte para rede
+ * social** (WhatsApp, Story do Instagram) e **impressa** (A4 plastificado).
+ * Embaixo, a legenda (só com WhatsApp), quantas cópias (só com A4) e o que
+ * precisa estar na arte. Os anexos do marketing moram logo abaixo, no bloco
+ * de fora.
  */
 interface Props {
   pedido: Pedido;
@@ -28,41 +29,49 @@ export function PedidoDeArte({ pedido, onChange }: Props) {
     onChange(t === 'arte_whatsapp' ? { ...pedido, whatsapp: !pedido.whatsapp }
       : t === 'story_instagram' ? { ...pedido, story: !pedido.story }
       : { ...pedido, cartaz: !pedido.cartaz, quantidade: pedido.cartaz ? null : pedido.quantidade });
-  // O cartaz só aparece num pedido antigo que o tinha marcado.
-  const tipos: TipoDeArte[] = pedido.cartaz ? [...TIPOS_DE_ARTE, 'cartaz_a4'] : TIPOS_DE_ARTE;
+  const grupos: { rotulo: string; tipos: TipoDeArte[] }[] = [
+    { rotulo: 'Arte para rede social', tipos: TIPOS_DE_REDE_SOCIAL },
+    { rotulo: 'Impressa', tipos: TIPOS_IMPRESSOS },
+  ];
 
   return (
     <div className="space-y-3 rounded-2xl border border-border bg-card p-3 animate-in fade-in slide-in-from-top-1" data-testid="pedido-de-arte">
-      <div>
-        <p className="text-sm font-semibold mb-2">
-          Em qual formato? <span className="font-normal text-muted-foreground">— pode marcar os dois</span>
+      <div className="space-y-2.5">
+        <p className="text-sm font-semibold">
+          O que você precisa? <span className="font-normal text-muted-foreground">— pode marcar mais de um</span>
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {tipos.map(t => {
-            const Icone = ICONE[t];
-            const on = marcado(t);
-            return (
-              <button
-                key={t}
-                type="button"
-                role="checkbox"
-                aria-checked={on}
-                onClick={() => alternar(t)}
-                className={`relative flex items-start gap-3 rounded-xl border p-3 text-left transition-colors ${on ? 'border-foreground/40 bg-accent' : 'border-border bg-card hover:bg-muted/50'}`}
-                data-testid={`arte-${t}`}
-              >
-                <span className={`mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${on ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                  <Icone className="h-4 w-4" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold">{FORMATO_DA_ARTE[t]}</span>
-                  <span className="block text-xs text-muted-foreground">{DESCRICAO_DA_ARTE[t]}</span>
-                </span>
-                {on && <Check className="absolute right-2.5 top-2.5 h-4 w-4 text-foreground" aria-hidden="true" />}
-              </button>
-            );
-          })}
-        </div>
+        {grupos.map(g => (
+          <div key={g.rotulo} role="group" aria-label={g.rotulo}>
+            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{g.rotulo}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {g.tipos.map(t => {
+                const Icone = ICONE[t];
+                const on = marcado(t);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    role="checkbox"
+                    aria-checked={on}
+                    onClick={() => alternar(t)}
+                    className={`relative flex items-start gap-3 rounded-xl border p-3 text-left transition-colors ${on ? 'border-foreground/40 bg-accent' : 'border-border bg-card hover:bg-muted/50'}`}
+                    data-testid={`arte-${t}`}
+                  >
+                    <span className={`mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${on ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                      <Icone className="h-4 w-4" />
+                    </span>
+                    {/* pr-5: o ✓ do canto não cobre o nome ("Story do Instagram") */}
+                    <span className="min-w-0 pr-5">
+                      <span className="block text-sm font-semibold">{FORMATO_DA_ARTE[t]}</span>
+                      <span className="block text-xs text-muted-foreground">{DESCRICAO_DA_ARTE[t]}</span>
+                    </span>
+                    {on && <Check className="absolute right-2.5 top-2.5 h-4 w-4 text-foreground" aria-hidden="true" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
 
       {pedido.whatsapp && (
@@ -101,7 +110,7 @@ export function PedidoDeArte({ pedido, onChange }: Props) {
       {pedido.cartaz && (
         <div className="max-w-[200px]">
           <Label htmlFor="arte-quantidade" className="text-xs font-medium mb-1 block">
-            Quantos cartazes?
+            Quantas cópias?
           </Label>
           <Input
             id="arte-quantidade"
