@@ -291,7 +291,7 @@ export default function PizzaConfirmacaoPage() {
         <img src="/pizza-da-alegria-faixa.webp" alt="Pizza da Alegria, ANA Brasil" className="block aspect-[1793/877] w-full object-cover" />
         <div className="flex flex-col gap-0.5 px-5 py-3.5 text-white" style={{ background: COR.vermelho }}>
           <b className="text-sm uppercase tracking-[0.06em]">{feito ? 'Pizza da Alegria' : online ? 'Pedir e pagar' : 'Confirmar pagamento'}</b>
-          <span className="text-[13px] opacity-90">{feito ? 'Obrigado por participar!' : online ? 'Peça e pague aqui, com Pix ou cartão · até 30/11 · retirada 17/12' : 'Já pagou na unidade? Confirme aqui · até 30/11 · retirada 17/12'}</span>
+          <span className="text-[13px] opacity-90">{feito ? 'Obrigado por participar!' : online ? 'Peça e pague aqui, com Pix ou cartão · até 05/12 · retirada 17/12' : 'Já pagou na unidade? Confirme aqui · até 05/12 · retirada 17/12'}</span>
         </div>
 
         {!feito && pedidoDeVolta ? (
@@ -334,7 +334,7 @@ export default function PizzaConfirmacaoPage() {
           </div>
         ) : fechado ? (
           <div className="flex flex-col gap-3 px-5 py-10 text-center">
-            <h1 className="text-xl font-bold">As confirmações foram encerradas em 30/11.</h1>
+            <h1 className="text-xl font-bold">Os pedidos foram encerrados em 05/12.</h1>
             <p style={{ color: COR.mut }}>A retirada é na {RETIRADA_LOCAL}, {RETIRADA}. {RETIRADA_AVISO}</p>
           </div>
         ) : (

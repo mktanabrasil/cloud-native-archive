@@ -11,7 +11,8 @@ import { ACTIVE_NEWS_UNITS, findNewsUnit, type NewsUnit } from '@/lib/news/units
 
 /** R$ 55 desde 09/11/2026 (era R$ 50). O banco calcula o mesmo valor em `confirmar_pizza`. */
 export const PRECO = 55;
-export const PRAZO = new Date('2026-12-01T00:00:00-03:00');
+/** Fim dos pedidos: 05/12/2026, 23:59 em Brasília (era 30/11; mudou em 11/11/2026). */
+export const PRAZO = new Date('2026-12-06T00:00:00-03:00');
 /**
  * A retirada (mudou em 10/11/2026): não é mais na unidade, e sim na
  * Integração dos Funcionários, em 17/12/2026, apresentando o comprovante.
@@ -164,7 +165,7 @@ export function problemaDoArquivo(f: File): string | null {
 /** Mensagem para quem enviou, a partir do erro do banco. */
 export function mensagemDoErro(e: unknown): string {
   const t = String((e as { message?: string })?.message ?? e);
-  if (/prazo_encerrado/.test(t)) return 'As confirmações foram encerradas em 30/11.';
+  if (/prazo_encerrado/.test(t)) return 'Os pedidos foram encerrados em 05/12.';
   if (/comprovante_obrigatorio|comprovante_nao_encontrado/.test(t)) return 'O comprovante não chegou. Anexe de novo e envie.';
   if (/comprovante_repetido/.test(t)) return 'Este comprovante já foi enviado.';
   if (/nome_invalido/.test(t)) return 'Confira o seu nome.';

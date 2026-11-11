@@ -40,8 +40,8 @@ const MP = 'https://api.mercadopago.com';
 const ROTA = '/pizza-da-alegria';
 /** O Mercado Pago só aceita letras, números, "-" e "_" no external_reference (dois-pontos dá 400). */
 const PREFIXO = 'pizza_';
-/** Fim das confirmações: 30/11/2026, 23:59:59 em Brasília. */
-const PRAZO = '2026-11-30T23:59:59.000-03:00';
+/** Fim dos pedidos: 05/12/2026, 23:59:59 em Brasília (era 30/11; mudou em 11/11/2026). */
+const PRAZO = '2026-12-05T23:59:59.000-03:00';
 /** Quanto tempo a order (e o QR do Pix) vale. Depois, "Tentar de novo" cria outra. */
 const VALIDADE = 'PT2H';
 const SABORES: Record<string, string> = { marguerita: 'Marguerita', frango: 'Frango', calabresa: 'Calabresa fatiada', mucarela: 'Muçarela', lombo: 'Lombo', napolitana: 'Napolitana' };
@@ -121,7 +121,7 @@ async function criarOrder(admin: Admin, pedido: { id: string; quantidade: number
         // O Mercado Pago só volta sozinho para endereços https.
         ...(volta.startsWith('https://') ? { auto_return: 'approved' } : {}),
       },
-      // Boleto demora dias e a campanha fecha em 30/11: fica Pix, cartão e saldo.
+      // Boleto demora dias e a campanha fecha em 05/12: fica Pix, cartão e saldo.
       // Sem max_installments: com 1, a revisão do cartão no checkout de teste não
       // montava as parcelas e o botão Pagar ficava desativado (10/11/2026).
       payment_method: { not_allowed_types: ['ticket'] },

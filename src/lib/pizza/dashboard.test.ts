@@ -33,9 +33,9 @@ describe('dashboard da Pizza', () => {
     expect(c.porArea.map((a) => a.pizzas)).toEqual([2, 1]);
   });
 
-  it('o gráfico por dia para em 30/11, mesmo vendo depois', () => {
-    const c = calcular([P({ created_at: '2026-11-29T15:00:00Z' })], '2026-12-17T15:00:00Z');
-    expect(c.porDia.map((d) => d.rotulo)).toEqual(['29/11', '30/11']);
+  it('o gráfico por dia para em 05/12, mesmo vendo depois', () => {
+    const c = calcular([P({ created_at: '2026-12-04T15:00:00Z' })], '2026-12-17T15:00:00Z');
+    expect(c.porDia.map((d) => d.rotulo)).toEqual(['04/12', '05/12']);
   });
 
   it('filtra por área e unidade; o ranking junta o que passa de 8 em "Outras"', () => {

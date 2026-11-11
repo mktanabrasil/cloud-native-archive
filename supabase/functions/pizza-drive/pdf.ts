@@ -257,7 +257,7 @@ export async function montarComprovante(lib: Lib, d: DadosDoComprovante): Promis
   for (const p of LOGO) pg.drawSvgPath(p, { x: M, y: H - 18, scale: k, color: C.creme });
   texto('Comprovante de pagamento', M, H - 72, { fonte: fb, tam: 24, cor: C.branco });
   texto('PIZZA DA ALEGRIA · CAMPANHA 2026', M, H - 92, { tam: 8.5, cor: C.branco, espaco: 1.2 });
-  texto('Compras até 30/11', M, H - 106, { tam: 9, cor: C.branco });
+  texto('Compras até 05/12', M, H - 106, { tam: 9, cor: C.branco });
 
   // Número e selo "Pago"
   let y = H - topo - 50;

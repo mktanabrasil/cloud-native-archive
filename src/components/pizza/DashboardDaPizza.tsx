@@ -309,7 +309,7 @@ export function DashboardDaPizza({ codigo, topo }: { codigo?: string; topo?: Rea
             </div>
           </div>
 
-          <Cartao titulo="Pizzas por dia" sub="Do primeiro pedido até hoje. Pedidos até 30/11." testid="por-dia">
+          <Cartao titulo="Pizzas por dia" sub="Do primeiro pedido até hoje. Pedidos até 05/12." testid="por-dia">
             <PorDia dias={c.porDia} />
           </Cartao>
 

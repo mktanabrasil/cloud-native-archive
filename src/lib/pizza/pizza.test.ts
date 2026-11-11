@@ -34,8 +34,8 @@ describe('Pizza da Alegria', () => {
     expect(totalDePizzas(q)).toBe(3);
     expect(reais(valor(3)).replace(/\s/g, ' ')).toBe('R$ 165,00');
     expect(resumoDosSabores(q)).toBe('1 Marguerita · 2 Calabresa fatiada');
-    expect(encerrado(new Date('2026-11-30T23:59:00-03:00'))).toBe(false);
-    expect(encerrado(new Date('2026-12-01T00:00:00-03:00'))).toBe(true);
+    expect(encerrado(new Date('2026-12-05T23:59:00-03:00'))).toBe(false);
+    expect(encerrado(new Date('2026-12-06T00:00:00-03:00'))).toBe(true);
   });
 
   it('o que falta antes de enviar: comprovante obrigatório, menos no dinheiro', () => {
@@ -66,7 +66,7 @@ describe('Pizza da Alegria', () => {
     expect(problemaDoArquivo(new File(['x'], 'c.pdf', { type: 'application/pdf' }))).toBeNull();
     expect(problemaDoArquivo(new File(['x'], 'c.docx', { type: 'application/msword' }))).toMatch(/foto ou um PDF/);
     expect(problemaDoArquivo(new File([new Uint8Array(11 * 1024 * 1024)], 'c.jpg', { type: 'image/jpeg' }))).toMatch(/10 MB/);
-    expect(mensagemDoErro(new Error('prazo_encerrado'))).toMatch(/30\/11/);
+    expect(mensagemDoErro(new Error('prazo_encerrado'))).toMatch(/05\/12/);
     expect(mensagemDoErro(new Error('comprovante_repetido'))).toMatch(/já foi enviado/);
   });
 });
