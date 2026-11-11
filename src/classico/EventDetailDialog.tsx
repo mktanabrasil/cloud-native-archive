@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { tintaNaCorDaUnidade } from '@/lib/events/grupo';
 import { CalendarDays, MapPin, Clock, Share2, X, MessageCircle, Copy, Megaphone, CheckCircle2, Pencil, Eye, EyeOff } from 'lucide-react';
 import { AppEvent, UNIT_BG_COLORS } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -105,7 +106,7 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
 
         <div className="p-6 md:p-10 -mt-12 relative z-10">
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <Badge className={`${UNIT_BG_COLORS[event.unit]} text-slate-900 border-none shadow-lg text-sm px-4 py-1`}>
+            <Badge className={`${UNIT_BG_COLORS[event.unit]} ${tintaNaCorDaUnidade(event.unit)} border-none shadow-lg text-sm px-4 py-1`}>
               {event.unit}
             </Badge>
             {/* O card da aba "Já aconteceram" tem o selo; o detalhe que abre a

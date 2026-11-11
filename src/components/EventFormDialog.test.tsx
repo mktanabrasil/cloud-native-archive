@@ -1511,3 +1511,22 @@ describe('cor do cartão (decisão de 25/09/2026)', () => {
     expect(screen.queryByTestId('cor-pela-unidade')).toBeNull();
   });
 });
+
+describe('Grupo ANA Brasil (11/11/2026)', () => {
+  const opcoesDaUnidade = () => [...screen.getAllByRole('option')].map(o => o.textContent);
+
+  it('a comunicação vê a opção; escolhida, aparece a explicação', () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    const evento = { ...eventoGravado(), unit: 'Grupo ANA Brasil' as const };
+    render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
+    expect(opcoesDaUnidade()).toContain('Grupo ANA Brasil');
+    expect(screen.getByTestId('ajuda-grupo')).toHaveTextContent('Evento geral, com todas as unidades juntas.');
+  });
+
+  it('a gestora não vê a opção (grava só na própria unidade)', () => {
+    espiao.papel = { ...espiao.papel, isMarketing: false };
+    abrir();
+    expect(opcoesDaUnidade()).not.toContain('Grupo ANA Brasil');
+    expect(opcoesDaUnidade()).toContain('Administração');
+  });
+});

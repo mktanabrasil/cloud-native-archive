@@ -44,6 +44,11 @@ describe('conflitam', () => {
     expect(conflitam(ev('a'), ev('b', { unit: 'Administração' }))).toBe(true);
   });
 
+  it('o Grupo ANA Brasil conflita com qualquer unidade (11/11/2026)', () => {
+    expect(conflitam(ev('a'), ev('b', { unit: 'Grupo ANA Brasil' }))).toBe(true);
+    expect(conflitam(ev('a', { unit: 'Santana' }), ev('b', { unit: 'Grupo ANA Brasil' }))).toBe(true);
+  });
+
   it('cancelado e lixeira ficam de fora', () => {
     expect(conflitam(ev('a'), ev('b', { status: 'cancelado' }))).toBe(false);
     expect(conflitam(ev('a'), ev('b', { deleted_at: '2026-03-22T00:00:00.000Z' }))).toBe(false);

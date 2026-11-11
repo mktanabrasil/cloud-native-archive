@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { GRUPO } from '@/lib/events/grupo';
 import { useApp } from '@/contexts/AppContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useViewConfigs } from '@/hooks/useViewConfigs';
@@ -44,7 +45,8 @@ export function useFilteredEvents(isPublicView: boolean = false, showTrash: bool
     if (allowedUnits === null) return [];
 
     // Filtra os eventos pelas unidades permitidas
-    return baseEvents.filter(event => allowedUnits.includes(event.unit));
+    // O evento do Grupo ANA Brasil é de todas as unidades (11/11/2026).
+    return baseEvents.filter(event => allowedUnits.includes(event.unit) || event.unit === GRUPO);
   }, [events, viewRestrictions, permissionLevel, configs, isAdmin, isPublicView, showTrash]);
 
   return filteredEvents;

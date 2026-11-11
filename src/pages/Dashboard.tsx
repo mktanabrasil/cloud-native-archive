@@ -6,7 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { AppEvent, EventStatus, UNITS, EVENT_STATUSES, EVENT_TYPES, Unit } from '@/types';
+import { AppEvent, EventStatus, EVENT_UNITS, EVENT_STATUSES, EVENT_TYPES, Unit } from '@/types';
+import { eventoNaUnidade } from '@/lib/events/grupo';
 import { CalendarDays, CheckCircle2, Clock, AlertCircle, ChevronLeft, ChevronRight, ChevronDown, AlertTriangle, Camera, Handshake, Search, LayoutGrid, List, Calendar as CalendarIcon, Globe, Lock } from 'lucide-react';
 import { MarcaDaAgenda } from '@/components/events/AgendaDoEvento';
 import { rotuloDoStatus } from '@/lib/events/status';
@@ -36,12 +37,14 @@ const unitDotColors: Record<Unit, string> = {
   'Nilópolis': 'bg-unit-nilopolis',
   'Santana': 'bg-unit-santana',
   'Administração': 'bg-unit-geral',
+  'Grupo ANA Brasil': 'bg-unit-grupo',
 };
 const varDaUnidade: Record<Unit, string> = {
   'DIC': '--unit-dic',
   'Nilópolis': '--unit-nilopolis',
   'Santana': '--unit-santana',
   'Administração': '--unit-geral',
+  'Grupo ANA Brasil': '--unit-grupo',
 };
 
 
@@ -94,7 +97,8 @@ export default function Dashboard() {
       if (e.deleted_at) return false;
 
       // 1. Unit filter
-      if (filterUnit !== 'all' && e.unit !== filterUnit) return false;
+      // O evento do Grupo ANA Brasil é de todas as unidades (11/11/2026).
+      if (filterUnit !== 'all' && !eventoNaUnidade(e.unit, filterUnit)) return false;
       
       // 2. Status filter
       if (filterStatus !== 'all' && e.status !== filterStatus) return false;
@@ -240,7 +244,7 @@ export default function Dashboard() {
                 <SelectTrigger className="h-10 w-[130px] shadow-sm bg-background"><SelectValue placeholder="Unidade" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas as Unidades</SelectItem>
-                  {UNITS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                  {EVENT_UNITS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -359,7 +363,7 @@ export default function Dashboard() {
                 )}
               </span>
             ))}
-            {UNITS.map(u => (
+            {EVENT_UNITS.map(u => (
               <Fragment key={u}>
                 <span className="flex items-center gap-2 border-b border-border/70 px-4 py-3 text-[13px] font-semibold text-foreground">
                   <span className={`h-2 w-2 shrink-0 rounded-full ring-1 ring-black/10 ${unitDotColors[u]}`} />

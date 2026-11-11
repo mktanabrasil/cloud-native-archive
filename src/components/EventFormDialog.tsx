@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react';
+import { tintaNaCorDaUnidade } from '@/lib/events/grupo';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { AppEvent, UNITS, UNIT_BG_COLORS, EVENT_TYPES, EVENT_STATUSES, PARTNER_TYPES, Unit, EventType, EventStatus, PartnerType, SYSTEM_COLORS, eventUnitLabel, TransportVehicle } from '@/types';
+import { AppEvent, UNITS, EVENT_UNITS, UNIT_BG_COLORS, EVENT_TYPES, EVENT_STATUSES, PARTNER_TYPES, Unit, EventType, EventStatus, PartnerType, SYSTEM_COLORS, eventUnitLabel, TransportVehicle } from '@/types';
 import { getStatusDotClass } from '@/lib/statusColors';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -1034,9 +1035,14 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     >
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {UNITS.map(u => <SelectItem key={u} value={u}>{eventUnitLabel(u)}</SelectItem>)}
+                        {/* Grupo ANA Brasil (11/11/2026): o evento geral. Só para quem
+                            confirma eventos — a gestora grava só na própria unidade. */}
+                        {(isMarketing || form.unit === 'Grupo ANA Brasil' ? EVENT_UNITS : UNITS).map(u => <SelectItem key={u} value={u}>{eventUnitLabel(u)}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                    {form.unit === 'Grupo ANA Brasil' && (
+                      <p className="mt-1 text-[11px] text-muted-foreground" data-testid="ajuda-grupo">Evento geral, com todas as unidades juntas.</p>
+                    )}
                   </div>
                   <div id="campo-tipo">
                     <Label htmlFor="evento-tipo" className="text-sm font-semibold mb-1.5 block">Tipo *</Label>
@@ -2256,7 +2262,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       )}
 
                       <div className="absolute bottom-0 left-0 right-0 p-4 z-[20] flex flex-col items-start justify-end h-full">
-                        <Badge className={`${form.unit ? UNIT_BG_COLORS[form.unit as Unit] : 'bg-white/80'} text-slate-900 mb-2 text-[10px] border-none shrink-0`}>{form.unit ? eventUnitLabel(form.unit) : 'UNIDADE'}</Badge>
+                        <Badge className={`${form.unit ? UNIT_BG_COLORS[form.unit as Unit] : 'bg-white/80'} ${tintaNaCorDaUnidade(form.unit || '')} mb-2 text-[10px] border-none shrink-0`}>{form.unit ? eventUnitLabel(form.unit) : 'UNIDADE'}</Badge>
                         
                         {form.use_logo_as_title && form.event_logo_url ? (
                           <div className={`flex items-center justify-start ${form.full_height_title ? 'h-1/2 w-full mb-2' : 'h-12 w-full mb-1'}`}>

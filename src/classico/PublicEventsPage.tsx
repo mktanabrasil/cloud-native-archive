@@ -28,6 +28,7 @@ import { tituloEmTexto } from '@/lib/events/titulo';
 import { abaInicial, jaAconteceu, lerAba, separarPorData, type Aba } from '@/lib/events/proximosEPassados';
 import { textoDaData, textoDoHorario } from '@/lib/events/periodo';
 import { enderecoDoLocal, semAcento } from '@/lib/events/local';
+import { eventoNaUnidade, tintaNaCorDaUnidade } from '@/lib/events/grupo';
 import EventFormDialog from '@/components/EventFormDialog';
 import { BannerMissingDialog } from '@/components/BannerMissingDialog';
 import { VitrineVazia } from '@/classico/VitrineVazia';
@@ -130,7 +131,8 @@ export default function PublicEventsPage() {
   const filtered = useMemo(() => {
     // "pascoa" acha "Páscoa": termo e campos sem acento (achado 16, 11/09/2026).
     const searchTerm = semAcento(search);
-    const daUnidade = unidadeFiltro ? events.filter(e => e.unit === unidadeFiltro) : events;
+    // O evento do Grupo ANA Brasil é de todas as unidades: entra em qualquer filtro (11/11/2026).
+    const daUnidade = unidadeFiltro ? events.filter(e => eventoNaUnidade(e.unit, unidadeFiltro)) : events;
     if (!searchTerm) return daUnidade;
 
     return daUnidade.filter(e =>
@@ -414,7 +416,7 @@ export default function PublicEventsPage() {
 
               <div className="absolute bottom-0 left-0 right-0 p-8 md:p-16 max-w-7xl mx-auto flex flex-col items-start justify-end h-full z-[20]">
                 <div className="flex flex-wrap gap-2 mb-4 shrink-0">
-                  <Badge className={`${UNIT_BG_COLORS[event.unit]} text-slate-900 border-none shadow-lg`}>
+                  <Badge className={`${UNIT_BG_COLORS[event.unit]} ${tintaNaCorDaUnidade(event.unit)} border-none shadow-lg`}>
                     {event.unit}
                   </Badge>
                   {/* Os dois motivos de a família não ver este slide. Sem o
@@ -727,7 +729,7 @@ export default function PublicEventsPage() {
                     <CapaDaUnidade evento={event} className="select-none" />
                   )}
                   <div className={`absolute top-0 left-0 h-1 w-full ${UNIT_BG_COLORS[event.unit]}`} />
-                  <Badge className={`absolute top-3 left-3 ${UNIT_BG_COLORS[event.unit]} text-slate-900 border-none shadow-sm`}>
+                  <Badge className={`absolute top-3 left-3 ${UNIT_BG_COLORS[event.unit]} ${tintaNaCorDaUnidade(event.unit)} border-none shadow-sm`}>
                     {event.unit}
                   </Badge>
 

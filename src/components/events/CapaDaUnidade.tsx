@@ -32,6 +32,7 @@ const COR_DA_UNIDADE: Record<Unit, string> = {
   'Nilópolis': '#81E2CF',
   'Santana': '#FBCE00',
   'Administração': '#F37964',
+  'Grupo ANA Brasil': '#484848',
 };
 
 /** A unidade cuja foto ilustra o evento, ou null quando não há foto. */

@@ -48,6 +48,10 @@
     --unit-nilopolis: 166 62% 69%;
     --unit-santana: 48 100% 49%;
     --unit-geral: 10 87% 67%;
+    /* Grupo ANA Brasil (11/11/2026): o grafite da paleta, #484848. */
+    --unit-grupo: 0 0% 28%;
+    /* O texto sobre o grafite do Grupo: branco. */
+    --unit-grupo-ink: 0 0% 100%;
 
     /* Status colors */
     --status-confirmed: 152 60% 45%;
@@ -78,6 +82,9 @@
 
 
   .dark {
+    /* No escuro, o grafite sumia no fundo: um cinza claro no lugar. */
+    --unit-grupo: 0 0% 70%;
+    --unit-grupo-ink: 150 4% 10%;
     --background: 150 4% 10%;
     --foreground: 40 27% 92%;
     --card: 150 4% 13%;
@@ -161,6 +168,9 @@
   }
   .unit-santana {
     @apply text-unit-santana;
+  }
+  .unit-grupo {
+    @apply text-unit-grupo;
   }
   .unit-geral {
     @apply text-unit-geral;

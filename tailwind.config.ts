@@ -76,6 +76,7 @@ export default {
         "unit-nilopolis": "hsl(var(--unit-nilopolis))",
         "unit-santana": "hsl(var(--unit-santana))",
         "unit-geral": "hsl(var(--unit-geral))",
+        "unit-grupo": "hsl(var(--unit-grupo))",
         "status-confirmed": "hsl(var(--status-confirmed))",
         "status-pending": "hsl(var(--status-pending))",
         "status-cancelled": "hsl(var(--status-cancelled))",
