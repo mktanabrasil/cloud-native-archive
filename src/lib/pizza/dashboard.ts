@@ -77,8 +77,8 @@ export const filtrar = (pedidos: PedidoDoDashboard[], f: Filtros) =>
 
 /** "2026-11-10" no fuso de Brasília. */
 export const diaDe = (iso: string | number) => new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
-/** O último dia de pedidos (30/11/2026). */
-export const ULTIMO_DIA = '2026-11-30';
+/** O último dia de pedidos (05/12/2026; era 30/11 até 11/11). */
+export const ULTIMO_DIA = '2026-12-05';
 
 export interface Dia { dia: string; rotulo: string; pizzas: number; valor: number }
 export interface Contas {
@@ -97,7 +97,7 @@ export function calcular(pedidos: PedidoDoDashboard[], agora: string): Contas {
   const pizzas = pedidos.reduce((a, p) => a + p.quantidade, 0);
   const valor = pedidos.reduce((a, p) => a + p.total, 0);
 
-  // Um ponto por dia, do primeiro pedido até hoje (ou até 30/11), com os dias sem pedido em zero.
+  // Um ponto por dia, do primeiro pedido até hoje (ou até 05/12), com os dias sem pedido em zero.
   const porDia: Dia[] = [];
   if (pedidos.length) {
     const soma = new Map<string, { pizzas: number; valor: number }>();

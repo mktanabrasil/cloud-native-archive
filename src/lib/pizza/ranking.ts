@@ -45,7 +45,7 @@ export function calcularRanking(lista: Confirmacao[]): Ranking {
   };
 }
 
-/** Dias até o fim dos pedidos (30/11, inclusive). 1 = hoje é o último dia; 0 = encerrado. */
+/** Dias até o fim dos pedidos (05/12, inclusive). 1 = hoje é o último dia; 0 = encerrado. */
 export function diasQueFaltam(agora: Date = new Date()): number {
   const ms = PRAZO.getTime() - agora.getTime();
   return ms <= 0 ? 0 : Math.ceil(ms / 864e5);
@@ -72,8 +72,8 @@ export function mensagemDoRanking(r: Ranking, agora: Date = new Date()): string 
   linhas.push('A unidade campeã e quem mais comprar ganham um brinde. Os campeões serão anunciados na Integração dos Funcionários, em 17/12.');
   if (dias <= 0) linhas.push('Os pedidos já foram encerrados. Obrigado a todos que participaram! 🧡');
   else if (dias === 1) linhas.push('*Hoje é o último dia* para pedir! ⏰');
-  else if (dias <= 4) linhas.push(`*Última semana!* Os pedidos fecham na segunda, *30/11*. ⏰`);
-  else linhas.push(`Ainda dá tempo: pedidos até *30/11*.`);
+  else if (dias <= 4) linhas.push(`*Última semana!* Os pedidos fecham no sábado, *05/12*. ⏰`);
+  else linhas.push(`Ainda dá tempo: pedidos até *05/12*.`);
   if (dias > 0) linhas.push('👉 https://app.anabrasil.org/pizza-da-alegria?c=3');
   return linhas.join('\n');
 }

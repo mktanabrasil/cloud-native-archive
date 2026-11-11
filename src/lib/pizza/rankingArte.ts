@@ -83,7 +83,7 @@ export async function desenharRanking(r: Ranking, agora: Date = new Date()): Pro
   const quando = agora.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' });
   g.textAlign = 'right';
   g.fillStyle = C.amarelo; g.font = '800 34px Poppins'; g.fillText(`Parcial até ${quando}`, DIR, 556);
-  g.fillStyle = C.creme; g.font = '600 26px Poppins'; g.fillText('Pedidos até 30/11', DIR, 592);
+  g.fillStyle = C.creme; g.font = '600 26px Poppins'; g.fillText('Pedidos até 05/12', DIR, 592);
 
   // Unidades: as 5 primeiras, com barra
   cabecalho(g, 'Unidades', 664);

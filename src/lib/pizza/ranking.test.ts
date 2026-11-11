@@ -46,16 +46,17 @@ describe('ranking da Pizza', () => {
     expect(sexta).toContain('Integração dos Funcionários, em 17/12');
     expect(sexta).toContain('Ainda dá tempo');
     expect(sexta).toContain('https://app.anabrasil.org/pizza-da-alegria?c=3');
-    expect(mensagemDoRanking(r, new Date('2026-11-27T18:00:00Z'))).toContain('*Última semana!*');
-    expect(mensagemDoRanking(r, new Date('2026-11-30T12:00:00Z'))).toContain('*Hoje é o último dia*');
-    const fim = mensagemDoRanking(r, new Date('2026-12-02T12:00:00Z'));
+    expect(mensagemDoRanking(r, new Date('2026-11-27T18:00:00Z'))).toContain('Ainda dá tempo: pedidos até *05/12*.');
+    expect(mensagemDoRanking(r, new Date('2026-12-04T18:00:00Z'))).toContain('*Última semana!* Os pedidos fecham no sábado, *05/12*.');
+    expect(mensagemDoRanking(r, new Date('2026-12-05T12:00:00Z'))).toContain('*Hoje é o último dia*');
+    const fim = mensagemDoRanking(r, new Date('2026-12-07T12:00:00Z'));
     expect(fim).toContain('Os pedidos já foram encerrados');
     expect(fim).not.toContain('https://');
   });
 
-  it('dias que faltam até 30/11', () => {
-    expect(diasQueFaltam(new Date('2026-11-13T18:00:00Z'))).toBe(18);
-    expect(diasQueFaltam(new Date('2026-11-30T23:00:00-03:00'))).toBe(1);
-    expect(diasQueFaltam(new Date('2026-12-01T00:00:01-03:00'))).toBe(0);
+  it('dias que faltam até 05/12', () => {
+    expect(diasQueFaltam(new Date('2026-11-13T18:00:00Z'))).toBe(23);
+    expect(diasQueFaltam(new Date('2026-12-05T23:00:00-03:00'))).toBe(1);
+    expect(diasQueFaltam(new Date('2026-12-06T00:00:01-03:00'))).toBe(0);
   });
 });

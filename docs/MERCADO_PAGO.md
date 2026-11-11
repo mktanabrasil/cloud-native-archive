@@ -11,7 +11,7 @@ comprovante que está no ar hoje.
 - **Checkout Pro**: a pessoa paga numa página do próprio Mercado Pago. Nenhum dado
   de cartão passa pelo app, então não há exigência de PCI. Aceita Pix, cartão de
   crédito e débito e saldo Mercado Pago. O boleto fica de fora, porque compensa em
-  dias e a campanha fecha em 30/11.
+  dias e a campanha fecha em 05/12 (era 30/11 até 11/11/2026).
 - **API de Orders** (`POST /v1/orders`): é a recomendada pelo Mercado Pago. A API
   de Preferences aparece no painel como "será descontinuada em breve".
 - **Aplicação no painel**: "ANA Brasil Campanhas", conta da Associação Nazarena
