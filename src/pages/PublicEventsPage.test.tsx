@@ -910,6 +910,14 @@ describe('o herói da equipe (V2)', () => {
     expect(slide('Público Fora do Banner')).toHaveTextContent('Ativar Banner');
   });
 
+  it('na lista, o evento interno não tem o botão de banner; o público tem', () => {
+    montarV2();
+
+    const card = (titulo: string) => screen.getByRole('heading', { level: 3, name: titulo }).closest('.group')!;
+    expect(within(card('Natal Interno') as HTMLElement).queryByRole('button', { name: /banner/i })).toBeNull();
+    expect(within(card('Karatê no Banner') as HTMLElement).getByRole('button', { name: 'Remover do banner' })).toBeInTheDocument();
+  });
+
   it('o visitante continua vendo só o banner do site', () => {
     espiao.autenticado = false;
     montarV2();
