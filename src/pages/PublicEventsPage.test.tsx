@@ -813,6 +813,14 @@ describe('o filtro por unidade', () => {
     expect(noCard('Festa de Santana')).toBe(1);
   });
 
+  it.each([['clássica (embed)', montar], ['V2 (app)', montarV2]] as const)('o evento do Grupo ANA Brasil aparece no filtro de qualquer unidade, na %s (11/11/2026)', (_nome, monta) => {
+    espiao.eventos = [deSantana, doDic, evento({ id: 'g', title: 'Natal do Grupo', unit: 'Grupo ANA Brasil' })];
+    monta('/eventos?unidade=Santana');
+    expect(noCard('Festa de Santana')).toBe(1);
+    expect(noCard('Natal do Grupo')).toBe(1);
+    expect(noCard('Festa do DIC')).toBe(0);
+  });
+
   it('unidade desconhecida na URL é ignorada', () => {
     montar('/eventos?unidade=Marte');
     expect(noCard('Festa de Santana')).toBe(1);

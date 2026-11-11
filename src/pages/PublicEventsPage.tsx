@@ -29,6 +29,7 @@ import { tituloEmTexto } from '@/lib/events/titulo';
 import { abaInicial, jaAconteceu, lerAba, separarPorData, type Aba } from '@/lib/events/proximosEPassados';
 import { textoDaData, textoDoHorario } from '@/lib/events/periodo';
 import { enderecoDoLocal, semAcento } from '@/lib/events/local';
+import { eventoNaUnidade, tintaNaCorDaUnidade } from '@/lib/events/grupo';
 import EventFormDialog from '@/components/EventFormDialog';
 import { BannerMissingDialog } from '@/components/BannerMissingDialog';
 import { VitrineVazia } from '@/components/events/VitrineVazia';
@@ -150,7 +151,8 @@ function ProgramacaoV2() {
   const filtered = useMemo(() => {
     // "pascoa" acha "Páscoa": termo e campos sem acento (achado 16, 11/09/2026).
     const searchTerm = semAcento(search);
-    const daUnidade = unidadeFiltro ? events.filter(e => e.unit === unidadeFiltro) : events;
+    // O evento do Grupo ANA Brasil é de todas as unidades: entra em qualquer filtro (11/11/2026).
+    const daUnidade = unidadeFiltro ? events.filter(e => eventoNaUnidade(e.unit, unidadeFiltro)) : events;
     if (!searchTerm) return daUnidade;
 
     return daUnidade.filter(e =>
@@ -437,7 +439,7 @@ function ProgramacaoV2() {
 
               <div className="glass-photo absolute bottom-4 left-4 right-4 z-[20] flex max-h-[calc(100%-2rem)] flex-col items-start rounded-[20px] p-5 md:bottom-8 md:left-8 md:right-auto md:max-w-[580px] md:p-7">
                 <div className="flex flex-wrap gap-2 mb-4 shrink-0">
-                  <Badge className={`${UNIT_BG_COLORS[event.unit]} text-slate-900 border-none shadow-lg`}>
+                  <Badge className={`${UNIT_BG_COLORS[event.unit]} ${tintaNaCorDaUnidade(event.unit)} border-none shadow-lg`}>
                     {event.unit}
                   </Badge>
                   {/* Por que a família não vê este slide: é interno, ou é

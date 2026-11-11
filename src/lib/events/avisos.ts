@@ -61,7 +61,9 @@ export function destinatariosDoAviso(
 
   for (const p of perfis) {
     if (!p.email || p.is_active === false) continue;
-    const daUnidade = !!p.unit && p.unit === evento.unit && p.unit !== 'Administração' && p.permission_level !== 'usuario_padrao';
+    // Evento do Grupo ANA Brasil (11/11/2026) avisa as gestoras das três unidades.
+    const daUnidade = !!p.unit && p.unit !== 'Administração' && p.permission_level !== 'usuario_padrao'
+      && (p.unit === evento.unit || (evento.unit === 'Grupo ANA Brasil' && ['DIC', 'Nilópolis', 'Santana'].includes(p.unit)));
     const criou = !!p.name && !!evento.created_by && p.name.trim().toLowerCase() === evento.created_by.trim().toLowerCase();
     if (daUnidade || criou) lista.add(norm(p.email));
   }

@@ -20,7 +20,8 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSearchParams } from 'react-router-dom';
-import { AppEvent, EventStatus, UNITS, EVENT_STATUSES, EVENT_TYPES, Unit } from '@/types';
+import { AppEvent, EventStatus, EVENT_UNITS, EVENT_STATUSES, EVENT_TYPES, Unit } from '@/types';
+import { eventoNaUnidade } from '@/lib/events/grupo';
 import { cn } from '@/lib/utils';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, startOfWeek, endOfWeek, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -48,6 +49,7 @@ const unitDotColors: Record<Unit, string> = {
   'Nilópolis': 'bg-unit-nilopolis',
   'Santana': 'bg-unit-santana',
   'Administração': 'bg-unit-geral',
+  'Grupo ANA Brasil': 'bg-unit-grupo',
 };
 
 /** A variável de cor de cada unidade, para os blocos translúcidos (como na semana da Visão Geral). */
@@ -56,6 +58,7 @@ const varDaUnidade: Record<Unit, string> = {
   'Nilópolis': '--unit-nilopolis',
   'Santana': '--unit-santana',
   'Administração': '--unit-geral',
+  'Grupo ANA Brasil': '--unit-grupo',
 };
 
 type View = 'month' | 'week' | 'list';
@@ -146,7 +149,8 @@ export default function CalendarPage() {
     return events.filter(e => {
       // Lixeira fica de fora: para o admin o banco não filtra `deleted_at`.
       if (e.deleted_at) return false;
-      if (filterUnit !== 'all' && e.unit !== filterUnit) return false;
+      // O evento do Grupo ANA Brasil é de todas as unidades (11/11/2026).
+      if (filterUnit !== 'all' && !eventoNaUnidade(e.unit, filterUnit)) return false;
       if (filterStatus !== 'all' && e.status !== filterStatus) return false;
       if (filterType !== 'all' && e.event_type !== filterType) return false;
       if (conflictOnly && !e.has_conflict) return false;
@@ -333,7 +337,7 @@ export default function CalendarPage() {
                   <SelectTrigger className="h-10 w-[130px] shadow-sm bg-background"><SelectValue placeholder="Unidade" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todas as Unidades</SelectItem>
-                    {UNITS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                    {EVENT_UNITS.map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <Select value={filterStatus} onValueChange={setFilterStatus}>

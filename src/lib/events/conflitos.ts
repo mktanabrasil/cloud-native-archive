@@ -19,7 +19,9 @@ import type { AppEvent } from '@/types';
 const ativo = (e: AppEvent) => e.status !== 'cancelado' && !e.deleted_at;
 
 const mesmoAmbito = (a: AppEvent, b: AppEvent) =>
-  a.unit === b.unit || a.unit === 'Administração' || b.unit === 'Administração';
+  a.unit === b.unit || a.unit === 'Administração' || b.unit === 'Administração'
+  // O Grupo ANA Brasil (11/11/2026) é de todas as unidades: conflita com qualquer uma.
+  || a.unit === 'Grupo ANA Brasil' || b.unit === 'Grupo ANA Brasil';
 
 const sobrepoem = (a: AppEvent, b: AppEvent) => {
   const aIni = new Date(a.start_datetime).getTime();

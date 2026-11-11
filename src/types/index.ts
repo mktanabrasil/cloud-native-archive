@@ -1,4 +1,8 @@
-export type Unit = 'DIC' | 'Nilópolis' | 'Santana' | 'Administração';
+/**
+ * "Grupo ANA Brasil" (de volta em 11/11/2026) é só de evento: o evento geral,
+ * com todas as unidades juntas. Perfis continuam nas quatro de `UNITS`.
+ */
+export type Unit = 'DIC' | 'Nilópolis' | 'Santana' | 'Administração' | 'Grupo ANA Brasil';
 
 export type BondType =
   | 'rh'
@@ -217,13 +221,17 @@ export const PARTNER_CATEGORIES: { value: PartnerCategory; label: string }[] = [
   { value: 'outros', label: 'Outros' },
 ];
 
+/** As unidades de pessoas (perfis, permissões, auditoria). */
 export const UNITS: Unit[] = ['DIC', 'Nilópolis', 'Santana', 'Administração'];
+/** As unidades de evento: as quatro e o Grupo ANA Brasil (evento geral, 11/11/2026). */
+export const EVENT_UNITS: Unit[] = [...UNITS, 'Grupo ANA Brasil'];
 
 export const UNIT_COLORS: Record<Unit, string> = {
   'DIC': 'unit-dic',
   'Nilópolis': 'unit-nilopolis',
   'Santana': 'unit-santana',
   'Administração': 'unit-geral',
+  'Grupo ANA Brasil': 'unit-grupo',
 };
 
 export const UNIT_BG_COLORS: Record<Unit, string> = {
@@ -231,6 +239,7 @@ export const UNIT_BG_COLORS: Record<Unit, string> = {
   'Nilópolis': 'bg-unit-nilopolis',
   'Santana': 'bg-unit-santana',
   'Administração': 'bg-unit-geral',
+  'Grupo ANA Brasil': 'bg-unit-grupo',
 };
 
 export const EVENT_TYPES: EventType[] = ['reunião', 'evento institucional', 'apresentação', 'ação externa', 'programação interna', 'outro'];

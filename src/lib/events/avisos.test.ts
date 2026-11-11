@@ -84,3 +84,13 @@ describe('tipoDoAviso: "atualizado" (só agenda)', () => {
     expect(tipoDoAviso(conf, { ...conf })).toBeNull();
   });
 });
+
+describe('evento do Grupo ANA Brasil (11/11/2026)', () => {
+  it('avisa as gestoras das três unidades, e não quem só lê', () => {
+    const comNilopolis = [...perfis, { email: 'nil@ana.org', name: 'Gestão Nilópolis', unit: 'Nilópolis', is_active: true, permission_level: 'gestor_unidade' }];
+    const lista = destinatariosDoAviso({ unit: 'Grupo ANA Brasil', created_by: 'MKT ANA' }, comNilopolis);
+    for (const g of ['maria@ana.org', 'joao@ana.org', 'santana@ana.org', 'nil@ana.org']) expect(lista).toContain(g);
+    expect(lista).not.toContain('leitora@ana.org');
+    expect(lista).not.toContain('antiga@ana.org');
+  });
+});
