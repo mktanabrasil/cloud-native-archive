@@ -15,13 +15,13 @@ const banco = vi.hoisted(() => ({
   meus: [] as Array<[string, string]>,
   respostaMeus: { pagos: [], pendentes: [] } as { pagos: Array<Record<string, unknown>>; pendentes: Array<Record<string, unknown>> },
   papel: { isMarketing: true, bondType: null as string | null, isActive: true, loading: false },
+  ranking: { mensagem: '', estado: null as Record<string, unknown> | null, chamadas: [] as Array<[string, unknown]> },
 }));
 
 globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() } }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
 vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => banco.papel }));
-vi.mock('@/lib/pizza/rankingArte', () => ({ desenharRanking: async () => new Blob(['x'], { type: 'image/jpeg' }), salvarRanking: async () => 'baixado' }));
 vi.mock('@/lib/pizza/comprovante', () => ({ salvarComprovante: async (d: Record<string, unknown>) => { banco.comprovantes.push(d); return 'baixado'; } }));
 vi.mock('@/lib/pizza/api', () => ({
   enviarConfirmacao: async (d: Record<string, unknown>) => { banco.enviados.push(d); return 'PZ-0137'; },
@@ -34,6 +34,10 @@ vi.mock('@/lib/pizza/api', () => ({
   situacaoDoPedido: async () => banco.situacao,
   meusPedidos: async (n: string, t: string) => { banco.meus.push([n, t]); return banco.respostaMeus; },
   linkDaPlanilha: async () => { banco.drive.push({ planilha: true }); return 'https://docs.google.com/spreadsheets/d/PLAN1/edit'; },
+  arteDoRanking: async () => ({ imagem: new Blob(['x'], { type: 'image/jpeg' }), mensagem: banco.ranking.mensagem }),
+  estadoDoRanking: async () => banco.ranking.estado,
+  enviarRanking: async (d: string) => { banco.ranking.chamadas.push(['enviar', d]); return { ok: true }; },
+  ligarRanking: async (v: boolean) => { banco.ranking.chamadas.push(['ligar', v]); if (banco.ranking.estado) banco.ranking.estado = { ...banco.ranking.estado, ligado: v }; return { ligado: v }; },
   chamarDrive: async (c: Record<string, unknown>) => { banco.drive.push(c); return c.estado ? { oauth_configurado: true, pode_conectar: banco.papel.isMarketing, conexao: null, pendentes: 2, com_erro: 0 } : { url: 'https://accounts.google.com/x' }; },
 }));
 
@@ -42,6 +46,7 @@ const { PainelDaPizza } = await import('@/components/pizza/PainelDaPizza');
 
 beforeEach(() => {
   banco.enviados = []; banco.lista = []; banco.retiradas = []; banco.copias = 0; banco.drive = []; banco.online = []; banco.deNovo = []; banco.situacao = null; banco.comprovantes = []; banco.meus = []; banco.respostaMeus = { pagos: [], pendentes: [] };
+  banco.ranking = { mensagem: '', estado: null, chamadas: [] };
   banco.papel = { isMarketing: true, bondType: null, isActive: true, loading: false };
   // Sem depender do .env.local de quem roda: nestes testes, o pagamento online começa desligado.
   vi.stubEnv('VITE_PIZZA_PAGAR_ONLINE', 'nao');
@@ -292,19 +297,73 @@ describe('painel', () => {
     abrir.mockRestore();
   });
 
-  it('"Ranking para o WhatsApp" mostra a arte e a mensagem com quem lidera', async () => {
-    globalThis.URL.createObjectURL ??= () => 'blob:x';
-    globalThis.URL.revokeObjectURL ??= () => {};
-    banco.lista = [
-      CONF({ id: '1', numero: 'PZ-0002', nome: 'Roberto Alves', unidade_id: 'ana-dic', unidade_nome: 'ANA DIC', quantidade: 3, total: 165 }),
-      CONF({ id: '2', numero: 'PZ-0001', nome: 'Luciana', unidade_id: 'escritorio-adm', unidade_nome: 'Escritório (ADM)', quantidade: 1 }),
-    ];
-    render(<MemoryRouter><PainelDaPizza /></MemoryRouter>);
-    fireEvent.click(await screen.findByRole('button', { name: /Ranking para o WhatsApp/ }));
-    const janela = await screen.findByRole('dialog', { name: 'Ranking para o WhatsApp' });
-    expect((within(janela).getByLabelText('Mensagem para o grupo') as HTMLTextAreaElement).value).toContain('🥇 *ANA DIC* lidera entre as unidades, com 3 pizzas!');
-    expect(await within(janela).findByRole('img', { name: 'Arte do ranking da Pizza da Alegria' })).toBeInTheDocument();
-    expect(within(janela).getByRole('button', { name: /Baixar imagem/ })).toBeEnabled();
+  describe('Ranking para o WhatsApp (arte e envio pelo servidor)', () => {
+    const ESTADO = { configurado: true, ligado: false, grupo: 'ANABRASIL PUBLICAÇÕES', datas: ['2026-11-13', '2026-11-20', '2026-11-27', '2026-12-04'], proximo: '2026-11-20', podeEnviar: true,
+      envios: [{ criado_em: '2026-11-13T18:00:05Z', destino: 'grupo', origem: 'agendado', situacao: 'enviado', detalhe: null, pizzas: 162 }, { criado_em: '2026-11-12T14:10:00Z', destino: 'teste', origem: 'painel', situacao: 'falhou', detalhe: 'O WhatsApp da MKT está desconectado do Evolution', pizzas: 150 }] };
+    async function abrir() {
+      globalThis.URL.createObjectURL ??= () => 'blob:x';
+      globalThis.URL.revokeObjectURL ??= () => {};
+      banco.lista = [CONF({ id: '1', numero: 'PZ-0002', nome: 'Roberto Alves', unidade_id: 'ana-dic', unidade_nome: 'ANA DIC', quantidade: 3, total: 165 })];
+      banco.ranking.mensagem = '🍕 *Ranking da Pizza da Alegria*\n\n🥇 *ANA DIC* lidera entre as unidades, com 3 pizzas!';
+      render(<MemoryRouter><PainelDaPizza /></MemoryRouter>);
+      fireEvent.click(await screen.findByRole('button', { name: /Ranking para o WhatsApp/ }));
+      return screen.findByRole('dialog', { name: 'Ranking para o WhatsApp' });
+    }
+
+    it('mostra a arte e a mensagem que vêm do servidor', async () => {
+      banco.ranking.estado = { ...ESTADO };
+      const janela = await abrir();
+      expect(await within(janela).findByRole('img', { name: 'Arte do ranking da Pizza da Alegria' })).toBeInTheDocument();
+      expect((within(janela).getByLabelText('Mensagem para o grupo') as HTMLTextAreaElement).value).toContain('🥇 *ANA DIC* lidera');
+      expect(within(janela).getByRole('button', { name: /Baixar imagem/ })).toBeEnabled();
+    });
+
+    it('desligado: diz que nada vai sozinho; o teste vai direto e o grupo pede confirmação', async () => {
+      banco.ranking.estado = { ...ESTADO };
+      const janela = await abrir();
+      expect(await within(janela).findByText(/Desligado: nada vai sozinho para o grupo/)).toBeInTheDocument();
+      fireEvent.click(within(janela).getByRole('button', { name: /Mandar teste para mim/ }));
+      await vi.waitFor(() => expect(banco.ranking.chamadas).toEqual([['enviar', 'teste']]));
+      fireEvent.click(await within(janela).findByRole('button', { name: /Enviar ao grupo agora/ }));
+      const confirmar = within(janela).getByRole('group', { name: 'Confirmar envio ao grupo' });
+      expect(banco.ranking.chamadas).toHaveLength(1);
+      fireEvent.click(within(confirmar).getByRole('button', { name: 'Cancelar' }));
+      expect(within(janela).queryByRole('group', { name: 'Confirmar envio ao grupo' })).toBeNull();
+      fireEvent.click(within(janela).getByRole('button', { name: /Enviar ao grupo agora/ }));
+      fireEvent.click(within(within(janela).getByRole('group', { name: 'Confirmar envio ao grupo' })).getByRole('button', { name: 'Enviar ao grupo' }));
+      await vi.waitFor(() => expect(banco.ranking.chamadas).toEqual([['enviar', 'teste'], ['enviar', 'grupo']]));
+    });
+
+    it('liga o envio automático e mostra a próxima sexta e os últimos envios', async () => {
+      banco.ranking.estado = { ...ESTADO };
+      const janela = await abrir();
+      fireEvent.click(await within(janela).findByRole('switch', { name: 'Envio automático' }));
+      await vi.waitFor(() => expect(banco.ranking.chamadas).toEqual([['ligar', true]]));
+      expect(await within(janela).findByText(/Toda sexta, às 15h: 13\/11, 20\/11, 27\/11 e 04\/12/)).toBeInTheDocument();
+      expect(within(janela).getByText('sexta, 20/11')).toBeInTheDocument();
+      const envios = within(janela).getByRole('list', { name: 'Últimos envios' });
+      expect(within(envios).getAllByRole('listitem')).toHaveLength(2);
+      expect(within(envios).getByText('Enviado')).toBeInTheDocument();
+      expect(within(envios).getByText('O WhatsApp da MKT está desconectado do Evolution')).toBeInTheDocument();
+    });
+
+    it('o financeiro vê a prévia e os envios, mas não envia nem liga', async () => {
+      banco.papel = { isMarketing: false, bondType: 'financeiro', isActive: true, loading: false };
+      banco.ranking.estado = { ...ESTADO, podeEnviar: false };
+      const janela = await abrir();
+      expect(await within(janela).findByRole('switch', { name: 'Envio automático' })).toBeDisabled();
+      expect(within(janela).queryByRole('button', { name: /Mandar teste para mim/ })).toBeNull();
+      expect(within(janela).queryByRole('button', { name: /Enviar ao grupo agora/ })).toBeNull();
+    });
+
+    it('sem o token do WhatsApp: avisa e não deixa enviar', async () => {
+      banco.ranking.estado = { ...ESTADO, configurado: false, envios: [] };
+      const janela = await abrir();
+      expect(await within(janela).findByText(/Falta a conexão com o WhatsApp/)).toBeInTheDocument();
+      expect(within(janela).getByRole('button', { name: /Mandar teste para mim/ })).toBeDisabled();
+      expect(within(janela).getByRole('button', { name: /Enviar ao grupo agora/ })).toBeDisabled();
+      expect(within(janela).getByRole('switch', { name: 'Envio automático' })).toBeDisabled();
+    });
   });
 
   it('o ADM (financeiro) entra; a gestora não', async () => {

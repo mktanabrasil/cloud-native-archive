@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { calcularRanking, diasQueFaltam, mensagemDoRanking } from './ranking';
+// As regras vivem na função do servidor, que faz a arte e manda ao grupo (11/11/2026).
+import { calcularRanking, diasQueFaltam, mensagemDoRanking } from '../../../supabase/functions/pizza-ranking/ranking';
 import type { Confirmacao } from './api';
 
 const C = (o: Partial<Confirmacao>): Confirmacao => ({

@@ -173,3 +173,52 @@ export async function linkDoComprovante(caminho: string): Promise<string> {
   if (error || !data) throw error ?? new Error('sem endereço');
   return data.signedUrl;
 }
+
+// --- Ranking no grupo de WhatsApp (11/11/2026) ----------------------------------------------
+
+/** Um envio do ranking (teste ou grupo), como a função `pizza-ranking` registra. */
+export interface EnvioDoRanking {
+  criado_em: string;
+  destino: 'grupo' | 'teste';
+  origem: 'agendado' | 'painel';
+  situacao: 'enviado' | 'falhou' | 'pulado';
+  detalhe: string | null;
+  pizzas: number | null;
+}
+export interface EstadoDoRanking {
+  /** O endereço e o token do Evolution estão na configuração. */
+  configurado: boolean;
+  /** O envio automático das sextas, 15h. Nasce desligado. */
+  ligado: boolean;
+  grupo: string;
+  /** As sextas do envio (AAAA-MM-DD). */
+  datas: string[];
+  proximo: string | null;
+  /** Só a comunicação envia e liga; o financeiro só vê. */
+  podeEnviar: boolean;
+  envios: EnvioDoRanking[];
+}
+
+async function chamarRanking<T>(corpo: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('pizza-ranking', { body: corpo });
+  if (error) {
+    const ctx = (error as { context?: Response }).context;
+    const msg = ctx && typeof ctx.json === 'function' ? (await ctx.json().catch(() => null))?.error : null;
+    throw new Error(msg || error.message);
+  }
+  if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
+  return data as T;
+}
+
+export const estadoDoRanking = () => chamarRanking<EstadoDoRanking>({ acao: 'estado' });
+
+/** A arte (JPEG) e a mensagem, feitas no servidor: as mesmas que vão ao grupo. */
+export async function arteDoRanking(): Promise<{ imagem: Blob; mensagem: string }> {
+  const r = await chamarRanking<{ imagem: string; mensagem: string }>({ acao: 'arte' });
+  const bytes = Uint8Array.from(atob(r.imagem), (c) => c.charCodeAt(0));
+  return { imagem: new Blob([bytes], { type: 'image/jpeg' }), mensagem: r.mensagem };
+}
+
+/** "teste": a conversa "Mensagens para mim" do WhatsApp da MKT. "grupo": ANABRASIL PUBLICAÇÕES. */
+export const enviarRanking = (destino: 'teste' | 'grupo') => chamarRanking<{ ok: true }>({ acao: 'enviar', destino });
+export const ligarRanking = (ligado: boolean) => chamarRanking<{ ligado: boolean }>({ acao: 'ligar', ligado });
