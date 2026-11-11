@@ -37,8 +37,10 @@ export function montarChecklist(e: Partial<AppEvent>): Checklist {
   if (t) {
     const veiculos = [t.veiculo?.label, t.apoio?.label].filter(Boolean).join(' + ');
     const gente = t.total > 0 ? ` para ${t.total} ${t.total === 1 ? 'pessoa' : 'pessoas'}` : '';
-    antes.push(veiculos ? `Confirmar ${veiculos}${gente} (frota da ANA)` : `Definir o veículo${gente}`);
-    if (t.apoioExterno) antes.push('Acionar a equipe de apoio para transporte de fora da frota');
+    if (veiculos) antes.push(`Confirmar ${veiculos}${gente} (frota da ANA)`);
+    else if (!t.apoioExterno) antes.push(`Definir o veículo${gente}`);
+    // 11/11/2026: a locação é pedida ao setor de Captação de Recursos e Compras.
+    if (t.apoioExterno) antes.push(`Solicitar a locação do transporte${veiculos ? '' : gente} ao setor de Captação de Recursos e Compras`);
     if (t.volumosos) noDia.push('Carregar os volumosos no veículo antes de sair');
   }
 
@@ -89,6 +91,7 @@ export function montarChecklist(e: Partial<AppEvent>): Checklist {
     }
     const arte = lerPedidoDeArte(e.marketing_items);
     if (arte.whatsapp) antes.push('Receber a arte do marketing e mandar nos grupos das famílias');
+    if (arte.story) antes.push('Receber do marketing a arte do story do Instagram');
     if (arte.cartaz) antes.push(`Imprimir ${arte.quantidade ? `${arte.quantidade} ${arte.quantidade === 1 ? 'cartaz' : 'cartazes'}` : 'os cartazes'} A4 e plastificar`);
     if (arte.cartaz) noDia.push('Colar os cartazes na unidade');
   }
@@ -133,6 +136,7 @@ export function resumoDoEvento(e: Partial<AppEvent>): Array<[string, string]> {
     if (estadoDaCobertura(e) !== 'nao-pedida') partes.push('cobertura');
     const arte = lerPedidoDeArte(e.marketing_items);
     if (arte.whatsapp) partes.push('arte WhatsApp');
+    if (arte.story) partes.push('story Instagram');
     if (arte.cartaz) partes.push(arte.quantidade ? `${arte.quantidade} cartazes` : 'cartaz');
     if (partes.length) linhas.push(['Marketing', partes.join(' + ')]);
   }

@@ -29,7 +29,8 @@ export type PartnerType = 'padrinho' | 'doador' | 'empresa' | 'figura_publica' |
  * `outro` marca o texto livre do "Outro"; o nome dele é o que a pessoa escreveu.
  */
 /** Os dois pedidos de arte ao marketing (22/09/2026). */
-export type TipoDeArte = 'arte_whatsapp' | 'cartaz_a4';
+/** `cartaz_a4` só nos pedidos antigos: desde 11/11/2026 o pedido é de rede social (WhatsApp e/ou story). */
+export type TipoDeArte = 'arte_whatsapp' | 'story_instagram' | 'cartaz_a4';
 
 /**
  * Um item do pedido ao marketing. `demanda_grafica` é o modelo antigo (texto
