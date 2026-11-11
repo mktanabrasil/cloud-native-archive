@@ -1,42 +1,43 @@
-import type { Confirmacao } from './api';
-import { PRAZO } from './modelo';
-
 /**
- * O ranking da disputa da Pizza da Alegria (11/11/2026, mockup aprovado:
- * https://claude.ai/artifact/9zTrCbAGR8hA2h6tMfsZUN). A unidade que mais
- * comprar e a pessoa que mais comprar ganham um brinde; os campeões são
- * anunciados em 17/12, na Integração dos Funcionários.
+ * O ranking da disputa da Pizza da Alegria, no servidor (11/11/2026): a mesma
+ * conta e a mesma mensagem de src/lib/pizza/ranking.ts, que é a referência.
+ * Mudou lá, muda aqui (os testes de lá cobrem as regras).
  *
- * Decisões dele: unidades pelo total de pizzas (as 5 primeiras na arte);
- * pessoas, só as 3 primeiras; no empate, fica à frente quem chegou primeiro
- * ao número (o último pedido mais antigo); a arte e a mensagem vão ao grupo
- * de WhatsApp às sextas, 15h (13/11, 20/11 e 27/11).
+ * Unidades pelo total de pizzas; pessoas pelo WhatsApp (sem ele, nome e
+ * unidade); no empate, fica à frente quem chegou primeiro ao número.
  */
 
+export interface Pedido {
+  nome: string;
+  unidade_id: string;
+  unidade_nome: string;
+  quantidade: number;
+  telefone?: string | null;
+  created_at: string;
+}
 export interface Colocado { chave: string; nome: string; unidade?: string; pizzas: number; ultimo: string }
 export interface Ranking { unidades: Colocado[]; pessoas: Colocado[]; pizzas: number; pedidos: number }
 
-const comparavel = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
-/** A pessoa: o WhatsApp; sem ele (pedidos de antes de 10/11), o nome e a unidade. Igual à planilha. */
-export const chaveDaPessoa = (c: Pick<Confirmacao, 'telefone' | 'nome' | 'unidade_id'>) =>
-  (c.telefone ? `w:${c.telefone}` : `n:${comparavel(c.nome)}|${c.unidade_id}`);
+/** Fim dos pedidos: 05/12/2026, 23:59 em Brasília. A mesma data de src/lib/pizza/modelo.ts. */
+export const PRAZO = new Date('2026-12-06T00:00:00-03:00');
 
-/** Mais pizzas primeiro; no empate, quem chegou primeiro ao número. */
+const comparavel = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+const chaveDaPessoa = (c: Pedido) => (c.telefone ? `w:${c.telefone}` : `n:${comparavel(c.nome)}|${c.unidade_id}`);
 const ordem = (a: Colocado, b: Colocado) => b.pizzas - a.pizzas || a.ultimo.localeCompare(b.ultimo) || a.nome.localeCompare(b.nome);
 
-function agrupar(lista: Confirmacao[], chave: (c: Confirmacao) => string, base: (c: Confirmacao) => Omit<Colocado, 'pizzas' | 'ultimo' | 'chave'>): Colocado[] {
+function agrupar(lista: Pedido[], chave: (c: Pedido) => string, base: (c: Pedido) => Omit<Colocado, 'pizzas' | 'ultimo' | 'chave'>): Colocado[] {
   const m = new Map<string, Colocado>();
   for (const c of [...lista].sort((a, b) => a.created_at.localeCompare(b.created_at))) {
     const k = chave(c);
     const atual = m.get(k) ?? { chave: k, ...base(c), pizzas: 0, ultimo: c.created_at };
     atual.pizzas += c.quantidade;
-    atual.ultimo = c.created_at; // em ordem: fica o do último pedido
+    atual.ultimo = c.created_at;
     m.set(k, atual);
   }
   return [...m.values()].sort(ordem);
 }
 
-export function calcularRanking(lista: Confirmacao[]): Ranking {
+export function calcularRanking(lista: Pedido[]): Ranking {
   return {
     unidades: agrupar(lista, (c) => c.unidade_id, (c) => ({ nome: c.unidade_nome })),
     pessoas: agrupar(lista, chaveDaPessoa, (c) => ({ nome: c.nome, unidade: c.unidade_nome })),
@@ -45,17 +46,15 @@ export function calcularRanking(lista: Confirmacao[]): Ranking {
   };
 }
 
-/** Dias até o fim dos pedidos (05/12, inclusive). 1 = hoje é o último dia; 0 = encerrado. */
 export function diasQueFaltam(agora: Date = new Date()): number {
   const ms = PRAZO.getTime() - agora.getTime();
   return ms <= 0 ? 0 : Math.ceil(ms / 864e5);
 }
 
-const dataCurta = (d: Date) => d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' });
+export const dataCurta = (d: Date) => d.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' });
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 export const textoDosDias = (dias: number) => (dias <= 0 ? 'pedidos encerrados' : dias === 1 ? 'último dia' : `faltam ${dias} dias`);
 
-/** A mensagem que vai junto da imagem no grupo de WhatsApp. */
 export function mensagemDoRanking(r: Ranking, agora: Date = new Date()): string {
   const dias = diasQueFaltam(agora);
   const linhas = [`🍕 *Ranking da Pizza da Alegria · parcial até ${dataCurta(agora)}*`, ''];

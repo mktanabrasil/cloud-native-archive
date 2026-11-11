@@ -134,7 +134,7 @@ export function PainelDaPizza() {
           <Button variant="outline" size="sm" onClick={carregar}>Atualizar</Button>
           <Button variant="ghost" size="sm" onClick={copiarLinkDaGestao}><Link2 className="h-4 w-4" /> Copiar link da gestão</Button>
           <Button variant="outline" size="sm" asChild><Link to="/pizza-da-alegria/painel/dashboard"><BarChart3 className="h-4 w-4" /> Dashboard</Link></Button>
-          <RankingDoWhatsApp lista={lista ?? []} />
+          <RankingDoWhatsApp vazio={!lista?.length} />
           <Button size="sm" onClick={abrirPlanilha}><Sheet className="h-4 w-4" /> Abrir planilha</Button>
           <Button size="sm" variant="outline" asChild><Link to="/pizza-da-alegria/retirada"><ScanLine className="h-4 w-4" /> Retirada com leitor</Link></Button>
         </div>
