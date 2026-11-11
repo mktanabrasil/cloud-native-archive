@@ -123,12 +123,19 @@ export async function desenharRanking(r: Ranking, quando: string, dias: string, 
     p.push(`<rect x="${M}" y="${y + 15}" width="${L - 2 * M}" height="3" fill="${CREME}" fill-opacity="0.5"/>`);
   };
 
+  // As listas: cheias (5 unidades e 3 pessoas), vão de 636 a 1232, como no
+  // mockup aprovado. Com menos linhas (começo da campanha, 11/11/2026), o
+  // bloco desce para o meio desse espaço, em vez de deixar um vão no meio.
+  const unidades = r.unidades.slice(0, 5), pessoas = r.pessoas.slice(0, 3);
+  const altU = unidades.reduce((a, _, i) => a + (i === 0 ? 64 : 54), 0);
+  const altP = pessoas.reduce((a, _, i) => a + (i === 0 ? 62 : 56), 0);
+  const desce = Math.round(((64 + 54 * 4) + (62 + 56 * 2) - altU - altP) / 2);
+
   // Unidades: as 5 primeiras, com barra
-  cabecalho('Unidades', 664);
+  cabecalho('Unidades', 664 + desce);
   const xNome = M + 84 + 18, larguraNum = 76, fimBarra = DIR - larguraNum - 18;
-  const unidades = r.unidades.slice(0, 5);
   const maxU = Math.max(1, ...unidades.map((u) => u.pizzas));
-  let y = 690;
+  let y = 690 + desce;
   unidades.forEach((u: Colocado, i) => {
     const h = i === 0 ? 64 : 54, meio = y + h / 2;
     const [cp, op] = COR_DA_POSICAO[i];
@@ -143,10 +150,10 @@ export async function desenharRanking(r: Ranking, quando: string, dias: string, 
     y += h;
   });
 
-  // Pessoas: as 3 primeiras
-  cabecalho('Quem mais comprou', 1032);
-  y = 1058;
-  r.pessoas.slice(0, 3).forEach((pe: Colocado, i) => {
+  // Pessoas: as 3 primeiras, 62 px depois da última unidade (cheio: 1032)
+  cabecalho('Quem mais comprou', y + 62);
+  y += 62 + 26;
+  pessoas.forEach((pe: Colocado, i) => {
     const h = i === 0 ? 62 : 56, meio = y + h / 2;
     const [cp] = COR_DA_POSICAO[i];
     p.push(texto(`${i + 1}º`, M, meio + (i === 0 ? 17 : 15), 900, i === 0 ? 48 : 42, cp));
