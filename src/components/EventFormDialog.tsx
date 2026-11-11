@@ -241,7 +241,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
    * também é o que um evento novo tem antes de a unidade sugerir algo.
    */
   const [outroLocal, setOutroLocal] = useState(false);
-  /** "Rede social" ligado (era "Arte ou material impresso"). Mora aqui porque o pedido pode estar aberto e ainda vazio. */
+  /** "Arte / impressa" ligado (11/11/2026). Mora aqui porque o pedido pode estar aberto e ainda vazio. */
   const [arteAberta, setArteAberta] = useState(false);
   const [slugMode, setSlugMode] = useState<'auto' | 'custom'>('auto');
   const [showSlugPrompt, setShowSlugPrompt] = useState(false);
@@ -604,9 +604,10 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
         // O pedido novo é validado sempre que tem alguma escolha. Só um
         // pedido antigo, sozinho, dispensa (ele já diz o que é). Antes, com
         // um pedido antigo no evento, um cartaz novo passava sem quantidade
-        // nem conteúdo (varredura de 25/09/2026).
+        // nem conteúdo (varredura de 25/09/2026). O story (11/11/2026) conta
+        // como escolha: sem ele aqui, só o story passava sem dizer o que vai na arte.
         const pedido = lerPedidoDeArte(form.marketing_items);
-        const temEscolhaNova = pedido.whatsapp || pedido.cartaz;
+        const temEscolhaNova = pedido.whatsapp || pedido.story || pedido.cartaz;
         const erroDaArte = errosDoPedidoDeArte(pedido, arteAberta && (temEscolhaNova || itensAntigosDeArte(form.marketing_items).length === 0));
         if (erroDaArte) errs.marketing_items = erroDaArte;
       }
@@ -1723,12 +1724,15 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                 if (!v) setForm({ ...form, marketing_items: comPedidoDeArte(form.marketing_items, PEDIDO_VAZIO) });
                               }}
                             />
-                            <Label htmlFor="marketing_grafica" className="cursor-pointer flex-1 text-sm font-medium text-foreground">Rede social</Label>
+                            <Label htmlFor="marketing_grafica" className="cursor-pointer flex-1 text-sm font-medium text-foreground">
+                              Arte / impressa
+                              <span className="block text-xs font-normal text-muted-foreground">arte para rede social, A4 plastificado, ou os dois</span>
+                            </Label>
                           </div>
 
-                          {/* O pedido (22/09/2026; desde 11/11/2026 de rede social): o
-                              formato — WhatsApp e/ou story do Instagram —, a legenda e o
-                              que vai na arte. */}
+                          {/* O pedido (22/09/2026; "Arte / impressa" desde 11/11/2026):
+                              arte para rede social (WhatsApp, story) e/ou A4
+                              plastificado, a legenda, as cópias e o que vai na arte. */}
                           {arteAberta && (
                             <PedidoDeArte
                               pedido={lerPedidoDeArte(form.marketing_items)}

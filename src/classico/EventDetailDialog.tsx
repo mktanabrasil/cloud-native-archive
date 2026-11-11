@@ -305,7 +305,7 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
                         {/* Demanda Gráfica */}
                         {temArte(event.marketing_items) && (
                           <div className="space-y-3">
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Arte ou material impresso</p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Arte / impressa</p>
                             <div className="bg-muted/40 rounded-xl p-4 border border-border">
                               <ResumoDoPedidoDeArte itens={event.marketing_items} />
                             </div>
