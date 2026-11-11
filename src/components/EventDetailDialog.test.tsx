@@ -14,6 +14,7 @@ vi.mock('@/contexts/TestViewContext', () => ({ useTestView: () => ({ activePerso
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const { EventDetailDialog } = await import('./EventDetailDialog');
+const { EventDetailDialog: Classico } = await import('@/classico/EventDetailDialog');
 
 const evento = {
   id: 'e1',
@@ -210,5 +211,22 @@ describe('endereço no detalhe (22/09/2026)', () => {
   it('evento interno não mostra endereço', () => {
     render(<EventDetailDialog open onOpenChange={() => {}} event={{ ...evento, visibility: 'interno' }} />);
     expect(screen.queryByTestId('endereco-detalhe')).toBeNull();
+  });
+});
+
+describe('botão de banner no detalhe (11/11/2026)', () => {
+  // O banner é o do site: evento interno não tem o botão, nas duas versões.
+  const versoes = [['V2 (app)', EventDetailDialog], ['clássica (embed)', Classico]] as const;
+
+  it.each(versoes)('evento interno não mostra o botão, na %s', (_nome, Detalhe) => {
+    render(<Detalhe open onOpenChange={() => {}} event={{ ...evento, visibility: 'interno' } as AppEvent} onAlternarBanner={() => {}} />);
+    expect(screen.queryByRole('button', { name: /banner/i })).toBeNull();
+  });
+
+  it.each(versoes)('evento público mostra, na %s', (_nome, Detalhe) => {
+    const alternar = vi.fn();
+    render(<Detalhe open onOpenChange={() => {}} event={evento} onAlternarBanner={alternar} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Adicionar ao banner' }));
+    expect(alternar).toHaveBeenCalledWith(evento);
   });
 });

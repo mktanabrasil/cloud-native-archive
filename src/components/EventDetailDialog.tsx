@@ -191,7 +191,8 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
                   <ClipboardList className="h-4 w-4" /> Baixar checklist (PDF)
                 </Button>
               )}
-              {onAlternarBanner && (
+              {/* O banner é o do site: evento interno não tem o botão (11/11/2026). */}
+              {onAlternarBanner && event.visibility === 'publico' && (
                 <Button variant="outline" className="gap-2" onClick={() => onAlternarBanner(event)}>
                   {event.show_in_banner ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   {event.show_in_banner ? 'Remover do banner' : 'Adicionar ao banner'}
