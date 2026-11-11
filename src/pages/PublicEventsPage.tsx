@@ -202,23 +202,25 @@ function ProgramacaoV2() {
     const porInicio = (a: AppEvent, b: AppEvent) =>
       new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime();
 
-    // Para o admin no modo equipe, o herói mostra todos da vitrine: os ativos
-    // e em cartaz primeiro, os ocultos ou passados depois, com selo. Assim ele
-    // vê o que está fora do ar sem sair da página.
-    // Só a vitrine: evento interno não vai para o herói (11/11/2026).
-    if (equipe && isAdmin) {
-      const ativo = (e: AppEvent) => e.show_in_banner && !jaAconteceu(e);
-      return [...daVitrine].sort((a, b) => {
-        if (ativo(a) && !ativo(b)) return -1;
-        if (!ativo(a) && ativo(b)) return 1;
-        return porInicio(a, b);
-      });
+    // Para a equipe (pedido dele em 11/11/2026), o herói mostra só o que
+    // ainda vai acontecer, confirmado: primeiro o que está no banner do site,
+    // depois os internos (com selo; o Natal Feliz não aparecia) e, para o
+    // admin, os públicos fora do banner, para ele ativar. O que já aconteceu
+    // não entra mais, nem para o admin.
+    if (equipe) {
+      const noBanner = (e: AppEvent) => e.visibility === 'publico' && !!e.show_in_banner;
+      return events
+        .filter(e => !jaAconteceu(e) && e.status === 'confirmado' && (noBanner(e) || e.visibility !== 'publico' || isAdmin))
+        .sort((a, b) => {
+          if (noBanner(a) !== noBanner(b)) return noBanner(a) ? -1 : 1;
+          return porInicio(a, b);
+        });
     }
 
     // Para todo o resto: só o que está no banner e ainda não terminou. Um
     // evento de hoje fica até 23:59; um de vários dias, até o último dia.
     return daVitrine.filter(e => e.show_in_banner && !jaAconteceu(e)).sort(porInicio);
-  }, [daVitrine, equipe, isAdmin]);
+  }, [events, daVitrine, equipe, isAdmin]);
 
   const handleToggleBanner = (event: AppEvent) => {
     // Ligar o banner sem imagem 21:9 pede confirmação antes; o editor não
@@ -438,17 +440,16 @@ function ProgramacaoV2() {
                   <Badge className={`${UNIT_BG_COLORS[event.unit]} text-slate-900 border-none shadow-lg`}>
                     {event.unit}
                   </Badge>
-                  {/* Os dois motivos de a família não ver este slide. Sem o
-                      segundo, um evento passado com banner ligado ficava no
-                      carrossel do admin como se estivesse no ar. */}
-                  {equipe && isAdmin && !event.show_in_banner && (
+                  {/* Por que a família não vê este slide: é interno, ou é
+                      público mas está fora do banner. Evento que já aconteceu
+                      não chega mais aqui (11/11/2026). */}
+                  {equipe && event.visibility !== 'publico' ? (
+                    <Badge variant="outline" className="bg-slate-900/80 text-slate-200 border-slate-700 backdrop-blur-sm">
+                      Interno · só a equipe
+                    </Badge>
+                  ) : equipe && isAdmin && !event.show_in_banner && (
                     <Badge variant="outline" className="bg-slate-900/80 text-slate-200 border-slate-700 backdrop-blur-sm">
                       Oculto para o Público
-                    </Badge>
-                  )}
-                  {equipe && isAdmin && jaAconteceu(event) && (
-                    <Badge variant="outline" className="bg-slate-900/80 text-slate-200 border-slate-700 backdrop-blur-sm">
-                      Já aconteceu
                     </Badge>
                   )}
                 </div>
@@ -496,7 +497,8 @@ function ProgramacaoV2() {
                   >
                     Saber mais
                   </Button>
-                  {equipe && isAdmin && (
+                  {/* Evento interno não vai ao banner do site: sem o botão. */}
+                  {equipe && isAdmin && event.visibility === 'publico' && (
                     <Button
                       variant="outline"
                       size="lg"

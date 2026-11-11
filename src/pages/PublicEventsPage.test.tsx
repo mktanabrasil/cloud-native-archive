@@ -846,17 +846,10 @@ describe('a equipe vê também o que não está no site', () => {
 
     expect(noCard('Natal Feliz 2026')).toBe(1);
     expect(noCard('Reunião de pais')).toBe(1);
-    expect(screen.getByText('Interno · só a equipe')).toBeInTheDocument();
+    const cardDoNatal = screen.getByRole('heading', { level: 3, name: 'Natal Feliz 2026' }).parentElement!;
+    expect(cardDoNatal).toHaveTextContent('Interno · só a equipe');
     expect(screen.getByText('Aguardando aprovação')).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: /próximos/i })).toHaveTextContent('3');
-  });
-
-  it('o carrossel continua só com a vitrine', () => {
-    montarV2();
-
-    const regiao = screen.getByRole('region', { name: /eventos em destaque/i });
-    expect(within(regiao).queryByText('Natal Feliz 2026')).toBeNull();
-    expect(within(regiao).queryByText('Reunião de pais')).toBeNull();
   });
 
   it('"Ver como visitante" e o visitante sem sessão veem só o que é público', () => {
@@ -877,6 +870,54 @@ describe('a equipe vê também o que não está no site', () => {
     espiao.eventos = [ativo, { ...interno, slug: 'natal-feliz-2026' }];
     montarV2('/eventos?slug=natal-feliz-2026');
     expect(screen.getByTestId('detalhe')).toHaveTextContent('Natal Feliz 2026');
+  });
+});
+
+/**
+ * O herói da equipe, dentro do app (pedido dele em 11/11/2026): só o que
+ * ainda vai acontecer e está confirmado. Primeiro o que está no banner do
+ * site; depois o interno (com selo, sem o botão de banner) e o público fora
+ * do banner (para o admin ativar). Hoje, nestes testes, é 8/9/2026, 15h.
+ */
+describe('o herói da equipe (V2)', () => {
+  const quando = (dia: number, mes = 9) => ({ start_datetime: new Date(2026, mes, dia, 8).toISOString(), end_datetime: new Date(2026, mes, dia, 16).toISOString() });
+  const jaPassou = evento({ id: 'p', title: 'Festa que Passou', show_in_banner: true, banner_image_desktop: 'https://exemplo/p.jpg', start_datetime: new Date(2026, 8, 1, 8).toISOString(), end_datetime: new Date(2026, 8, 1, 12).toISOString() });
+  const noBanner = evento({ id: 'b', title: 'Karatê no Banner', unit: 'Santana', show_in_banner: true, banner_image_desktop: 'https://exemplo/b.jpg', ...quando(15, 10) });
+  const interno = evento({ id: 'i', title: 'Natal Interno', unit: 'Administração', visibility: 'interno', show_in_banner: false, banner_image_desktop: 'https://exemplo/i.jpg', ...quando(8, 11) });
+  const foraDoBanner = evento({ id: 'f', title: 'Público Fora do Banner', show_in_banner: false, ...quando(20, 9) });
+  const pendente = evento({ id: 'pe', title: 'Ainda Pendente', status: 'pendente', ...quando(25, 9) });
+  const regiao = () => screen.getByRole('region', { name: /eventos em destaque/i });
+  const slide = (titulo: string) => [...regiao().querySelectorAll('[aria-hidden]')].find(s => s.textContent?.includes(titulo));
+
+  beforeEach(() => { espiao.eventos = [jaPassou, noBanner, interno, foraDoBanner, pendente]; espiao.autenticado = true; });
+
+  it('o que já aconteceu e o pendente não entram; o do banner vem primeiro', () => {
+    montarV2();
+
+    expect(regiao()).not.toHaveTextContent('Festa que Passou');
+    expect(regiao()).not.toHaveTextContent('Ainda Pendente');
+    const slides = [...regiao().querySelectorAll('[aria-hidden]')];
+    expect(slides[0]).toHaveTextContent('Karatê no Banner');
+    expect(regiao()).not.toHaveTextContent('Já aconteceu');
+  });
+
+  it('o interno entra com selo e sem o botão de banner; o público fora do banner, com "Ativar Banner"', () => {
+    montarV2();
+
+    expect(slide('Natal Interno')).toHaveTextContent('Interno · só a equipe');
+    expect(slide('Natal Interno')).not.toHaveTextContent(/Ativar Banner|Ocultar Banner/);
+    expect(slide('Público Fora do Banner')).toHaveTextContent('Oculto para o Público');
+    expect(slide('Público Fora do Banner')).toHaveTextContent('Ativar Banner');
+  });
+
+  it('o visitante continua vendo só o banner do site', () => {
+    espiao.autenticado = false;
+    montarV2();
+
+    expect(regiao()).toHaveTextContent('Karatê no Banner');
+    expect(regiao()).not.toHaveTextContent('Natal Interno');
+    expect(regiao()).not.toHaveTextContent('Público Fora do Banner');
+    expect(regiao()).not.toHaveTextContent('Festa que Passou');
   });
 });
 
