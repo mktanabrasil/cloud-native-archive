@@ -799,7 +799,8 @@ function ProgramacaoV2() {
                         <Pencil className="h-4 w-4" />
                       </button>
                     )}
-                    {equipe && isAdmin && (
+                    {/* O banner é o do site: evento interno não tem o botão (11/11/2026). */}
+                    {equipe && isAdmin && event.visibility === 'publico' && (
                       <button
                         type="button"
                         onClick={(e) => {
