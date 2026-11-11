@@ -89,12 +89,16 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
       {/* `semFechar`: o detalhe tem o próprio X, sobre a imagem. Com o padrão
           por baixo eram dois X sobrepostos, um deles em inglês.
           Esboço V2: dentro do app o detalhe abre numa folha lateral, como o
-          formulário; embutido no site (iframe), continua a janela central. */}
+          formulário; embutido no site (iframe), continua a janela central.
+          `auto-rows-max` (11/11/2026): a folha tem altura fixa e, com texto
+          longo, a grade encolhia a faixa da capa (de 308 para 208 px) — a
+          imagem, presa à proporção 21:9, passava por cima do título. Com cada
+          faixa no tamanho do conteúdo, a folha só rola. */}
       <DialogContent
         semFechar
         className={lateral
-          ? 'folha-lateral left-auto right-0 top-0 h-[100svh] max-h-[100svh] w-full translate-x-0 translate-y-0 content-start gap-0 overflow-y-auto rounded-none border-none p-0 sm:right-3 sm:top-3 sm:h-[calc(100svh-1.5rem)] sm:max-h-[calc(100svh-1.5rem)] sm:max-w-[720px] sm:rounded-[22px]'
-          : 'max-w-4xl gap-0 p-0 overflow-hidden bg-background border-none sm:rounded-2xl shadow-2xl'}
+          ? 'folha-lateral left-auto right-0 top-0 h-[100svh] max-h-[100svh] w-full translate-x-0 translate-y-0 content-start auto-rows-max gap-0 overflow-y-auto rounded-none border-none p-0 sm:right-3 sm:top-3 sm:h-[calc(100svh-1.5rem)] sm:max-h-[calc(100svh-1.5rem)] sm:max-w-[720px] sm:rounded-[22px]'
+          : 'max-w-4xl auto-rows-max gap-0 p-0 overflow-hidden bg-background border-none sm:rounded-2xl shadow-2xl'}
       >
         <div className={`relative overflow-hidden bg-slate-900 ${lateral ? 'aspect-[21/9]' : 'aspect-[21/9] md:aspect-[3/1]'}`}>
           {temArteDeCapa ? (
