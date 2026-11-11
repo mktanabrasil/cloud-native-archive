@@ -1,38 +1,44 @@
-import { Check, MessageCircle, Printer } from 'lucide-react';
+import { Check, Instagram, MessageCircle, Printer } from 'lucide-react';
 import type { TipoDeArte } from '@/types';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { DESCRICAO_DA_ARTE, LIMITE_CONTEUDO, LIMITE_LEGENDA, ROTULO_DA_ARTE, TIPOS_DE_ARTE, type PedidoDeArte as Pedido } from '@/lib/events/arte';
+import { DESCRICAO_DA_ARTE, FORMATO_DA_ARTE, LIMITE_CONTEUDO, LIMITE_LEGENDA, TIPOS_DE_ARTE, type PedidoDeArte as Pedido } from '@/lib/events/arte';
 
 /**
- * O sub-formulário do pedido de arte (22/09/2026, mockup aprovado).
+ * O sub-formulário do pedido de rede social (11/11/2026; antes, desde
+ * 22/09/2026, "arte ou material impresso").
  *
- * Duas escolhas em cartões grandes, que dá para marcar juntas: Arte para o
- * WhatsApp e Cartaz A4. Embaixo, a legenda (só faz sentido com WhatsApp), o
- * que precisa estar na arte e, com cartaz, quantos. Os anexos do marketing
- * já moram logo abaixo, no bloco de fora.
+ * O formato em cartões grandes, que dá para marcar juntos: WhatsApp e Story do
+ * Instagram. Embaixo, a legenda (só faz sentido com WhatsApp) e o que precisa
+ * estar na arte. O cartaz A4 saiu: só aparece num pedido antigo que já o
+ * tinha, para dar para ver e desmarcar. Os anexos do marketing moram logo
+ * abaixo, no bloco de fora.
  */
 interface Props {
   pedido: Pedido;
   onChange: (pedido: Pedido) => void;
 }
 
-const ICONE: Record<TipoDeArte, typeof MessageCircle> = { arte_whatsapp: MessageCircle, cartaz_a4: Printer };
+const ICONE: Record<TipoDeArte, typeof MessageCircle> = { arte_whatsapp: MessageCircle, story_instagram: Instagram, cartaz_a4: Printer };
 
 export function PedidoDeArte({ pedido, onChange }: Props) {
-  const marcado = (t: TipoDeArte) => (t === 'arte_whatsapp' ? pedido.whatsapp : pedido.cartaz);
+  const marcado = (t: TipoDeArte) => (t === 'arte_whatsapp' ? pedido.whatsapp : t === 'story_instagram' ? pedido.story : pedido.cartaz);
   const alternar = (t: TipoDeArte) =>
-    onChange(t === 'arte_whatsapp' ? { ...pedido, whatsapp: !pedido.whatsapp } : { ...pedido, cartaz: !pedido.cartaz, quantidade: pedido.cartaz ? null : pedido.quantidade });
+    onChange(t === 'arte_whatsapp' ? { ...pedido, whatsapp: !pedido.whatsapp }
+      : t === 'story_instagram' ? { ...pedido, story: !pedido.story }
+      : { ...pedido, cartaz: !pedido.cartaz, quantidade: pedido.cartaz ? null : pedido.quantidade });
+  // O cartaz só aparece num pedido antigo que o tinha marcado.
+  const tipos: TipoDeArte[] = pedido.cartaz ? [...TIPOS_DE_ARTE, 'cartaz_a4'] : TIPOS_DE_ARTE;
 
   return (
     <div className="space-y-3 rounded-2xl border border-border bg-card p-3 animate-in fade-in slide-in-from-top-1" data-testid="pedido-de-arte">
       <div>
         <p className="text-sm font-semibold mb-2">
-          O que você precisa? <span className="font-normal text-muted-foreground">— pode marcar os dois</span>
+          Em qual formato? <span className="font-normal text-muted-foreground">— pode marcar os dois</span>
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {TIPOS_DE_ARTE.map(t => {
+          {tipos.map(t => {
             const Icone = ICONE[t];
             const on = marcado(t);
             return (
@@ -49,7 +55,7 @@ export function PedidoDeArte({ pedido, onChange }: Props) {
                   <Icone className="h-4 w-4" />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-sm font-semibold">{ROTULO_DA_ARTE[t]}</span>
+                  <span className="block text-sm font-semibold">{FORMATO_DA_ARTE[t]}</span>
                   <span className="block text-xs text-muted-foreground">{DESCRICAO_DA_ARTE[t]}</span>
                 </span>
                 {on && <Check className="absolute right-2.5 top-2.5 h-4 w-4 text-foreground" aria-hidden="true" />}
@@ -62,7 +68,7 @@ export function PedidoDeArte({ pedido, onChange }: Props) {
       {pedido.whatsapp && (
         <div>
           <Label htmlFor="arte-legenda" className="text-xs font-medium mb-1 block">
-            Legenda para a mensagem <span className="font-normal text-muted-foreground">(vai junto da arte no WhatsApp)</span>
+            Legenda para a mensagem do WhatsApp <span className="font-normal text-muted-foreground">(vai junto da arte)</span>
           </Label>
           <Textarea
             id="arte-legenda"

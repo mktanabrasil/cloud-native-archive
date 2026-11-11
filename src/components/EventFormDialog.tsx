@@ -240,7 +240,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
    * também é o que um evento novo tem antes de a unidade sugerir algo.
    */
   const [outroLocal, setOutroLocal] = useState(false);
-  /** "Arte ou material impresso" ligado. Mora aqui porque o pedido pode estar aberto e ainda vazio. */
+  /** "Rede social" ligado (era "Arte ou material impresso"). Mora aqui porque o pedido pode estar aberto e ainda vazio. */
   const [arteAberta, setArteAberta] = useState(false);
   const [slugMode, setSlugMode] = useState<'auto' | 'custom'>('auto');
   const [showSlugPrompt, setShowSlugPrompt] = useState(false);
@@ -1687,14 +1687,15 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                               data-testid="combinados-da-cobertura"
                             >
                               <p className="mb-1.5 font-semibold">Pedido registrado. Dois combinados:</p>
+                              {/* Texto refeito em 11/11/2026, pedido dele: sem "a equipe é
+                                  pequena", e o item 2 só com a frase dos dois registros. */}
                               <p className="mb-1.5">
-                                <strong>1. A presença do marketing é confirmada caso a caso.</strong> A equipe é pequena e
-                                atende todas as unidades, então o pedido entra na agenda e a resposta vem com a aprovação do evento.
+                                <strong>1. A presença do marketing é confirmada caso a caso.</strong> O pedido entra na agenda do
+                                marketing, e a resposta vem junto com a aprovação do evento.
                               </p>
                               <p>
-                                <strong>2. Registrar o evento também compete à unidade.</strong> Fotos e vídeos pelo celular, no dia — e o
-                                material vai para o marketing depois. A presença do marketing não tira essa responsabilidade
-                                da unidade: os dois registros se completam.
+                                <strong>2. Registrar o evento também compete à unidade.</strong> A presença do marketing não tira essa
+                                responsabilidade da unidade: os dois registros se completam.
                               </p>
                               {form.marketing_confirmed === true && (
                                 <p className="mt-2 font-semibold text-success">✓ Marketing confirmado para este evento.</p>
@@ -1716,11 +1717,12 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                 if (!v) setForm({ ...form, marketing_items: comPedidoDeArte(form.marketing_items, PEDIDO_VAZIO) });
                               }}
                             />
-                            <Label htmlFor="marketing_grafica" className="cursor-pointer flex-1 text-sm font-medium text-foreground">Arte ou material impresso</Label>
+                            <Label htmlFor="marketing_grafica" className="cursor-pointer flex-1 text-sm font-medium text-foreground">Rede social</Label>
                           </div>
 
-                          {/* O pedido de verdade (22/09/2026): duas escolhas, legenda,
-                              o que vai na arte, quantos cartazes. */}
+                          {/* O pedido (22/09/2026; desde 11/11/2026 de rede social): o
+                              formato — WhatsApp e/ou story do Instagram —, a legenda e o
+                              que vai na arte. */}
                           {arteAberta && (
                             <PedidoDeArte
                               pedido={lerPedidoDeArte(form.marketing_items)}
@@ -1828,8 +1830,21 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                             {/* O motorista entra na soma mostrada (é um assento do
                                 veículo), mas não na conta de lugares — esses já são
                                 "assentos menos o motorista". */}
+                            {/* Só depois de a pessoa dizer quantos vão (11/11/2026): com 0,
+                                a linha somava só o marketing e o motorista. */}
+                            {r.passageiros > 0 && (
                             <p className="text-[11px] text-muted-foreground" data-testid="conta-do-transporte">
                               {(() => {
+                                // Só locação, sem veículo da ANA (11/11/2026): não há
+                                // motorista nosso para somar.
+                                if (!r.veiculo && r.apoioExterno) {
+                                  return (
+                                    <>
+                                      <span className="font-semibold text-foreground">{r.total}</span> {r.total === 1 ? 'pessoa' : 'pessoas'} · transporte locado
+                                      {r.acimaDoTeto && <> · a frota carrega <span className="font-semibold text-destructive">{TETO_DA_FROTA}</span></>}
+                                    </>
+                                  );
+                                }
                                 const motoristas = Math.max(1, r.motoristas);
                                 const soma = r.total + motoristas;
                                 return (
@@ -1845,6 +1860,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                 );
                               })()}
                             </p>
+                            )}
                           </div>
                           {errors.transport_passengers && <p className="mt-1 text-xs text-destructive">{errors.transport_passengers}</p>}
                         </div>
@@ -1868,15 +1884,23 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
 
                         <div className="grid gap-3 sm:grid-cols-2">
                           <div>
-                            <Label className="text-xs font-medium mb-1 block">Veículo *</Label>
+                            {/* Com a locação marcada (11/11/2026), o veículo da ANA é
+                                opcional: no Natal Feliz foi preciso escolher a VAN só
+                                para conseguir salvar. */}
+                            <Label className="text-xs font-medium mb-1 block">
+                              {form.transport_external_support
+                                ? <>Veículo da ANA <span className="font-normal text-muted-foreground">(opcional com locação)</span></>
+                                : 'Veículo *'}
+                            </Label>
                             <Select
-                              value={form.transport_vehicle || ''}
-                              onValueChange={v => setForm({ ...form, transport_vehicle: v as TransportVehicle })}
+                              value={form.transport_vehicle || (form.transport_external_support ? 'nenhum' : '')}
+                              onValueChange={v => setForm({ ...form, transport_vehicle: v === 'nenhum' ? '' : (v as TransportVehicle), ...(v === 'nenhum' ? { transport_support_vehicle: '' } : {}) })}
                             >
                               <SelectTrigger className={errors.transport_vehicle ? 'border-destructive' : undefined}>
                                 <SelectValue placeholder="Selecione o veículo" />
                               </SelectTrigger>
                               <SelectContent>
+                                {form.transport_external_support && <SelectItem value="nenhum">Sem veículo da ANA</SelectItem>}
                                 {FROTA.map(v => (
                                   <SelectItem key={v.value} value={v.value}>
                                     {v.label} — {v.carga ? 'carga, 1 acompanhante' : `${v.lugares} lugares`}
@@ -1933,10 +1957,11 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                         {r.acimaDoTeto ? (
                           <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 space-y-2 animate-in fade-in zoom-in-95 duration-200" data-testid="aviso-frota">
                             <p className="text-sm font-semibold text-destructive">Não cabe na frota da ANA</p>
+                            {/* 11/11/2026: a locação é pedida ao setor de Captação de
+                                Recursos e Compras. */}
                             <p className="text-[11px] text-destructive">
                               Nossa frota (VAN + Kombi) leva até {TETO_DA_FROTA} passageiros; faltam <b>{r.faltamNaFrota}</b>.
-                              Se precisar, marque o apoio externo abaixo — ônibus fretado, segunda viagem ou carona de parceiro — e
-                              registre o combinado nas observações.
+                              Faça a solicitação ao <b>setor de Captação de Recursos e Compras</b> para a locação do transporte.
                             </p>
                             <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-2.5">
                               <Switch
@@ -1945,7 +1970,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                 onCheckedChange={v => setForm({ ...form, transport_external_support: !!v })}
                               />
                               <Label htmlFor="transport_external_support" className="cursor-pointer flex-1 text-sm font-medium">
-                                Precisa de apoio externo para transporte
+                                Vai precisar de transporte locado
                               </Label>
                             </div>
                           </div>

@@ -138,17 +138,19 @@ export function resumoDoTransporte(e: Partial<CamposDeTransporte>): ResumoDoTran
     const noPrincipal = Math.min(total, v.lugares);
     partes.push(`${v.label} ${noPrincipal}/${v.lugares}${apoio ? ` + ${apoio.label} ${Math.min(apoio.lugares, Math.max(0, total - v.lugares))}/${apoio.lugares}` : ''}`);
   } else {
-    partes.push('Veículo a definir');
+    partes.push(apoioExterno ? 'Transporte locado' : 'Veículo a definir');
   }
   if (total > 0) partes.push(vagaMarketing ? `${passageiros} + 1 marketing` : `${total} ${total === 1 ? 'pessoa' : 'pessoas'}`);
-  if (acimaDoTeto) partes.push(`faltam ${faltamNaFrota}${apoioExterno ? ' — apoio externo' : ' na frota'}`);
-  else if (apoioExterno) partes.push('apoio externo');
+  if (acimaDoTeto) partes.push(`faltam ${faltamNaFrota}${apoioExterno ? ' — locação' : ' na frota'}`);
+  else if (apoioExterno && v) partes.push('locação');
   if (volumosos) partes.push('leva volumosos');
 
   return {
     veiculo: v, apoio, passageiros, vagaMarketing, total, lugares, motoristas, lotado, excedido, volumosos,
     acimaDoTeto, faltamNaFrota, apoioExterno,
-    sugestao: sugerirTransporte(total, volumosos),
+    // Só depois de a pessoa dizer quantos vão (11/11/2026): com 0, a conta
+    // somava só o marketing e já sugeria um veículo.
+    sugestao: passageiros > 0 ? sugerirTransporte(total, volumosos) : null,
     texto: partes.join(' · '),
   };
 }
@@ -156,7 +158,7 @@ export function resumoDoTransporte(e: Partial<CamposDeTransporte>): ResumoDoTran
 /** Por que a escolha atual não fecha — ou `null`. */
 export function motivoDoApoio(r: ResumoDoTransporte): string | null {
   if (r.acimaDoTeto) {
-    return `Não cabe na frota da ANA: VAN + Kombi levam ${TETO_DA_FROTA}, faltam ${r.faltamNaFrota}. Acione a equipe de apoio para transporte.`;
+    return `Não cabe na frota da ANA: VAN + Kombi levam ${TETO_DA_FROTA}, faltam ${r.faltamNaFrota}. Solicite a locação do transporte ao setor de Captação de Recursos e Compras.`;
   }
   if (r.excedido) {
     const faltam = r.total - r.lugares;
@@ -173,7 +175,8 @@ type ErrosDeTransporte = Partial<Record<'transport_vehicle' | 'transport_passeng
 /**
  * O que falta quando o transporte está ligado. Vazio quando desligado ou
  * completo. Acima do teto **não é erro**: o evento acontece e o fretado é
- * decisão de quem aprova — a tela avisa, o envio segue.
+ * decisão de quem aprova — a tela avisa, o envio segue. Com a locação marcada
+ * (`transport_external_support`, 11/11/2026), o veículo da ANA é opcional.
  */
 export function errosDeTransporte(e: Partial<CamposDeTransporte>): ErrosDeTransporte {
   if (!e.transport_needed) return {};
@@ -181,7 +184,7 @@ export function errosDeTransporte(e: Partial<CamposDeTransporte>): ErrosDeTransp
   const { total } = totalDePessoas(e);
   if (!(Number(e.transport_passengers) > 0)) erros.transport_passengers = 'Informe quantas pessoas vão';
   if (!e.transport_vehicle) {
-    erros.transport_vehicle = 'Escolha o veículo, ou desligue o transporte';
+    if (!e.transport_external_support) erros.transport_vehicle = 'Escolha o veículo, ou desligue o transporte';
     return erros;
   }
   if (e.transport_support_vehicle && e.transport_support_vehicle === e.transport_vehicle) {

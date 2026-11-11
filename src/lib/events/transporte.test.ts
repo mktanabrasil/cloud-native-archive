@@ -86,17 +86,23 @@ describe('resumoDoTransporte', () => {
     expect(com.texto).toBe('VAN 14/14 + Kombi 4/11 · 17 + 1 marketing · leva volumosos');
   });
 
-  it('acima do teto: avisa quanto falta e pede a equipe de apoio; com o interruptor, o detalhe registra', () => {
+  it('acima do teto: avisa quanto falta e manda pedir a locação; com o interruptor, o detalhe registra', () => {
     const r = resumoDoTransporte({ transport_needed: true, transport_vehicle: 'van', transport_support_vehicle: 'kombi', transport_passengers: 27, marketing_request: true, marketing_coverage: true })!;
     expect(r.acimaDoTeto).toBe(true);
     expect(r.faltamNaFrota).toBe(3);
     expect(r.motoristas).toBe(2);
     expect(r.sugestao).toBeNull();
-    expect(motivoDoApoio(r)).toBe('Não cabe na frota da ANA: VAN + Kombi levam 25, faltam 3. Acione a equipe de apoio para transporte.');
+    expect(motivoDoApoio(r)).toBe('Não cabe na frota da ANA: VAN + Kombi levam 25, faltam 3. Solicite a locação do transporte ao setor de Captação de Recursos e Compras.');
     expect(r.texto).toBe('VAN 14/14 + Kombi 11/11 · 27 + 1 marketing · faltam 3 na frota');
 
     const marcado = resumoDoTransporte({ transport_needed: true, transport_vehicle: 'van', transport_support_vehicle: 'kombi', transport_passengers: 28, transport_external_support: true })!;
-    expect(marcado.texto).toBe('VAN 14/14 + Kombi 11/11 · 28 pessoas · faltam 3 — apoio externo');
+    expect(marcado.texto).toBe('VAN 14/14 + Kombi 11/11 · 28 pessoas · faltam 3 — locação');
+
+    // 11/11/2026: com a locação marcada, o veículo da ANA é opcional.
+    const soLocacao = { transport_needed: true, transport_vehicle: '' as const, transport_passengers: 400, transport_external_support: true };
+    expect(resumoDoTransporte(soLocacao)!.texto).toBe('Transporte locado · 400 pessoas · faltam 375 — locação');
+    expect(errosDeTransporte(soLocacao)).toEqual({});
+    expect(errosDeTransporte({ ...soLocacao, transport_external_support: false }).transport_vehicle).toMatch(/escolha o veículo/i);
   });
 
   it('o apoio só oferece o que sobrou da frota', () => {
@@ -137,5 +143,13 @@ describe('errosDeTransporte', () => {
 
   it('completo e cabendo, passa', () => {
     expect(errosDeTransporte({ transport_needed: true, transport_vehicle: 'van', transport_passengers: 3 })).toEqual({});
+  });
+});
+
+describe('a sugestão espera o número (11/11/2026)', () => {
+  it('com 0 passageiros não há sugestão, mesmo com a vaga do marketing; com 1 ou mais, há', () => {
+    const base = { transport_needed: true, marketing_request: true, marketing_coverage: true };
+    expect(resumoDoTransporte({ ...base, transport_passengers: 0 })!.sugestao).toBeNull();
+    expect(resumoDoTransporte({ ...base, transport_passengers: 6 })!.sugestao?.principal.value).toBe('kombi');
   });
 });
