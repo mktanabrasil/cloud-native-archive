@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, useLocation, useNavigationType } from 'react-router-dom';
 import type { AppEvent } from '@/types';
 
@@ -67,6 +67,7 @@ vi.mock('@/components/EventFormDialog', () => ({ default: () => null }));
 vi.mock('@/components/BannerMissingDialog', () => ({ BannerMissingDialog: () => null }));
 
 const { default: PublicEventsPage } = await import('./PublicEventsPage');
+const { UiV2 } = await import('@/lib/uiV2');
 
 const evento = (over: Partial<AppEvent>): AppEvent =>
   ({
@@ -111,6 +112,16 @@ const montar = (url = '/eventos') =>
     <MemoryRouter initialEntries={[url]}>
       <PublicEventsPage />
     </MemoryRouter>,
+  );
+
+/** Dentro do app (V2, 26/10/2026). Sem `UiV2`, a página é a clássica, a do embed. */
+const montarV2 = (url = '/eventos') =>
+  render(
+    <UiV2>
+      <MemoryRouter initialEntries={[url]}>
+        <PublicEventsPage />
+      </MemoryRouter>
+    </UiV2>,
   );
 
 /**
@@ -806,6 +817,66 @@ describe('o filtro por unidade', () => {
     montar('/eventos?unidade=Marte');
     expect(noCard('Festa de Santana')).toBe(1);
     expect(noCard('Festa do DIC')).toBe(1);
+  });
+
+  it.each([['clássica (embed)', montar], ['V2 (app)', montarV2]] as const)('unidade sem evento em nenhuma aba: as abas e as etiquetas continuam, na %s (11/11/2026)', (_nome, monta) => {
+    monta('/eventos?unidade=Nilópolis');
+
+    expect(screen.getByRole('tablist', { name: 'Período' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^nilópolis/i })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: /^santana/i }));
+    expect(noCard('Festa de Santana')).toBe(1);
+  });
+});
+
+/**
+ * Pedido dele em 11/11/2026 ("todos devem aparecer aqui", ao não achar o
+ * Natal Feliz, que é interno): na lista, a equipe vê também o que não está
+ * no site, com selo. O carrossel, o visitante e "Ver como visitante" ficam
+ * só com a vitrine.
+ */
+describe('a equipe vê também o que não está no site', () => {
+  const interno = evento({ id: 'int', title: 'Natal Feliz 2026', unit: 'Administração', visibility: 'interno', show_in_banner: true, banner_image_desktop: 'https://exemplo/natal.jpg' });
+  const pendente = evento({ id: 'pen', title: 'Reunião de pais', status: 'pendente' });
+
+  beforeEach(() => { espiao.eventos = [ativo, interno, pendente]; espiao.autenticado = true; });
+
+  it('logada: o interno e o pendente entram na lista, com selo', () => {
+    montarV2();
+
+    expect(noCard('Natal Feliz 2026')).toBe(1);
+    expect(noCard('Reunião de pais')).toBe(1);
+    expect(screen.getByText('Interno · só a equipe')).toBeInTheDocument();
+    expect(screen.getByText('Aguardando aprovação')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /próximos/i })).toHaveTextContent('3');
+  });
+
+  it('o carrossel continua só com a vitrine', () => {
+    montarV2();
+
+    const regiao = screen.getByRole('region', { name: /eventos em destaque/i });
+    expect(within(regiao).queryByText('Natal Feliz 2026')).toBeNull();
+    expect(within(regiao).queryByText('Reunião de pais')).toBeNull();
+  });
+
+  it('"Ver como visitante" e o visitante sem sessão veem só o que é público', () => {
+    const { unmount } = montarV2('/eventos?como=visitante');
+    expect(noCard('Festa da Primavera')).toBe(1);
+    expect(noCard('Natal Feliz 2026')).toBe(0);
+    expect(noCard('Reunião de pais')).toBe(0);
+    unmount();
+
+    espiao.autenticado = false;
+    montarV2();
+    expect(noCard('Festa da Primavera')).toBe(1);
+    expect(noCard('Natal Feliz 2026')).toBe(0);
+    expect(screen.queryByText('Interno · só a equipe')).toBeNull();
+  });
+
+  it('o link com ?slug= de um evento interno abre o detalhe para a equipe', () => {
+    espiao.eventos = [ativo, { ...interno, slug: 'natal-feliz-2026' }];
+    montarV2('/eventos?slug=natal-feliz-2026');
+    expect(screen.getByTestId('detalhe')).toHaveTextContent('Natal Feliz 2026');
   });
 });
 

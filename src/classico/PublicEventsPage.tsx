@@ -595,7 +595,9 @@ export default function PublicEventsPage() {
           )}
         </div>
 
-        {(proximos.length > 0 || passados.length > 0) && (
+        {/* Olha a lista inteira, não o filtro (11/11/2026): com uma unidade sem
+            evento em nenhuma aba, a fileira sumia junto com as etiquetas. */}
+        {events.length > 0 && (
           <div className="mb-6 flex flex-wrap items-center gap-3">
             {/* 44 px de altura (h-11 / h-9 por dentro): no celular o dedo errava a aba
                 e acertava o chip ao lado. Mesma fonte, mais espaço interno. */}

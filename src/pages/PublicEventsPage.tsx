@@ -8,6 +8,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useApp } from '@/contexts/AppContext';
 import { AppEvent, UNIT_BG_COLORS, type Unit } from '@/types';
 import { rotuloDoTipo } from '@/lib/events/tipo';
+import { rotuloDoStatus } from '@/lib/events/status';
 import { anoQuandoPreciso } from '@/lib/events/periodo';
 import { CalendarDays, MapPin, Clock, Search, ChevronLeft, ChevronRight, LayoutPanelTop, Eye, EyeOff, Pencil, Users, Info, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -113,7 +114,16 @@ function ProgramacaoV2() {
   };
 
   /** A vitrine: só confirmado e público, o que qualquer visitante vê. */
-  const events = useFilteredEvents(true, false);
+  const daVitrine = useFilteredEvents(true, false);
+  /**
+   * A equipe (logada, sem "Ver como visitante") vê na lista todos os eventos
+   * que já vê na Visão Geral: internos e não confirmados entram, com selo
+   * (pedido dele em 11/11/2026, "todos devem aparecer aqui", ao procurar o
+   * Natal Feliz, que é interno). O carrossel continua só com a vitrine, e o
+   * visitante e o site embutido não mudam.
+   */
+  const daEquipe = useFilteredEvents(false, false);
+  const events = equipe ? daEquipe : daVitrine;
   /**
    * Sem evento nenhum, a página muda de figura: sem busca, sem abas, um painel só.
    * Mas só depois de a lista chegar: enquanto `loading`, o esqueleto ocupa o
@@ -195,9 +205,10 @@ function ProgramacaoV2() {
     // Para o admin no modo equipe, o herói mostra todos da vitrine: os ativos
     // e em cartaz primeiro, os ocultos ou passados depois, com selo. Assim ele
     // vê o que está fora do ar sem sair da página.
+    // Só a vitrine: evento interno não vai para o herói (11/11/2026).
     if (equipe && isAdmin) {
       const ativo = (e: AppEvent) => e.show_in_banner && !jaAconteceu(e);
-      return [...events].sort((a, b) => {
+      return [...daVitrine].sort((a, b) => {
         if (ativo(a) && !ativo(b)) return -1;
         if (!ativo(a) && ativo(b)) return 1;
         return porInicio(a, b);
@@ -206,8 +217,8 @@ function ProgramacaoV2() {
 
     // Para todo o resto: só o que está no banner e ainda não terminou. Um
     // evento de hoje fica até 23:59; um de vários dias, até o último dia.
-    return events.filter(e => e.show_in_banner && !jaAconteceu(e)).sort(porInicio);
-  }, [events, equipe, isAdmin]);
+    return daVitrine.filter(e => e.show_in_banner && !jaAconteceu(e)).sort(porInicio);
+  }, [daVitrine, equipe, isAdmin]);
 
   const handleToggleBanner = (event: AppEvent) => {
     // Ligar o banner sem imagem 21:9 pede confirmação antes; o editor não
@@ -358,7 +369,7 @@ function ProgramacaoV2() {
                 <span>Vendo como <b className="font-semibold text-foreground">visitante</b>. É isto que a família vê.</span>
               ) : (
                 <span>
-                  Você está vendo a página como <b className="font-semibold text-foreground">equipe</b>: eventos ocultos, botões de banner e edição aparecem.
+                  Você está vendo a página como <b className="font-semibold text-foreground">equipe</b>: eventos internos e pendentes, botões de banner e edição aparecem.
                 </span>
               )}
             </div>
@@ -605,7 +616,10 @@ function ProgramacaoV2() {
           )}
         </div>
 
-        {(proximos.length > 0 || passados.length > 0) && (
+        {/* A fileira olha a lista inteira, não o filtro (11/11/2026): com uma
+            unidade sem evento em nenhuma aba (Nilópolis, por exemplo) ela
+            sumia junto com as etiquetas, e só restava "Ver todas as unidades". */}
+        {events.length > 0 && (
           <div className="mb-6 flex flex-wrap items-center gap-3">
             {/* 44 px de altura (h-11 / h-9 por dentro): no celular o dedo errava a aba
                 e acertava o chip ao lado. Mesma fonte, mais espaço interno. */}
@@ -729,9 +743,12 @@ function ProgramacaoV2() {
                   </div>
 
                   <div className="min-w-0">
-                    {(jaAconteceu(event) || (equipe && (event.event_type || event.show_in_banner))) && (
+                    {(jaAconteceu(event) || (equipe && (event.event_type || event.show_in_banner || event.visibility !== 'publico' || event.status !== 'confirmado'))) && (
                       <div className="mb-1 flex flex-wrap gap-x-3 gap-y-1">
                         {jaAconteceu(event) && <Badge variant="secondary" className="text-[11px]">Já aconteceu</Badge>}
+                        {/* Só a equipe vê estes (11/11/2026): o que não está no site. */}
+                        {equipe && event.visibility !== 'publico' && <Badge variant="outline" className="text-[11px]">Interno · só a equipe</Badge>}
+                        {equipe && event.status !== 'confirmado' && <Badge variant="outline" className="text-[11px]">{rotuloDoStatus(event.status)}</Badge>}
                         {/* Na vitrine todo evento é confirmado: o selo não dizia nada.
                             O tipo, que só a equipe recebe, diz. */}
                         {equipe && event.event_type && <Badge variant="secondary" className="text-[11px]">{rotuloDoTipo(event.event_type)}</Badge>}
