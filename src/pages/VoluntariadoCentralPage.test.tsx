@@ -128,6 +128,10 @@ describe('abas', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Natal Feliz 2026' })).toBeInTheDocument();
     expect(screen.getByRole('banner')).toHaveTextContent('Ter, 08/12');
     expect(screen.getByRole('banner')).toHaveTextContent('Manhã · 7h às 12h');
+    // O grupo do WhatsApp em destaque, logo depois da pessoa (12/11/2026).
+    const grupo = screen.getByTestId('grupo-dos-voluntarios');
+    expect(grupo).toHaveTextContent('Grupo dos voluntários · entrada obrigatória');
+    expect(within(grupo).getByRole('link', { name: /Entrar no grupo do WhatsApp/ })).toHaveAttribute('href', 'https://chat.whatsapp.com/FnmKMVE3PXnEWKVYQY7ZEe');
     expect(screen.getByTestId('passo-inscricao')).toHaveAttribute('data-estado', 'feito');
     expect(screen.getByTestId('passo-treinamento')).toHaveAttribute('data-estado', 'agora');
     expect(screen.getByTestId('passo-treinamento')).toHaveTextContent('Sáb, 28/11 · Recanto Maanaim · horário a confirmar');
@@ -284,6 +288,7 @@ describe('gestor (12/11/2026)', () => {
     expect(screen.getAllByText('Gestão')[0]).toBeInTheDocument();
     expect(screen.queryByTestId('caminho')).toBeNull();
     expect(screen.getByTestId('datas')).toHaveTextContent('Treinamento dos voluntários');
+    expect(screen.getByTestId('grupo-dos-voluntarios')).not.toHaveTextContent('obrigatória');
     expect(screen.getByRole('banner')).not.toHaveTextContent('Manhã');
     expect(screen.getByRole('link', { name: /Cronograma Todas as áreas/ })).toBeInTheDocument();
   });

@@ -86,6 +86,8 @@ export function InicioDaCentral({ d, agora, whatsapp }: { d: DadosDaCentral; ago
         <SeloDoPerfil v={v} />
       </Cartao>
 
+      <GrupoDosVoluntarios gestor={gestor} />
+
       {(acontecendo || proximo) && (
         <Cartao className="flex flex-col gap-2.5 border-l-4 !border-l-[#F37964]" data-testid="agora-e-proximo">
           {acontecendo && (
@@ -165,7 +167,26 @@ export function InicioDaCentral({ d, agora, whatsapp }: { d: DadosDaCentral; ago
         )}
       </div>
 
-      <Button asChild size="lg" variant="outline" className="rounded-[16px]"><a href={GRUPO_DO_WHATSAPP} target="_blank" rel="noopener noreferrer"><Users className="h-4 w-4" /> Grupo dos voluntários</a></Button>
+    </div>
+  );
+}
+
+/**
+ * O grupo do WhatsApp em destaque (12/11/2026, pedido dele): o mesmo cartão
+ * verde do formulário. É por lá que a equipe passa as informações; para o
+ * voluntário, a entrada é obrigatória.
+ */
+function GrupoDosVoluntarios({ gestor }: { gestor: boolean }) {
+  return (
+    <div className="flex flex-col gap-2.5 rounded-[20px] border-2 border-[#25D366] bg-[#E7F8EE] p-4 text-[#14532D] dark:border-[#25D366]/60 dark:bg-[#25D366]/10 dark:text-[#B9F2CD]" data-testid="grupo-dos-voluntarios">
+      <b className="text-[14.5px] font-semibold">Grupo dos voluntários{gestor ? '' : ' · entrada obrigatória'}</b>
+      <span className="text-[13.5px] leading-snug">
+        {gestor ? 'O grupo do WhatsApp em que a equipe passa as informações do treinamento e do Natal Feliz para os voluntários.' : 'É no grupo do WhatsApp que passamos as informações do treinamento e do dia do evento.'}
+      </span>
+      <a href={GRUPO_DO_WHATSAPP} target="_blank" rel="noopener noreferrer"
+        className="flex h-12 items-center justify-center gap-2 rounded-full bg-[#1FA855] text-[15px] font-semibold text-white transition-colors hover:bg-[#1A9049]">
+        <Users className="h-5 w-5" /> Entrar no grupo do WhatsApp
+      </a>
     </div>
   );
 }
