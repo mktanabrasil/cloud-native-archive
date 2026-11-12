@@ -1379,6 +1379,7 @@ export type Database = {
           horario: string | null
           id: string
           igreja: string | null
+          como_soube: string | null
           indicado_por: string | null
           nome: string
           opcao1: string
@@ -1395,6 +1396,7 @@ export type Database = {
           horario?: string | null
           id?: string
           igreja?: string | null
+          como_soube?: string | null
           indicado_por?: string | null
           nome: string
           opcao1: string
@@ -1411,6 +1413,7 @@ export type Database = {
           horario?: string | null
           id?: string
           igreja?: string | null
+          como_soube?: string | null
           indicado_por?: string | null
           nome?: string
           opcao1?: string
@@ -1588,7 +1591,7 @@ export type Database = {
         Returns: undefined
       }
       inscrever_voluntario: {
-        Args: { p_nome: string; p_whatsapp: string; p_horario: string; p_vinculo: string; p_opcao1: string; p_opcao2?: string; p_unidade_id?: string; p_unidade_nome?: string; p_area?: string; p_indicado_por?: string; p_igreja?: string }
+        Args: { p_nome: string; p_whatsapp: string; p_horario: string; p_vinculo: string; p_opcao1: string; p_opcao2?: string; p_unidade_id?: string; p_unidade_nome?: string; p_area?: string; p_indicado_por?: string; p_igreja?: string; p_como_soube?: string }
         Returns: string
       }
       areas_lotadas_do_voluntariado: {

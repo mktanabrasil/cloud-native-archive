@@ -73,6 +73,8 @@ export const AREAS_DE_AJUDA = [
   { chave: 'som', rotulo: 'Som', descricao: 'Para integrantes da INCC: auxiliar na montagem e na operação do som.' },
   { chave: 'recreacao_kids', rotulo: 'Recreação Kids', descricao: 'Para integrantes da INCC: conduzir as atividades de recreação com as crianças.' },
   { chave: 'presentes_kids', rotulo: 'Presentes Kids', descricao: 'Para integrantes da INCC: organizar os presentes e auxiliar na entrega às crianças.' },
+  // 12/11/2026, pedido dele: área nova, para funcionários e voluntários.
+  { chave: 'ccii', rotulo: 'CCII', descricao: 'Trabalho com os idosos: apoiar as atividades com eles durante o evento.' },
 ] as const;
 
 export type AreaDeAjuda = (typeof AREAS_DE_AJUDA)[number]['chave'];
@@ -111,9 +113,9 @@ export const rotuloDoVinculo = (v: string | null | undefined) => VINCULOS.find((
  * e limpeza ficam com os funcionários, no dia anterior, como dia trabalhado.
  */
 export const AREAS_POR_VINCULO: Record<Vinculo, readonly AreaDeAjuda[]> = {
-  funcionario: ['cozinha', 'inflaveis', 'estacoes'],
+  funcionario: ['cozinha', 'inflaveis', 'estacoes', 'ccii'],
   alcance: ['cozinha', 'louvor_kids', 'som', 'recreacao_kids', 'inflaveis', 'presentes_kids'],
-  comunidade: ['cozinha', 'inflaveis', 'estacoes'],
+  comunidade: ['cozinha', 'inflaveis', 'estacoes', 'ccii'],
 };
 
 /**
@@ -218,6 +220,8 @@ export interface DadosDaEtapa2 {
   /** Desde 23/10/2026 a igreja é obrigatória para quem é de fora: Sim/Não e, se sim, qual. */
   temIgreja?: boolean | null;
   igreja?: string;
+  /** Desde 12/11/2026: quem não foi indicado conta como ficou sabendo (obrigatório). */
+  comoSoube?: string;
 }
 
 /** O que falta na etapa 2; null quando dá para seguir. */
@@ -229,10 +233,24 @@ export function problemaDaEtapa2(d: DadosDaEtapa2): string | null {
   if (d.vinculo === 'funcionario' && !d.unidade) return 'Escolha a unidade em que você trabalha.';
   if (d.vinculo === 'comunidade' && d.indicado === null) return 'Conte se alguém da ANA ou da INCC te indicou.';
   if (d.vinculo === 'comunidade' && d.indicado && d.indicadoPor.trim().length < 2) return 'Escreva o nome de quem te indicou.';
+  if (d.vinculo === 'comunidade' && d.indicado === false && (d.comoSoube ?? '').trim().length < 2) return 'Conte como você ficou sabendo do voluntariado.';
   if (d.vinculo === 'comunidade' && (d.temIgreja === null || d.temIgreja === undefined)) return 'Conte se você faz parte de alguma igreja.';
   if (d.vinculo === 'comunidade' && d.temIgreja && (d.igreja ?? '').trim().length < 2) return 'Escreva o nome da sua igreja.';
   return null;
 }
+
+/**
+ * "Indicado por" e "Igreja" como a coordenação lê (12/11/2026). Para quem é
+ * de fora (comunidade), o "Não" aparece escrito, e quem não foi indicado leva
+ * junto como ficou sabendo. Antes, a célula ficava vazia e parecia falha.
+ * Funcionários e INCC não respondem essas perguntas: fica vazio. A função
+ * voluntariado-planilha repete esta regra (Deno não importa daqui).
+ */
+export interface RespostasDeFora { vinculo: string | null; indicado_por: string | null; igreja: string | null; como_soube?: string | null }
+export const textoDaIndicacao = (i: RespostasDeFora): string =>
+  i.vinculo !== 'comunidade' ? '' : i.indicado_por || (i.como_soube ? `Não · soube: ${i.como_soube}` : 'Não');
+export const textoDaIgreja = (i: RespostasDeFora): string =>
+  i.vinculo !== 'comunidade' ? '' : i.igreja || 'Não';
 
 /** Mensagem para quem se inscreveu, a partir do erro do banco. */
 export function mensagemDoErro(e: unknown): string {

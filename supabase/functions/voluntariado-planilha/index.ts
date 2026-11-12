@@ -49,7 +49,22 @@ const AREA: Record<string, string> = {
   cozinha: 'Cozinha / Servimento Refeições', inflaveis: 'Brinquedos Infláveis', estacoes: 'Estações',
   louvor_kids: 'Louvor Kids', som: 'Som', recreacao_kids: 'Recreação Kids', presentes_kids: 'Presentes Kids',
   montagem: 'Montagem/Desmontagem Espaços', decoracao: 'Decoração', limpeza_pre: 'Limpeza Pré',
+  // 12/11/2026: área nova. A etiqueta "CCII" precisa existir nas listas de
+  // Área / Setor e 2ª opção da planilha para virar chip colorido.
+  ccii: 'CCII',
 };
+
+/**
+ * "Indicado por" e "Igreja" para quem é de fora (12/11/2026): o "Não" aparece
+ * escrito, e quem não foi indicado leva junto como ficou sabendo. Antes a
+ * célula ficava vazia e parecia falha. Funcionários e INCC: vazio. É a mesma
+ * regra de textoDaIndicacao/textoDaIgreja em src/lib/voluntariado/modelo.ts.
+ */
+// deno-lint-ignore no-explicit-any
+const indicacao = (i: any): string =>
+  i.vinculo !== 'comunidade' ? '' : i.indicado_por || (i.como_soube ? `Não · soube: ${i.como_soube}` : 'Não');
+// deno-lint-ignore no-explicit-any
+const igreja = (i: any): string => (i.vinculo !== 'comunidade' ? '' : i.igreja || 'Não');
 
 // deno-lint-ignore no-explicit-any
 type Admin = any;
@@ -90,7 +105,7 @@ const whatsapp = (d: string) =>
 // deno-lint-ignore no-explicit-any
 const linha = (i: any) => [
   i.nome, AREA[i.opcao1] ?? i.opcao1, HORARIO[i.horario] ?? '', whatsapp(i.whatsapp), VINCULO[i.vinculo] ?? i.vinculo ?? '',
-  i.unidade_nome ?? '', i.opcao2 ? (AREA[i.opcao2] ?? i.opcao2) : '', i.indicado_por ?? '', i.igreja ?? '', i.protocolo, quando(i.created_at),
+  i.unidade_nome ?? '', i.opcao2 ? (AREA[i.opcao2] ?? i.opcao2) : '', indicacao(i), igreja(i), i.protocolo, quando(i.created_at),
 ];
 
 const mensagem = (e: unknown) => {
@@ -129,7 +144,7 @@ async function enviarPendentes(admin: Admin): Promise<{ enviadas: number; penden
   try {
     for (let rodada = 0; rodada < 5; rodada++) {
       const { data: lista } = await admin.from('voluntarios_natal')
-        .select('id, protocolo, nome, whatsapp, vinculo, horario, unidade_nome, indicado_por, igreja, opcao1, opcao2, created_at')
+        .select('id, protocolo, nome, whatsapp, vinculo, horario, unidade_nome, indicado_por, igreja, como_soube, opcao1, opcao2, created_at')
         .is('planilha_em', null).order('created_at').limit(POR_VEZ);
       // deno-lint-ignore no-explicit-any
       const fila = (lista ?? []) as any[];

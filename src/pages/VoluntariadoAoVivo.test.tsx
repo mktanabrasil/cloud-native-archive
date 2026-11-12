@@ -59,7 +59,7 @@ describe('contas', () => {
     expect(p.hoje).toBe(1);
     expect(p.unidades).toEqual({ comInscritos: 2, total: 12 }); // só a Educação: GOE + 11 CEIs (21/10/2026)
     expect(p.porVinculo).toEqual({ funcionario: 3, alcance: 1, comunidade: 0 });
-    expect(p.areas.total).toBe(8); // as 7 do dia do evento e a Montagem, que alguém escolheu como 2ª (23/10/2026)
+    expect(p.areas.total).toBe(9); // as 8 do dia do evento (com a CCII, 12/11/2026) e a Montagem, que alguém escolheu como 2ª (23/10/2026)
     expect(p.areas.cobertas).toBe(3);
     expect(p.comSegunda).toBe(2);
     expect(p.meta).toBe(10);

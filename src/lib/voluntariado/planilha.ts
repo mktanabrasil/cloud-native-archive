@@ -1,4 +1,4 @@
-import { rotuloDaAjuda, rotuloDoHorario, rotuloDoVinculo } from './modelo';
+import { rotuloDaAjuda, rotuloDoHorario, rotuloDoVinculo, textoDaIgreja, textoDaIndicacao } from './modelo';
 import type { Inscricao } from './api';
 
 /**
@@ -25,7 +25,7 @@ export function csvDasInscricoes(linhas: Inscricao[]): string {
   const cabecalho = ['Protocolo', 'Quando', 'Nome', 'WhatsApp', 'Vínculo', 'Unidade', 'Indicado por', 'Igreja', 'Horário', '1ª opção', '2ª opção'];
   const corpo = linhas.map((i) => [
     i.protocolo, dataHora(i.created_at), i.nome, whatsappLegivel(i.whatsapp), rotuloDoVinculo(i.vinculo), i.unidade_nome ?? '',
-    i.indicado_por ?? '', i.igreja ?? '', rotuloDoHorario(i.horario), rotuloDaAjuda(i.opcao1), i.opcao2 ? rotuloDaAjuda(i.opcao2) : '',
+    textoDaIndicacao(i), textoDaIgreja(i), rotuloDoHorario(i.horario), rotuloDaAjuda(i.opcao1), i.opcao2 ? rotuloDaAjuda(i.opcao2) : '',
   ].map(campo).join(';'));
   return '﻿' + [cabecalho.join(';'), ...corpo].join('\r\n') + '\r\n';
 }

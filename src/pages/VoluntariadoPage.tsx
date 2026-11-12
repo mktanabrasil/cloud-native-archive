@@ -77,6 +77,7 @@ export default function VoluntariadoPage() {
   const [unidade, setUnidade] = useState('');
   const [indicado, setIndicado] = useState<boolean | null>(null);
   const [indicadoPor, setIndicadoPor] = useState('');
+  const [comoSoube, setComoSoube] = useState('');
   const [temIgreja, setTemIgreja] = useState<boolean | null>(null);
   const [igreja, setIgreja] = useState('');
   const [opcoes, setOpcoes] = useState<{ opcao1: AreaDeAjuda | null; opcao2: AreaDeAjuda | null }>({ opcao1: null, opcao2: null });
@@ -105,7 +106,7 @@ export default function VoluntariadoPage() {
   }
 
   function seguirParaAsAreas() {
-    const p = problemaDaEtapa2({ nome, whatsapp, horario, vinculo, unidade: unidade || null, indicado, indicadoPor, temIgreja, igreja });
+    const p = problemaDaEtapa2({ nome, whatsapp, horario, vinculo, unidade: unidade || null, indicado, indicadoPor, temIgreja, igreja, comoSoube });
     if (p) { setErro(p); return; }
     ir('areas');
   }
@@ -123,6 +124,7 @@ export default function VoluntariadoPage() {
       const protocolo = await inscrever({
         nome, whatsapp, horario: horario!, vinculo: vinculo!, unidadeId: unidade || null,
         indicadoPor: indicado ? indicadoPor : null, igreja: temIgreja ? igreja : null,
+        comoSoube: indicado === false ? comoSoube : null,
         opcao1: opcoes.opcao1, opcao2: opcoes.opcao2,
       });
       enviarParaAPlanilha();
@@ -302,6 +304,13 @@ export default function VoluntariadoPage() {
                   {indicado && (
                     <label className="flex flex-col gap-1.5 text-sm font-semibold">Nome de quem te indicou
                       <input className={campo} style={{ borderColor: COR.linha }} maxLength={120} placeholder="Nome de quem te indicou" value={indicadoPor} onChange={(e) => { setIndicadoPor(e.target.value); setErro(null); }} />
+                    </label>
+                  )}
+                  {/* 12/11/2026: no "Não", conta como ficou sabendo (obrigatório).
+                      Sem exemplo no campo: "por uma amiga" não diz quem indicou. */}
+                  {indicado === false && (
+                    <label className="flex flex-col gap-1.5 text-sm font-semibold">Conte como ficou sabendo
+                      <input className={campo} style={{ borderColor: COR.linha }} maxLength={120} value={comoSoube} onChange={(e) => { setComoSoube(e.target.value); setErro(null); }} />
                     </label>
                   )}
                   {/* Obrigatória desde 23/10/2026: Sim/Não e, se sim, qual. */}
