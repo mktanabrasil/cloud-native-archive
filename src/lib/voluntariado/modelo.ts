@@ -75,6 +75,9 @@ export const AREAS_DE_AJUDA = [
   { chave: 'presentes_kids', rotulo: 'Presentes Kids', descricao: 'Para integrantes da INCC: organizar os presentes e auxiliar na entrega às crianças.' },
   // 12/11/2026, pedido dele: área nova, para funcionários e voluntários.
   { chave: 'ccii', rotulo: 'CCII', descricao: 'Trabalho com os idosos: apoiar as atividades com eles durante o evento.' },
+  // 12/11/2026, pedido dele (mockup aprovado): crianças atípicas (autistas e afins),
+  // para funcionários e voluntários. "Atípicas" é o termo das próprias famílias.
+  { chave: 'atipicas', rotulo: 'Crianças atípicas', descricao: 'Acompanhar e apoiar as crianças atípicas, como as autistas, nas atividades do evento, com acolhimento e respeito ao ritmo de cada uma.' },
 ] as const;
 
 export type AreaDeAjuda = (typeof AREAS_DE_AJUDA)[number]['chave'];
@@ -113,9 +116,9 @@ export const rotuloDoVinculo = (v: string | null | undefined) => VINCULOS.find((
  * e limpeza ficam com os funcionários, no dia anterior, como dia trabalhado.
  */
 export const AREAS_POR_VINCULO: Record<Vinculo, readonly AreaDeAjuda[]> = {
-  funcionario: ['cozinha', 'inflaveis', 'estacoes', 'ccii'],
+  funcionario: ['cozinha', 'inflaveis', 'estacoes', 'ccii', 'atipicas'],
   alcance: ['cozinha', 'louvor_kids', 'som', 'recreacao_kids', 'inflaveis', 'presentes_kids'],
-  comunidade: ['cozinha', 'inflaveis', 'estacoes', 'ccii'],
+  comunidade: ['cozinha', 'inflaveis', 'estacoes', 'ccii', 'atipicas'],
 };
 
 /**
