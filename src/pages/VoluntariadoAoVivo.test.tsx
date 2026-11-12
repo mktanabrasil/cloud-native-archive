@@ -63,13 +63,13 @@ describe('contas', () => {
     expect(p.areas.cobertas).toBe(3);
     expect(p.comSegunda).toBe(2);
     expect(p.meta).toBe(10);
-    expect(p.faltamDias).toBe(19);
+    expect(p.faltamDias).toBe(22); // até 18/11 (prorrogado em 12/11/2026)
   });
 
-  it('por dia: do primeiro dia até 15/11, com hoje marcado e o futuro vazio', () => {
+  it('por dia: do primeiro dia até 18/11, com hoje marcado e o futuro vazio', () => {
     expect(p.porDia[0]).toMatchObject({ dia: '2026-10-21', n: 2 });
     expect(p.porDia.find((d) => d.hoje)).toMatchObject({ rotulo: 'hoje', n: 1 });
-    expect(p.porDia.at(-1)).toMatchObject({ dia: '2026-11-15', futuro: true, n: 0 });
+    expect(p.porDia.at(-1)).toMatchObject({ dia: '2026-11-18', futuro: true, n: 0 });
     expect(p.mediaPorDia).toBe(0.3); // 2 inscrições nos últimos 7 dias (22 a 28/10)
   });
 
