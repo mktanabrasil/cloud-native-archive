@@ -31,6 +31,13 @@ export interface CartaoDeLink {
   /** Caminho público da imagem 1200×630. */
   imagem: string;
   imagemAlt: string;
+  /**
+   * Para a página que se instala na tela de início com outro nome e outro
+   * endereço de abertura (a Central do Voluntário, 13/11/2026): o manifest
+   * dela e o nome que aparece embaixo do ícone.
+   */
+  manifest?: string;
+  nomeDoApp?: string;
 }
 
 export const ORIGEM = 'https://app.anabrasil.org';
@@ -92,6 +99,19 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
     imagemAlt: 'Natal Feliz 2026 da ANA Brasil, com apoio de NZT, JNI e INCC: crianças sorrindo com presentes',
   },
   {
+    // A Central do Voluntário (13/11/2026): a pessoa entra com o WhatsApp da
+    // inscrição. Instala na tela de início como "Central ANA", abrindo nela
+    // (no iPhone, é assim que os avisos chegam).
+    arquivo: 'voluntariado-central.html',
+    regra: 'RewriteRule ^voluntariado/natalfeliz26/central(/|$) /voluntariado-central.html [L]',
+    titulo: 'Central do Voluntário · Natal Feliz',
+    descricao: 'Sua credencial, o cronograma, o local e os avisos do Natal Feliz. Entre com o WhatsApp da inscrição.',
+    imagem: '/og-voluntariado-4.jpg',
+    imagemAlt: 'Central do Voluntário do Natal Feliz 2026 da ANA Brasil',
+    manifest: '/manifest-central.webmanifest',
+    nomeDoApp: 'Central ANA',
+  },
+  {
     // O dashboard da gestão (10/11/2026): link com código secreto.
     arquivo: 'pizza-acompanhar.html',
     regra: 'RewriteRule ^pizza-da-alegria/acompanhar/ /pizza-acompanhar.html [L]',
@@ -136,7 +156,7 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
   {
     // As páginas da equipe: pedem login e têm um cartão só.
     arquivo: 'app.html',
-    regra: 'RewriteRule ^(login|redefinir-senha|auth/confirm|visao-geral|calendario|usuarios|auditoria|design-manual|marketing|admin-toolbox|email-preview|pizza-da-alegria/(painel(/dashboard)?|retirada))/?$ /app.html [L]',
+    regra: 'RewriteRule ^(login|redefinir-senha|auth/confirm|visao-geral|calendario|usuarios|auditoria|design-manual|marketing|admin-toolbox|email-preview|pizza-da-alegria/(painel(/dashboard)?|retirada)|voluntariado/natalfeliz26/presenca)/?$ /app.html [L]',
     titulo: 'ANA Brasil · Área da equipe',
     descricao: 'O app da ANA Brasil: eventos, jornal e comunicação das unidades. Entre com a sua conta.',
     imagem: '/og-app.jpg',
@@ -171,5 +191,14 @@ export function comCartao(indexHtml: string, c: CartaoDeLink, origem = ORIGEM): 
   // Sem og:url: o da vitrine apontava tudo para /eventos, e o WhatsApp
   // agrupava os cartões por ele. Sem a marcação, vale o próprio link.
   html = html.replace(/\s*<meta\s+property="og:url"\s+content="[^"]*"\s*\/?>/, '');
+  if (c.manifest) {
+    const manifest = /<link rel="manifest" href="[^"]*" \/>/;
+    if (!manifest.test(html)) throw new Error('cartoesDeLink: <link rel="manifest"> não está no index.html');
+    html = html.replace(manifest, `<link rel="manifest" href="${escapar(c.manifest)}" />`);
+  }
+  if (c.nomeDoApp) {
+    html = trocarMeta(html, 'name', 'apple-mobile-web-app-title', c.nomeDoApp);
+    html = trocarMeta(html, 'name', 'application-name', c.nomeDoApp);
+  }
   return html;
 }

@@ -73,6 +73,34 @@ describe('um cartão para cada página (25/09/2026)', () => {
   });
 });
 
+describe('a Central do Voluntário (13/11/2026)', () => {
+  const central = CARTOES_DE_LINK.find(c => c.arquivo === 'voluntariado-central.html')!;
+  const regra = (c: typeof central) => new RegExp(c.regra.split(' ')[1]);
+
+  it('instala como "Central ANA", abrindo na própria Central', () => {
+    const html = comCartao(index, central);
+    expect(html).toContain('<link rel="manifest" href="/manifest-central.webmanifest" />');
+    expect(meta(html, 'name', 'apple-mobile-web-app-title')).toBe('Central ANA');
+    expect(meta(html, 'name', 'application-name')).toBe('Central ANA');
+    expect(meta(html, 'property', 'og:title')).toBe('Central do Voluntário · Natal Feliz');
+    const m = JSON.parse(readFileSync('public/manifest-central.webmanifest', 'utf8'));
+    expect(m.start_url).toBe('/voluntariado/natalfeliz26/central');
+    expect(m.short_name).toBe('Central ANA');
+  });
+
+  it('os outros cartões continuam com o manifest do app', () => {
+    expect(comCartao(index, voto)).toContain('<link rel="manifest" href="/manifest.webmanifest" />');
+  });
+
+  it('a Central e as abas no cartão dela; o formulário e a presença nos de sempre', () => {
+    for (const c of ['voluntariado/natalfeliz26/central', 'voluntariado/natalfeliz26/central/credencial']) expect(regra(central).test(c), c).toBe(true);
+    expect(regra(central).test('voluntariado/natalfeliz26')).toBe(false);
+    const doApp = CARTOES_DE_LINK.find(c => c.arquivo === 'app.html')!;
+    expect(regra(doApp).test('voluntariado/natalfeliz26/presenca')).toBe(true);
+    expect(existsSync('public/sw-central.js') && existsSync('public/badge-central.png')).toBe(true);
+  });
+});
+
 describe('versão da arte (25/09/2026)', () => {
   it('o index.html usa a mesma versão da arte que as cópias', () => {
     expect(index).toContain(`og-programacao.jpg?v=${VERSAO_DA_ARTE}`);

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { CARTOES_DE_LINK } from '@/lib/cartoesDeLink';
 
 /**
  * O `.htaccess` sai junto na build e é o que o servidor lê. Estes testes fixam
@@ -27,8 +28,13 @@ describe('public/.htaccess', () => {
   });
 
   it('o index.html e as páginas do cartão de enquete não ficam em cache', () => {
-    expect(diretivas).toContain('<FilesMatch "^(index|enquete|enquete-resultado|mercado|transparencia|jornal|app|vagas|pizza|pizza-acompanhar|voluntariado|voluntariado-acompanhar)\\.html$">');
+    expect(diretivas).toContain('<FilesMatch "^(index|enquete|enquete-resultado|mercado|transparencia|jornal|app|vagas|pizza|pizza-acompanhar|voluntariado|voluntariado-acompanhar|voluntariado-central)\\.html$">');
     expect(diretivas).toMatch(/<FilesMatch "[^"]*">\s*Header set Cache-Control "no-cache"/);
+  });
+
+  it('toda página com cartão de link também fica sem cache (13/11/2026)', () => {
+    const lista = diretivas.match(/<FilesMatch "\^\(([^)]*)\)/)?.[1].split('|') ?? [];
+    for (const c of CARTOES_DE_LINK) expect(lista, c.arquivo).toContain(c.arquivo.replace(/\.html$/, ''));
   });
 
   it('as enquetes vão para as páginas com o próprio cartão de link, antes do fallback (25/09/2026)', () => {

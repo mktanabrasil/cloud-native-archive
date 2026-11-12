@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { PainelDaPizza } from '@/components/pizza/PainelDaPizza';
 import { PainelDoVoluntariado } from '@/components/voluntariado/PainelDoVoluntariado';
@@ -25,7 +26,9 @@ const CORES_DO_RODAPE = ['#E2B979', '#fbce00', '#f37964', '#81e2cf', '#01adff'];
 
 export default function MarketingHubPage() {
   const { isMarketing, loading } = useUserRole();
-  const [activeTab, setActiveTab] = useState('auditoria');
+  // ?aba=voluntariado abre direto numa aba (a volta da tela de presença, 13/11/2026).
+  const [params] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => tabs.find((t) => t.value === params.get('aba'))?.value ?? 'auditoria');
 
   if (loading) return null;
 

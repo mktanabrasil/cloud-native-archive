@@ -380,6 +380,27 @@ describe('formulário', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Som/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Enviar inscrição' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Este WhatsApp já está inscrito. Para mudar a área, fale com a equipe.');
+    // A credencial de quem já se inscreveu está na Central (13/11/2026).
+    expect(screen.getByTestId('erro-para-a-central')).toHaveAttribute('href', '/voluntariado/natalfeliz26/central');
+  });
+
+  it('a Central do Voluntário: o atalho no começo e o cartão depois da inscrição, que guarda o número (13/11/2026)', async () => {
+    localStorage.clear();
+    abrir();
+    expect(screen.getByTestId('link-da-central')).toHaveAttribute('href', '/voluntariado/natalfeliz26/central');
+    expect(screen.getByTestId('link-da-central')).toHaveTextContent('Já se inscreveu?');
+    etapa2();
+    quemSou(/^Faço parte da INCC/);
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Som/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar inscrição' }));
+    const cartao = await screen.findByTestId('cartao-da-central');
+    expect(cartao).toHaveTextContent('Sua Central do Voluntário');
+    const botao = screen.getByRole('link', { name: /Abrir minha Central/ });
+    expect(botao).toHaveAttribute('href', '/voluntariado/natalfeliz26/central');
+    expect(localStorage.getItem('ana.central-do-voluntario.whatsapp')).toBeNull();
+    fireEvent.click(botao);
+    expect(localStorage.getItem('ana.central-do-voluntario.whatsapp')).toBe('19993558242');
   });
 });
 
