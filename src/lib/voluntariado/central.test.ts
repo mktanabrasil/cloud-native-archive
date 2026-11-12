@@ -27,6 +27,8 @@ describe('para quem é (a mesma regra da função e do banco)', () => {
     expect(eSoDoMeuGrupo(I({}), V)).toBe(false);
     expect(eSoDoMeuGrupo(I({ areas: ['cozinha'] }), V)).toBe(true);
     expect(eSoDoMeuGrupo(I({ areas: ['inflaveis'] }), V)).toBe(false);
+    // Só o turno não dá selo: o item geral da manhã não é "da área" (12/11/2026).
+    expect(eSoDoMeuGrupo(I({ horarios: ['manha'] }), V)).toBe(false);
   });
 
   it('o gestor (sem inscrição) vê tudo, e nada ganha o selo (12/11/2026)', () => {
