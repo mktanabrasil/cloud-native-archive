@@ -52,6 +52,8 @@ const AREA: Record<string, string> = {
   // 12/11/2026: área nova. A etiqueta "CCII" precisa existir nas listas de
   // Área / Setor e 2ª opção da planilha para virar chip colorido.
   ccii: 'CCII',
+  // 12/11/2026: área nova; a etiqueta também precisa existir nas listas da planilha.
+  atipicas: 'Crianças Atípicas',
 };
 
 /**

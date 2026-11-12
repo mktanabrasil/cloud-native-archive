@@ -71,13 +71,14 @@ describe('regras', () => {
   });
 
   it('só as áreas do dia do evento; cada vínculo com as suas (23/10/2026)', () => {
-    expect(AREAS_DE_AJUDA).toHaveLength(11); // as 3 tiradas continuam conhecidas, para quem já as escolheu; CCII entrou em 12/11/2026
+    expect(AREAS_DE_AJUDA).toHaveLength(12); // as 3 tiradas continuam conhecidas, para quem já as escolheu; CCII e Crianças atípicas entraram em 12/11/2026
     expect(AREAS_DE_AJUDA.every((a) => a.descricao.length > 40)).toBe(true);
-    expect(AREAS_POR_VINCULO.funcionario).toEqual(['cozinha', 'inflaveis', 'estacoes', 'ccii']);
+    expect(AREAS_POR_VINCULO.funcionario).toEqual(['cozinha', 'inflaveis', 'estacoes', 'ccii', 'atipicas']);
     expect(AREAS_POR_VINCULO.alcance).toEqual(['cozinha', 'louvor_kids', 'som', 'recreacao_kids', 'inflaveis', 'presentes_kids']);
-    expect(AREAS_POR_VINCULO.comunidade).toEqual(['cozinha', 'inflaveis', 'estacoes', 'ccii']);
-    // CCII (12/11/2026): funcionários e voluntários de fora; a INCC não.
+    expect(AREAS_POR_VINCULO.comunidade).toEqual(['cozinha', 'inflaveis', 'estacoes', 'ccii', 'atipicas']);
+    // CCII e Crianças atípicas (12/11/2026): funcionários e voluntários de fora; a INCC não.
     expect(AREAS_POR_VINCULO.alcance).not.toContain('ccii');
+    expect(AREAS_POR_VINCULO.alcance).not.toContain('atipicas');
     for (const k of ['montagem', 'decoracao', 'limpeza_pre'] as const) {
       expect(Object.values(AREAS_POR_VINCULO).flat()).not.toContain(k);
     }
@@ -90,7 +91,7 @@ describe('regras', () => {
 
   it('a lista de áreas da função do banco é a mesma do formulário', async () => {
     const { readFileSync } = await import('node:fs');
-    const sql = readFileSync('supabase/migrations/20261112120000_voluntariado_como_soube_e_ccii.sql', 'utf8');
+    const sql = readFileSync('supabase/migrations/20261112150000_voluntariado_criancas_atipicas.sql', 'utf8');
     const lista = (v: string) => sql.match(new RegExp(`WHEN '${v}' +THEN ARRAY\\[([^\\]]+)\\]`))![1].match(/'([a-z_]+)'/g)!.map((s) => s.slice(1, -1));
     for (const v of ['funcionario', 'alcance', 'comunidade'] as const) expect(lista(v), v).toEqual([...AREAS_POR_VINCULO[v]]);
   });
@@ -228,6 +229,9 @@ describe('formulário', () => {
     expect(screen.queryByRole('button', { name: /^Montagem/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Louvor Kids/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Presentes Kids/ })).toBeNull();
+    // Áreas novas de 12/11/2026, também para funcionários.
+    expect(screen.getByRole('button', { name: /^CCII/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Crianças atípicas/ })).toBeInTheDocument();
     const cozinha = screen.getByRole('button', { name: /^Cozinha \/ Servimento/ });
     expect(cozinha).toHaveTextContent('Das 7h às 12h: cortar frutas'); // marcou Manhã: o roteiro da manhã
     fireEvent.click(cozinha);
@@ -301,7 +305,8 @@ describe('formulário', () => {
     fireEvent.change(campo, { target: { value: ' Vi no Instagram da ANA ' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
 
-    // A área nova aparece para quem é de fora.
+    // As áreas novas aparecem para quem é de fora.
+    expect(screen.getByRole('button', { name: /^Crianças atípicas/ })).toHaveTextContent('como as autistas');
     fireEvent.click(screen.getByRole('button', { name: /^CCII/ }));
     expect(screen.getByRole('button', { name: /^CCII/ })).toHaveTextContent('Trabalho com os idosos');
     fireEvent.click(screen.getByRole('button', { name: 'Enviar inscrição' }));
@@ -331,6 +336,7 @@ describe('formulário', () => {
     for (const a of ['Louvor Kids', 'Som', 'Recreação Kids', 'Presentes Kids']) expect(screen.getByRole('button', { name: new RegExp(`^${a}`) })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Estações/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /^CCII/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Crianças atípicas/ })).toBeNull();
   });
 
   it('área lotada: o aviso oferece a 2ª opção, e ela não vira 1ª', async () => {
@@ -385,7 +391,7 @@ describe('painel', () => {
     expect(await screen.findAllByTestId('inscricao')).toHaveLength(2);
     expect(screen.getByTestId('kpi-Inscritos')).toHaveTextContent('2');
     // As 7 do formulário e a Decoração, que alguém já escolheu; com gente: Cozinha e Decoração.
-    expect(screen.getByTestId('kpi-Áreas sem ninguém')).toHaveTextContent('7'); // com a CCII (12/11/2026)
+    expect(screen.getByTestId('kpi-Áreas sem ninguém')).toHaveTextContent('8'); // com a CCII e as Crianças atípicas (12/11/2026)
     const decoracao = screen.getAllByTestId('barra-area').find((b) => b.textContent?.startsWith('Decoração'))!;
     expect(decoracao).toHaveTextContent('Decoração1 +1');
     await waitFor(() => expect(screen.getAllByTestId('barra-area').find((b) => b.textContent?.startsWith('Cozinha'))).toHaveTextContent('1/25'));

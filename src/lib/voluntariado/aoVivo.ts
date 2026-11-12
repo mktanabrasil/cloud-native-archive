@@ -79,7 +79,7 @@ export interface Painel {
 
 const CURTO: Record<string, string> = {
   cozinha: 'Cozinha', montagem: 'Montagem', recreacao_kids: 'Recreação', inflaveis: 'Infláveis', presentes_kids: 'Presentes',
-  limpeza_pre: 'Limp. pré', louvor_kids: 'Louvor', estacoes: 'Estações',
+  limpeza_pre: 'Limp. pré', louvor_kids: 'Louvor', estacoes: 'Estações', atipicas: 'Atípicas',
 };
 export const rotuloCurto = (k: string) => CURTO[k] ?? rotuloDaAjuda(k);
 
