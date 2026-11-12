@@ -1,13 +1,28 @@
-import { useLocation } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { useIsCleanView } from "@/hooks/useIsEntryGate";
+
+/** O que a porta de entrada (HomePage) recebe para avisar que o endereço não existe. */
+const ESTADO_ENDERECO_INEXISTENTE = { enderecoInexistente: true } as const;
 
 const NotFound = () => {
   const location = useLocation();
+  const { isAuthenticated, loading } = useAuth();
+  const isCleanView = useIsCleanView();
 
   useEffect(() => {
     console.error("404 Error: User attempted to access non-existent route:", location.pathname);
   }, [location.pathname]);
+
+  if (loading) return null;
+
+  // Sem login (12/11/2026, mockup aprovado, opção A): quem chega a um endereço
+  // que não existe — um link público pela metade, por exemplo — vai para a
+  // porta de entrada, com o aviso, e não fica dentro do app com o menu.
+  // Em embed, nada muda: lá a raiz serve as Programações.
+  if (!isAuthenticated && !isCleanView) return <Navigate to="/" replace state={ESTADO_ENDERECO_INEXISTENTE} />;
 
   return (
     // Esboço V2: dentro do app, sobre a malha; um bloco calmo e um botão só.

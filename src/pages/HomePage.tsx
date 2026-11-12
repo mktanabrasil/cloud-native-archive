@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AccessForm } from '@/components/auth/AccessForm';
 import { TestModeTrigger } from '@/components/TestModeBanner';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -39,6 +41,20 @@ export default function HomePage({ leaving = false }: HomePageProps) {
    * animação de chegada de novo — o card entrando enquanto a tela apaga.
    */
   const animarEntrada = !leaving;
+
+  /**
+   * Veio de um endereço que não existe (12/11/2026): o 404 de quem não tem
+   * login manda para cá com este estado. O aviso fica guardado aqui, e o
+   * estado sai do histórico logo em seguida, para um F5 não repetir o aviso.
+   */
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [enderecoInexistente] = useState(() => !leaving && !!(location.state as { enderecoInexistente?: boolean } | null)?.enderecoInexistente);
+  useEffect(() => {
+    if (enderecoInexistente) navigate(`${location.pathname}${location.search}`, { replace: true, state: null });
+    // Só na chegada: depois o estado já foi limpo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div
@@ -83,6 +99,17 @@ export default function HomePage({ leaving = false }: HomePageProps) {
               anabrasil
             </span>
           </div>
+
+          {enderecoInexistente && (
+            <div
+              role="status"
+              data-testid="aviso-endereco-inexistente"
+              className="w-full max-w-md rounded-xl border border-info/30 bg-info/5 px-4 py-3 text-sm leading-relaxed text-foreground"
+            >
+              <strong className="block">Esse endereço não existe.</strong>
+              Confira o link que você recebeu.
+            </div>
+          )}
 
           <div className={cn('w-full max-w-md', animarEntrada && 'ana-enter-card')}>
             <AccessForm

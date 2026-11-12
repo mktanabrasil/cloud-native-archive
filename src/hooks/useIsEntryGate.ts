@@ -10,6 +10,27 @@ export const GATE_EXIT_MS = 260;
 export const HUB_ENTER_MS = 540;
 
 /**
+ * A página está sendo vista "limpa" — embed, ou com os parâmetros que o site
+ * usa nos iframes (`hideHeader`, `hideLogin`…)? Nesses casos o app não
+ * manda ninguém para a porta de entrada.
+ */
+export function useIsCleanView(): boolean {
+  const isEmbedded = useIsEmbedded();
+  const location = useLocation();
+  return useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return (
+      isEmbedded ||
+      params.get('embed') === 'true' ||
+      params.get('hideHeader') === 'true' ||
+      params.get('hideLogin') === 'true' ||
+      params.get('hideFooter') === 'true' ||
+      params.get('hideTitle') === 'true'
+    );
+  }, [isEmbedded, location.search]);
+}
+
+/**
  * A raiz está servindo a porta de entrada?
  *
  * Verdadeiro só quando as três condições valem ao mesmo tempo: a rota é `/`,
@@ -23,20 +44,8 @@ export const HUB_ENTER_MS = 540;
  */
 export function useIsEntryGate(): boolean {
   const { isAuthenticated, loading } = useAuth();
-  const isEmbedded = useIsEmbedded();
+  const isCleanView = useIsCleanView();
   const location = useLocation();
-
-  const isCleanView = useMemo(() => {
-    const params = new URLSearchParams(location.search);
-    return (
-      isEmbedded ||
-      params.get('embed') === 'true' ||
-      params.get('hideHeader') === 'true' ||
-      params.get('hideLogin') === 'true' ||
-      params.get('hideFooter') === 'true' ||
-      params.get('hideTitle') === 'true'
-    );
-  }, [isEmbedded, location.search]);
 
   return !loading && !isAuthenticated && !isCleanView && location.pathname === '/';
 }
