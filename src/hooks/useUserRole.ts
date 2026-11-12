@@ -165,6 +165,13 @@ export function useUserRole() {
    * publicar) — antes o front prometia e o RLS recusava.
    */
   const isMarketing = isAdmin || bondType === 'marketing';
+  /**
+   * Só a equipe de comunicação: vínculo "marketing" ativo, sem os outros
+   * admins (12/11/2026, pedido dele para o "Criar a partir de esboço" do
+   * Jornal, que sai da pasta do marketing). `isMarketing` continua valendo
+   * para tudo o que o banco também libera ao admin.
+   */
+  const isEquipeDeMarketing = bondType === 'marketing' && isActive;
 
   /**
    * Quem entra no Jornal: a comunicação e a gestão de uma unidade.
@@ -215,6 +222,7 @@ export function useUserRole() {
     canViewAuditoria,
     bondType,
     isMarketing,
+    isEquipeDeMarketing,
     isRh,
     isUnitManager,
     canAccessJournal,

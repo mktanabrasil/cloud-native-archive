@@ -123,7 +123,7 @@ function suggestName(unitId: string | null, month: string): string {
 }
 
 export default function JournalPage() {
-  const { canAccessJournal, isMarketing, loading: roleLoading, unit: profileUnit, userName } = useUserRole();
+  const { canAccessJournal, isMarketing, isEquipeDeMarketing, loading: roleLoading, unit: profileUnit, userName } = useUserRole();
   const { journals, loading, saving, savedAt, erroDeLista, erroDeCriacao, refresh, create, save, remove, duplicate } = useJournals();
 
   const defaultUnitId = useMemo(
@@ -364,8 +364,9 @@ export default function JournalPage() {
                   Começar de um arquivo
                 </Button>
               )}
-              {/* Só a comunicação: o esboço sai da pasta "Jornal - Esboço" do marketing (05/10/2026). */}
-              {isMarketing && (
+              {/* Só a equipe de comunicação: o esboço sai da pasta "Jornal - Esboço" do
+                  marketing (05/10/2026). Desde 12/11/2026, admin sem vínculo marketing não vê. */}
+              {isEquipeDeMarketing && (
                 <Button variant="outline" onClick={() => setDeEsboco(true)}>
                   Criar a partir de esboço
                 </Button>
@@ -773,7 +774,7 @@ export default function JournalPage() {
         onVisto={tutoriais.marcarVisto}
       />
 
-      {isMarketing && (
+      {isEquipeDeMarketing && (
         <JournalEsbocoDialog
           aberto={deEsboco}
           onAberto={setDeEsboco}
