@@ -13,6 +13,7 @@ const espiao = vi.hoisted(() => ({
   papel: {
     canAccessJournal: true,
     isMarketing: true,
+    isEquipeDeMarketing: true,
     loading: false,
     unit: null as string | null,
     userName: 'Quem está olhando',
@@ -79,6 +80,7 @@ beforeEach(() => {
   espiao.papel = {
     canAccessJournal: true,
     isMarketing: true,
+    isEquipeDeMarketing: true,
     loading: false,
     unit: null,
     userName: 'Quem está olhando',
@@ -167,6 +169,7 @@ describe('jornal de outra unidade', () => {
   const gestoraDeNilopolis = {
     canAccessJournal: true,
     isMarketing: false,
+    isEquipeDeMarketing: false,
     loading: false,
     unit: 'Nilópolis',
     userName: 'Gestora',
@@ -271,5 +274,33 @@ describe('arquivar', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^desarquivar$/i }));
     await waitFor(() => expect(espiao.save).toHaveBeenCalledWith('a', { status: 'finalizado' }));
+  });
+});
+
+/**
+ * O "Criar a partir de esboço" lê a pasta "Jornal - Esboço" do marketing: só
+ * a equipe de comunicação vê. Admin sem vínculo marketing não vê (12/11/2026).
+ */
+describe('Criar a partir de esboço', () => {
+  const botao = () => screen.queryByRole('button', { name: 'Criar a partir de esboço' });
+
+  it('a equipe de marketing vê o botão', async () => {
+    montar();
+    await screen.findByRole('button', { name: 'Criar jornal da unidade' });
+    expect(botao()).toBeInTheDocument();
+  });
+
+  it('admin sem vínculo marketing não vê', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true, isEquipeDeMarketing: false };
+    montar();
+    await screen.findByRole('button', { name: 'Criar jornal da unidade' });
+    expect(botao()).toBeNull();
+  });
+
+  it('a gestora da unidade não vê', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: false, isEquipeDeMarketing: false, unit: 'Santana' };
+    montar();
+    await screen.findAllByRole('button', { name: 'Criar jornal da unidade' });
+    expect(botao()).toBeNull();
   });
 });
