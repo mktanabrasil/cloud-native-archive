@@ -1,22 +1,22 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, BellOff, BellRing, CalendarDays, Check, Home, MapPin, QrCode, Share, SquarePlus, User, X, type LucideIcon } from 'lucide-react';
+import { Bell, BellOff, BellRing, CalendarDays, Check, Home, MapPin, Share, SquarePlus, User, type LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { TemaFlutuante } from '@/components/ThemeToggle';
 import { UiV2 } from '@/lib/uiV2';
 import { cn } from '@/lib/utils';
-import { matrizDoQr } from '@/lib/pizza/qr';
 import {
   avisosLigadosAqui, caminhoDaAba, desligarAvisos, iniciais, ligarAvisos, suporteDeAvisos,
-  type AbaDaCentral, type AvisoEnviado, type SuporteDeAvisos,
+  type AbaDaCentral, type SuporteDeAvisos,
 } from '@/lib/voluntariado/central';
 
 /**
  * As peças da Central do Voluntário (13/11/2026). O desenho segue o mockup
- * aprovado (topo escuro com a saudação, cartões, barra de baixo com a
- * credencial no meio), nas cores do app (grafite, verde ANA e as cores do
- * rodapé) e com a arte do Natal Feliz: pedido de 12/11/2026.
+ * aprovado (topo escuro com a saudação, cartões, barra de baixo com um botão
+ * em destaque no meio), nas cores do app (grafite, verde ANA e as cores do
+ * rodapé) e com a arte do Natal Feliz: pedido de 12/11/2026. No meio, os
+ * Avisos (no lugar da credencial com QR, também a pedido dele).
  */
 
 /** As cores do app. */
@@ -88,13 +88,13 @@ export function Pilula({ icone: Icone, children }: { icone: LucideIcon; children
 const ITENS_DA_DOCA: Array<{ aba: AbaDaCentral; rotulo: string; Icone: LucideIcon }> = [
   { aba: 'inicio', rotulo: 'Início', Icone: Home },
   { aba: 'cronograma', rotulo: 'Cronograma', Icone: CalendarDays },
-  { aba: 'credencial', rotulo: 'Credencial', Icone: QrCode },
+  { aba: 'avisos', rotulo: 'Avisos', Icone: Bell },
   { aba: 'local', rotulo: 'Local', Icone: MapPin },
   { aba: 'perfil', rotulo: 'Perfil', Icone: User },
 ];
 
-/** A barra de baixo do mockup: cinco lugares, com a credencial em destaque no meio. */
-export function DocaDaCentral({ aba }: { aba: AbaDaCentral }) {
+/** A barra de baixo do mockup: cinco lugares, com os avisos em destaque no meio (o ponto = aviso novo). */
+export function DocaDaCentral({ aba, avisoNovo = false }: { aba: AbaDaCentral; avisoNovo?: boolean }) {
   return (
     <nav
       aria-label="Central do Voluntário"
@@ -104,13 +104,14 @@ export function DocaDaCentral({ aba }: { aba: AbaDaCentral }) {
       <div className="mx-auto grid max-w-[600px] grid-cols-5 items-end px-1 pb-2 pt-1.5">
         {ITENS_DA_DOCA.map(({ aba: a, rotulo, Icone }) => {
           const ativo = a === aba;
-          if (a === 'credencial') {
+          if (a === 'avisos') {
             return (
-              <Link key={a} to={caminhoDaAba(a)} aria-current={ativo ? 'page' : undefined}
+              <Link key={a} to={caminhoDaAba(a)} aria-current={ativo ? 'page' : undefined} aria-label={avisoNovo ? 'Avisos (novos)' : 'Avisos'}
                 className={cn('-mt-7 flex flex-col items-center gap-1 text-[10.5px] tracking-[-0.01em]', ativo ? 'font-bold text-foreground' : 'font-semibold text-muted-foreground')}>
-                <span className={cn('grid h-[58px] w-[58px] place-items-center rounded-full border-4 border-card shadow-[0_8px_18px_-8px_hsl(165_30%_12%/0.6)] transition-transform',
+                <span className={cn('relative grid h-[58px] w-[58px] place-items-center rounded-full border-4 border-card shadow-[0_8px_18px_-8px_hsl(165_30%_12%/0.6)] transition-transform',
                   ativo ? 'scale-105 bg-[#81E2CF] text-[#1F2322] dark:bg-white' : 'bg-[#1F2322] text-[#81E2CF] dark:bg-[#81E2CF] dark:text-[#1F2322]')} aria-hidden>
-                  <QrCode className="h-6 w-6" strokeWidth={2.1} />
+                  <Icone className="h-6 w-6" strokeWidth={2.1} />
+                  {avisoNovo && <span className="absolute right-2.5 top-2.5 h-3 w-3 rounded-full border-2 border-[#1F2322] bg-[#FBCE00] dark:border-[#81E2CF]" data-testid="ponto-de-aviso" />}
                 </span>
                 <span>{rotulo}</span>
               </Link>
@@ -128,17 +129,6 @@ export function DocaDaCentral({ aba }: { aba: AbaDaCentral }) {
         })}
       </div>
     </nav>
-  );
-}
-
-/** O botão redondo do topo escuro (sino). */
-export function BotaoDoTopo({ rotulo, onClick, children, ponto = false }: { rotulo: string; onClick?: () => void; children: ReactNode; ponto?: boolean }) {
-  return (
-    <button type="button" aria-label={rotulo} title={rotulo} onClick={onClick}
-      className="relative grid h-10 w-10 place-items-center rounded-full bg-white/[0.12] text-white transition-colors hover:bg-white/20">
-      {children}
-      {ponto && <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-[#1F2322] bg-[#FBCE00]" data-testid="ponto-de-aviso" />}
-    </button>
   );
 }
 
@@ -160,66 +150,7 @@ export function Secao({ children }: { children: ReactNode }) {
   return <span className="mt-1 px-1 text-[11.5px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{children}</span>;
 }
 
-/** O QR Code em SVG: nítido em qualquer tela, com a margem branca que os leitores pedem. */
-export function QrDaCredencial({ texto, rotulo }: { texto: string; rotulo: string }) {
-  const m = matrizDoQr(texto);
-  const n = m.length;
-  const d = m.flatMap((linha, y) => linha.map((escuro, x) => (escuro ? `M${x + 4} ${y + 4}h1v1h-1z` : ''))).join('');
-  return (
-    <svg viewBox={`0 0 ${n + 8} ${n + 8}`} role="img" aria-label={rotulo} shapeRendering="crispEdges" className="block h-auto w-full rounded-[14px] bg-white" data-testid="qr-da-credencial">
-      <rect width={n + 8} height={n + 8} fill="#fff" />
-      <path d={d} fill={GRAFITE} />
-    </svg>
-  );
-}
-
 // --- Os avisos -------------------------------------------------------------------------------
-
-const quando = (iso: string) => {
-  const d = new Date(iso);
-  const min = Math.round((Date.now() - d.getTime()) / 60_000);
-  if (min < 1) return 'agora';
-  if (min < 60) return `há ${min} min`;
-  if (min < 24 * 60) return `há ${Math.round(min / 60)} h`;
-  return d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' às');
-};
-
-/** A lista dos avisos que já chegaram (o sino do topo). */
-export function PainelDosAvisos({ avisos, destaque, aoFechar }: { avisos: AvisoEnviado[]; destaque?: string | null; aoFechar: () => void }) {
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') aoFechar(); };
-    window.addEventListener('keydown', esc);
-    return () => window.removeEventListener('keydown', esc);
-  }, [aoFechar]);
-  return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center px-3 pt-[calc(4.5rem+env(safe-area-inset-top))]" role="dialog" aria-modal="true" aria-label="Avisos">
-      <button type="button" aria-label="Fechar os avisos" onClick={aoFechar} className="absolute inset-0 cursor-default bg-[rgb(16_22_21/0.35)] animate-in fade-in-0 duration-200" />
-      <div className="relative flex max-h-[70vh] w-full max-w-[560px] flex-col overflow-hidden rounded-[22px] border border-black/[0.06] bg-[#F2F4F3] shadow-[0_24px_60px_-20px_hsl(165_30%_12%/0.55)] animate-in fade-in-0 slide-in-from-top-2 duration-200 dark:border-white/10 dark:bg-background">
-        <div className="flex items-center justify-between gap-2 px-4 pb-2 pt-3">
-          <b className="flex items-center gap-2 text-[16px] font-semibold" style={{ fontFamily: 'Poppins, sans-serif' }}><Bell className="h-4 w-4" /> Avisos</b>
-          <button type="button" onClick={aoFechar} aria-label="Fechar" className="grid h-9 w-9 place-items-center rounded-full hover:bg-black/5 dark:hover:bg-white/10"><X className="h-4 w-4" /></button>
-        </div>
-        <div className="overflow-y-auto px-2 pb-2">
-          {avisos.length === 0 ? (
-            <p className="px-2 pb-4 pt-1 text-[14px] text-muted-foreground">Nenhum aviso ainda. Os lembretes do treinamento e do Natal Feliz aparecem aqui.</p>
-          ) : (
-            <ul className="flex flex-col gap-1.5" data-testid="lista-de-avisos">
-              {avisos.map((a) => (
-                <li key={a.id} className={cn('rounded-[16px] border border-black/[0.05] bg-card px-3.5 py-3 dark:border-white/[0.06]', a.id === destaque && 'ring-2 ring-[#81E2CF]')}>
-                  <div className="flex items-baseline justify-between gap-3">
-                    <b className="text-[14.5px] font-semibold">{a.titulo}</b>
-                    <span className="shrink-0 text-[12px] text-muted-foreground">{quando(a.enviado_em)}</span>
-                  </div>
-                  <p className="mt-0.5 text-[14px] leading-snug text-muted-foreground">{a.texto}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /** Ligar os avisos neste celular, com o caminho do iPhone (Tela de Início) e o de quem bloqueou. */
 export function CartaoDosAvisos({ whatsapp, compacto = false }: { whatsapp: string; compacto?: boolean }) {

@@ -1504,10 +1504,29 @@ export type Database = {
         }
         Relationships: []
       }
+      voluntariado_gestores: {
+        Row: {
+          id: string
+          nome: string
+          whatsapp: string
+          criado_em: string
+        }
+        Insert: {
+          id?: string
+          nome: string
+          whatsapp: string
+        }
+        Update: {
+          nome?: string
+          whatsapp?: string
+        }
+        Relationships: []
+      }
       voluntariado_dispositivos: {
         Row: {
           id: string
-          voluntario_id: string
+          voluntario_id: string | null
+          gestor_id: string | null
           endpoint: string
           p256dh: string
           auth: string
@@ -1703,6 +1722,14 @@ export type Database = {
       central_do_voluntario: {
         Args: { p_whatsapp: string }
         Returns: Json
+      }
+      central_no_formulario: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      definir_central_no_formulario: {
+        Args: { p_ligado: boolean }
+        Returns: undefined
       }
       ativar_avisos_voluntario: {
         Args: { p_whatsapp: string; p_endpoint: string; p_p256dh: string; p_auth: string }

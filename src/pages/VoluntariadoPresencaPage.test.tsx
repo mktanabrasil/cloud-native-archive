@@ -41,7 +41,7 @@ beforeEach(() => {
 
 const abrir = (url = '/voluntariado/natalfeliz26/presenca') => render(<MemoryRouter initialEntries={[url]}><Presenca /></MemoryRouter>);
 const bipar = (texto: string) => {
-  const campo = screen.getByRole('textbox', { name: 'Código da credencial ou nome' });
+  const campo = screen.getByRole('textbox', { name: 'Nome ou protocolo' });
   fireEvent.change(campo, { target: { value: texto } });
   fireEvent.submit(campo.closest('form')!);
 };
@@ -85,7 +85,7 @@ describe('presença com leitor', () => {
     abrir();
     await screen.findByText(/de 2 presentes/);
     fireEvent.click(screen.getByRole('button', { name: /Treinamento · 28\/11/ }));
-    const campo = screen.getByRole('textbox', { name: 'Código da credencial ou nome' });
+    const campo = screen.getByRole('textbox', { name: 'Nome ou protocolo' });
     fireEvent.change(campo, { target: { value: 'joao' } });
     const achados = await screen.findByTestId('achados');
     expect(achados).toHaveTextContent('João Lima');

@@ -16,6 +16,9 @@ import { enviar, novasChaves, type Celular, type Chaves } from './envio.ts';
  *  - boas_vindas: { whatsapp, endpoint } — a primeira notificação, logo que a
  *                 pessoa liga os avisos, só para o celular dela.
  *
+ * Os gestores (voluntariado_gestores, desde 12/11/2026) entram na Central pelo
+ * número, sem inscrição, e recebem todos os avisos.
+ *
  * O envio de cada notificação está em envio.ts.
  */
 
@@ -58,7 +61,7 @@ async function processar(admin: SupabaseClient) {
 
   const k = await chaves(admin);
   const { data: todos } = await admin.from('voluntariado_dispositivos')
-    .select('id, endpoint, p256dh, auth, voluntario:voluntarios_natal(opcao1, horario)');
+    .select('id, endpoint, p256dh, auth, gestor_id, voluntario:voluntarios_natal(opcao1, horario)');
   const relatorio = [];
   for (const { id } of fila) {
     // Reserva o aviso antes de mandar: duas chamadas juntas não mandam duas vezes.
@@ -66,6 +69,7 @@ async function processar(admin: SupabaseClient) {
       .eq('id', id).is('enviado_em', null).select('id, titulo, texto, areas, horarios').maybeSingle();
     if (!meu) continue;
     const para = (todos ?? []).filter((c) => {
+      if (c.gestor_id) return true; // o gestor recebe todos
       const v = (Array.isArray(c.voluntario) ? c.voluntario[0] : c.voluntario) as { opcao1: string; horario: string | null } | null;
       return !!v && ePara(meu.areas, meu.horarios, v.opcao1, v.horario);
     }) as Celular[];
@@ -77,10 +81,12 @@ async function processar(admin: SupabaseClient) {
 }
 
 async function boasVindas(admin: SupabaseClient, whatsapp: string, endpoint: string) {
-  const { data: v } = await admin.from('voluntarios_natal').select('id').eq('whatsapp', whatsappDoFormulario(whatsapp)).maybeSingle();
-  if (!v) return json({ error: 'nao_encontrado' }, 404);
+  const tel = whatsappDoFormulario(whatsapp);
+  const { data: v } = await admin.from('voluntarios_natal').select('id').eq('whatsapp', tel).maybeSingle();
+  const { data: g } = v ? { data: null } : await admin.from('voluntariado_gestores').select('id').eq('whatsapp', tel).maybeSingle();
+  if (!v && !g) return json({ error: 'nao_encontrado' }, 404);
   const { data: c } = await admin.from('voluntariado_dispositivos').select('id, endpoint, p256dh, auth')
-    .eq('voluntario_id', v.id).eq('endpoint', String(endpoint ?? '').trim()).maybeSingle();
+    .eq(v ? 'voluntario_id' : 'gestor_id', (v ?? g)!.id).eq('endpoint', String(endpoint ?? '').trim()).maybeSingle();
   if (!c) return json({ error: 'celular_nao_encontrado' }, 404);
   const r = await enviarPara(admin, [c as Celular], BOAS_VINDAS, await chaves(admin));
   return json({ ok: r.entregues === 1 });

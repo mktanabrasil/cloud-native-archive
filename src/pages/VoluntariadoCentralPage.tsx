@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Bell, BellDot, Phone } from 'lucide-react';
+import { Phone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import {
@@ -8,16 +8,16 @@ import {
   type AbaDaCentral, type DadosDaCentral,
 } from '@/lib/voluntariado/central';
 import { CAMINHO_DO_FORMULARIO, digitosDoWhatsapp, encerrado, mascaraDoWhatsapp, ULTIMO_DIA } from '@/lib/voluntariado/modelo';
-import { AvatarDaPessoa, BotaoDoTopo, CAPA_DO_NATAL, CabecalhoDaCentral, DocaDaCentral, MolduraDaCentral, PainelDosAvisos } from '@/components/voluntariado/central/PecasDaCentral';
-import { CredencialDaCentral, CronogramaDaCentral, InicioDaCentral, LocalDaCentral, PerfilDaCentral, cabecalhoDaAba } from '@/components/voluntariado/central/AbasDaCentral';
+import { AvatarDaPessoa, CAPA_DO_NATAL, CabecalhoDaCentral, DocaDaCentral, MolduraDaCentral } from '@/components/voluntariado/central/PecasDaCentral';
+import { AvisosDaCentral, CronogramaDaCentral, InicioDaCentral, LocalDaCentral, PerfilDaCentral, cabecalhoDaAba } from '@/components/voluntariado/central/AbasDaCentral';
 
 /**
  * /voluntariado/natalfeliz26/central — a Central do Voluntário (13/11/2026).
  *
  * Entra com o WhatsApp da inscrição; o celular guarda o número, e nas outras
  * vezes a Central abre direto. Cinco abas na doca (Início, Cronograma,
- * Credencial, Local, Perfil), o sino com os avisos que já chegaram, e tudo se
- * atualiza sozinho (a cada minuto, ao voltar para a tela e quando chega um
+ * Avisos, Local, Perfil; os Avisos no meio desde 12/11/2026, no lugar da
+ * credencial com QR), e tudo se atualiza sozinho (a cada minuto, ao voltar para a tela e quando chega um
  * aviso). O desenho segue o mockup aprovado, nas cores do app e com a arte do
  * Natal Feliz (pedido de 12/11/2026).
  */
@@ -31,16 +31,19 @@ const gravarVistos = (iso: string) => { try { localStorage.setItem(CHAVE_DOS_VIS
 export default function VoluntariadoCentralPage() {
   useTituloDaAba('Central do Voluntário');
   const { aba: abaDoEndereco } = useParams();
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
   const navigate = useNavigate();
   const avisoDoLink = params.get('aviso');
+  const abaValida = !abaDoEndereco || (ABAS_DA_CENTRAL as readonly string[]).includes(abaDoEndereco);
+  const aba = (abaValida ? abaDoEndereco ?? 'inicio' : 'inicio') as AbaDaCentral;
 
   const [numero, setNumero] = useState<string | null>(() => numeroGuardado());
   const [dados, setDados] = useState<DadosDaCentral | null>(null);
   const [falhou, setFalhou] = useState(false);
   const [agora, setAgora] = useState(() => agoraEmBrasilia());
-  const [sino, setSino] = useState(!!avisoDoLink);
   const [vistos, setVistos] = useState(lerVistos);
+  // Na aba Avisos, os novos continuam marcados enquanto a pessoa lê.
+  const [vistosNaAba, setVistosNaAba] = useState(vistos);
   const dadosRef = useRef<DadosDaCentral | null>(null);
   dadosRef.current = dados;
 
@@ -73,8 +76,18 @@ export default function VoluntariadoCentralPage() {
 
   useEffect(() => { window.scrollTo?.(0, 0); }, [abaDoEndereco]);
 
-  if (abaDoEndereco && !(ABAS_DA_CENTRAL as readonly string[]).includes(abaDoEndereco)) return <Navigate to={CAMINHO_DA_CENTRAL} replace />;
-  const aba = (abaDoEndereco ?? 'inicio') as AbaDaCentral;
+  // Abriu a aba Avisos: o que chegou até agora conta como visto (o ponto da barra some).
+  const ultimo = dados?.avisos[0]?.enviado_em ?? '';
+  useEffect(() => {
+    if (aba !== 'avisos' || !ultimo || ultimo <= vistos) return;
+    setVistosNaAba(vistos);
+    gravarVistos(ultimo);
+    setVistos(ultimo);
+  }, [aba, ultimo, vistos]);
+
+  if (!abaValida) return <Navigate to={CAMINHO_DA_CENTRAL} replace />;
+  // O toque na notificação abre .../central?aviso=ID: vai para a aba Avisos, com ele em destaque.
+  if (avisoDoLink && aba !== 'avisos') return <Navigate to={`${CAMINHO_DA_CENTRAL}/avisos?aviso=${encodeURIComponent(avisoDoLink)}`} replace />;
 
   if (!numero) {
     return (
@@ -84,19 +97,11 @@ export default function VoluntariadoCentralPage() {
     );
   }
 
-  const ultimo = dados?.avisos[0]?.enviado_em ?? '';
-  const temNovo = !!ultimo && ultimo > vistos;
-  const abrirSino = () => { setSino(true); if (ultimo) { gravarVistos(ultimo); setVistos(ultimo); } };
-  const fecharSino = () => { setSino(false); if (avisoDoLink) { params.delete('aviso'); setParams(params, { replace: true }); } };
+  const temNovo = aba !== 'avisos' && !!ultimo && ultimo > vistos;
   const sair = () => { esquecerNumero(); setNumero(null); setDados(null); navigate(CAMINHO_DA_CENTRAL, { replace: true }); };
 
   const direita = dados ? (
-    <>
-      <BotaoDoTopo rotulo={temNovo ? 'Avisos (novos)' : 'Avisos'} onClick={abrirSino} ponto={temNovo}>
-        {temNovo ? <BellDot className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
-      </BotaoDoTopo>
-      <Link to={`${CAMINHO_DA_CENTRAL}/perfil`} aria-label="Perfil" className="rounded-full ring-2 ring-white/15"><AvatarDaPessoa nome={dados.voluntario.nome} /></Link>
-    </>
+    <Link to={`${CAMINHO_DA_CENTRAL}/perfil`} aria-label="Perfil" className="rounded-full ring-2 ring-white/15"><AvatarDaPessoa nome={dados.voluntario.nome} /></Link>
   ) : null;
   const cabecalho = dados ? cabecalhoDaAba(aba, dados) : { titulo: 'Natal Feliz 2026' };
 
@@ -120,12 +125,11 @@ export default function VoluntariadoCentralPage() {
           )
         ) : aba === 'inicio' ? <InicioDaCentral d={dados} agora={agora} whatsapp={numero} />
           : aba === 'cronograma' ? <CronogramaDaCentral d={dados} agora={agora} />
-          : aba === 'credencial' ? <CredencialDaCentral d={dados} />
+          : aba === 'avisos' ? <AvisosDaCentral avisos={dados.avisos} whatsapp={numero} destaque={avisoDoLink} vistosAte={vistosNaAba} />
           : aba === 'local' ? <LocalDaCentral />
           : <PerfilDaCentral d={dados} whatsapp={numero} aoSair={sair} />}
       </main>
-      {dados && <DocaDaCentral aba={aba} />}
-      {dados && sino && <PainelDosAvisos avisos={dados.avisos} destaque={avisoDoLink} aoFechar={fecharSino} />}
+      {dados && <DocaDaCentral aba={aba} avisoNovo={temNovo} />}
     </MolduraDaCentral>
   );
 }

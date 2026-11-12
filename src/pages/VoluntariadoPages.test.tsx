@@ -18,6 +18,7 @@ const banco = vi.hoisted(() => ({
   metas: {} as Record<string, number>,
   metasSalvas: [] as Array<[string, number | null]>,
   papel: { isMarketing: true, loading: false },
+  central: false,
 }));
 
 globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
@@ -29,6 +30,7 @@ vi.mock('@/lib/voluntariado/comprovante', () => ({ salvarComprovante: async (d: 
 vi.mock('@/lib/voluntariado/api', () => ({
   inscrever: async (d: Record<string, unknown>) => { if (banco.erro) throw new Error(banco.erro); banco.enviados.push(d); return 'VL-7K2Q9'; },
   areasLotadas: async () => banco.lotadas,
+  centralNoFormulario: async () => banco.central,
   listarInscricoes: async () => banco.lista,
   apagarInscricao: async (id: string) => { banco.apagados.push(id); },
   lerMetas: async () => banco.metas,
@@ -58,6 +60,7 @@ beforeEach(() => {
   banco.planilhaPedida = 0; banco.chamadas = []; banco.estado = null; banco.lotadas = []; banco.metas = {}; banco.metasSalvas = [];
   window.open = vi.fn() as never;
   banco.papel = { isMarketing: true, loading: false };
+  banco.central = false;
 });
 
 describe('regras', () => {
@@ -373,6 +376,7 @@ describe('formulário', () => {
 
   it('WhatsApp já inscrito: explica o que fazer', async () => {
     banco.erro = 'ja_inscrito';
+    banco.central = true;
     abrir();
     etapa2();
     quemSou(/^Faço parte da INCC/);
@@ -386,8 +390,9 @@ describe('formulário', () => {
 
   it('a Central do Voluntário: o atalho no começo e o cartão depois da inscrição, que guarda o número (13/11/2026)', async () => {
     localStorage.clear();
+    banco.central = true;
     abrir();
-    expect(screen.getByTestId('link-da-central')).toHaveAttribute('href', '/voluntariado/natalfeliz26/central');
+    expect(await screen.findByTestId('link-da-central')).toHaveAttribute('href', '/voluntariado/natalfeliz26/central');
     expect(screen.getByTestId('link-da-central')).toHaveTextContent('Já se inscreveu?');
     etapa2();
     quemSou(/^Faço parte da INCC/);
@@ -401,6 +406,25 @@ describe('formulário', () => {
     expect(localStorage.getItem('ana.central-do-voluntario.whatsapp')).toBeNull();
     fireEvent.click(botao);
     expect(localStorage.getItem('ana.central-do-voluntario.whatsapp')).toBe('19993558242');
+  });
+
+  it('com o interruptor do painel desligado, a Central não aparece no formulário (12/11/2026)', async () => {
+    banco.erro = 'ja_inscrito';
+    abrir();
+    await waitFor(() => expect(screen.getByTestId('sobre-o-evento')).toBeInTheDocument());
+    expect(screen.queryByTestId('link-da-central')).toBeNull();
+    etapa2();
+    quemSou(/^Faço parte da INCC/);
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Som/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar inscrição' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Este WhatsApp já está inscrito.');
+    expect(screen.queryByTestId('erro-para-a-central')).toBeNull();
+    banco.erro = null;
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar inscrição' }));
+    await screen.findByTestId('protocolo');
+    expect(screen.queryByTestId('cartao-da-central')).toBeNull();
+    expect(screen.queryByRole('link', { name: /Abrir minha Central/ })).toBeNull();
   });
 });
 

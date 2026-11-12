@@ -1,25 +1,32 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BellRing, CalendarPlus, ExternalLink, Megaphone, Pencil, ScanLine, Trash2 } from 'lucide-react';
+import { BellRing, CalendarPlus, ExternalLink, Megaphone, Pencil, ScanLine, Trash2, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import type { Inscricao } from '@/lib/voluntariado/api';
+import { centralNoFormulario, type Inscricao } from '@/lib/voluntariado/api';
 import {
   CAMINHO_DA_CENTRAL, CAMINHO_DA_PRESENCA, DIA_DO_NATAL_FELIZ, DIA_DO_TREINAMENTO, ORIGEM_DO_APP, ROTULO_DO_TIPO, apagarAviso, apagarItem, criarAviso,
-  diaCurto, ePara, horaCurta, listarAvisos, listarCronograma, listarPresencas, salvarItem, voluntariosComAvisos,
+  adicionarGestor, celularesComAvisos, definirCentralNoFormulario, diaCurto, ePara, horaCurta, listarAvisos, listarCronograma, listarGestores,
+  listarPresencas, removerGestor, salvarItem, whatsappMascarado, type Gestor,
   type AvisoDoPainel, type ItemDoPainel, type NovoItem, type Presenca, type TipoDoItem,
 } from '@/lib/voluntariado/central';
-import { AREAS_DE_AJUDA, AREAS_FORA_DO_FORMULARIO, HORARIOS, rotuloDaAjuda, rotuloDoHorario } from '@/lib/voluntariado/modelo';
+import { AREAS_DE_AJUDA, AREAS_FORA_DO_FORMULARIO, HORARIOS, mascaraDoWhatsapp, rotuloDaAjuda, rotuloDoHorario } from '@/lib/voluntariado/modelo';
 
 /**
  * A Central do Voluntário no painel do Marketing (13/11/2026): o link, quem
  * já ligou os avisos e quem já teve a presença registrada; o cronograma (cada
  * item pode avisar no celular X minutos antes); e os avisos avulsos, na hora
- * ou agendados.
+ * ou agendados. Desde 12/11/2026, a pedido dele: o interruptor do botão da
+ * Central no formulário (escondido até o treinamento) e os gestores, que
+ * entram na Central pelo número, sem inscrição, e recebem todos os avisos.
  */
 
 export const LINK_DA_CENTRAL = `${ORIGEM_DO_APP}${CAMINHO_DA_CENTRAL}`;
@@ -142,7 +149,7 @@ function FormDoItem({ item, aoFechar, aoSalvar }: { item: ItemDoPainel | 'novo';
 
 // --- O aviso avulso -----------------------------------------------------------------------
 
-function FormDoAviso({ inscricoes, comAvisos, aoFechar, aoEnviar }: { inscricoes: Inscricao[]; comAvisos: Set<string>; aoFechar: () => void; aoEnviar: () => void }) {
+function FormDoAviso({ inscricoes, comAvisos, gestoresComAvisos, aoFechar, aoEnviar }: { inscricoes: Inscricao[]; comAvisos: Set<string>; gestoresComAvisos: number; aoFechar: () => void; aoEnviar: () => void }) {
   const [titulo, setTitulo] = useState('');
   const [texto, setTexto] = useState('');
   const [areas, setAreas] = useState<string[]>([]);
@@ -150,7 +157,7 @@ function FormDoAviso({ inscricoes, comAvisos, aoFechar, aoEnviar }: { inscricoes
   const [quando, setQuando] = useState<'agora' | 'agendar'>('agora');
   const [hora, setHora] = useState('');
   const [enviando, setEnviando] = useState(false);
-  const alcance = inscricoes.filter((i) => comAvisos.has(i.id) && ePara(areas, horarios, i.opcao1, i.horario)).length;
+  const alcance = inscricoes.filter((i) => comAvisos.has(i.id) && ePara(areas, horarios, i.opcao1, i.horario)).length + gestoresComAvisos;
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -202,6 +209,70 @@ function FormDoAviso({ inscricoes, comAvisos, aoFechar, aoEnviar }: { inscricoes
   );
 }
 
+// --- Os gestores (12/11/2026) --------------------------------------------------------------
+
+function GestoresDaCentral() {
+  const [lista, setLista] = useState<Gestor[] | null>(null);
+  const [nome, setNome] = useState('');
+  const [tel, setTel] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const [tirando, setTirando] = useState<Gestor | null>(null);
+  const carregar = useCallback(() => { listarGestores().then(setLista).catch(() => setLista([])); }, []);
+  useEffect(() => { carregar(); }, [carregar]);
+
+  async function cadastrar(e: React.FormEvent) {
+    e.preventDefault();
+    const digitos = tel.replace(/\D/g, '');
+    if (nome.trim().length < 2 || digitos.length < 10) { toast.error('Escreva o nome e o WhatsApp com DDD.'); return; }
+    setSalvando(true);
+    try { await adicionarGestor(nome, tel); toast.success(`${nome.trim().split(/\s+/)[0]} já entra na Central.`); setNome(''); setTel(''); carregar(); }
+    catch (x) { toast.error((x as Error).message === 'ja_cadastrado' ? 'Esse WhatsApp já está na lista.' : 'Não deu para cadastrar. Tente de novo.'); }
+    finally { setSalvando(false); }
+  }
+  async function tirar(g: Gestor) {
+    try { await removerGestor(g.id); toast.success(`${g.nome} saiu da lista.`); carregar(); }
+    catch { toast.error('Não deu para tirar. Tente de novo.'); }
+    finally { setTirando(null); }
+  }
+
+  return (
+    <div className="flex flex-col gap-2" data-testid="gestores-da-central">
+      <div className="text-sm">
+        <b className="block text-[14.5px] font-semibold">Gestores com acesso</b>
+        <span className="text-muted-foreground">Entram na Central pelo WhatsApp, sem inscrição: veem o cronograma inteiro e recebem todos os avisos. Não contam como voluntários.</span>
+      </div>
+      {lista && lista.length > 0 && (
+        <ul className="overflow-hidden rounded-[14px] border border-border" data-testid="lista-de-gestores">
+          {lista.map((g) => (
+            <li key={g.id} className="flex items-center gap-3 border-b border-border/70 px-3 py-2 text-sm last:border-b-0">
+              <span className="min-w-0 flex-1 font-semibold">{g.nome}</span>
+              <span className="tabular-nums text-muted-foreground">{whatsappMascarado(g.whatsapp)}</span>
+              <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive" aria-label={`Tirar ${g.nome}`} onClick={() => setTirando(g)}><Trash2 className="h-4 w-4" /></Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form onSubmit={cadastrar} className="flex flex-wrap items-center gap-2">
+        <Input aria-label="Nome do gestor" placeholder="Nome" value={nome} maxLength={120} onChange={(e) => setNome(e.target.value)} className="h-10 min-w-0 flex-[1_1_200px]" />
+        <Input aria-label="WhatsApp do gestor" placeholder="(19) 99999-9999" inputMode="numeric" value={tel} onChange={(e) => setTel(mascaraDoWhatsapp(e.target.value))} className="h-10 w-44" />
+        <Button type="submit" size="sm" variant="outline" disabled={salvando}><UserPlus className="h-4 w-4" /> Cadastrar</Button>
+      </form>
+      <AlertDialog open={!!tirando} onOpenChange={(v) => { if (!v) setTirando(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tirar {tirando?.nome} da Central?</AlertDialogTitle>
+            <AlertDialogDescription>O acesso pelo WhatsApp acaba e os avisos param de chegar no celular dessa pessoa.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => tirando && tirar(tirando)}>Tirar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
 // --- O bloco no painel -----------------------------------------------------------------------
 
 export function CentralNoPainel({ inscricoes }: { inscricoes: Inscricao[] }) {
@@ -209,6 +280,9 @@ export function CentralNoPainel({ inscricoes }: { inscricoes: Inscricao[] }) {
   const [avisos, setAvisos] = useState<AvisoDoPainel[]>([]);
   const [presencas, setPresencas] = useState<Presenca[]>([]);
   const [comAvisos, setComAvisos] = useState<Set<string>>(new Set());
+  const [gestoresComAvisos, setGestoresComAvisos] = useState(0);
+  // O botão da Central no formulário (escondido até a comunicação ligar, 12/11/2026).
+  const [noFormulario, setNoFormulario] = useState<boolean | null>(null);
   const [editando, setEditando] = useState<ItemDoPainel | 'novo' | null>(null);
   const [novoAviso, setNovoAviso] = useState(false);
 
@@ -216,7 +290,8 @@ export function CentralNoPainel({ inscricoes }: { inscricoes: Inscricao[] }) {
     listarCronograma().then(setItens).catch(() => setItens([]));
     listarAvisos().then(setAvisos).catch(() => { /* sem lista */ });
     listarPresencas().then(setPresencas).catch(() => { /* sem lista */ });
-    voluntariosComAvisos().then(setComAvisos).catch(() => { /* sem contagem */ });
+    celularesComAvisos().then((c) => { setComAvisos(c.voluntarios); setGestoresComAvisos(c.gestores); }).catch(() => { /* sem contagem */ });
+    centralNoFormulario().then(setNoFormulario).catch(() => setNoFormulario(false));
   }, []);
   useEffect(() => { carregar(); }, [carregar]);
 
@@ -233,13 +308,18 @@ export function CentralNoPainel({ inscricoes }: { inscricoes: Inscricao[] }) {
     try { await navigator.clipboard.writeText(LINK_DA_CENTRAL); toast.success('Link da Central copiado.'); }
     catch { toast.message(LINK_DA_CENTRAL); }
   }
+  async function alternarFormulario(ligar: boolean) {
+    setNoFormulario(ligar);
+    try { await definirCentralNoFormulario(ligar); toast.success(ligar ? 'O botão da Central apareceu no formulário.' : 'O botão da Central saiu do formulário.'); }
+    catch { setNoFormulario(!ligar); toast.error('Não deu para mudar agora. Tente de novo.'); }
+  }
   async function cancelarAviso(a: AvisoDoPainel) {
     try { await apagarAviso(a.id); setAvisos((l) => l.filter((x) => x.id !== a.id)); toast.success('Aviso cancelado.'); }
     catch { toast.error('Não deu para cancelar. Tente de novo.'); }
   }
 
   const numeros: Array<[string, string, string]> = [
-    ['avisos', 'Com avisos ligados', String(comAvisos.size)],
+    ['avisos', gestoresComAvisos ? `Com avisos ligados (+${gestoresComAvisos} ${gestoresComAvisos === 1 ? 'gestor' : 'gestores'})` : 'Com avisos ligados', String(comAvisos.size)],
     ['treinamento', `Presença · treinamento ${DIA_DO_TREINAMENTO.slice(8)}/${DIA_DO_TREINAMENTO.slice(5, 7)}`, `${presentes('treinamento')} de ${inscricoes.length}`],
     ['evento', `Presença · Natal Feliz ${DIA_DO_NATAL_FELIZ.slice(8)}/${DIA_DO_NATAL_FELIZ.slice(5, 7)}`, `${presentes('evento')} de ${inscricoes.length}`],
   ];
@@ -249,14 +329,22 @@ export function CentralNoPainel({ inscricoes }: { inscricoes: Inscricao[] }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="text-sm">
           <b className="block text-[15px] font-semibold">Central do Voluntário</b>
-          <span className="text-muted-foreground">Cada voluntário entra com o WhatsApp da inscrição: credencial, cronograma, local e avisos.</span>
+          <span className="text-muted-foreground">Cada voluntário entra com o WhatsApp da inscrição: cronograma, local e avisos.</span>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="ghost" size="sm" onClick={copiarLink}>Copiar link da Central</Button>
           <Button variant="outline" size="sm" asChild><a href={CAMINHO_DA_CENTRAL} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /> Abrir</a></Button>
-          <Button size="sm" asChild><Link to={CAMINHO_DA_PRESENCA}><ScanLine className="h-4 w-4" /> Presença com leitor</Link></Button>
+          <Button size="sm" asChild><Link to={CAMINHO_DA_PRESENCA}><ScanLine className="h-4 w-4" /> Registrar presença</Link></Button>
         </div>
       </div>
+
+      <label className="flex items-center justify-between gap-4 rounded-[14px] bg-muted/60 px-3.5 py-3 text-sm" data-testid="central-no-formulario">
+        <span>
+          <b className="block text-[14px] font-semibold">Botão da Central no formulário</b>
+          <span className="text-muted-foreground">{noFormulario ? 'Aparece depois da inscrição e no começo do formulário.' : 'Escondido. Ligue no dia do treinamento (28/11), para a galera ir entrando.'}</span>
+        </span>
+        <Switch checked={!!noFormulario} disabled={noFormulario === null} onCheckedChange={alternarFormulario} aria-label="Mostrar o botão da Central no formulário" />
+      </label>
 
       <div className="grid gap-2 sm:grid-cols-3">
         {numeros.map(([k, r, v]) => (
@@ -323,7 +411,9 @@ export function CentralNoPainel({ inscricoes }: { inscricoes: Inscricao[] }) {
       )}
 
       {editando && <FormDoItem item={editando} aoFechar={() => setEditando(null)} aoSalvar={carregar} />}
-      {novoAviso && <FormDoAviso inscricoes={inscricoes} comAvisos={comAvisos} aoFechar={() => setNovoAviso(false)} aoEnviar={carregar} />}
+      <div className="mt-2 border-t border-border pt-3"><GestoresDaCentral /></div>
+
+      {novoAviso && <FormDoAviso inscricoes={inscricoes} comAvisos={comAvisos} gestoresComAvisos={gestoresComAvisos} aoFechar={() => setNovoAviso(false)} aoEnviar={carregar} />}
     </section>
   );
 }

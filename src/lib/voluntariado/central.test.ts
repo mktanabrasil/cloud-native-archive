@@ -4,7 +4,7 @@ vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
 
 const {
   agoraEProximo, agoraEmBrasilia, caminho, caminhoDaAba, diaCurto, diaQueAbre, diasDoCronograma, eParaMim, eSoDoMeuGrupo, horaCurta, iniciais,
-  itensDoDia, linkDaCredencial, momentoDoDia, posicaoDoAgora, protocoloLido, suporteDeAvisos, whatsappMascarado,
+  eGestor, itensDoDia, momentoDoDia, posicaoDoAgora, protocoloLido, suporteDeAvisos, whatsappMascarado,
 } = await import('./central');
 const { BOAS_VINDAS, emLotes, notificacaoDoAviso, resultadoDoEnvio, whatsappDoFormulario } = await import('../../../supabase/functions/voluntariado-avisos/regras');
 
@@ -23,10 +23,18 @@ describe('para quem é (a mesma regra da função e do banco)', () => {
     expect(eParaMim(I({ horarios: ['manha'], areas: ['cozinha'] }), V)).toBe(true);
   });
 
-  it('o selo "Sua área" só nos itens de um grupo, não nos gerais', () => {
+  it('o selo "Para você" só nos itens de um grupo, não nos gerais', () => {
     expect(eSoDoMeuGrupo(I({}), V)).toBe(false);
     expect(eSoDoMeuGrupo(I({ areas: ['cozinha'] }), V)).toBe(true);
     expect(eSoDoMeuGrupo(I({ areas: ['inflaveis'] }), V)).toBe(false);
+  });
+
+  it('o gestor (sem inscrição) vê tudo, e nada ganha o selo (12/11/2026)', () => {
+    const G = { ...V, protocolo: null, vinculo: 'gestao', horario: null, opcao1: null, opcao2: null } as const;
+    expect(eGestor(G)).toBe(true);
+    expect(eGestor(V)).toBe(false);
+    expect(eParaMim(I({ areas: ['inflaveis'], horarios: ['tarde'] }), G)).toBe(true);
+    expect(eSoDoMeuGrupo(I({ areas: ['cozinha'] }), G)).toBe(false);
   });
 });
 
@@ -91,7 +99,7 @@ describe('textos', () => {
     expect(whatsappMascarado('1933334444')).toBe('(19) ••••-4444');
     expect(iniciais('Maria Souza Lima')).toBe('ML');
     expect(caminhoDaAba('inicio')).toBe('/voluntariado/natalfeliz26/central');
-    expect(caminhoDaAba('credencial')).toBe('/voluntariado/natalfeliz26/central/credencial');
+    expect(caminhoDaAba('avisos')).toBe('/voluntariado/natalfeliz26/central/avisos');
   });
 
   it('agora em Brasília, mesmo com o relógio em outro fuso', () => {
@@ -100,13 +108,9 @@ describe('textos', () => {
   });
 });
 
-describe('credencial e presença', () => {
-  it('o QR leva à tela de presença com o protocolo', () => {
-    expect(linkDaCredencial('VL-7KQ2M')).toBe('https://app.anabrasil.org/voluntariado/natalfeliz26/presenca?p=VL-7KQ2M');
-  });
-
-  it('o leitor: o link do QR, o código, minúsculas e sem hífen; o resto não', () => {
-    expect(protocoloLido(linkDaCredencial('VL-7KQ2M'))).toBe('VL-7KQ2M');
+describe('presença', () => {
+  it('o protocolo digitado: o código, minúsculas, sem hífen e o link antigo (?p=); o resto não', () => {
+    expect(protocoloLido('https://app.anabrasil.org/voluntariado/natalfeliz26/presenca?p=VL-7KQ2M')).toBe('VL-7KQ2M');
     expect(protocoloLido('vl-7kq2m')).toBe('VL-7KQ2M');
     expect(protocoloLido(' VL7KQ2M ')).toBe('VL-7KQ2M');
     expect(protocoloLido('Maria')).toBeNull();

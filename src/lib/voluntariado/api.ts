@@ -60,6 +60,17 @@ export async function inscrever(d: NovaInscricao): Promise<string> {
   return String(data);
 }
 
+/**
+ * O botão da Central do Voluntário aparece no formulário? (12/11/2026) Fica
+ * escondido até a comunicação ligar no painel, no dia do treinamento. Sem
+ * resposta, fica escondido.
+ */
+export async function centralNoFormulario(): Promise<boolean> {
+  const { data, error } = await supabase.rpc('central_no_formulario');
+  if (error) return false;
+  return data === true;
+}
+
 /** Quais áreas já bateram a meta (o formulário só sabe isso, sem números). */
 export async function areasLotadas(): Promise<string[]> {
   const { data, error } = await supabase.rpc('areas_lotadas_do_voluntariado');

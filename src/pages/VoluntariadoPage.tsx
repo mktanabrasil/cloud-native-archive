@@ -5,7 +5,7 @@ import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import InstitutionalFooterBar from '@/components/news/InstitutionalFooterBar';
 import { findNewsUnit } from '@/lib/news/units';
 import { ROTULO_DA_AREA } from '@/lib/pizza/modelo';
-import { areasLotadas, enviarParaAPlanilha, inscrever } from '@/lib/voluntariado/api';
+import { areasLotadas, centralNoFormulario, enviarParaAPlanilha, inscrever } from '@/lib/voluntariado/api';
 import { salvarComprovante } from '@/lib/voluntariado/comprovante';
 import { CAMINHO_DA_CENTRAL, guardarNumero } from '@/lib/voluntariado/central';
 import {
@@ -91,6 +91,9 @@ export default function VoluntariadoPage() {
   const [feito, setFeito] = useState<{ protocolo: string; linhas: Array<[string, string]> } | null>(null);
   const topo = useRef<HTMLDivElement>(null);
   const fechado = encerrado();
+  // O botão da Central fica escondido até a comunicação ligar no painel (12/11/2026).
+  const [comCentral, setComCentral] = useState(false);
+  useEffect(() => { centralNoFormulario().then(setComCentral).catch(() => setComCentral(false)); }, []);
 
   const buscarLotadas = () => areasLotadas().then(setLotadas).catch(() => { /* sem a lista, o banco confere ao gravar */ });
   useEffect(() => { buscarLotadas(); }, []);
@@ -167,7 +170,7 @@ export default function VoluntariadoPage() {
     <p role="alert" className="rounded-xl px-3 py-2.5 text-sm font-semibold" style={{ background: '#FDE7E2', color: COR.vermelhoEsc }}>
       {erro}
       {/* Quem já se inscreveu acha a credencial na Central (13/11/2026). */}
-      {/já está inscrito/.test(erro) && <> <Link to={CAMINHO_DA_CENTRAL} className="underline underline-offset-2" data-testid="erro-para-a-central">Abrir a Central do Voluntário</Link></>}
+      {comCentral && /já está inscrito/.test(erro) && <> <Link to={CAMINHO_DA_CENTRAL} className="underline underline-offset-2" data-testid="erro-para-a-central">Abrir a Central do Voluntário</Link></>}
     </p>
   ) : null);
   /** A entrada da Central: o número da inscrição já fica guardado, e a Central abre direto. */
@@ -183,7 +186,7 @@ export default function VoluntariadoPage() {
   /** Para quem volta ao link depois de se inscrever. */
   const LinkDaCentral = () => (
     <Link to={CAMINHO_DA_CENTRAL} className="flex items-center justify-between gap-3 rounded-2xl border-[1.5px] bg-white px-4 py-3 text-[14px] font-semibold" style={{ borderColor: COR.linha, color: COR.verde }} data-testid="link-da-central">
-      <span><span className="block">Já se inscreveu?</span><span className="block text-[12.5px] font-normal" style={{ color: COR.mut }}>Credencial, cronograma e avisos na Central do Voluntário</span></span>
+      <span><span className="block">Já se inscreveu?</span><span className="block text-[12.5px] font-normal" style={{ color: COR.mut }}>Cronograma, local e avisos na Central do Voluntário</span></span>
       <ChevronRight className="h-5 w-5 shrink-0" />
     </Link>
   );
@@ -225,7 +228,7 @@ export default function VoluntariadoPage() {
                 <div key={r} className="flex justify-between gap-3"><dt style={{ color: COR.mut }}>{r}</dt><dd className="text-right font-semibold">{v}</dd></div>
               ))}
             </dl>
-            <CartaoDaCentral titulo="Sua Central do Voluntário" texto="A credencial, o cronograma, o local e os avisos até o Natal Feliz. No treinamento e no dia do evento, é por ela que você entra." />
+            {comCentral && <CartaoDaCentral titulo="Sua Central do Voluntário" texto="O cronograma, o local e os avisos até o Natal Feliz, direto no seu celular." />}
             {/* O grupo do WhatsApp (23/10/2026): a entrada é obrigatória; o formulário é aberto no celular, então é um botão. */}
             <div className="flex flex-col gap-2.5 rounded-2xl border-2 p-4 text-[13.5px] leading-relaxed" style={{ borderColor: '#25D366', background: '#E7F8EE', color: '#14532D' }} data-testid="grupo">
               <b className="text-[14.5px]">Grupo dos voluntários · entrada obrigatória</b>
@@ -249,7 +252,7 @@ export default function VoluntariadoPage() {
           <div className="flex flex-col gap-3 px-5 py-10 text-center">
             <h1 className="text-xl font-bold">As inscrições foram encerradas em {ULTIMO_DIA}.</h1>
             <p style={{ color: COR.mut }}>Obrigado a todos que se ofereceram. Nos vemos no Natal Feliz!</p>
-            <div className="mt-3 text-left"><LinkDaCentral /></div>
+            {comCentral && <div className="mt-3 text-left"><LinkDaCentral /></div>}
           </div>
         ) : etapa === 'sem_treino' ? (
           <div className="flex flex-col items-center gap-3 px-5 py-10 text-center" data-testid="sem-treino">
@@ -261,7 +264,7 @@ export default function VoluntariadoPage() {
           </div>
         ) : etapa === 'treino' ? (
           <div className="flex flex-col gap-6 px-5 py-6">
-            <LinkDaCentral />
+            {comCentral && <LinkDaCentral />}
             {/* O convite (21/10/2026): para muita gente a ida é voluntária, então o formulário convida. */}
             <div className="flex flex-col gap-2.5 rounded-[20px] p-4 text-[13.5px] leading-relaxed" style={{ background: COR.verdeClaro, color: COR.verde }} data-testid="sobre-o-evento">
               <h2 className="text-[20px] font-bold leading-tight">{SOBRE_O_EVENTO.titulo}</h2>
