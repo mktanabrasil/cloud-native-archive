@@ -50,6 +50,8 @@ import { PizzaAcompanharPage, PizzaDashboardPage } from "./pages/PizzaDashboardP
 import PizzaRetiradaPage from "./pages/PizzaRetiradaPage";
 import VoluntariadoPage from "./pages/VoluntariadoPage";
 import VoluntariadoAoVivoPage, { AoVivoNoEnderecoNovo } from "./pages/VoluntariadoAoVivoPage";
+import VoluntariadoCentralPage from "./pages/VoluntariadoCentralPage";
+import VoluntariadoPresencaPage from "./pages/VoluntariadoPresencaPage";
 import { ROTAS_DO_CANDIDATO, ehCandidato } from "@/lib/vagas/conta";
 import NotFound from "./pages/NotFound";
 import EmailPreview from "./pages/EmailPreview";
@@ -167,6 +169,11 @@ const App = () => (
                 {/* O painel ao vivo da gestão (21/10/2026): link com código secreto. */}
                 <Route path="/voluntariado/natalfeliz26/acompanhar/:codigo" element={<VoluntariadoAoVivoPage />} />
                 <Route path="/voluntariado/acompanhar/:codigo" element={<AoVivoNoEnderecoNovo />} />
+                {/* A Central do Voluntário (13/11/2026): entra com o WhatsApp da inscrição. */}
+                <Route path="/voluntariado/natalfeliz26/central" element={<VoluntariadoCentralPage />} />
+                <Route path="/voluntariado/natalfeliz26/central/:aba" element={<VoluntariadoCentralPage />} />
+                {/* A presença na entrada (13/11/2026): leitor da credencial, só a comunicação. */}
+                <Route path="/voluntariado/natalfeliz26/presenca" element={<VoluntariadoPresencaPage />} />
                 <Route path="/enquete/:slug" element={<EnquetePublicaPage />} />
                 <Route path="/enquete/:slug/resultado" element={<EnqueteResultadoPage />} />
                 {/* Trabalhe Conosco (fase 1, 25/09/2026): vitrine pública das vagas, fora da barra do app. */}

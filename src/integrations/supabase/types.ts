@@ -1426,6 +1426,108 @@ export type Database = {
         }
         Relationships: []
       }
+      voluntariado_cronograma: {
+        Row: {
+          id: string
+          dia: string
+          inicio: string
+          fim: string | null
+          titulo: string
+          tipo: string
+          local: string | null
+          detalhe: string | null
+          areas: string[]
+          horarios: string[]
+          avisar_min: number | null
+          aviso_texto: string | null
+          criado_em: string
+          atualizado_em: string
+        }
+        Insert: {
+          id?: string
+          dia: string
+          inicio: string
+          fim?: string | null
+          titulo: string
+          tipo?: string
+          local?: string | null
+          detalhe?: string | null
+          areas?: string[]
+          horarios?: string[]
+          avisar_min?: number | null
+          aviso_texto?: string | null
+        }
+        Update: {
+          dia?: string
+          inicio?: string
+          fim?: string | null
+          titulo?: string
+          tipo?: string
+          local?: string | null
+          detalhe?: string | null
+          areas?: string[]
+          horarios?: string[]
+          avisar_min?: number | null
+          aviso_texto?: string | null
+        }
+        Relationships: []
+      }
+      voluntariado_avisos: {
+        Row: {
+          id: string
+          titulo: string
+          texto: string
+          enviar_em: string
+          areas: string[]
+          horarios: string[]
+          cronograma_id: string | null
+          enviado_em: string | null
+          pulado: boolean
+          entregues: number
+          falhas: number
+          criado_em: string
+        }
+        Insert: {
+          id?: string
+          titulo: string
+          texto: string
+          enviar_em?: string
+          areas?: string[]
+          horarios?: string[]
+        }
+        Update: {
+          titulo?: string
+          texto?: string
+          enviar_em?: string
+          areas?: string[]
+          horarios?: string[]
+        }
+        Relationships: []
+      }
+      voluntariado_dispositivos: {
+        Row: {
+          id: string
+          voluntario_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          criado_em: string
+          ultimo_envio: string | null
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
+      voluntariado_presencas: {
+        Row: {
+          voluntario_id: string
+          momento: string
+          registrado_em: string
+        }
+        Insert: never
+        Update: never
+        Relationships: []
+      }
       voluntariado_metas: {
         Row: {
           area: string
@@ -1597,6 +1699,26 @@ export type Database = {
       areas_lotadas_do_voluntariado: {
         Args: Record<PropertyKey, never>
         Returns: string[]
+      }
+      central_do_voluntario: {
+        Args: { p_whatsapp: string }
+        Returns: Json
+      }
+      ativar_avisos_voluntario: {
+        Args: { p_whatsapp: string; p_endpoint: string; p_p256dh: string; p_auth: string }
+        Returns: undefined
+      }
+      desativar_avisos_voluntario: {
+        Args: { p_whatsapp: string; p_endpoint: string }
+        Returns: undefined
+      }
+      registrar_presenca_voluntario: {
+        Args: { p_protocolo: string; p_momento: string }
+        Returns: Json
+      }
+      desfazer_presenca_voluntario: {
+        Args: { p_protocolo: string; p_momento: string }
+        Returns: undefined
       }
       definir_meta_da_area: {
         Args: { p_area: string; p_meta: number | null }

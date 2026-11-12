@@ -13,6 +13,7 @@ import { csvDasInscricoes, nomeDaPlanilha, whatsappLegivel } from '@/lib/volunta
 import { PlanilhaDoGoogle } from './PlanilhaDoGoogle';
 import { AoVivoDaGestao } from './AoVivoDaGestao';
 import { MetasPorArea } from './MetasPorArea';
+import { CentralNoPainel } from './CentralNoPainel';
 
 /**
  * O painel do voluntariado do Natal Feliz (mockup aprovado em 20/10/2026):
@@ -109,6 +110,8 @@ export function PainelDoVoluntariado() {
 
       <PlanilhaDoGoogle inscritos={(lista ?? []).length} />
       <AoVivoDaGestao />
+      {/* A Central do Voluntário (13/11/2026): link, presença, cronograma e avisos. */}
+      <CentralNoPainel inscricoes={lista ?? []} />
       {/* As metas valem para todas as inscrições, então leem a lista inteira (sem o filtro de unidade). */}
       <MetasPorArea metas={metas} primeiras={Object.fromEntries(AREAS_DE_AJUDA.map((a) => [a.chave, (lista ?? []).filter((i) => i.opcao1 === a.chave).length]))} onSalvas={setMetas} />
 
