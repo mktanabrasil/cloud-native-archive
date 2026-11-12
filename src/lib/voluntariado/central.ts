@@ -145,9 +145,13 @@ export const eGestor = (v: Pick<VoluntarioNaCentral, 'vinculo'>) => v.vinculo ==
 export const eParaMim = (item: Pick<ItemDoCronograma, 'areas' | 'horarios'>, v: Pick<VoluntarioNaCentral, 'opcao1' | 'horario' | 'vinculo'>) =>
   eGestor(v) || ePara(item.areas, item.horarios, v.opcao1, v.horario);
 
-/** Item só da área ou do turno da pessoa (os gerais não ganham o selo "Sua área"). */
+/**
+ * O selo "Para você": só nos itens da área da pessoa. O turno filtra o que
+ * ela vê em "Minha área", mas não dá selo (12/11/2026: com o cronograma
+ * real, quase todo item tem turno, e o selo aparecia nos gerais).
+ */
 export const eSoDoMeuGrupo = (item: Pick<ItemDoCronograma, 'areas' | 'horarios'>, v: Pick<VoluntarioNaCentral, 'opcao1' | 'horario' | 'vinculo'>) =>
-  !eGestor(v) && (item.areas.length > 0 || item.horarios.length > 0) && eParaMim(item, v);
+  !eGestor(v) && item.areas.length > 0 && eParaMim(item, v);
 
 export const diasDoCronograma = (c: ItemDoCronograma[]) => [...new Set(c.map((i) => i.dia))].sort();
 

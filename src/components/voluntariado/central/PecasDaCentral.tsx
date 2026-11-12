@@ -152,6 +152,12 @@ export function Secao({ children }: { children: ReactNode }) {
 
 // --- Os avisos -------------------------------------------------------------------------------
 
+/**
+ * As mensagens da Central saem no topo: embaixo, cobriam a barra (pedido de
+ * 12/11/2026, com print do iPhone).
+ */
+const NO_TOPO = { position: 'top-center' as const };
+
 /** Ligar os avisos neste celular, com o caminho do iPhone (Tela de Início) e o de quem bloqueou. */
 export function CartaoDosAvisos({ whatsapp, compacto = false }: { whatsapp: string; compacto?: boolean }) {
   const [suporte] = useState<SuporteDeAvisos>(() => { try { return suporteDeAvisos(); } catch { return 'sem_suporte'; } });
@@ -165,16 +171,16 @@ export function CartaoDosAvisos({ whatsapp, compacto = false }: { whatsapp: stri
     setOcupado(true);
     try {
       const r = await ligarAvisos(whatsapp);
-      if (r === 'negado') toast.error('Os avisos foram bloqueados. Para ligar, libere as notificações deste site nas configurações do navegador.');
-      else { setLigado(true); toast.success('Avisos ligados neste celular.'); }
+      if (r === 'negado') toast.error('Os avisos foram bloqueados. Para ligar, libere as notificações deste site nas configurações do navegador.', NO_TOPO);
+      else { setLigado(true); toast.success('Avisos ligados neste celular.', NO_TOPO); }
     } catch {
-      toast.error('Não deu para ligar os avisos. Confira a internet e tente de novo.');
+      toast.error('Não deu para ligar os avisos. Confira a internet e tente de novo.', NO_TOPO);
     } finally { setOcupado(false); }
   }
   async function desligar() {
     setOcupado(true);
-    try { await desligarAvisos(whatsapp); setLigado(false); toast.success('Avisos desligados neste celular.'); }
-    catch { toast.error('Não deu para desligar agora. Tente de novo.'); }
+    try { await desligarAvisos(whatsapp); setLigado(false); toast.success('Avisos desligados neste celular.', NO_TOPO); }
+    catch { toast.error('Não deu para desligar agora. Tente de novo.', NO_TOPO); }
     finally { setOcupado(false); }
   }
 
