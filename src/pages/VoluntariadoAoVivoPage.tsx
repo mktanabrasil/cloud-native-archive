@@ -3,7 +3,7 @@ import { Navigate, useParams } from 'react-router-dom';
 import { AlertTriangle, Check, Download, Lock } from 'lucide-react';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import { ATUALIZA_A_CADA_MS, calcularPainel, corDaUnidade, grupoDe, haQuanto, lerAcompanhamento, type Acompanhamento, type Painel } from '@/lib/voluntariado/aoVivo';
-import { caminhoDoAoVivo, parceirosPorExtenso, TREINAMENTO } from '@/lib/voluntariado/modelo';
+import { caminhoDoAoVivo, parceirosPorExtenso, TREINAMENTO, ULTIMO_DIA } from '@/lib/voluntariado/modelo';
 
 /**
  * /voluntariado/natalfeliz26/acompanhar/:codigo — o painel ao vivo da gestão.
@@ -171,7 +171,7 @@ export default function VoluntariadoAoVivoPage() {
           <img src="/voluntariado-natal-feliz-capa.webp" alt="Natal Feliz, ANA Brasil: crianças sorrindo com presentes; apoio NZT, JNI e INCC" width={2000} height={1125} className="block aspect-[2000/1125] w-full object-cover md:h-[124px] md:w-auto" data-testid="capa" />
           <div className="px-5 md:px-0">
             <h1 className="text-2xl font-extrabold leading-tight">Dia do Voluntariado · Natal Feliz 2026</h1>
-            <small className="block text-[13px] opacity-85">08/12 no {TREINAMENTO.local} · em parceria com {parceirosPorExtenso()} · inscrições até 15/11</small>
+            <small className="block text-[13px] opacity-85">08/12 no {TREINAMENTO.local} · em parceria com {parceirosPorExtenso()} · inscrições até {ULTIMO_DIA}</small>
           </div>
           <div className="flex flex-wrap items-center gap-2 px-5 md:flex-col md:items-end md:pl-0 md:pr-5">
             <span className="flex items-center gap-2 rounded-full bg-black/25 px-3 py-1 text-[12.5px]" data-testid="ao-vivo">
@@ -198,7 +198,7 @@ export default function VoluntariadoAoVivoPage() {
               <Numero rotulo="Áreas que ainda precisam de gente" testId="kpi-Precisam" sub={p.precisam.length ? p.precisam.map((x) => x.rotulo).join(', ') : p.vagas.total ? 'todas as metas batidas' : 'sem metas definidas'}>
                 {p.precisam.length}<small className="text-xl font-semibold text-muted-foreground"> de {p.porArea.filter((a) => a.meta).length} com meta</small>
               </Numero>
-              <Numero rotulo="Faltam para encerrar" testId="kpi-Faltam" sub={`inscrições até 15/11 · média de ${p.mediaPorDia.toLocaleString('pt-BR')} por dia`}>
+              <Numero rotulo="Faltam para encerrar" testId="kpi-Faltam" sub={`inscrições até ${ULTIMO_DIA} · média de ${p.mediaPorDia.toLocaleString('pt-BR')} por dia`}>
                 {p.faltamDias ? <>{p.faltamDias}<small className="text-xl font-semibold text-muted-foreground"> {p.faltamDias === 1 ? 'dia' : 'dias'}</small></> : 'Encerrado'}
               </Numero>
             </div>

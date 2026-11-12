@@ -84,7 +84,7 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
     // /voluntariado/natalfeliz26 e o primeiro link divulgado, /voluntariado (21/10/2026).
     regra: 'RewriteRule ^voluntariado(/natalfeliz26)?/?$ /voluntariado.html [L]',
     titulo: 'Natal Feliz · Dia do Voluntariado',
-    descricao: 'Neste Natal, seja o presente de alguém. Inscreva-se para ajudar no dia 08/12: inscrições até 15/11.',
+    descricao: 'Neste Natal, seja o presente de alguém. Inscreva-se para ajudar no dia 08/12: inscrições até 18/11.',
     // A arte com os apoiadores NZT, JNI e INCC (09/11/2026). Ao trocar
     // a imagem, usar sempre um nome novo de arquivo: o WhatsApp guarda a prévia
     // pelo endereço.
