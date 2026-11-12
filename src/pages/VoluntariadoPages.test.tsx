@@ -71,11 +71,13 @@ describe('regras', () => {
   });
 
   it('só as áreas do dia do evento; cada vínculo com as suas (23/10/2026)', () => {
-    expect(AREAS_DE_AJUDA).toHaveLength(10); // as 3 tiradas continuam conhecidas, para quem já as escolheu
+    expect(AREAS_DE_AJUDA).toHaveLength(11); // as 3 tiradas continuam conhecidas, para quem já as escolheu; CCII entrou em 12/11/2026
     expect(AREAS_DE_AJUDA.every((a) => a.descricao.length > 40)).toBe(true);
-    expect(AREAS_POR_VINCULO.funcionario).toEqual(['cozinha', 'inflaveis', 'estacoes']);
+    expect(AREAS_POR_VINCULO.funcionario).toEqual(['cozinha', 'inflaveis', 'estacoes', 'ccii']);
     expect(AREAS_POR_VINCULO.alcance).toEqual(['cozinha', 'louvor_kids', 'som', 'recreacao_kids', 'inflaveis', 'presentes_kids']);
-    expect(AREAS_POR_VINCULO.comunidade).toEqual(['cozinha', 'inflaveis', 'estacoes']);
+    expect(AREAS_POR_VINCULO.comunidade).toEqual(['cozinha', 'inflaveis', 'estacoes', 'ccii']);
+    // CCII (12/11/2026): funcionários e voluntários de fora; a INCC não.
+    expect(AREAS_POR_VINCULO.alcance).not.toContain('ccii');
     for (const k of ['montagem', 'decoracao', 'limpeza_pre'] as const) {
       expect(Object.values(AREAS_POR_VINCULO).flat()).not.toContain(k);
     }
@@ -88,7 +90,7 @@ describe('regras', () => {
 
   it('a lista de áreas da função do banco é a mesma do formulário', async () => {
     const { readFileSync } = await import('node:fs');
-    const sql = readFileSync('supabase/migrations/20261023210000_voluntariado_dia_do_evento.sql', 'utf8');
+    const sql = readFileSync('supabase/migrations/20261112120000_voluntariado_como_soube_e_ccii.sql', 'utf8');
     const lista = (v: string) => sql.match(new RegExp(`WHEN '${v}' +THEN ARRAY\\[([^\\]]+)\\]`))![1].match(/'([a-z_]+)'/g)!.map((s) => s.slice(1, -1));
     for (const v of ['funcionario', 'alcance', 'comunidade'] as const) expect(lista(v), v).toEqual([...AREAS_POR_VINCULO[v]]);
   });
@@ -137,11 +139,17 @@ describe('regras', () => {
     expect(problemaDaEtapa2({ ...ok, vinculo: 'alcance', unidade: null })).toBeNull();
     expect(problemaDaEtapa2({ ...ok, vinculo: 'comunidade', unidade: null })).toMatch(/te indicou/);
     expect(problemaDaEtapa2({ ...ok, vinculo: 'comunidade', unidade: null, indicado: true })).toMatch(/nome de quem te indicou/);
+    // Não foi indicado: conta como ficou sabendo, obrigatório (12/11/2026).
+    expect(problemaDaEtapa2({ ...ok, vinculo: 'comunidade', unidade: null, indicado: false })).toMatch(/como você ficou sabendo/);
+    expect(problemaDaEtapa2({ ...ok, vinculo: 'comunidade', unidade: null, indicado: false, comoSoube: ' x ' })).toMatch(/como você ficou sabendo/);
+    const naoIndicado = { ...ok, vinculo: 'comunidade' as const, unidade: null, indicado: false, comoSoube: 'pelo Instagram' };
+    // Quem foi indicado não precisa contar.
+    expect(problemaDaEtapa2({ ...ok, vinculo: 'comunidade', unidade: null, indicado: true, indicadoPor: 'Carla', temIgreja: false })).toBeNull();
     // A igreja é obrigatória para quem é de fora (23/10/2026).
-    expect(problemaDaEtapa2({ ...ok, vinculo: 'comunidade', unidade: null, indicado: false })).toMatch(/faz parte de alguma igreja/);
-    expect(problemaDaEtapa2({ ...ok, vinculo: 'comunidade', unidade: null, indicado: false, temIgreja: true, igreja: '' })).toMatch(/nome da sua igreja/);
-    expect(problemaDaEtapa2({ ...ok, vinculo: 'comunidade', unidade: null, indicado: false, temIgreja: false })).toBeNull();
-    expect(problemaDaEtapa2({ ...ok, vinculo: 'comunidade', unidade: null, indicado: false, temIgreja: true, igreja: 'Igreja Batista' })).toBeNull();
+    expect(problemaDaEtapa2(naoIndicado)).toMatch(/faz parte de alguma igreja/);
+    expect(problemaDaEtapa2({ ...naoIndicado, temIgreja: true, igreja: '' })).toMatch(/nome da sua igreja/);
+    expect(problemaDaEtapa2({ ...naoIndicado, temIgreja: false })).toBeNull();
+    expect(problemaDaEtapa2({ ...naoIndicado, temIgreja: true, igreja: 'Igreja Batista' })).toBeNull();
   });
 
   it('a planilha tem as colunas novas, com o vínculo e o horário pelo nome', () => {
@@ -149,6 +157,19 @@ describe('regras', () => {
     expect(csv[0]).toBe('Protocolo;Quando;Nome;WhatsApp;Vínculo;Unidade;Indicado por;Igreja;Horário;1ª opção;2ª opção');
     expect(csv[1]).toMatch(/^VL-7K2Q9;.*;Leonardo Garbo Rodrigues;\(19\) 99355-8242;Funcionário\(a\) ANA;Grupo de Oração Esperança;;;Manhã;Cozinha \/ Servimento;Decoração$/);
     expect(csv[2]).toMatch(/;Voluntário\(a\);;Carla;Igreja Batista;Pós-evento;Cozinha \/ Servimento;$/);
+  });
+
+  it('"Indicado por" e "Igreja": o Não aparece escrito, com como ficou sabendo (12/11/2026)', () => {
+    const csv = csvDasInscricoes([
+      I({ protocolo: 'VL-AAAAA', vinculo: 'comunidade', unidade_id: null, unidade_nome: null, area: null, indicado_por: null, igreja: null, como_soube: 'pelo Instagram', opcao2: null }) as never,
+      I({ protocolo: 'VL-BBBBB', vinculo: 'comunidade', unidade_id: null, unidade_nome: null, area: null, indicado_por: null, igreja: null, como_soube: null, opcao2: null }) as never,
+      I({ protocolo: 'VL-CCCCC', vinculo: 'alcance', unidade_id: null, unidade_nome: null, area: null, indicado_por: null, igreja: null, opcao1: 'ccii', opcao2: null }) as never,
+    ]).replace('﻿', '').split('\r\n');
+    expect(csv[1]).toMatch(/;Voluntário\(a\);;Não · soube: pelo Instagram;Não;/);
+    // Inscrição de antes de 12/11, de quem respondeu Não às duas: o Não aparece, sem "soube".
+    expect(csv[2]).toMatch(/;Voluntário\(a\);;Não;Não;/);
+    // INCC não responde essas perguntas: vazio.
+    expect(csv[3]).toMatch(/;INCC;;;;Manhã;CCII;$/);
   });
 });
 
@@ -265,6 +286,40 @@ describe('formulário', () => {
     expect(screen.getByTestId('resumo')).toHaveTextContent('Igreja Batista do Bairro');
   });
 
+  it('nenhum dos dois, sem indicação: conta como ficou sabendo, obrigatório (12/11/2026)', async () => {
+    abrir();
+    etapa2();
+    quemSou(/^Nenhum dos dois/);
+    expect(screen.queryByLabelText('Conte como ficou sabendo')).toBeNull();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Não' })[0]);
+    const campo = screen.getByLabelText('Conte como ficou sabendo');
+    // Sem exemplo no campo: "por uma amiga" não diria quem indicou.
+    expect(campo).not.toHaveAttribute('placeholder');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Não' })[1]);
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Conte como você ficou sabendo do voluntariado.');
+    fireEvent.change(campo, { target: { value: ' Vi no Instagram da ANA ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+
+    // A área nova aparece para quem é de fora.
+    fireEvent.click(screen.getByRole('button', { name: /^CCII/ }));
+    expect(screen.getByRole('button', { name: /^CCII/ })).toHaveTextContent('Trabalho com os idosos');
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar inscrição' }));
+    await screen.findByTestId('protocolo');
+    expect(banco.enviados[0]).toMatchObject({ vinculo: 'comunidade', indicadoPor: null, comoSoube: ' Vi no Instagram da ANA ', igreja: null, opcao1: 'ccii' });
+  });
+
+  it('quem foi indicado não vê o campo de como ficou sabendo', () => {
+    abrir();
+    etapa2();
+    quemSou(/^Nenhum dos dois/);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Não' })[0]);
+    expect(screen.getByLabelText('Conte como ficou sabendo')).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Sim' })[0]);
+    expect(screen.queryByLabelText('Conte como ficou sabendo')).toBeNull();
+    expect(screen.getByLabelText('Nome de quem te indicou')).toBeInTheDocument();
+  });
+
   it('INCC: segue direto para as 8 áreas dele', () => {
     abrir();
     etapa2();
@@ -275,6 +330,7 @@ describe('formulário', () => {
     expect(screen.getByText('Áreas para a INCC')).toBeInTheDocument();
     for (const a of ['Louvor Kids', 'Som', 'Recreação Kids', 'Presentes Kids']) expect(screen.getByRole('button', { name: new RegExp(`^${a}`) })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Estações/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^CCII/ })).toBeNull();
   });
 
   it('área lotada: o aviso oferece a 2ª opção, e ela não vira 1ª', async () => {
@@ -329,7 +385,7 @@ describe('painel', () => {
     expect(await screen.findAllByTestId('inscricao')).toHaveLength(2);
     expect(screen.getByTestId('kpi-Inscritos')).toHaveTextContent('2');
     // As 7 do formulário e a Decoração, que alguém já escolheu; com gente: Cozinha e Decoração.
-    expect(screen.getByTestId('kpi-Áreas sem ninguém')).toHaveTextContent('6');
+    expect(screen.getByTestId('kpi-Áreas sem ninguém')).toHaveTextContent('7'); // com a CCII (12/11/2026)
     const decoracao = screen.getAllByTestId('barra-area').find((b) => b.textContent?.startsWith('Decoração'))!;
     expect(decoracao).toHaveTextContent('Decoração1 +1');
     await waitFor(() => expect(screen.getAllByTestId('barra-area').find((b) => b.textContent?.startsWith('Cozinha'))).toHaveTextContent('1/25'));

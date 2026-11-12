@@ -176,7 +176,7 @@ export function PainelDoVoluntariado() {
                 <span className="order-3 self-center"><a href={`https://wa.me/55${i.whatsapp}`} target="_blank" rel="noopener noreferrer" className="font-semibold tabular-nums text-[hsl(var(--sel))] hover:underline">{whatsappLegivel(i.whatsapp)}</a></span>
                 <span className="order-5 col-span-2 lg:order-none lg:col-span-1">
                   {i.unidade_nome ?? rotuloDoVinculo(i.vinculo)}
-                  {(i.indicado_por || i.igreja) && <small className="block text-xs text-[hsl(var(--fraco))]">{[i.indicado_por && `indicado(a) por ${i.indicado_por}`, i.igreja].filter(Boolean).join(' · ')}</small>}
+                  {(i.indicado_por || i.igreja || i.como_soube) && <small className="block text-xs text-[hsl(var(--fraco))]">{[i.indicado_por && `indicado(a) por ${i.indicado_por}`, i.como_soube && `soube: ${i.como_soube}`, i.igreja].filter(Boolean).join(' · ')}</small>}
                 </span>
                 <span className="order-7 text-right text-muted-foreground lg:order-none lg:text-left lg:text-foreground">{rotuloDoHorario(i.horario) || '—'}</span>
                 <span className="order-6 lg:order-none"><span className="text-[hsl(var(--fraco))] lg:hidden">1ª </span>{rotuloDaAjuda(i.opcao1)}</span>

@@ -18,6 +18,8 @@ export interface Inscricao {
   area: 'educacao' | 'social' | null;
   indicado_por: string | null;
   igreja: string | null;
+  /** Quem é de fora e não foi indicado conta como ficou sabendo (12/11/2026). */
+  como_soube: string | null;
   opcao1: AreaDeAjuda;
   opcao2: AreaDeAjuda | null;
   created_at: string;
@@ -31,6 +33,7 @@ export interface NovaInscricao {
   unidadeId: string | null;
   indicadoPor: string | null;
   igreja: string | null;
+  comoSoube: string | null;
   opcao1: AreaDeAjuda;
   opcao2: AreaDeAjuda | null;
 }
@@ -51,6 +54,7 @@ export async function inscrever(d: NovaInscricao): Promise<string> {
     p_area: unidade ? areaDaUnidade(unidade) : undefined,
     p_indicado_por: d.vinculo === 'comunidade' && d.indicadoPor?.trim() ? comMaiusculas(d.indicadoPor, { pessoa: true }) : undefined,
     p_igreja: d.vinculo === 'comunidade' && d.igreja?.trim() ? d.igreja.trim() : undefined,
+    p_como_soube: d.vinculo === 'comunidade' && !d.indicadoPor?.trim() && d.comoSoube?.trim() ? d.comoSoube.trim() : undefined,
   });
   if (error) throw error;
   return String(data);
@@ -65,7 +69,7 @@ export async function areasLotadas(): Promise<string[]> {
 
 export async function listarInscricoes(): Promise<Inscricao[]> {
   const { data, error } = await supabase.from('voluntarios_natal')
-    .select('id, protocolo, nome, whatsapp, vinculo, horario, unidade_id, unidade_nome, area, indicado_por, igreja, opcao1, opcao2, created_at')
+    .select('id, protocolo, nome, whatsapp, vinculo, horario, unidade_id, unidade_nome, area, indicado_por, igreja, como_soube, opcao1, opcao2, created_at')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data ?? []) as Inscricao[];
