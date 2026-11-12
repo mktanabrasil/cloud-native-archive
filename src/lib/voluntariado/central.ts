@@ -12,6 +12,10 @@ import { CAMINHO_DO_FORMULARIO, type AreaDeAjuda, type Horario, type Vinculo } f
  *
  * A regra de "para quem é" (área e turno) é a mesma da função dos avisos e do
  * banco: vem de supabase/functions/voluntariado-avisos/regras.ts.
+ *
+ * 12/11/2026, a pedido dele: o QR da credencial saiu (a presença é pelo nome)
+ * e a aba do meio virou Avisos. Os gestores entram pelo número, sem inscrição:
+ * veem o cronograma inteiro e recebem todos os avisos.
  */
 
 export { ePara, whatsappDoFormulario };
@@ -21,7 +25,7 @@ export const CAMINHO_DA_PRESENCA = `${CAMINHO_DO_FORMULARIO}/presenca`;
 export const ORIGEM_DO_APP = 'https://app.anabrasil.org';
 
 /** As abas da Central (o endereço de cada uma). */
-export const ABAS_DA_CENTRAL = ['inicio', 'cronograma', 'credencial', 'local', 'perfil'] as const;
+export const ABAS_DA_CENTRAL = ['inicio', 'cronograma', 'avisos', 'local', 'perfil'] as const;
 export type AbaDaCentral = (typeof ABAS_DA_CENTRAL)[number];
 export const caminhoDaAba = (aba: AbaDaCentral) => (aba === 'inicio' ? CAMINHO_DA_CENTRAL : `${CAMINHO_DA_CENTRAL}/${aba}`);
 
@@ -37,13 +41,14 @@ export const DIA_DO_NATAL_FELIZ = '2026-12-08';
 export type Momento = 'treinamento' | 'evento';
 
 export interface VoluntarioNaCentral {
-  protocolo: string;
+  /** O gestor não tem inscrição: sem protocolo, área nem turno. */
+  protocolo: string | null;
   nome: string;
-  vinculo: Vinculo;
+  vinculo: Vinculo | 'gestao';
   unidade_nome: string | null;
   igreja: string | null;
   horario: Horario | null;
-  opcao1: AreaDeAjuda;
+  opcao1: AreaDeAjuda | null;
   opcao2: AreaDeAjuda | null;
   inscrito_em: string;
 }
@@ -71,6 +76,7 @@ export interface AvisoEnviado {
 }
 
 export interface DadosDaCentral {
+  perfil: 'voluntario' | 'gestor';
   voluntario: VoluntarioNaCentral;
   presencas: Partial<Record<Momento, string>>;
   cronograma: ItemDoCronograma[];
@@ -133,12 +139,15 @@ export function agoraEmBrasilia(agora: Date = new Date()): { dia: string; hora: 
   return { dia: `${p.year}-${p.month}-${p.day}`, hora: `${p.hour}:${p.minute}` };
 }
 
-export const eParaMim = (item: Pick<ItemDoCronograma, 'areas' | 'horarios'>, v: Pick<VoluntarioNaCentral, 'opcao1' | 'horario'>) =>
-  ePara(item.areas, item.horarios, v.opcao1, v.horario);
+export const eGestor = (v: Pick<VoluntarioNaCentral, 'vinculo'>) => v.vinculo === 'gestao';
+
+/** O gestor vê tudo; o voluntário, o que é da área e do turno dele. */
+export const eParaMim = (item: Pick<ItemDoCronograma, 'areas' | 'horarios'>, v: Pick<VoluntarioNaCentral, 'opcao1' | 'horario' | 'vinculo'>) =>
+  eGestor(v) || ePara(item.areas, item.horarios, v.opcao1, v.horario);
 
 /** Item só da área ou do turno da pessoa (os gerais não ganham o selo "Sua área"). */
-export const eSoDoMeuGrupo = (item: Pick<ItemDoCronograma, 'areas' | 'horarios'>, v: Pick<VoluntarioNaCentral, 'opcao1' | 'horario'>) =>
-  (item.areas.length > 0 || item.horarios.length > 0) && eParaMim(item, v);
+export const eSoDoMeuGrupo = (item: Pick<ItemDoCronograma, 'areas' | 'horarios'>, v: Pick<VoluntarioNaCentral, 'opcao1' | 'horario' | 'vinculo'>) =>
+  !eGestor(v) && (item.areas.length > 0 || item.horarios.length > 0) && eParaMim(item, v);
 
 export const diasDoCronograma = (c: ItemDoCronograma[]) => [...new Set(c.map((i) => i.dia))].sort();
 
@@ -203,9 +212,6 @@ export const iniciais = (nome: string) => {
   return ((p[0]?.[0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
 };
 export const primeiroNome = (nome: string) => nome.trim().split(/\s+/)[0] ?? '';
-
-/** O conteúdo do QR da credencial: o endereço da presença, que a câmera do celular da equipe abre. */
-export const linkDaCredencial = (protocolo: string) => `${ORIGEM_DO_APP}${CAMINHO_DA_PRESENCA}?p=${protocolo}`;
 
 /** O protocolo dentro do que o leitor "digitou" (o link do QR, o código ou o código sem o hífen). */
 export function protocoloLido(texto: string): string | null {
@@ -318,11 +324,41 @@ export async function listarPresencas(): Promise<Presenca[]> {
   return (data ?? []) as unknown as Presenca[];
 }
 
-/** Quem tem os avisos ligados em pelo menos um celular (os ids das inscrições). */
-export async function voluntariosComAvisos(): Promise<Set<string>> {
-  const { data, error } = await supabase.from('voluntariado_dispositivos').select('voluntario_id');
+/** Quem tem os avisos ligados em pelo menos um celular: as inscrições (ids) e quantos gestores. */
+export async function celularesComAvisos(): Promise<{ voluntarios: Set<string>; gestores: number }> {
+  const { data, error } = await supabase.from('voluntariado_dispositivos').select('voluntario_id, gestor_id');
   if (error) throw error;
-  return new Set((data ?? []).map((d) => d.voluntario_id));
+  const l = data ?? [];
+  return {
+    voluntarios: new Set(l.flatMap((d) => (d.voluntario_id ? [d.voluntario_id] : []))),
+    gestores: new Set(l.flatMap((d) => (d.gestor_id ? [d.gestor_id] : []))).size,
+  };
+}
+
+// --- O botão da Central no formulário e os gestores (12/11/2026) -------------------------------
+
+export async function definirCentralNoFormulario(ligado: boolean): Promise<void> {
+  const { error } = await supabase.rpc('definir_central_no_formulario', { p_ligado: ligado });
+  if (error) throw error;
+}
+
+export interface Gestor { id: string; nome: string; whatsapp: string; criado_em: string }
+
+export async function listarGestores(): Promise<Gestor[]> {
+  const { data, error } = await supabase.from('voluntariado_gestores').select('id, nome, whatsapp, criado_em').order('nome');
+  if (error) throw error;
+  return (data ?? []) as Gestor[];
+}
+
+/** Grava só os dígitos, sem o 55. Número repetido: 'ja_cadastrado'. */
+export async function adicionarGestor(nome: string, whatsapp: string): Promise<void> {
+  const { error } = await supabase.from('voluntariado_gestores').insert({ nome: nome.trim().replace(/\s+/g, ' '), whatsapp: whatsappDoFormulario(whatsapp) });
+  if (error) throw new Error(/duplicate|unique/i.test(error.message) ? 'ja_cadastrado' : error.message);
+}
+
+export async function removerGestor(id: string): Promise<void> {
+  const { error } = await supabase.from('voluntariado_gestores').delete().eq('id', id);
+  if (error) throw error;
 }
 
 export type NovoItem = Omit<ItemDoCronograma, 'id'> & { avisar_min: number | null; aviso_texto: string | null };

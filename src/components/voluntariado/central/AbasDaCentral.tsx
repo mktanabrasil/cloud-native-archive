@@ -1,21 +1,24 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, ChevronRight, Clock, ExternalLink, Heart, LogOut, MapPin, QrCode, Users } from 'lucide-react';
+import { Bell, CalendarDays, Clock, ExternalLink, Heart, LogOut, MapPin, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
   COR_DO_TIPO, DIA_DO_NATAL_FELIZ, DIA_DO_TREINAMENTO, PLANTA_DO_LOCAL, ROTULO_DO_TIPO, agoraEProximo, caminho, caminhoDaAba, diaCurto,
-  diaQueAbre, diasDoCronograma, eSoDoMeuGrupo, horaCurta, itensDoDia, linkDaCredencial, posicaoDoAgora, whatsappMascarado,
-  type AbaDaCentral, type DadosDaCentral, type ItemDoCronograma, type Momento,
+  diaQueAbre, diasDoCronograma, eGestor, eSoDoMeuGrupo, horaCurta, itensDoDia, posicaoDoAgora, whatsappMascarado,
+  type AbaDaCentral, type AvisoEnviado, type DadosDaCentral, type ItemDoCronograma, type Momento, type VoluntarioNaCentral,
 } from '@/lib/voluntariado/central';
 import { GRUPO_DO_WHATSAPP, MAPA_DO_TREINAMENTO, TREINAMENTO, dadosDoHorario, rotuloDaAjuda, rotuloDoVinculo } from '@/lib/voluntariado/modelo';
-import { ArteAoFundo, AvatarDaPessoa, CAPA_DO_NATAL, Cartao, CartaoDosAvisos, Pilula, QrDaCredencial, Secao, SelinhoFeito } from './PecasDaCentral';
+import { AvatarDaPessoa, CAPA_DO_NATAL, Cartao, CartaoDosAvisos, Pilula, Secao } from './PecasDaCentral';
 
 /**
  * As cinco abas da Central do Voluntário (13/11/2026): Início, Cronograma,
- * Credencial, Local e Perfil, no desenho do mockup, com as cores do app.
+ * Avisos, Local e Perfil, no desenho do mockup, com as cores do app.
  * O título de cada uma fica no topo escuro (cabecalhoDaAba). Recebem os dados
  * já lidos e a hora de agora (em Brasília), para os testes poderem fixar o dia.
+ *
+ * 12/11/2026, a pedido dele: a aba Credencial (QR) saiu e entrou a de Avisos;
+ * os gestores entram sem inscrição e veem tudo (sem caminho, área nem turno).
  */
 
 type Agora = { dia: string; hora: string };
@@ -24,6 +27,17 @@ const horaDe = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { time
 const dataDe = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' });
 const turnoDe = (h: string | null) => { const t = dadosDoHorario(h); return t ? `${t.rotulo} · ${t.detalhe}` : ''; };
 const textoDoTreinamento = `${TREINAMENTO.local}${TREINAMENTO.horario ? ` · ${TREINAMENTO.horario}` : ' · horário a confirmar'}`;
+/** "Funcionário(a) ANA · GOE", ou "Gestão" para quem entra sem inscrição. */
+const quemE = (v: VoluntarioNaCentral) => (eGestor(v) ? 'Gestão' : `${rotuloDoVinculo(v.vinculo as never)}${v.unidade_nome ? ` · ${v.unidade_nome}` : ''}`);
+
+function SeloDoPerfil({ v }: { v: VoluntarioNaCentral }) {
+  return (
+    <span className={cn('shrink-0 rounded-full px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.06em]',
+      eGestor(v) ? 'bg-[#FBCE00]/30 text-[#6B5200] dark:text-[#FBE38A]' : 'bg-[#81E2CF]/35 text-[#0F5A4C] dark:text-[#9FF0DF]')}>
+      {eGestor(v) ? 'Gestão' : 'Confirmada'}
+    </span>
+  );
+}
 
 /** O título e as pílulas do topo escuro de cada aba. */
 export function cabecalhoDaAba(aba: AbaDaCentral, d: DadosDaCentral): { titulo: string; pilulas?: ReactNode } {
@@ -39,13 +53,14 @@ export function cabecalhoDaAba(aba: AbaDaCentral, d: DadosDaCentral): { titulo: 
       ),
     };
   }
-  return { titulo: { cronograma: 'Cronograma', credencial: 'Credencial', local: 'Local', perfil: 'Perfil' }[aba] };
+  return { titulo: { cronograma: 'Cronograma', avisos: 'Avisos', local: 'Local', perfil: 'Perfil' }[aba] };
 }
 
 // --- Início ---------------------------------------------------------------------------------
 
 export function InicioDaCentral({ d, agora, whatsapp }: { d: DadosDaCentral; agora: Agora; whatsapp: string }) {
   const v = d.voluntario;
+  const gestor = eGestor(v);
   const passos = caminho(d, agora.dia);
   const { acontecendo, proximo } = agoraEProximo(d.cronograma, v, agora);
   const texto: Record<'inscricao' | Momento, { titulo: string; sub: string }> = {
@@ -54,20 +69,21 @@ export function InicioDaCentral({ d, agora, whatsapp }: { d: DadosDaCentral; ago
       ? { titulo: 'Treinamento', sub: `Presença registrada às ${horaDe(d.presencas.treinamento)}` }
       : agora.dia > DIA_DO_TREINAMENTO
         ? { titulo: 'Treinamento', sub: 'Presença não registrada. Fale com a equipe no grupo.' }
-        : { titulo: 'Treinamento obrigatório', sub: `${diaCurto(DIA_DO_TREINAMENTO)} · ${textoDoTreinamento} · mostre a credencial na entrada` },
+        : { titulo: 'Treinamento obrigatório', sub: `${diaCurto(DIA_DO_TREINAMENTO)} · ${textoDoTreinamento}` },
     evento: d.presencas.evento
       ? { titulo: 'Natal Feliz', sub: `Presença registrada às ${horaDe(d.presencas.evento)}` }
       : { titulo: 'Natal Feliz', sub: `${diaCurto(DIA_DO_NATAL_FELIZ)} · ${turnoDe(v.horario) || TREINAMENTO.local}` },
   };
+  const avisos = d.avisos.length;
   return (
     <div className="flex flex-col gap-3">
       <Cartao className="flex items-center gap-3">
         <AvatarDaPessoa nome={v.nome} />
         <div className="min-w-0 flex-1">
           <b className="block truncate text-[15.5px] font-semibold" style={{ fontFamily: 'Poppins, sans-serif' }}>{v.nome}</b>
-          <span className="block truncate text-[12.5px] text-muted-foreground">{rotuloDoVinculo(v.vinculo)}{v.unidade_nome ? ` · ${v.unidade_nome}` : ''}</span>
+          <span className="block truncate text-[12.5px] text-muted-foreground">{gestor ? 'Acompanha o voluntariado' : quemE(v)}</span>
         </div>
-        <span className="shrink-0 rounded-full bg-[#81E2CF]/35 px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#0F5A4C] dark:text-[#9FF0DF]">Confirmada</span>
+        <SeloDoPerfil v={v} />
       </Cartao>
 
       {(acontecendo || proximo) && (
@@ -91,38 +107,62 @@ export function InicioDaCentral({ d, agora, whatsapp }: { d: DadosDaCentral; ago
 
       <CartaoDosAvisos whatsapp={whatsapp} />
 
-      <Secao>Seu caminho</Secao>
-      <Cartao className="flex flex-col" data-testid="caminho">
-        {passos.map((p, n) => (
-          <div key={p.chave} className="relative grid grid-cols-[28px_minmax(0,1fr)] gap-3 pb-4 last:pb-0" data-estado={p.estado} data-testid={`passo-${p.chave}`}>
-            {n < passos.length - 1 && <span className={cn('absolute bottom-0 left-[13px] top-7 w-0.5', p.estado === 'feito' ? 'bg-[#1F2322] dark:bg-[#81E2CF]' : 'bg-border')} aria-hidden />}
-            <span className={cn('grid h-7 w-7 place-items-center rounded-full border-2 text-[12px] font-bold',
-              p.estado === 'feito' ? 'border-[#1F2322] bg-[#1F2322] text-[#81E2CF] dark:border-[#81E2CF] dark:bg-[#81E2CF] dark:text-[#1F2322]'
-                : p.estado === 'agora' ? 'border-[#FBCE00] bg-[#FBCE00]/20 text-foreground' : 'border-border bg-card text-muted-foreground')}>
-              {p.estado === 'feito' ? '✓' : n + 1}
-            </span>
-            <div className="min-w-0 pt-0.5">
-              <b className="flex flex-wrap items-center gap-2 text-[14.5px] font-semibold">
-                {texto[p.chave].titulo}
-                {p.estado === 'agora' && <span className="rounded-full bg-[#FBCE00] px-2 py-px text-[10px] font-bold uppercase tracking-[0.08em] text-[#1F2322]">Próximo</span>}
-              </b>
-              <span className="block text-[13px] leading-snug text-muted-foreground">{texto[p.chave].sub}</span>
-            </div>
-          </div>
-        ))}
-      </Cartao>
+      {gestor ? (
+        <>
+          <Secao>As datas</Secao>
+          <Cartao className="flex flex-col divide-y divide-border p-0" data-testid="datas">
+            {[['Treinamento dos voluntários', `${diaCurto(DIA_DO_TREINAMENTO)} · ${textoDoTreinamento}`], ['Natal Feliz', `${diaCurto(DIA_DO_NATAL_FELIZ)} · ${TREINAMENTO.local}`]].map(([t, s]) => (
+              <div key={t} className="px-4 py-3">
+                <b className="block text-[14.5px] font-semibold">{t}</b>
+                <span className="text-[13px] text-muted-foreground">{s}</span>
+              </div>
+            ))}
+          </Cartao>
+        </>
+      ) : (
+        <>
+          <Secao>Seu caminho</Secao>
+          <Cartao className="flex flex-col" data-testid="caminho">
+            {passos.map((p, n) => (
+              <div key={p.chave} className="relative grid grid-cols-[28px_minmax(0,1fr)] gap-3 pb-4 last:pb-0" data-estado={p.estado} data-testid={`passo-${p.chave}`}>
+                {n < passos.length - 1 && <span className={cn('absolute bottom-0 left-[13px] top-7 w-0.5', p.estado === 'feito' ? 'bg-[#1F2322] dark:bg-[#81E2CF]' : 'bg-border')} aria-hidden />}
+                <span className={cn('grid h-7 w-7 place-items-center rounded-full border-2 text-[12px] font-bold',
+                  p.estado === 'feito' ? 'border-[#1F2322] bg-[#1F2322] text-[#81E2CF] dark:border-[#81E2CF] dark:bg-[#81E2CF] dark:text-[#1F2322]'
+                    : p.estado === 'agora' ? 'border-[#FBCE00] bg-[#FBCE00]/20 text-foreground' : 'border-border bg-card text-muted-foreground')}>
+                  {p.estado === 'feito' ? '✓' : n + 1}
+                </span>
+                <div className="min-w-0 pt-0.5">
+                  <b className="flex flex-wrap items-center gap-2 text-[14.5px] font-semibold">
+                    {texto[p.chave].titulo}
+                    {p.estado === 'agora' && <span className="rounded-full bg-[#FBCE00] px-2 py-px text-[10px] font-bold uppercase tracking-[0.08em] text-[#1F2322]">Próximo</span>}
+                  </b>
+                  <span className="block text-[13px] leading-snug text-muted-foreground">{texto[p.chave].sub}</span>
+                </div>
+              </div>
+            ))}
+          </Cartao>
+        </>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
-        <Link to={caminhoDaAba('credencial')} className="flex flex-col gap-2 rounded-[20px] border border-black/[0.06] bg-card p-4 transition-colors hover:bg-muted/40 dark:border-white/[0.08]">
-          <span className="grid h-11 w-11 place-items-center rounded-full bg-[#1F2322] text-[#81E2CF] dark:bg-[#81E2CF] dark:text-[#1F2322]"><QrCode className="h-5 w-5" /></span>
-          <b className="text-[14.5px] font-semibold">Credencial</b>
-          <span className="-mt-1.5 text-[12.5px] text-muted-foreground">Pronta para uso</span>
+        <Link to={caminhoDaAba('avisos')} className="flex flex-col gap-2 rounded-[20px] border border-black/[0.06] bg-card p-4 transition-colors hover:bg-muted/40 dark:border-white/[0.08]">
+          <span className="grid h-11 w-11 place-items-center rounded-full bg-[#1F2322] text-[#81E2CF] dark:bg-[#81E2CF] dark:text-[#1F2322]"><Bell className="h-5 w-5" /></span>
+          <b className="text-[14.5px] font-semibold">Avisos</b>
+          <span className="-mt-1.5 text-[12.5px] text-muted-foreground">{avisos === 0 ? 'Nenhum ainda' : avisos === 1 ? '1 aviso' : `${avisos} avisos`}</span>
         </Link>
-        <div className="flex flex-col gap-2 rounded-[20px] border border-black/[0.06] bg-card p-4 dark:border-white/[0.08]">
-          <span className="grid h-11 w-11 place-items-center rounded-full bg-[#FBCE00]/25 text-foreground"><Heart className="h-5 w-5" /></span>
-          <b className="text-[14.5px] font-semibold">Sua área</b>
-          <span className="-mt-1.5 text-[12.5px] text-muted-foreground">{rotuloDaAjuda(v.opcao1)}</span>
-        </div>
+        {gestor ? (
+          <Link to={caminhoDaAba('cronograma')} className="flex flex-col gap-2 rounded-[20px] border border-black/[0.06] bg-card p-4 transition-colors hover:bg-muted/40 dark:border-white/[0.08]">
+            <span className="grid h-11 w-11 place-items-center rounded-full bg-[#FBCE00]/25 text-foreground"><CalendarDays className="h-5 w-5" /></span>
+            <b className="text-[14.5px] font-semibold">Cronograma</b>
+            <span className="-mt-1.5 text-[12.5px] text-muted-foreground">Todas as áreas</span>
+          </Link>
+        ) : (
+          <div className="flex flex-col gap-2 rounded-[20px] border border-black/[0.06] bg-card p-4 dark:border-white/[0.08]">
+            <span className="grid h-11 w-11 place-items-center rounded-full bg-[#FBCE00]/25 text-foreground"><Heart className="h-5 w-5" /></span>
+            <b className="text-[14.5px] font-semibold">Sua área</b>
+            <span className="-mt-1.5 text-[12.5px] text-muted-foreground">{rotuloDaAjuda(v.opcao1)}</span>
+          </div>
+        )}
       </div>
 
       <Button asChild size="lg" variant="outline" className="rounded-[16px]"><a href={GRUPO_DO_WHATSAPP} target="_blank" rel="noopener noreferrer"><Users className="h-4 w-4" /> Grupo dos voluntários</a></Button>
@@ -166,7 +206,8 @@ export function CronogramaDaCentral({ d, agora }: { d: DadosDaCentral; agora: Ag
   }
   return (
     <div className="flex flex-col gap-3">
-      <Segmentos<'todos' | 'meus'> rotulo="Filtrar" valor={soMeus} aoMudar={setSoMeus} opcoes={[['todos', 'Todos'], ['meus', 'Minha área']]} />
+      {/* O gestor vê tudo: sem o filtro da área. */}
+      {!eGestor(v) && <Segmentos<'todos' | 'meus'> rotulo="Filtrar" valor={soMeus} aoMudar={setSoMeus} opcoes={[['todos', 'Todos'], ['meus', 'Minha área']]} />}
       <div className="flex flex-wrap gap-2" role="group" aria-label="Escolha o dia">
         {dias.map((x) => (
           <button key={x} type="button" aria-pressed={diaAtual === x} onClick={() => setDia(x)}
@@ -224,43 +265,47 @@ function ItemDaLinha({ i, meu, passou }: { i: ItemDoCronograma; meu: boolean; pa
   );
 }
 
-// --- Credencial ----------------------------------------------------------------------------
+// --- Avisos (no meio da barra, no lugar da credencial, 12/11/2026) ---------------------------------
 
-export function CredencialDaCentral({ d }: { d: DadosDaCentral }) {
-  const v = d.voluntario;
-  const presenca = (m: Momento, rotulo: string) => (
-    <div className="flex items-center justify-between gap-3 py-2 text-[13.5px]" data-testid={`presenca-${m}`}>
-      <span className="font-semibold">{rotulo}</span>
-      {d.presencas[m] ? <SelinhoFeito>Presença às {horaDe(d.presencas[m]!)}</SelinhoFeito> : <span className="text-muted-foreground">mostre na entrada</span>}
-    </div>
-  );
+const quando = (iso: string) => {
+  const d = new Date(iso);
+  const min = Math.round((Date.now() - d.getTime()) / 60_000);
+  if (min < 1) return 'agora';
+  if (min < 60) return `há ${min} min`;
+  if (min < 24 * 60) return `há ${Math.round(min / 60)} h`;
+  return d.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', ' às');
+};
+
+/** Os avisos que já chegaram, com o ligar no topo. "novos" = os que chegaram depois da última visita. */
+export function AvisosDaCentral({ avisos, whatsapp, destaque, vistosAte }: { avisos: AvisoEnviado[]; whatsapp: string; destaque?: string | null; vistosAte: string }) {
   return (
     <div className="flex flex-col gap-3">
-      <div className="mx-auto w-full max-w-[360px] overflow-hidden rounded-[26px] border border-black/[0.06] bg-card shadow-[0_18px_40px_-24px_hsl(165_30%_12%/0.45)] dark:border-white/10">
-        <div className="relative flex flex-col items-center gap-1 overflow-hidden bg-[#1F2322] px-5 pb-5 pt-3 text-center text-white">
-          <ArteAoFundo className="opacity-[0.28]" />
-          <span className="relative mb-2 h-1 w-10 rounded-full bg-white/25" aria-hidden />
-          <span className="relative text-[10.5px] font-bold uppercase tracking-[0.2em] text-[#81E2CF]">Credencial · Natal Feliz 2026</span>
-          <b className="relative text-[21px] font-bold leading-tight" style={{ fontFamily: 'Poppins, sans-serif' }} data-testid="nome-na-credencial">{v.nome}</b>
-          <span className="relative text-[13px] text-white/80">{rotuloDoVinculo(v.vinculo)} · {rotuloDaAjuda(v.opcao1)}</span>
-          {v.horario && <span className="relative text-[12.5px] text-white/65">{turnoDe(v.horario)}</span>}
-        </div>
-        <div className="mx-5 border-t-2 border-dashed border-border" aria-hidden />
-        <div className="flex flex-col items-center gap-3 px-6 pb-5 pt-4">
-          <div className="w-full max-w-[220px] rounded-[18px] border border-black/[0.06] bg-white p-2">
-            <QrDaCredencial texto={linkDaCredencial(v.protocolo)} rotulo={`QR Code da credencial ${v.protocolo}`} />
-          </div>
-          <div className="w-full rounded-[14px] bg-muted/70 py-2 text-center">
-            <small className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Código</small>
-            <b className="text-[22px] font-bold tracking-[0.06em]" style={{ fontFamily: 'Poppins, sans-serif' }} data-testid="codigo-da-credencial">{v.protocolo}</b>
-          </div>
-          <div className="w-full divide-y divide-border">
-            {presenca('treinamento', `Treinamento · ${DIA_DO_TREINAMENTO.slice(8)}/${DIA_DO_TREINAMENTO.slice(5, 7)}`)}
-            {presenca('evento', `Natal Feliz · ${DIA_DO_NATAL_FELIZ.slice(8)}/${DIA_DO_NATAL_FELIZ.slice(5, 7)}`)}
-          </div>
-        </div>
-      </div>
-      <p className="px-4 text-center text-[13px] text-muted-foreground">Mostre na entrada do treinamento e do Natal Feliz. Aumente o brilho da tela para ler mais rápido.</p>
+      <CartaoDosAvisos whatsapp={whatsapp} compacto />
+      {avisos.length === 0 ? (
+        <Cartao className="flex flex-col items-center gap-2 py-8 text-center" data-testid="sem-avisos">
+          <span className="grid h-12 w-12 place-items-center rounded-full bg-muted text-muted-foreground"><Bell className="h-5 w-5" /></span>
+          <b className="text-[15px] font-semibold">Nenhum aviso ainda</b>
+          <span className="max-w-[300px] text-[13.5px] text-muted-foreground">Os lembretes do treinamento e do Natal Feliz aparecem aqui, e no celular com os avisos ligados.</span>
+        </Cartao>
+      ) : (
+        <ul className="flex flex-col gap-2.5" data-testid="lista-de-avisos">
+          {avisos.map((a) => {
+            const novo = !!vistosAte ? a.enviado_em > vistosAte : true;
+            return (
+              <li key={a.id} className={cn('rounded-[18px] border border-black/[0.06] bg-card px-4 py-3.5 dark:border-white/[0.08]', a.id === destaque && 'ring-2 ring-[#81E2CF]')} data-novo={novo}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <b className="flex items-center gap-2 text-[15px] font-semibold">
+                    {novo && <span className="h-2 w-2 shrink-0 rounded-full bg-[#FBCE00]" aria-label="novo" />}
+                    {a.titulo}
+                  </b>
+                  <span className="shrink-0 text-[12px] text-muted-foreground">{quando(a.enviado_em)}</span>
+                </div>
+                <p className="mt-1 text-[14px] leading-snug text-muted-foreground">{a.texto}</p>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }
@@ -302,31 +347,29 @@ export function LocalDaCentral() {
 
 export function PerfilDaCentral({ d, whatsapp, aoSair }: { d: DadosDaCentral; whatsapp: string; aoSair: () => void }) {
   const v = d.voluntario;
-  const linhas: Array<[string, string]> = [
-    ['WhatsApp', whatsappMascarado(whatsapp)],
-    ['Vínculo', `${rotuloDoVinculo(v.vinculo)}${v.unidade_nome ? ` · ${v.unidade_nome}` : ''}`],
-    ...(v.igreja ? [['Igreja', v.igreja] as [string, string]] : []),
-    ['Horário', turnoDe(v.horario) || '—'],
-    ['Onde vou ajudar', rotuloDaAjuda(v.opcao1)],
-    ...(v.opcao2 ? [['2ª opção', rotuloDaAjuda(v.opcao2)] as [string, string]] : []),
-    ['Inscrição', `${dataDe(v.inscrito_em)} · ${v.protocolo}`],
-  ];
+  const gestor = eGestor(v);
+  const linhas: Array<[string, string]> = gestor
+    ? [['WhatsApp', whatsappMascarado(whatsapp)], ['Acesso', 'Gestão: o cronograma inteiro e todos os avisos']]
+    : [
+      ['WhatsApp', whatsappMascarado(whatsapp)],
+      ['Vínculo', quemE(v)],
+      ...(v.igreja ? [['Igreja', v.igreja] as [string, string]] : []),
+      ['Horário', turnoDe(v.horario) || '—'],
+      ['Onde vou ajudar', rotuloDaAjuda(v.opcao1)],
+      ...(v.opcao2 ? [['2ª opção', rotuloDaAjuda(v.opcao2)] as [string, string]] : []),
+      ['Inscrição', `${dataDe(v.inscrito_em)} · ${v.protocolo}`],
+    ];
   return (
     <div className="flex flex-col gap-3">
       <Cartao className="flex items-center gap-3.5">
         <AvatarDaPessoa nome={v.nome} grande />
         <div className="min-w-0 flex-1">
           <b className="block text-[17px] font-semibold leading-snug" style={{ fontFamily: 'Poppins, sans-serif' }}>{v.nome}</b>
-          <span className="text-[13px] text-muted-foreground">{rotuloDoVinculo(v.vinculo)}</span>
+          <span className="text-[13px] text-muted-foreground">{gestor ? 'Acompanha o voluntariado' : rotuloDoVinculo(v.vinculo as never)}</span>
         </div>
-        <span className="shrink-0 rounded-full bg-[#81E2CF]/35 px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#0F5A4C] dark:text-[#9FF0DF]">Confirmada</span>
+        <SeloDoPerfil v={v} />
       </Cartao>
-      <Link to={caminhoDaAba('credencial')} className="flex items-center gap-3 rounded-[20px] border border-black/[0.06] bg-card px-4 py-3 transition-colors hover:bg-muted/40 dark:border-white/[0.08]">
-        <span className="grid h-10 w-10 place-items-center rounded-full bg-[#1F2322] text-[#81E2CF] dark:bg-[#81E2CF] dark:text-[#1F2322]"><QrCode className="h-[18px] w-[18px]" /></span>
-        <span className="min-w-0 flex-1"><b className="block text-[14.5px] font-semibold">Minha credencial</b><span className="text-[13px] text-muted-foreground">{v.protocolo}</span></span>
-        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-      </Link>
-      <Secao>Minha inscrição</Secao>
+      <Secao>{gestor ? 'Meu acesso' : 'Minha inscrição'}</Secao>
       <Cartao className="p-0">
         <dl className="divide-y divide-border" data-testid="dados-da-inscricao">
           {linhas.map(([r, val]) => (
@@ -337,7 +380,7 @@ export function PerfilDaCentral({ d, whatsapp, aoSair }: { d: DadosDaCentral; wh
           ))}
         </dl>
       </Cartao>
-      <p className="px-1 text-[13px] text-muted-foreground">Precisa mudar algo? Fale com a equipe no grupo dos voluntários.</p>
+      {!gestor && <p className="px-1 text-[13px] text-muted-foreground">Precisa mudar algo? Fale com a equipe no grupo dos voluntários.</p>}
       <Button asChild variant="outline" className="rounded-[16px]"><a href={GRUPO_DO_WHATSAPP} target="_blank" rel="noopener noreferrer"><Users className="h-4 w-4" /> Grupo dos voluntários</a></Button>
       <CartaoDosAvisos whatsapp={whatsapp} compacto />
       <Button variant="ghost" className="self-center text-muted-foreground" onClick={aoSair}><LogOut className="h-4 w-4" /> Sair deste celular</Button>

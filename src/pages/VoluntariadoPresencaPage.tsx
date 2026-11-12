@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, Check, Lock, ScanLine, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Check, Lock, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,10 +18,9 @@ import { CabecalhoDaCentral, MolduraDaCentral } from '@/components/voluntariado/
 
 /**
  * /voluntariado/natalfeliz26/presenca — a presença na entrada (13/11/2026),
- * no molde da retirada da Pizza: o leitor USB "digita" o endereço do QR da
- * credencial e aperta Enter; sem leitor, digita-se o código ou o nome. Pela
- * câmera do celular, o QR abre esta página com ?p=VL-XXXXX e ela pede um
- * toque para confirmar. Só a comunicação registra.
+ * no molde da retirada da Pizza: procura-se pelo nome ou pelo protocolo e um
+ * toque registra. Desde 12/11/2026 a Central não tem mais o QR da credencial
+ * (a pedido dele); o ?p=VL-XXXXX continua aceito. Só a comunicação registra.
  */
 
 const ATUALIZA_A_CADA_MS = 30_000;
@@ -211,17 +210,17 @@ export default function VoluntariadoPresencaPage() {
         )}
 
         <form onSubmit={enviar} className="flex flex-wrap items-center gap-3 rounded-[20px] border-[2.5px] border-dashed border-[#81E2CF] bg-card/70 p-4">
-          <ScanLine className="h-7 w-7 shrink-0" />
+          <Search className="h-7 w-7 shrink-0" />
           <div className="min-w-0 flex-[1_1_220px]">
-            <b className="text-[15px]">Leitor pronto</b>
-            <p className="text-[13px] text-muted-foreground">Aponte o leitor para o QR da credencial, ou digite o código ou o nome.</p>
+            <b className="text-[15px]">Procurar voluntário</b>
+            <p className="text-[13px] text-muted-foreground">Digite o nome ou o protocolo (VL-…) e registre a presença com um toque.</p>
           </div>
-          <label htmlFor="campo-presenca" className="sr-only">Código da credencial ou nome</label>
+          <label htmlFor="campo-presenca" className="sr-only">Nome ou protocolo</label>
           <input
             id="campo-presenca" ref={campo} value={texto} autoFocus autoComplete="off" spellCheck={false}
             onChange={(e) => { setTexto(e.target.value); if (e.target.value) setResultado(null); }}
             onBlur={() => window.setTimeout(() => { if (document.activeElement === document.body) campo.current?.focus(); }, 150)}
-            placeholder="VL-…  ou nome" className="min-w-0 flex-[1_1_260px] rounded-[14px] border-2 border-input bg-card px-4 py-3 text-[20px] font-semibold outline-none focus:border-[#81E2CF]"
+            placeholder="Nome ou VL-…" className="min-w-0 flex-[1_1_260px] rounded-[14px] border-2 border-input bg-card px-4 py-3 text-[20px] font-semibold outline-none focus:border-[#81E2CF]"
           />
         </form>
 

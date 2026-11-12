@@ -9,6 +9,12 @@ const e = vi.hoisted(() => ({
   avisos: [] as Array<Record<string, unknown>>,
   presencas: [] as Array<Record<string, unknown>>,
   comAvisos: new Set<string>(),
+  gestoresComAvisos: 0,
+  noFormulario: false,
+  ligacoes: [] as boolean[],
+  gestores: [] as Array<{ id: string; nome: string; whatsapp: string; criado_em: string }>,
+  gestoresNovos: [] as Array<[string, string]>,
+  gestoresTirados: [] as string[],
   salvos: [] as Array<[Record<string, unknown>, string | undefined]>,
   apagados: [] as string[],
   criados: [] as Array<Record<string, unknown>>,
@@ -19,12 +25,17 @@ const e = vi.hoisted(() => ({
 globalThis.ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: (m: string) => { e.erros.push(m); }, message: vi.fn() } }));
 vi.mock('@/integrations/supabase/client', () => ({ supabase: {} }));
+vi.mock('@/lib/voluntariado/api', () => ({ centralNoFormulario: async () => e.noFormulario }));
 vi.mock('@/lib/voluntariado/central', async (original) => ({
   ...(await original<typeof import('@/lib/voluntariado/central')>()),
   listarCronograma: async () => e.itens,
   listarAvisos: async () => e.avisos,
   listarPresencas: async () => e.presencas,
-  voluntariosComAvisos: async () => e.comAvisos,
+  celularesComAvisos: async () => ({ voluntarios: e.comAvisos, gestores: e.gestoresComAvisos }),
+  definirCentralNoFormulario: async (v: boolean) => { e.ligacoes.push(v); },
+  listarGestores: async () => e.gestores,
+  adicionarGestor: async (nome: string, w: string) => { if (e.gestores.some((g) => g.whatsapp === w.replace(/\D/g, ''))) throw new Error('ja_cadastrado'); e.gestoresNovos.push([nome, w]); },
+  removerGestor: async (id: string) => { e.gestoresTirados.push(id); },
   salvarItem: async (i: Record<string, unknown>, id?: string) => { e.salvos.push([i, id]); },
   apagarItem: async (id: string) => { e.apagados.push(id); },
   criarAviso: async (a: Record<string, unknown>) => { e.criados.push(a); },
@@ -49,6 +60,8 @@ beforeEach(() => {
     { id: 'a4', titulo: 'Chegada', texto: 'x', enviar_em: '2026-11-14T08:00:00Z', areas: [], horarios: [], cronograma_id: null, enviado_em: '2026-11-14T10:00:00Z', pulado: true, entregues: 0, falhas: 0 },
   ];
   e.comAvisos = new Set(['v1', 'v2']);
+  e.gestoresComAvisos = 0; e.noFormulario = false; e.ligacoes = [];
+  e.gestores = [{ id: 'g1', nome: 'Paula Gestora', whatsapp: '19977776666', criado_em: 'x' }]; e.gestoresNovos = []; e.gestoresTirados = [];
   e.salvos = []; e.apagados = []; e.criados = []; e.cancelados = []; e.erros = [];
 });
 
@@ -61,7 +74,7 @@ describe('Central no painel', () => {
     expect(screen.getByTestId('central-avisos')).toHaveTextContent('2');
     expect(screen.getByTestId('central-treinamento')).toHaveTextContent('1 de 3');
     expect(screen.getByTestId('central-evento')).toHaveTextContent('0 de 3');
-    expect(screen.getByRole('link', { name: /Presença com leitor/ })).toHaveAttribute('href', '/voluntariado/natalfeliz26/presenca');
+    expect(screen.getByRole('link', { name: /Registrar presença/ })).toHaveAttribute('href', '/voluntariado/natalfeliz26/presenca');
   });
 
   it('a fila e o histórico: só o avulso se cancela; enviados com o total; o atrasado não saiu', async () => {
@@ -147,5 +160,50 @@ describe('Central no painel', () => {
     fireEvent.change(within(janela).getByLabelText('Texto'), { target: { value: 'O portão está aberto.' } });
     fireEvent.click(within(janela).getByRole('button', { name: 'Enviar agora' }));
     await waitFor(() => expect(e.criados).toEqual([{ titulo: 'Chegamos!', texto: 'O portão está aberto.', enviar_em: null, areas: [], horarios: [] }]));
+  });
+});
+
+describe('o botão no formulário e os gestores (12/11/2026)', () => {
+  it('o interruptor começa desligado e liga o botão da Central no formulário', async () => {
+    abrir();
+    const chave = await screen.findByRole('switch', { name: 'Mostrar o botão da Central no formulário' });
+    await waitFor(() => expect(chave).not.toBeDisabled());
+    expect(chave).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByTestId('central-no-formulario')).toHaveTextContent('Escondido. Ligue no dia do treinamento');
+    fireEvent.click(chave);
+    await waitFor(() => expect(e.ligacoes).toEqual([true]));
+    expect(chave).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('gestores: a lista, cadastrar (nome e WhatsApp) e tirar com confirmação', async () => {
+    abrir();
+    const bloco = await screen.findByTestId('gestores-da-central');
+    expect(await within(bloco).findByText('Paula Gestora')).toBeInTheDocument();
+    expect(within(bloco).getByText('(19) 9••••-6666')).toBeInTheDocument();
+    fireEvent.click(within(bloco).getByRole('button', { name: /Cadastrar/ }));
+    expect(e.erros).toContain('Escreva o nome e o WhatsApp com DDD.');
+    fireEvent.change(within(bloco).getByLabelText('Nome do gestor'), { target: { value: 'Carlos Gestor' } });
+    fireEvent.change(within(bloco).getByLabelText('WhatsApp do gestor'), { target: { value: '19955554444' } });
+    expect(within(bloco).getByLabelText('WhatsApp do gestor')).toHaveValue('(19) 95555-4444');
+    fireEvent.click(within(bloco).getByRole('button', { name: /Cadastrar/ }));
+    await waitFor(() => expect(e.gestoresNovos).toEqual([['Carlos Gestor', '(19) 95555-4444']]));
+    fireEvent.change(within(bloco).getByLabelText('Nome do gestor'), { target: { value: 'Repetida' } });
+    fireEvent.change(within(bloco).getByLabelText('WhatsApp do gestor'), { target: { value: '19977776666' } });
+    fireEvent.click(within(bloco).getByRole('button', { name: /Cadastrar/ }));
+    await waitFor(() => expect(e.erros).toContain('Esse WhatsApp já está na lista.'));
+    fireEvent.click(within(bloco).getByRole('button', { name: 'Tirar Paula Gestora' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Tirar' }));
+    await waitFor(() => expect(e.gestoresTirados).toEqual(['g1']));
+  });
+
+  it('o aviso conta os gestores com avisos ligados (eles recebem todos)', async () => {
+    e.gestoresComAvisos = 2;
+    abrir();
+    await screen.findByTestId('cronograma-do-painel');
+    await waitFor(() => expect(screen.getByTestId('central-avisos')).toHaveTextContent('(+2 gestores)'));
+    fireEvent.click(screen.getByRole('button', { name: /Novo aviso/ }));
+    const janela = await screen.findByRole('dialog');
+    fireEvent.click(within(janela).getByRole('button', { name: 'Cozinha / Servimento' }));
+    expect(within(janela).getByTestId('alcance')).toHaveTextContent('Vai para 3 pessoas');
   });
 });

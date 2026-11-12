@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
-/** A Central do Voluntário (13/11/2026): entrada pelo WhatsApp, as cinco abas, o sino e os avisos. */
+/** A Central do Voluntário (13/11/2026): entrada pelo WhatsApp, as cinco abas e os avisos (no meio da barra desde 12/11/2026), e o gestor. */
 
 const banco = vi.hoisted(() => ({
   dados: null as null | Record<string, unknown>,
@@ -36,6 +36,7 @@ vi.mock('@/lib/voluntariado/central', async (original) => {
 const { default: Central } = await import('./VoluntariadoCentralPage');
 
 const DADOS = () => ({
+  perfil: 'voluntario',
   voluntario: { protocolo: 'VL-7KQ2M', nome: 'Maria Souza Lima', vinculo: 'funcionario', unidade_nome: 'GOE', igreja: null, horario: 'manha', opcao1: 'cozinha', opcao2: 'inflaveis', inscrito_em: '2026-11-05T15:00:00Z' },
   presencas: {},
   cronograma: [
@@ -133,9 +134,11 @@ describe('abas', () => {
     expect(screen.getByTestId('passo-evento')).toHaveTextContent('Ter, 08/12 · Manhã · 7h às 12h');
     const doca = screen.getByRole('navigation', { name: 'Central do Voluntário' });
     expect(within(doca).getByRole('link', { name: 'Início' })).toHaveAttribute('aria-current', 'page');
-    fireEvent.click(within(doca).getByRole('link', { name: 'Credencial' }));
-    expect(screen.getByTestId('onde')).toHaveTextContent('/voluntariado/natalfeliz26/central/credencial');
-    expect(screen.getByRole('heading', { name: 'Credencial' })).toBeInTheDocument();
+    // Sem o QR da credencial (12/11/2026): no meio da barra, os Avisos.
+    expect(within(doca).queryByRole('link', { name: 'Credencial' })).toBeNull();
+    fireEvent.click(within(doca).getByRole('link', { name: 'Avisos (novos)' }));
+    expect(screen.getByTestId('onde')).toHaveTextContent('/voluntariado/natalfeliz26/central/avisos');
+    expect(screen.getByRole('heading', { level: 1, name: 'Avisos' })).toBeInTheDocument();
   });
 
   it('Cronograma no dia do evento: abre em hoje, linha do "agora", "Minha área" e o selo "Para você"', async () => {
@@ -175,14 +178,20 @@ describe('abas', () => {
     expect(await screen.findByTestId('cronograma-vazio')).toHaveTextContent('está sendo montado');
   });
 
-  it('Credencial: QR, código e a presença registrada no treinamento', async () => {
+  it('a presença registrada aparece no caminho, sem QR na tela', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-28T15:00:00Z'));
     banco.dados = { ...DADOS(), presencas: { treinamento: '2026-11-28T12:12:00Z' } };
+    montar();
+    expect(await screen.findByTestId('passo-treinamento')).toHaveTextContent('Presença registrada às 9h12');
+    expect(screen.getByTestId('passo-treinamento')).toHaveAttribute('data-estado', 'feito');
+    expect(screen.queryByTestId('qr-da-credencial')).toBeNull();
+  });
+
+  it('a credencial antiga (/central/credencial) volta para o Início', async () => {
     montar('/voluntariado/natalfeliz26/central/credencial');
-    expect(await screen.findByTestId('nome-na-credencial')).toHaveTextContent('Maria Souza Lima');
-    expect(screen.getByTestId('codigo-da-credencial')).toHaveTextContent('VL-7KQ2M');
-    expect(screen.getByTestId('qr-da-credencial')).toHaveAttribute('aria-label', 'QR Code da credencial VL-7KQ2M');
-    expect(screen.getByTestId('presenca-treinamento')).toHaveTextContent('Presença às 9h12');
-    expect(screen.getByTestId('presenca-evento')).toHaveTextContent('mostre na entrada');
+    expect(await screen.findByText('Olá, Maria')).toBeInTheDocument();
+    expect(screen.getByTestId('onde')).toHaveTextContent(/central$/);
   });
 
   it('Local: o Maps e a planta em breve', async () => {
@@ -212,28 +221,37 @@ describe('abas', () => {
   });
 });
 
-describe('sino e avisos', () => {
+describe('avisos (no meio da barra, 12/11/2026)', () => {
   beforeEach(() => { localStorage.setItem(CHAVE, '19990001111'); });
 
-  it('aviso novo acende o ponto; abrir mostra a lista e apaga o ponto', async () => {
+  it('aviso novo: ponto no botão do meio; abrir a aba mostra a lista, marca o novo e apaga o ponto', async () => {
     montar();
     await screen.findByText('Olá, Maria');
     expect(screen.getByTestId('ponto-de-aviso')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Avisos (novos)' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Avisos (novos)' }));
     const lista = await screen.findByTestId('lista-de-avisos');
     expect(lista).toHaveTextContent('É amanhã!');
     expect(lista).toHaveTextContent('Natal Feliz no Recanto Maanaim.');
-    fireEvent.click(screen.getByRole('button', { name: 'Fechar' }));
+    expect(within(lista).getByText('É amanhã!').closest('li')).toHaveAttribute('data-novo', 'true');
     expect(screen.queryByTestId('ponto-de-aviso')).toBeNull();
+    fireEvent.click(screen.getByRole('link', { name: 'Início' }));
+    await screen.findByText('Olá, Maria');
+    expect(screen.queryByTestId('ponto-de-aviso')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Avisos' })).toBeInTheDocument();
   });
 
-  it('o toque na notificação (?aviso=) abre o sino com o aviso em destaque', async () => {
+  it('o toque na notificação (?aviso=) abre a aba Avisos com o aviso em destaque', async () => {
     montar('/voluntariado/natalfeliz26/central?aviso=a2');
     const lista = await screen.findByTestId('lista-de-avisos');
     expect(within(lista).getByText('É amanhã!').closest('li')).toHaveClass('ring-2');
-    fireEvent.keyDown(window, { key: 'Escape' });
-    await waitFor(() => expect(screen.queryByTestId('lista-de-avisos')).toBeNull());
-    expect(screen.getByTestId('onde')).not.toHaveTextContent('aviso=');
+    expect(screen.getByTestId('onde')).toHaveTextContent('/voluntariado/natalfeliz26/central/avisos?aviso=a2');
+  });
+
+  it('sem avisos ainda', async () => {
+    banco.dados = { ...DADOS(), avisos: [] };
+    montar('/voluntariado/natalfeliz26/central/avisos');
+    expect(await screen.findByTestId('sem-avisos')).toHaveTextContent('Nenhum aviso ainda');
+    expect(screen.queryByTestId('ponto-de-aviso')).toBeNull();
   });
 
   it('Ativar liga os avisos com o número da pessoa', async () => {
@@ -250,5 +268,41 @@ describe('sino e avisos', () => {
     const cartao = await screen.findByTestId('avisos-iphone');
     expect(cartao).toHaveTextContent('Adicionar à Tela de Início');
     expect(cartao).toHaveTextContent('Central ANA');
+  });
+});
+
+describe('gestor (12/11/2026)', () => {
+  const GESTOR = () => ({
+    ...DADOS(), perfil: 'gestor',
+    voluntario: { protocolo: null, nome: 'Paula Gestora', vinculo: 'gestao', unidade_nome: null, igreja: null, horario: null, opcao1: null, opcao2: null, inscrito_em: '2026-11-12T18:00:00Z' },
+  });
+  beforeEach(() => { localStorage.setItem(CHAVE, '19990001111'); banco.dados = GESTOR(); });
+
+  it('Início: selo de gestão, as datas no lugar do caminho e o cronograma no atalho', async () => {
+    montar();
+    expect(await screen.findByText('Olá, Paula')).toBeInTheDocument();
+    expect(screen.getAllByText('Gestão')[0]).toBeInTheDocument();
+    expect(screen.queryByTestId('caminho')).toBeNull();
+    expect(screen.getByTestId('datas')).toHaveTextContent('Treinamento dos voluntários');
+    expect(screen.getByRole('banner')).not.toHaveTextContent('Manhã');
+    expect(screen.getByRole('link', { name: /Cronograma Todas as áreas/ })).toBeInTheDocument();
+  });
+
+  it('Cronograma: tudo, sem "Minha área" e sem o selo "Para você"', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-12-08T12:40:00Z'));
+    montar('/voluntariado/natalfeliz26/central/cronograma');
+    const lista = await screen.findByTestId('cronograma');
+    expect(within(lista).getAllByTestId('item-do-cronograma')).toHaveLength(3);
+    expect(lista).not.toHaveTextContent('Para você');
+    expect(screen.queryByRole('button', { name: 'Minha área' })).toBeNull();
+  });
+
+  it('Perfil: o acesso de gestão, sem dados de inscrição', async () => {
+    montar('/voluntariado/natalfeliz26/central/perfil');
+    const dados = await screen.findByTestId('dados-da-inscricao');
+    expect(dados).toHaveTextContent('Gestão: o cronograma inteiro e todos os avisos');
+    expect(dados).not.toHaveTextContent('Inscrição');
+    expect(screen.queryByText(/Precisa mudar algo/)).toBeNull();
   });
 });
