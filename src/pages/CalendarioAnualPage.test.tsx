@@ -133,3 +133,40 @@ describe('o tutorial do calendário (13/11/2026)', () => {
     expect(await screen.findByRole('dialog', { name: 'Tutorial do Calendário Anual' })).toHaveTextContent('O tema do mês');
   });
 });
+
+describe('os textos do projeto (13/11/2026)', () => {
+  const coordenadora = () => {
+    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'coord@ana.org', user_metadata: { conta: 'calendario', name: 'Coord' } } };
+    estado.acesso = { email: 'coord@ana.org', nome: 'Coord', ativo: true };
+  };
+
+  it('o início leva aos textos, que vêm de 2026 agrupados pela página do PDF', async () => {
+    coordenadora();
+    abrir();
+    await screen.findByRole('heading', { name: 'Calendário Anual 2027' });
+    expect(screen.getByText('Vieram de 2026')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('heading', { name: '4. Textos do projeto' }).parentElement!.querySelector('button')!);
+    expect(await screen.findByRole('heading', { name: 'Textos do projeto · 2027' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Página 2 do PDF' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Página 10 do PDF' })).toBeInTheDocument();
+    expect((screen.getByLabelText('SERVIÇO DE CONVIVÊNCIA E FORTALECIMENTO DE VÍNCULOS - SCFV') as HTMLTextAreaElement).value).toMatch(/^Trata-se de um serviço/);
+    expect(screen.getByRole('button', { name: 'Tudo salvo' })).toBeDisabled();
+  });
+
+  it('grava só o que mudou; voltar ao texto de 2026 tira a seção do que vai para o banco', async () => {
+    coordenadora();
+    const { salvarAno } = await import('@/lib/calendario/api');
+    vi.mocked(salvarAno).mockImplementation(async (_ano, c) => ({ ...(await (await import('@/lib/calendario/api')).lerAno(2027)), ...c }) as never);
+    abrir('/calendario?parte=textos');
+    const campo = await screen.findByLabelText('METODOLOGIA');
+    fireEvent.change(campo, { target: { value: 'Texto novo da metodologia.' } });
+    expect(screen.getByText('Editado')).toBeInTheDocument();
+    const avaliacao = screen.getByLabelText('AVALIAÇÃO');
+    const original = (avaliacao as HTMLTextAreaElement).value;
+    fireEvent.change(avaliacao, { target: { value: original + ' Mais.' } });
+    fireEvent.change(avaliacao, { target: { value: original } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar os textos' }));
+    await waitFor(() => expect(salvarAno).toHaveBeenCalledWith(2027, { textos: { metodologia: 'Texto novo da metodologia.' } }));
+    expect(await screen.findByRole('button', { name: 'Tudo salvo' })).toBeDisabled();
+  });
+});

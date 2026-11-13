@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { salvarAno } from '@/lib/calendario/api';
 import { MESES, andamento, type AnoDoCalendario } from '@/lib/calendario/regras';
 
-export type Parte = 'inicio' | 'percursos' | 'mes' | 'coordenadoras';
+export type Parte = 'inicio' | 'percursos' | 'mes' | 'coordenadoras' | 'textos';
 
 const PASSOS = ['Preenchimento pelas coordenadoras', 'Revisão do marketing', 'Aprovado · PDF liberado'];
 const indiceDoStatus = { preenchimento: 0, revisao: 1, aprovado: 2 } as const;
@@ -23,6 +23,7 @@ function Selo({ children, tom }: { children: React.ReactNode; tom: 'ok' | 'falta
  */
 export function InicioDoCalendario({ ano, editavel, marketing, onAno, abrir }: { ano: AnoDoCalendario; editavel: boolean; marketing: boolean; onAno: (a: AnoDoCalendario) => void; abrir: (p: Parte, mes?: number) => void }) {
   const a = andamento(ano);
+  const textosEditados = Object.keys(ano.textos ?? {}).length;
   const [tema, setTema] = useState(ano.tema);
   const salvarTema = async () => {
     try { onAno(await salvarAno(ano.ano, { tema: tema.trim() })); toast.success('Tema do ano salvo'); }
@@ -78,10 +79,11 @@ export function InicioDoCalendario({ ano, editavel, marketing, onAno, abrir }: {
             <div className="mt-3 grid grid-cols-12 gap-1" aria-hidden="true">{MESES.map((m, i) => <span key={m} className={`h-2 rounded-full ${ano.meses_revisados.includes(i + 1) ? 'bg-[hsl(var(--sel))]' : 'bg-black/10 dark:bg-white/10'}`} />)}</div>
             <Button variant="outline" className="mt-4" onClick={() => abrir('mes', proximoMes)}>Abrir</Button>
           </section>
-          <section className="glass-2 rounded-[22px] p-5 opacity-80">
-            <div className="flex items-start justify-between gap-3"><span className="grid h-10 w-10 place-items-center rounded-[12px] bg-primary/60"><BookOpen className="h-5 w-5" /></span><Selo tom="info">No próximo passo</Selo></div>
+          <section className="glass-2 rounded-[22px] p-5" data-tutorial="cal-textos">
+            <div className="flex items-start justify-between gap-3"><span className="grid h-10 w-10 place-items-center rounded-[12px] bg-primary/60"><BookOpen className="h-5 w-5" /></span><Selo tom="info">{textosEditados === 0 ? 'Vieram de 2026' : `${textosEditados} ${textosEditados === 1 ? 'seção editada' : 'seções editadas'}`}</Selo></div>
             <h2 className="mt-3 text-[17px] font-semibold">4. Textos do projeto</h2>
-            <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">SCFV, objetivos, justificativa, unidades, CCII, metodologia e avaliação. Vêm de 2026, para revisar; chegam junto com o PDF.</p>
+            <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">As páginas 2 a 10 do PDF: SCFV, objetivos, unidades, CCII, justificativa, metodologia e avaliação. Vieram os de 2026, para revisar.</p>
+            <Button variant="outline" className="mt-4" onClick={() => abrir('textos')}>Abrir</Button>
           </section>
         </div>
         <aside className="space-y-4">

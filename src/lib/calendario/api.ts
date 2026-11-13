@@ -30,7 +30,7 @@ export async function lerItens(ano: number): Promise<ItemDoCalendario[]> {
   return (data as ItemDoCalendario[]) ?? [];
 }
 
-export async function salvarAno(ano: number, campos: Partial<Pick<AnoDoCalendario, 'tema' | 'percursos' | 'meses_revisados'>>): Promise<AnoDoCalendario> {
+export async function salvarAno(ano: number, campos: Partial<Pick<AnoDoCalendario, 'tema' | 'percursos' | 'meses_revisados' | 'textos'>>): Promise<AnoDoCalendario> {
   const { data, error } = await db.from('calendario_anual').update(campos).eq('ano', ano).select('*').maybeSingle();
   falhou(error);
   // O banco filtra em silêncio quando não pode (fora do preenchimento): zero linhas.

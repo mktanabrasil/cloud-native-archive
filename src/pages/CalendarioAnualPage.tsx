@@ -15,6 +15,7 @@ import { MolduraDoCalendario } from '@/components/calendario/MolduraDoCalendario
 import { EntradaDoCalendario } from '@/components/calendario/EntradaDoCalendario';
 import { InicioDoCalendario, type Parte } from '@/components/calendario/InicioDoCalendario';
 import { PercursosDoAno } from '@/components/calendario/PercursosDoAno';
+import { TextosDoProjeto } from '@/components/calendario/TextosDoProjeto';
 import { MesAMes } from '@/components/calendario/MesAMes';
 import { CoordenadorasDoCalendario } from '@/components/calendario/CoordenadorasDoCalendario';
 
@@ -123,6 +124,7 @@ function Preenchimento({ email, marketing, foraDaLista }: { email: string; marke
     <>
       {voltar}
       {parte === 'percursos' && <PercursosDoAno ano={ano} editavel={editavel} onAno={setAno} />}
+      {parte === 'textos' && <TextosDoProjeto ano={ano} editavel={editavel} onAno={setAno} />}
       {parte === 'mes' && <MesAMes ano={ano} itens={itens} editavel={editavel} mes={mes} onMes={m => abrir('mes', m)} onAno={setAno} onItens={setItens} />}
       {parte === 'coordenadoras' && marketing && <CoordenadorasDoCalendario quem={email} />}
       {(parte === 'inicio' || (parte === 'coordenadoras' && !marketing)) && <InicioDoCalendario ano={ano} editavel={editavel} marketing={marketing} onAno={setAno} abrir={abrir} />}
