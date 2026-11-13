@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { ROTAS_DO_CANDIDATO, ehCandidato } from '@/lib/vagas/conta';
 import { retornoDoGoogle } from '@/lib/events/conexaoGoogle';
 import { Globe, LayoutDashboard, Calendar, Trash2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,7 +26,7 @@ const tabs = [
 ];
 
 export default function EventsHubPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { isAdmin, canCreate } = useUserRole();
   const { isGate, leaving, entering } = useEntryGateTransition();
   const [novoAberto, setNovoAberto] = useState(false);
@@ -56,6 +57,10 @@ export default function EventsHubPage() {
     else params.set('tela', v);
     setSearchParams(params, { replace: true });
   };
+
+  // Conta de candidato (Trabalhe Conosco) não é equipe: vai para a área dela,
+  // como nas outras rotas da equipe (13/11/2026). Antes recebia o hub.
+  if (isAuthenticated && ehCandidato(user)) return <Navigate to={ROTAS_DO_CANDIDATO.minhaArea} replace />;
 
   // Sem sessão, a raiz é a porta de entrada — salvo em embed, onde a raiz
   // continua servindo as Programações para não quebrar iframes já publicados.

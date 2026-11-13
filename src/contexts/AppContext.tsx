@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { SELECT_PUBLICO } from '@/lib/events/camposPublicos';
+import { supabaseSemSessao } from '@/lib/supabaseSemSessao';
+import { ehCandidato } from '@/lib/vagas/conta';
 import { descreverErroDeGravacao } from '@/lib/events/mensagemDeErro';
 import { conflitosDe, marcarConflitos } from '@/lib/events/conflitos';
 import { apagarDoBalde, urlsDeArquivosDoEvento } from '@/lib/events/anexos';
@@ -43,7 +45,10 @@ export interface OpcoesDeGravacao {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated: temSessao, user, loading: authLoading } = useAuth();
+  /** Sessão de candidato (Trabalhe Conosco) não é equipe: vê a vitrine (13/11/2026). */
+  const isAuthenticated = temSessao && !ehCandidato(user);
+  const candidato = temSessao && !isAuthenticated;
   const [events, setEvents] = useState<AppEvent[]>([]);
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,10 +67,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
    *
    * As permissões de coluna no banco fecham o resto: mesmo pedindo `*`, a
    * chave pública não alcança as colunas internas.
+   *
+   * A conta de candidato pede sem a própria sessão (13/11/2026): com ela, o
+   * banco não entrega evento nenhum — só a equipe lê os eventos logada.
    */
   const fetchEvents = useCallback(async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (candidato ? supabaseSemSessao() : supabase)
         .from('events')
         .select(isAuthenticated ? '*' : SELECT_PUBLICO);
       
@@ -97,7 +105,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, candidato]);
 
   useEffect(() => {
     // Espera a sessão se resolver: buscar antes traria a lista pública para

@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, type KeyboardEvent } from 'react';
 import { useReduzMovimento } from '@/hooks/useReduzMovimento';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import { useIsEmbedded } from '@/hooks/useIsEmbedded';
-import { useAuth } from '@/contexts/AuthContext';
+import { useEquipe } from '@/hooks/useEquipe';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useApp } from '@/contexts/AppContext';
@@ -65,7 +65,8 @@ export default function PublicEventsPage() {
 }
 
 function ProgramacaoV2() {
-  const { isAuthenticated } = useAuth();
+  // Conta de candidato vê a vitrine, como a família (13/11/2026).
+  const isAuthenticated = useEquipe();
   const [search, setSearch] = useState('');
   const [currentSlide, setCurrentSlide] = useState(0);
   const [searchParams, setSearchParams] = useSearchParams();

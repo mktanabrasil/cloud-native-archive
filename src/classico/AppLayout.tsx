@@ -274,7 +274,7 @@ export default function AppLayout() {
                 variant="default" 
                 size="icon" 
                 className="h-14 w-14 rounded-full shadow-2xl bg-primary hover:bg-primary/90 border-2 border-primary-foreground/20"
-                title="Login Admin"
+                title="Entrar"
               >
                 <LogIn className="h-7 w-7" />
               </Button>

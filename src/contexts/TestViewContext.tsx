@@ -78,7 +78,12 @@ export const TEST_PERSONAS: TestPersona[] = [
   },
 ];
 
-const ALLOWED_TESTERS = ['mkt@anabrasil.org', 'alyson-viana@hotmail.com', 'mkt@anabrasil.org'];
+/**
+ * Quem pode "ver como" outra pessoa. Só muda a tela (banco e funções seguem a
+ * sessão de verdade), mas mostra as telas de admin. Até 13/11/2026 um `|| true`
+ * liberava para qualquer conta logada, inclusive a de candidato.
+ */
+const ALLOWED_TESTERS = ['mkt@anabrasil.org', 'contato@anabrasil.org', 'alyson-viana@hotmail.com'];
 
 const STORAGE_KEY = 'test_persona_id';
 
@@ -95,7 +100,7 @@ export function TestViewProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [activePersona, setActivePersonaState] = useState<TestPersona | null>(null);
 
-  const canUseTestMode = user && (ALLOWED_TESTERS.includes(user.email || '') || true); // Habilitado por padrão para facilitar o acesso inicial
+  const canUseTestMode = !!user && ALLOWED_TESTERS.includes((user.email || '').toLowerCase());
 
   // Load persona from sessionStorage on mount / user change
   useEffect(() => {

@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { X, MessageCircle, Copy, Pencil, Eye, EyeOff } from 'lucide-react';
 import { useIsEmbedded } from '@/hooks/useIsEmbedded';
 import { AppEvent, UNIT_BG_COLORS } from '@/types';
-import { useAuth } from '@/contexts/AuthContext';
+import { useEquipe } from '@/hooks/useEquipe';
 import { useTestView } from '@/contexts/TestViewContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -41,9 +41,10 @@ interface Props {
 }
 
 export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = false, onEditar, onAlternarBanner }: Props) {
-  const { user } = useAuth();
+  // Conta de candidato vê o detalhe da família, sem logística (13/11/2026).
+  const daEquipe = useEquipe();
   const { activePersona } = useTestView();
-  const isInternalView = !comoVisitante && (activePersona ? activePersona.id !== 'test-nao-logado' : !!user);
+  const isInternalView = !comoVisitante && (activePersona ? activePersona.id !== 'test-nao-logado' : daEquipe);
   /**
    * Esboço V2: no app o detalhe é uma folha lateral. Embutido no site
    * (iframe ou `?embed=true`) fica a janela central de sempre: lá a altura
