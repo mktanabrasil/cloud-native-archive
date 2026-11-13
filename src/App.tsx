@@ -54,7 +54,6 @@ import VoluntariadoCentralPage from "./pages/VoluntariadoCentralPage";
 import VoluntariadoPresencaPage from "./pages/VoluntariadoPresencaPage";
 import { ROTAS_DO_CANDIDATO, ehCandidato } from "@/lib/vagas/conta";
 import NotFound from "./pages/NotFound";
-import EmailPreview from "./pages/EmailPreview";
 import AdminToolboxPage from "./pages/AdminToolboxPage";
 import OAuthConsent from "./pages/OAuthConsent";
 
@@ -64,11 +63,12 @@ const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading, user } = useAuth();
-  const [searchParams] = useSearchParams();
-  const isEmbed = searchParams.get('embed') === 'true';
 
   if (loading) return null;
-  if (!isAuthenticated && !isEmbed) return <Navigate to="/login" replace />;
+  // Sem exceção para `?embed=true` (13/11/2026): o que se embute no site é a
+  // vitrine (`/` e `/eventos`), que não passa por aqui. Com a exceção, Painel,
+  // Calendário e Visão Geral abriam sem login (vazios, mas abriam).
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
   // Conta de candidato (Trabalhe Conosco) não é equipe: vai para a área dela.
   if (isAuthenticated && ehCandidato(user)) return <Navigate to={ROTAS_DO_CANDIDATO.minhaArea} replace />;
   return <>{children}</>;
@@ -152,7 +152,6 @@ const App = () => (
                 } />
                 <Route path="/auth/confirm" element={<AuthConfirmPage />} />
                 <Route path="/redefinir-senha" element={<ResetPasswordPage />} />
-                <Route path="/email-preview" element={<EmailPreview />} />
                 <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
                 <Route path="/mercado-solidario-publico" element={<MercadoSolidarioPublicPage />} />
                 {/* Enquetes (23/09/2026): votar e acompanhar são públicos, fora

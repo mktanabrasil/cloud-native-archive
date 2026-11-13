@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { tintaNaCorDaUnidade } from '@/lib/events/grupo';
 import { CalendarDays, MapPin, Clock, Share2, X, MessageCircle, Copy, Megaphone, CheckCircle2, Pencil, Eye, EyeOff } from 'lucide-react';
 import { AppEvent, UNIT_BG_COLORS } from '@/types';
-import { useAuth } from '@/contexts/AuthContext';
+import { useEquipe } from '@/hooks/useEquipe';
 import { useTestView } from '@/contexts/TestViewContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -41,9 +41,10 @@ interface Props {
 }
 
 export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = false, onEditar, onAlternarBanner }: Props) {
-  const { user } = useAuth();
+  // Conta de candidato vê o detalhe da família, sem logística (13/11/2026).
+  const daEquipe = useEquipe();
   const { activePersona } = useTestView();
-  const isInternalView = !comoVisitante && (activePersona ? activePersona.id !== 'test-nao-logado' : !!user);
+  const isInternalView = !comoVisitante && (activePersona ? activePersona.id !== 'test-nao-logado' : daEquipe);
   /**
    * Quando a área de transferência recusa (iframe do site, conexão sem HTTPS,
    * permissão negada), o link aparece num campo para a pessoa copiar à mão.

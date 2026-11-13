@@ -90,8 +90,13 @@ describe('a consulta do app', () => {
   });
 });
 
-describe('a migração de privilégios', () => {
-  const sql = readFileSync('supabase/migrations/20260902130000_events_colunas_publicas.sql', 'utf8');
+// A de 02/09 se perdeu na troca de banco (10/09) e voltou na blindagem de
+// 13/11/2026: as duas têm de conceder a mesma lista.
+describe.each([
+  'supabase/migrations/20260902130000_events_colunas_publicas.sql',
+  'supabase/migrations/20261113180000_eventos_blindagem.sql',
+])('a migração de privilégios (%s)', (arquivo) => {
+  const sql = readFileSync(arquivo, 'utf8');
 
   it('concede ao anônimo exatamente os campos da lista', () => {
     const bloco = sql.slice(sql.indexOf('GRANT SELECT ('), sql.indexOf(') ON public.events TO anon'));
