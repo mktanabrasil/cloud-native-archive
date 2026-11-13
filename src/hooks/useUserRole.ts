@@ -36,6 +36,8 @@ export function useUserRole() {
   const [unit, setUnit] = useState<string | null>(null);
   const [delegatedUnits, setDelegatedUnits] = useState<string[]>([]);
   const [bondType, setBondType] = useState<string | null>(null);
+  /** Liberada no Calendário Anual com "só o calendário" ligado (13/11/2026). */
+  const [acessoSoCalendario, setAcessoSoCalendario] = useState(false);
 
   /**
    * O que identifica a pessoa, e não o objeto que a carrega.
@@ -64,6 +66,7 @@ export function useUserRole() {
       setUnit(activePersona.unit);
       setDelegatedUnits(activePersona.delegated_units || []);
       setBondType((activePersona as any).bond_type || null);
+      setAcessoSoCalendario(false);
       
       // If general admin, no restrictions. Otherwise, restrict to the persona's unit.
       setViewRestrictions(activePersona.permission_level === 'admin_geral' ? null : [activePersona.unit]);
@@ -75,6 +78,7 @@ export function useUserRole() {
 
     if (!isAuthenticated || !userId) {
       setRole(null);
+      setAcessoSoCalendario(false);
       setLoading(false);
       setAccessStatus(null);
       setCarregadoPara(null);
@@ -143,6 +147,18 @@ export function useUserRole() {
         setRole(null);
         setAccessStatus(requestData?.status || null);
       }
+      // "Só o calendário" (13/11/2026): a gestora liberada no Calendário Anual
+      // com o interruptor ligado enxerga só o calendário, por enquanto. O banco
+      // devolve a própria linha; sem a tabela (ou sem linha), não está presa.
+      let soCal = false;
+      if (userEmail) {
+        try {
+          const { data: acesso } = await (supabase as any).from('calendario_acessos').select('ativo, so_calendario').eq('email', userEmail.toLowerCase()).maybeSingle();
+          soCal = !!(acesso?.ativo && acesso?.so_calendario);
+        } catch { soCal = false; }
+      }
+      setAcessoSoCalendario(soCal);
+
       setCarregadoPara(userId);
       setLoading(false);
     };
@@ -172,6 +188,8 @@ export function useUserRole() {
    * para tudo o que o banco também libera ao admin.
    */
   const isEquipeDeMarketing = bondType === 'marketing' && isActive;
+  /** Só o Calendário Anual, por enquanto; o marketing nunca fica preso. */
+  const soCalendario = acessoSoCalendario && !isMarketing;
 
   /**
    * Quem entra no Jornal: a comunicação e a gestão de uma unidade.
@@ -226,6 +244,7 @@ export function useUserRole() {
     isRh,
     isUnitManager,
     canAccessJournal,
+    soCalendario,
   };
 }
 
