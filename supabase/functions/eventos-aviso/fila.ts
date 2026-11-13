@@ -119,3 +119,19 @@ export async function reservar(admin: ClienteDaFila, aviso: { id: string; tentat
   if (error) return false;
   return (data?.length ?? 0) > 0;
 }
+
+/**
+ * Quem recebe a devolução (13/11/2026, decisão dele): só quem enviou o evento,
+ * achado pelo nome gravado em `created_by`, com perfil ativo e e-mail. No
+ * pré-lançamento, ninguém. Os excluídos do Painel também ficam de fora.
+ */
+export function destinatariosDaDevolucao(evento: { created_by?: string | null }, perfis: Perfil[], config: ConfigDeAvisos): string[] {
+  if (config.pre_lancamento) return [];
+  const nome = String(evento.created_by || '').trim().toLowerCase();
+  if (!nome) return [];
+  const excluidos = new Set(config.excluidos);
+  const p = perfis.find(x => !!x.email && x.is_active !== false && !!x.name && x.name.trim().toLowerCase() === nome);
+  if (!p) return [];
+  const email = normEmail(p.email!);
+  return excluidos.has(email) ? [] : [email];
+}

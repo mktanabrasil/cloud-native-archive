@@ -5,6 +5,7 @@ import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { podeMexerNoEvento } from '@/lib/events/podeMexer';
+import { useEventoDaUrl } from '@/hooks/useEventoDaUrl';
 import { ConfirmarLixeira } from '@/components/events/ConfirmarLixeira';
 import { tituloEmTexto } from '@/lib/events/titulo';
 import { ocorreNoDia, diasDoEvento } from '@/lib/events/diasDoEvento';
@@ -55,7 +56,7 @@ const varDaUnidade: Record<Unit, string> = {
 export default function Dashboard() {
   const [searchParams] = useSearchParams();
   const hideTitle = searchParams.get('hideTitle') === 'true';
-  const { events: rawEvents, selectedMonth, setSelectedMonth, setSelectedEvent, deleteEvent, updateEvent } = useApp();
+  const { events: rawEvents, selectedMonth, setSelectedMonth, setSelectedEvent, deleteEvent, updateEvent, loading } = useApp();
   const events = useFilteredEvents();
   const { isAuthenticated } = useAuth();
   const { canEdit, unit, isMarketing, isAdmin, delegatedUnits } = useUserRole();
@@ -184,6 +185,9 @@ export default function Dashboard() {
     setParaLixeira(null);
     if (alvo) { try { await deleteEvent(alvo.id); } catch { /* o contexto já avisou */ } }
   };
+  // O botão do e-mail de devolução (13/11/2026): `?evento=` abre o formulário,
+  // ou o detalhe para quem não pode editar.
+  useEventoDaUrl(events, loading, (e) => (pode(e).editar ? handleEdit(e) : handleEventClick(e)));
 
   const handleRevisar = (event: AppEvent) => {
     setSelectedEvent(event);
