@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { acrescentarItem, apagarItem, editarItem, salvarAno } from '@/lib/calendario/api';
 import {
   DIAS_DA_SEMANA, LIMITE_DO_TEXTO, MESES, UNIDADES_DO_CALENDARIO, chaveDoDia, diaDaSemana, itensDoDia, percursosCompletos,
-  rotuloDasUnidades, semanasDoMes, type AnoDoCalendario, type ItemDoCalendario,
+  autoriaDe, autoriaDoItem, rotuloDasUnidades, semanasDoMes, type AnoDoCalendario, type ItemDoCalendario,
 } from '@/lib/calendario/regras';
 
 const COR_DA_UNIDADE: Record<string, string> = {
@@ -89,7 +89,8 @@ export function MesAMes({ ano, itens, editavel, mes, onMes, onAno, onItens }: Pr
         <section className="glass-2 min-w-0 rounded-[22px] p-4">
           <div className="grid gap-3 sm:grid-cols-2" data-tutorial="cal-tema-mes">
             <div><label htmlFor="cal-tema-mes" className="text-[12.5px] font-semibold">Tema do mês <span className="font-normal text-muted-foreground">(vai no título da página)</span></label>
-              <Input id="cal-tema-mes" className="mt-1" value={tema} maxLength={80} disabled={!editavel} onChange={e => setTema(e.target.value)} onBlur={salvarPercurso} /></div>
+              <Input id="cal-tema-mes" className="mt-1" value={tema} maxLength={80} disabled={!editavel} onChange={e => setTema(e.target.value)} onBlur={salvarPercurso} />
+              {autoriaDe(ano, `percurso:${mes}`) && <p className="mt-1 text-[11.5px] text-muted-foreground">Por {autoriaDe(ano, `percurso:${mes}`)}</p>}</div>
             <div><label htmlFor="cal-sugestao-mes" className="text-[12.5px] font-semibold">Sugestão de atividade</label>
               <Input id="cal-sugestao-mes" className="mt-1" value={sugestoes} maxLength={120} disabled={!editavel} placeholder="—" onChange={e => setSugestoes(e.target.value)} onBlur={salvarPercurso} /></div>
           </div>
@@ -149,9 +150,9 @@ export function MesAMes({ ano, itens, editavel, mes, onMes, onAno, onItens }: Pr
           {sel ? <PainelDoDia chave={sel} ano={ano} itens={itens} editavel={editavel} onItens={onItens} />
             : <div className="glass-2 rounded-[22px] p-4 text-[13.5px] text-muted-foreground">Toque num dia para ver o que já tem e acrescentar uma atividade.</div>}
           </div>
-          <MesRevisado revisado={revisado} editavel={editavel} onAlternar={alternarRevisado} mes={mes} onMes={onMes} />
+          <MesRevisado revisado={revisado} editavel={editavel} onAlternar={alternarRevisado} mes={mes} onMes={onMes} autoria={autoriaDe(ano, `revisado:${mes}`)} />
         </aside>
-        <div className="lg:hidden"><MesRevisado revisado={revisado} editavel={editavel} onAlternar={alternarRevisado} mes={mes} onMes={onMes} /></div>
+        <div className="lg:hidden"><MesRevisado revisado={revisado} editavel={editavel} onAlternar={alternarRevisado} mes={mes} onMes={onMes} autoria={autoriaDe(ano, `revisado:${mes}`)} /></div>
       </div>
 
       <Dialog open={diaNoCelular && !!sel} onOpenChange={o => { if (!o) setDiaNoCelular(false); }}>
@@ -164,12 +165,13 @@ export function MesAMes({ ano, itens, editavel, mes, onMes, onAno, onItens }: Pr
   );
 }
 
-function MesRevisado({ revisado, editavel, onAlternar, mes, onMes }: { revisado: boolean; editavel: boolean; onAlternar: () => void; mes: number; onMes: (m: number) => void }) {
+function MesRevisado({ revisado, editavel, onAlternar, mes, onMes, autoria }: { revisado: boolean; editavel: boolean; onAlternar: () => void; mes: number; onMes: (m: number) => void; autoria?: string | null }) {
   return (
     <div className="mt-3 space-y-2">
       <Button variant={revisado ? 'default' : 'outline'} className="w-full gap-2" disabled={!editavel} onClick={onAlternar} data-testid="mes-revisado" data-tutorial="cal-revisado">
         <Check className="h-4 w-4" /> {revisado ? `${MESES[mes - 1]} revisado` : `Marcar ${MESES[mes - 1].toLowerCase()} como revisado`}
       </Button>
+      {revisado && autoria && <p className="text-center text-[11.5px] text-muted-foreground">Revisado por {autoria}</p>}
       <div className="flex gap-2">
         <Button variant="ghost" className="flex-1 gap-1" disabled={mes === 1} onClick={() => onMes(mes - 1)}><ChevronLeft className="h-4 w-4" /> {mes > 1 ? MESES[mes - 2] : ''}</Button>
         <Button variant="ghost" className="flex-1 gap-1" disabled={mes === 12} onClick={() => onMes(mes + 1)}>{mes < 12 ? MESES[mes] : ''} <ChevronRight className="h-4 w-4" /></Button>
@@ -225,6 +227,7 @@ function PainelDoDia({ chave, ano, itens, editavel, onItens, escolherDia = false
               <span className="block text-[11.5px] text-muted-foreground">
                 {i.tipo === 'atividade' ? `Atividade · ${rotuloDasUnidades(i.unidades)}` : i.tipo === 'feriado' ? 'Feriado · da agenda' : `Data relevante${i.oculto ? ' · escondida do PDF' : ''}`}
               </span>
+              {autoriaDoItem(i) && <span className="block text-[11.5px] text-muted-foreground" data-testid="autoria-do-item">{autoriaDoItem(i)}</span>}
             </span>
             {i.tipo === 'feriado' && <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-label="Feriado: não sai" />}
             {i.tipo === 'data' && editavel && (

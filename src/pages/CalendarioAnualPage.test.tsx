@@ -14,6 +14,7 @@ const estado = vi.hoisted(() => ({
   acesso: null as unknown,
   vistos: new Set<string>(),
   marcados: [] as string[],
+  itens: [] as unknown[],
 }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => estado.auth }));
 vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => estado.papel }));
@@ -25,8 +26,9 @@ vi.mock('@/lib/calendario/api', () => ({
   ANO_DO_CALENDARIO: 2027,
   meuAcesso: async () => estado.acesso,
   lerAno: async () => ({ ano: 2027, tema: '', percursos: [], textos: {}, meses_revisados: [], capa_url: null, status: 'preenchimento', observacao: null, enviado_em: null, enviado_por: null, aprovado_em: null, aprovado_por: null, pdf_url: null, atualizado_em: '', atualizado_por: null }),
-  lerItens: async () => [],
+  lerItens: async () => estado.itens,
   salvarAno: vi.fn(), listarAcessos: async () => [],
+  enviarAoMarketing: vi.fn(), devolverAsCoordenadoras: vi.fn(), aprovarComPdf: vi.fn(), trocarCapa: vi.fn(), linkDoArquivo: vi.fn(async () => 'https://x'),
 }));
 
 const { default: CalendarioAnualPage } = await import('./CalendarioAnualPage');
@@ -46,6 +48,7 @@ beforeEach(() => {
   estado.acesso = null;
   estado.vistos = new Set(['calendario-inicio', 'calendario-mes']);
   estado.marcados = [];
+  estado.itens = [];
 });
 
 describe('quem chega em /calendario', () => {
@@ -168,5 +171,52 @@ describe('os textos do projeto (13/11/2026)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Salvar os textos' }));
     await waitFor(() => expect(salvarAno).toHaveBeenCalledWith(2027, { textos: { metodologia: 'Texto novo da metodologia.' } }));
     expect(await screen.findByRole('button', { name: 'Tudo salvo' })).toBeDisabled();
+  });
+});
+
+describe('autoria e revisão (13/11/2026)', () => {
+  const coordenadora = () => {
+    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'coord@ana.org', user_metadata: { conta: 'calendario', name: 'Coord' } } };
+    estado.acesso = { email: 'coord@ana.org', nome: 'Coord', ativo: true };
+  };
+
+  it('no dia, a atividade mostra quem acrescentou', async () => {
+    coordenadora();
+    estado.itens = [{ id: 'a', ano: 2027, dia: '2027-03-01', texto: 'Reunião com as famílias', tipo: 'atividade', unidades: [], destaque: true, oculto: false, fonte: null, criado_por_nome: 'Gestão DIC', criado_em: '2026-11-13T15:00:00Z' }];
+    abrir('/calendario?parte=mes&m=3');
+    expect((await screen.findAllByTestId('autoria-do-item'))[0]).toHaveTextContent('Por Gestão DIC · 13/11');
+  });
+
+  it('o marketing abre a revisão; a coordenadora que tenta cai no início', async () => {
+    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'mkt@anabrasil.org', user_metadata: { name: 'MKT ANA' } } };
+    estado.papel = { isMarketing: true, loading: false, soCalendario: false };
+    const { unmount } = abrir('/calendario?parte=revisao');
+    expect(await screen.findByRole('heading', { name: 'Calendário Anual 2027 · revisão' })).toBeInTheDocument();
+    unmount();
+    estado.papel = { isMarketing: false, loading: false, soCalendario: false };
+    coordenadora();
+    abrir('/calendario?parte=revisao');
+    expect(await screen.findByRole('heading', { name: 'Calendário Anual 2027' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /revisão/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('unidade nova nos textos (13/11/2026)', () => {
+  it('o botão acrescenta a ANA IV, em branco; ela é gravada mesmo vazia; a última pode sair', async () => {
+    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'coord@ana.org', user_metadata: { conta: 'calendario', name: 'Coord' } } };
+    estado.acesso = { email: 'coord@ana.org', nome: 'Coord', ativo: true };
+    const { salvarAno } = await import('@/lib/calendario/api');
+    vi.mocked(salvarAno).mockReset();
+    vi.mocked(salvarAno).mockImplementation(async (_ano, c) => ({ ...(await (await import('@/lib/calendario/api')).lerAno(2027)), ...c }) as never);
+    abrir('/calendario?parte=textos');
+    fireEvent.click(await screen.findByRole('button', { name: 'Acrescentar unidade (ANA IV)' }));
+    expect(screen.getByLabelText('ANA IV')).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Acrescentar unidade (ANA V)' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Acrescentar unidade (ANA V)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tirar a ANA V' }));
+    expect(screen.queryByLabelText('ANA V')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('ANA IV'), { target: { value: 'A unidade nova.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar os textos' }));
+    await waitFor(() => expect(salvarAno).toHaveBeenCalledWith(2027, { textos: { 'ana-4': 'A unidade nova.' } }));
   });
 });

@@ -39,8 +39,8 @@ export const ROTEIROS_DO_CALENDARIO: Record<RoteiroDoCalendario, PassoTutorial[]
     },
     {
       alvo: 'cal-pdf',
-      titulo: 'O PDF final',
-      texto: 'É montado pelo marketing, no formato de sempre, e aparece aqui para baixar depois de aprovado.',
+      titulo: 'A prévia e o envio',
+      texto: 'Aqui vocês veem a prévia do PDF e, com o tema e os 12 meses revisados, enviam ao marketing. O PDF final aparece aqui para baixar depois de aprovado.',
     },
     {
       alvo: 'cal-ajuda',

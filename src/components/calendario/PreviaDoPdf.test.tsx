@@ -19,6 +19,8 @@ vi.mock('pdfjs-dist', () => ({
   }),
 }));
 
+vi.mock('@/lib/calendario/api', () => ({ linkDoArquivo: vi.fn(async () => 'https://capa') }));
+
 import { PreviaDoPdf } from './PreviaDoPdf';
 
 const ano: AnoDoCalendario = {
@@ -38,7 +40,7 @@ describe('a prévia do PDF (13/11/2026)', () => {
     expect(screen.getByText(/Montando a prévia/)).toBeInTheDocument();
     expect(await screen.findByText(/3 páginas, montadas com o que está preenchido agora/)).toBeInTheDocument();
     expect(screen.getAllByLabelText(/^Página \d$/)).toHaveLength(3);
-    expect(gerado.opcoes).toEqual({ previa: true });
+    expect(gerado.opcoes).toEqual({ previa: true, capaUrl: null });
     expect(screen.queryByRole('button', { name: /baixar a prévia/i })).not.toBeInTheDocument();
   });
 

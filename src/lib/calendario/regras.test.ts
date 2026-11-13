@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { andamento, chaveDoDia, diaDaSemana, itensDoDia, percursosCompletos, rotuloDasUnidades, semanasDoMes, tituloDoMes, vaiProPdf, type AnoDoCalendario, type ItemDoCalendario } from './regras';
+import { andamento, autoriaDe, autoriaDoItem, chaveDoDia, diaDaSemana, itensDoDia, percursosCompletos, rotuloDasUnidades, semanasDoMes, tituloDoMes, vaiProPdf, type AnoDoCalendario, type ItemDoCalendario } from './regras';
 import { destinoDaContaRestrita, ehContaRestrita } from '@/lib/contasRestritas';
 
 /** O Calendário Anual (14/11/2026): as regras sem banco. */
@@ -61,5 +61,23 @@ describe('as contas que não são equipe', () => {
     expect(destinoDaContaRestrita({ user_metadata: {} })).toBeNull();
     expect(ehContaRestrita({ user_metadata: { conta: 'calendario' } })).toBe(true);
     expect(ehContaRestrita(null)).toBe(false);
+  });
+});
+
+describe('autoria (13/11/2026)', () => {
+  const item = (c: Partial<ItemDoCalendario>): ItemDoCalendario => ({ id: 'x', ano: 2027, dia: '2027-03-01', texto: 'Reunião', tipo: 'atividade', unidades: [], destaque: true, oculto: false, fonte: null, ...c });
+
+  it('a parte do ano: nome e dia, no horário de Brasília', () => {
+    expect(autoriaDe({ autoria: { tema: { nome: 'Gestão DIC', em: '2026-11-14T02:30:00Z' } } }, 'tema')).toBe('Gestão DIC · 13/11');
+    expect(autoriaDe({ autoria: {} }, 'tema')).toBeNull();
+    expect(autoriaDe({}, 'tema')).toBeNull();
+  });
+
+  it('a atividade: quem acrescentou e quem mexeu por último; a base não tem autora', () => {
+    expect(autoriaDoItem(item({ criado_por_nome: 'Gestão DIC', criado_em: '2026-11-13T15:00:00Z' }))).toBe('Por Gestão DIC · 13/11');
+    expect(autoriaDoItem(item({ criado_por_nome: 'Gestão DIC', criado_em: '2026-11-13T15:00:00Z', alterado_por_nome: 'MKT ANA', alterado_em: '2026-11-15T15:00:00Z' })))
+      .toBe('Por Gestão DIC · 13/11 · editado por MKT ANA · 15/11');
+    expect(autoriaDoItem(item({ tipo: 'data', alterado_por_nome: 'Gestão DIC', alterado_em: '2026-11-15T15:00:00Z' }))).toBe('Editado por Gestão DIC · 15/11');
+    expect(autoriaDoItem(item({ tipo: 'feriado' }))).toBeNull();
   });
 });

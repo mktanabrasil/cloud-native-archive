@@ -5,7 +5,7 @@ import {
 } from '../regras';
 import { montarCelula, type EstiloDaLetra } from './grade';
 import { blocosDe, quebrarEmLinhas, trocarMarcas } from './marcacao';
-import { SECOES_DO_TEXTO, corpoDaSecao } from './textosBase';
+import { corpoDaSecao, secoesDoAno } from './textosBase';
 
 /**
  * O PDF do Calendário Anual (13/11/2026), no formato do de 2026: A4 deitado,
@@ -231,7 +231,7 @@ export function montarPdf(
     cursor = topo + ALTURA_DA_TABELA + 15;
   };
 
-  for (const s of SECOES_DO_TEXTO) {
+  for (const s of secoesDoAno(ano.textos)) {
     if (s.novaPagina || paginasDeTexto === 0) abrirPaginaDeTexto();
     titulo(marcas(s.titulo), s.nivel, s.compacto);
     corpo(corpoDaSecao(ano.textos, s.id));
@@ -396,7 +396,8 @@ export async function gerarPdfDoCalendario(
   itens: ItemDoCalendario[],
   opcoes: { capaUrl?: string | null; previa?: boolean } = {},
 ) {
-  const capaUrl = opcoes.capaUrl === undefined ? ano.capa_url : opcoes.capaUrl;
+  // A capa vem como link pronto (assinado, do balde privado); quem chama resolve.
+  const capaUrl = opcoes.capaUrl ?? null;
   const [{ jsPDF }, recursos] = await Promise.all([import('jspdf'), carregarRecursos(ano, capaUrl)]);
   const r = montarPdf(jsPDF, ano, itens, recursos, { previa: opcoes.previa });
   return { blob: r.pdf.output('blob') as Blob, paginas: r.paginas, paginasDeTexto: r.paginasDeTexto, celulasCheias: r.celulasCheias };
