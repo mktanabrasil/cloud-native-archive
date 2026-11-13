@@ -1,0 +1,79 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+
+/**
+ * /calendario (14/11/2026): cada um vê o que é seu. Sem sessão, a entrada; a
+ * conta do calendário, o preenchimento (se o marketing liberou); o marketing,
+ * o preenchimento e quem tem acesso; o resto da equipe, o calendário de
+ * eventos no hub.
+ */
+const estado = vi.hoisted(() => ({
+  auth: { isAuthenticated: false, loading: false, user: null as unknown, signOut: vi.fn() },
+  papel: { isMarketing: false, loading: false },
+  acesso: null as unknown,
+}));
+vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => estado.auth }));
+vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => estado.papel }));
+vi.mock('@/components/ThemeToggle', () => ({ TemaFlutuante: () => null }));
+vi.mock('@/components/news/InstitutionalFooterBar', () => ({ default: () => null }));
+vi.mock('@/lib/calendario/api', () => ({
+  ANO_DO_CALENDARIO: 2027,
+  meuAcesso: async () => estado.acesso,
+  lerAno: async () => ({ ano: 2027, tema: '', percursos: [], textos: {}, meses_revisados: [], capa_url: null, status: 'preenchimento', observacao: null, enviado_em: null, enviado_por: null, aprovado_em: null, aprovado_por: null, pdf_url: null, atualizado_em: '', atualizado_por: null }),
+  lerItens: async () => [],
+  salvarAno: vi.fn(), listarAcessos: async () => [],
+}));
+
+const { default: CalendarioAnualPage } = await import('./CalendarioAnualPage');
+const Onde = () => { const l = useLocation(); return <p data-testid="onde">{l.pathname}{l.search}</p>; };
+const abrir = (url = '/calendario') => render(
+  <MemoryRouter initialEntries={[url]}>
+    <Routes>
+      <Route path="/calendario" element={<CalendarioAnualPage />} />
+      <Route path="*" element={<Onde />} />
+    </Routes>
+  </MemoryRouter>,
+);
+
+beforeEach(() => {
+  estado.auth = { isAuthenticated: false, loading: false, user: null, signOut: vi.fn() };
+  estado.papel = { isMarketing: false, loading: false };
+  estado.acesso = null;
+});
+
+describe('quem chega em /calendario', () => {
+  it('sem sessão: a entrada, com primeiro acesso', () => {
+    abrir();
+    expect(screen.getByRole('heading', { name: 'Calendário Anual' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Primeiro acesso' })).toBeInTheDocument();
+  });
+
+  it('conta do calendário sem liberação: o aviso, e nada do calendário', async () => {
+    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'coord@ana.org', user_metadata: { conta: 'calendario', name: 'Coord' } } };
+    abrir();
+    expect(await screen.findByText('Seu acesso ainda não foi liberado')).toBeInTheDocument();
+  });
+
+  it('conta do calendário liberada: o preenchimento, sem a lista de acessos', async () => {
+    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'coord@ana.org', user_metadata: { conta: 'calendario', name: 'Coord' } } };
+    estado.acesso = { email: 'coord@ana.org', nome: 'Coord', ativo: true };
+    abrir();
+    expect(await screen.findByRole('heading', { name: 'Calendário Anual 2027' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /coordenadoras com acesso/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /app/i })).not.toBeInTheDocument();
+  });
+
+  it('o marketing: o preenchimento e quem tem acesso', async () => {
+    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'mkt@anabrasil.org', user_metadata: {} } };
+    estado.papel = { isMarketing: true, loading: false };
+    abrir();
+    expect(await screen.findByRole('button', { name: /coordenadoras com acesso/i })).toBeInTheDocument();
+  });
+
+  it('o resto da equipe: o calendário de eventos, no hub (com o que veio na URL)', async () => {
+    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'dic@anabrasil.org', user_metadata: {} } };
+    abrir('/calendario?conflitos=true');
+    await waitFor(() => expect(screen.getByTestId('onde')).toHaveTextContent('/?tela=calendario&conflitos=true'));
+  });
+});

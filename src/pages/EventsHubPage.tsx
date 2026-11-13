@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { ROTAS_DO_CANDIDATO, ehCandidato } from '@/lib/vagas/conta';
+import { destinoDaContaRestrita } from '@/lib/contasRestritas';
 import { retornoDoGoogle } from '@/lib/events/conexaoGoogle';
 import { Globe, LayoutDashboard, Calendar, Trash2, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -60,7 +60,9 @@ export default function EventsHubPage() {
 
   // Conta de candidato (Trabalhe Conosco) não é equipe: vai para a área dela,
   // como nas outras rotas da equipe (13/11/2026). Antes recebia o hub.
-  if (isAuthenticated && ehCandidato(user)) return <Navigate to={ROTAS_DO_CANDIDATO.minhaArea} replace />;
+  // (14/11/2026: e a conta do Calendário Anual vai para /calendario.)
+  const destino = isAuthenticated ? destinoDaContaRestrita(user) : null;
+  if (destino) return <Navigate to={destino} replace />;
 
   // Sem sessão, a raiz é a porta de entrada — salvo em embed, onde a raiz
   // continua servindo as Programações para não quebrar iframes já publicados.

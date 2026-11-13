@@ -26,7 +26,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { navItems } from '@/config/navigation';
 import { useSouResponsavel } from '@/hooks/useSouResponsavel';
 import { useAvisosDaEquipe } from '@/hooks/useAvisosDaEquipe';
-import { ehCandidato } from '@/lib/vagas/conta';
+import { ehContaRestrita } from '@/lib/contasRestritas';
 
 export default function AppLayout() {
   const souResponsavel = useSouResponsavel();
@@ -52,7 +52,7 @@ export default function AppLayout() {
   
   const { isAuthenticated: temSessao, signOut, user } = useAuth();
   // Conta de candidato (Trabalhe Conosco) vê o app como visitante: sem menu da equipe.
-  const isAuthenticated = temSessao && !ehCandidato(user);
+  const isAuthenticated = temSessao && !ehContaRestrita(user);
   const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh } = useUserRole();
   // A bolinha em "Vagas": novos + respostas não lidas (passo 5, 20/10/2026).
   const avisosDeVagas = useAvisosDaEquipe(isRh || souResponsavel, location.pathname);

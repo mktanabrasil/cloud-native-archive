@@ -51,7 +51,8 @@ export default function ConflictDialog({ events, selectedMonth, open, onOpenChan
 
   const handleOpenFullCalendar = () => {
     onOpenChange(false);
-    navigate('/calendario?conflitos=true');
+    // O calendário de eventos mora na aba do hub; /calendario é o Calendário Anual (14/11/2026).
+    navigate('/?tela=calendario&conflitos=true');
   };
 
   return (

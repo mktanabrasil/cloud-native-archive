@@ -24,6 +24,7 @@ const abrir = () => render(
     <Routes>
       <Route path="/" element={<EventsHubPage />} />
       <Route path={ROTAS_DO_CANDIDATO.minhaArea} element={<p>área do candidato</p>} />
+      <Route path="/calendario" element={<p>calendário anual</p>} />
     </Routes>
   </MemoryRouter>,
 );
@@ -34,6 +35,12 @@ describe('a raiz, por quem chega', () => {
     abrir();
     expect(screen.getByText('área do candidato')).toBeInTheDocument();
     expect(screen.queryByText('Visão Geral')).not.toBeInTheDocument();
+  });
+
+  it('conta do Calendário Anual vai para /calendario (14/11/2026)', () => {
+    estado.auth = { isAuthenticated: true, user: { id: 'k1', user_metadata: { conta: 'calendario' } } };
+    abrir();
+    expect(screen.getByText('calendário anual')).toBeInTheDocument();
   });
 
   it('a equipe recebe o hub', () => {

@@ -28,7 +28,7 @@ describe('public/.htaccess', () => {
   });
 
   it('o index.html e as páginas do cartão de enquete não ficam em cache', () => {
-    expect(diretivas).toContain('<FilesMatch "^(index|enquete|enquete-resultado|mercado|transparencia|jornal|app|vagas|pizza|pizza-acompanhar|voluntariado|voluntariado-acompanhar|voluntariado-central)\\.html$">');
+    expect(diretivas).toContain('<FilesMatch "^(index|enquete|enquete-resultado|mercado|transparencia|jornal|app|vagas|pizza|pizza-acompanhar|voluntariado|voluntariado-acompanhar|voluntariado-central|calendario)\\.html$">');
     expect(diretivas).toMatch(/<FilesMatch "[^"]*">\s*Header set Cache-Control "no-cache"/);
   });
 

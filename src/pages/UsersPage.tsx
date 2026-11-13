@@ -32,7 +32,6 @@ import PageGuide from '@/components/PageGuide';
 
 const EMBED_PAGES = [
   { name: 'Visão Geral', path: '/' },
-  { name: 'Calendário', path: '/calendario' },
 ];
 
 const ROLE_LABELS: Record<string, string> = {

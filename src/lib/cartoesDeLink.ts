@@ -154,9 +154,19 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
     imagemAlt: 'Jornal Institucional da ANA Brasil',
   },
   {
+    // O Calendário Anual dos educadores (14/11/2026): o link vai às
+    // coordenadoras pelo WhatsApp. A imagem é a do app até ter arte própria.
+    arquivo: 'calendario.html',
+    regra: 'RewriteRule ^calendario/?$ /calendario.html [L]',
+    titulo: 'Calendário Anual · ANA Brasil',
+    descricao: 'Para as coordenadoras do Social preencherem o calendário anual dos educadores.',
+    imagem: '/og-app.jpg',
+    imagemAlt: 'O app da ANA Brasil',
+  },
+  {
     // As páginas da equipe: pedem login e têm um cartão só.
     arquivo: 'app.html',
-    regra: 'RewriteRule ^(login|redefinir-senha|auth/confirm|visao-geral|calendario|usuarios|auditoria|design-manual|marketing|admin-toolbox|email-preview|pizza-da-alegria/(painel(/dashboard)?|retirada)|voluntariado/natalfeliz26/presenca)/?$ /app.html [L]',
+    regra: 'RewriteRule ^(login|redefinir-senha|auth/confirm|visao-geral|usuarios|auditoria|design-manual|marketing|admin-toolbox|email-preview|pizza-da-alegria/(painel(/dashboard)?|retirada)|voluntariado/natalfeliz26/presenca)/?$ /app.html [L]',
     titulo: 'ANA Brasil · Área da equipe',
     descricao: 'O app da ANA Brasil: eventos, jornal e comunicação das unidades. Entre com a sua conta.',
     imagem: '/og-app.jpg',

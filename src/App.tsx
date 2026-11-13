@@ -13,7 +13,6 @@ import AppLayout from "@/components/AppLayout";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import Dashboard from "./pages/Dashboard";
 
-import CalendarPage from "./pages/CalendarPage";
 import UsersPage from "./pages/UsersPage";
 import AuditPage from "./pages/AuditPage";
 import LoginPage from "./pages/LoginPage";
@@ -52,7 +51,10 @@ import VoluntariadoPage from "./pages/VoluntariadoPage";
 import VoluntariadoAoVivoPage, { AoVivoNoEnderecoNovo } from "./pages/VoluntariadoAoVivoPage";
 import VoluntariadoCentralPage from "./pages/VoluntariadoCentralPage";
 import VoluntariadoPresencaPage from "./pages/VoluntariadoPresencaPage";
-import { ROTAS_DO_CANDIDATO, ehCandidato } from "@/lib/vagas/conta";
+import { ROTAS_DO_CANDIDATO } from "@/lib/vagas/conta";
+import { destinoDaContaRestrita } from "@/lib/contasRestritas";
+import { ROTA_DO_CALENDARIO } from "@/lib/calendario/conta";
+import CalendarioAnualPage from "./pages/CalendarioAnualPage";
 import NotFound from "./pages/NotFound";
 import AdminToolboxPage from "./pages/AdminToolboxPage";
 import OAuthConsent from "./pages/OAuthConsent";
@@ -69,8 +71,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   // vitrine (`/` e `/eventos`), que não passa por aqui. Com a exceção, Painel,
   // Calendário e Visão Geral abriam sem login (vazios, mas abriam).
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  // Conta de candidato (Trabalhe Conosco) não é equipe: vai para a área dela.
-  if (isAuthenticated && ehCandidato(user)) return <Navigate to={ROTAS_DO_CANDIDATO.minhaArea} replace />;
+  // Conta de candidato e conta do Calendário Anual não são equipe: cada uma
+  // vai para o seu endereço (14/11/2026).
+  const destino = isAuthenticated ? destinoDaContaRestrita(user) : null;
+  if (destino) return <Navigate to={destino} replace />;
   return <>{children}</>;
 }
 
@@ -192,13 +196,14 @@ const App = () => (
                 <Route path="/vagas/:slug/candidatos/:id" element={<FichaDoCandidatoPage />} />
                 <Route path="/vagas/:slug" element={<VagaPage />} />
                 <Route path="/portal-transparencia-publico" element={<TransparencyPublicPage />} />
+                {/* Calendário Anual dos educadores (14/11/2026): fora da barra do app. As
+                    coordenadoras entram com conta própria; quem é da equipe e não é do
+                    marketing segue para o calendário de eventos, na aba do hub. */}
+                <Route path={ROTA_DO_CALENDARIO} element={<CalendarioAnualPage />} />
                 <Route element={<AppLayout />}>
                   <Route path="/" element={<EventsHubPage />} />
                   <Route path="/visao-geral" element={
                     <ProtectedRoute><ComMargem><Dashboard /></ComMargem></ProtectedRoute>
-                  } />
-                  <Route path="/calendario" element={
-                    <ProtectedRoute><ComMargem><CalendarPage /></ComMargem></ProtectedRoute>
                   } />
                   {/* Endereço próprio das Programações. Antes só redirecionava para a
                       raiz, que era onde elas viviam; com a porta de entrada na raiz,
