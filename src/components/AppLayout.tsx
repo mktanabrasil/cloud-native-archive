@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Link, useLocation, Outlet } from 'react-router-dom';
+import { Link, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { LogOut, Users, FlaskConical, ChevronDown, LayoutGrid, CalendarDays, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -64,7 +64,7 @@ export default function AppLayout() {
   const { isAuthenticated: temSessao, signOut, user } = useAuth();
   // Conta de candidato (Trabalhe Conosco) vê o app como visitante: sem menu da equipe.
   const isAuthenticated = temSessao && !ehContaRestrita(user);
-  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh } = useUserRole();
+  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh, soCalendario, loading: carregandoPapel } = useUserRole();
   // A bolinha em "Vagas": novos + respostas não lidas (passo 5, 20/10/2026).
   const avisosDeVagas = useAvisosDaEquipe(isRh || souResponsavel, location.pathname);
   const { eligible: betaEligible, rawEnabled: betaOn, toggleBeta } = useBetaPreference();
@@ -251,6 +251,10 @@ export default function AppLayout() {
   // mudança — é o que o site já incorpora (pedido de 26/10/2026).
   if (isCleanView) return <AppLayoutClassico />;
 
+  // "Só o calendário" (13/11/2026): a gestora liberada no Calendário Anual
+  // com o interruptor ligado não entra em página nenhuma da equipe por enquanto.
+  if (isAuthenticated && !carregandoPapel && soCalendario) return <Navigate to="/calendario" replace />;
+
   return (
     <UiV2>
     <div className={cn('flex min-h-screen flex-col bg-transparent', isCleanView && 'min-h-0 h-auto bg-transparent overflow-visible')}>
@@ -288,7 +292,9 @@ export default function AppLayout() {
       )}
 
       <main className={cn('flex-1', !isCleanView ? 'mx-auto w-full overflow-x-clip' : 'overflow-visible', mostraMoldura && comDoca && 'pb-28')}>
-        <Outlet />
+        {/* Com sessão, o miolo espera o papel (13/11/2026): a conta "só o calendário"
+            não pode ver a página da equipe nem por um instante antes de ir embora. */}
+        {isAuthenticated && carregandoPapel ? null : <Outlet />}
       </main>
 
       {mostraMoldura && <TemaFlutuante />}

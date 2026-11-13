@@ -13,7 +13,8 @@ const db = supabase as unknown as SupabaseClient;
 /** O ano em preenchimento agora. */
 export const ANO_DO_CALENDARIO = 2027;
 
-export interface AcessoDoCalendario { email: string; nome: string; ativo: boolean; criado_em: string; criado_por: string | null }
+/** `so_calendario`: conta da equipe que, liberada aqui, só enxerga o calendário (13/11/2026). */
+export interface AcessoDoCalendario { email: string; nome: string; ativo: boolean; so_calendario: boolean; criado_em: string; criado_por: string | null }
 
 const falhou = (error: { message?: string } | null) => { if (error) throw error; };
 
@@ -76,6 +77,11 @@ export async function liberarAcesso(email: string, nome: string, por: string | n
 
 export async function definirAcessoAtivo(email: string, ativo: boolean): Promise<void> {
   const { error } = await db.from('calendario_acessos').update({ ativo }).eq('email', email);
+  falhou(error);
+}
+
+export async function definirSoCalendario(email: string, so: boolean): Promise<void> {
+  const { error } = await db.from('calendario_acessos').update({ so_calendario: so }).eq('email', email);
   falhou(error);
 }
 

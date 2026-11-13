@@ -10,7 +10,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
  */
 const estado = vi.hoisted(() => ({
   auth: { isAuthenticated: false, loading: false, user: null as unknown, signOut: vi.fn() },
-  papel: { isMarketing: false, loading: false },
+  papel: { isMarketing: false, loading: false, soCalendario: false },
   acesso: null as unknown,
 }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => estado.auth }));
@@ -38,7 +38,7 @@ const abrir = (url = '/calendario') => render(
 
 beforeEach(() => {
   estado.auth = { isAuthenticated: false, loading: false, user: null, signOut: vi.fn() };
-  estado.papel = { isMarketing: false, loading: false };
+  estado.papel = { isMarketing: false, loading: false, soCalendario: false };
   estado.acesso = null;
 });
 
@@ -66,9 +66,26 @@ describe('quem chega em /calendario', () => {
 
   it('o marketing: o preenchimento e quem tem acesso', async () => {
     estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'mkt@anabrasil.org', user_metadata: {} } };
-    estado.papel = { isMarketing: true, loading: false };
+    estado.papel = { isMarketing: true, loading: false, soCalendario: false };
     abrir();
     expect(await screen.findByRole('button', { name: /coordenadoras com acesso/i })).toBeInTheDocument();
+  });
+
+  it('a gestora liberada na lista (13/11/2026): o preenchimento; com só o calendário, sem o atalho para o app', async () => {
+    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'dic@anabrasil.org', user_metadata: { name: 'Gestão DIC' } } };
+    estado.acesso = { email: 'dic@anabrasil.org', nome: 'Gestão DIC', ativo: true, so_calendario: true };
+    estado.papel = { isMarketing: false, loading: false, soCalendario: true };
+    abrir();
+    expect(await screen.findByRole('heading', { name: 'Calendário Anual 2027' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /app/i })).not.toBeInTheDocument();
+  });
+
+  it('a gestora liberada, já solta do só o calendário: o preenchimento e o atalho para o app', async () => {
+    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'dic@anabrasil.org', user_metadata: { name: 'Gestão DIC' } } };
+    estado.acesso = { email: 'dic@anabrasil.org', nome: 'Gestão DIC', ativo: true, so_calendario: false };
+    abrir();
+    expect(await screen.findByRole('heading', { name: 'Calendário Anual 2027' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /app/i })).toBeInTheDocument();
   });
 
   it('o resto da equipe: o calendário de eventos, no hub (com o que veio na URL)', async () => {
