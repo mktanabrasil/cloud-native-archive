@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookOpen, CalendarDays, Check, ChevronRight, FileText, Image as ImageIcon, ListChecks, Lock, Users } from 'lucide-react';
+import { BookOpen, CalendarDays, Check, ChevronRight, Eye, FileText, Image as ImageIcon, ListChecks, Lock, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +21,7 @@ function Selo({ children, tom }: { children: React.ReactNode; tom: 'ok' | 'falta
  * está o processo e as partes a preencher. O PDF, a revisão e a aprovação
  * chegam no próximo passo; aqui eles já aparecem, travados.
  */
-export function InicioDoCalendario({ ano, editavel, marketing, onAno, abrir }: { ano: AnoDoCalendario; editavel: boolean; marketing: boolean; onAno: (a: AnoDoCalendario) => void; abrir: (p: Parte, mes?: number) => void }) {
+export function InicioDoCalendario({ ano, editavel, marketing, onAno, abrir, onPrevia }: { ano: AnoDoCalendario; editavel: boolean; marketing: boolean; onAno: (a: AnoDoCalendario) => void; abrir: (p: Parte, mes?: number) => void; onPrevia?: () => void }) {
   const a = andamento(ano);
   const textosEditados = Object.keys(ano.textos ?? {}).length;
   const [tema, setTema] = useState(ano.tema);
@@ -89,7 +89,8 @@ export function InicioDoCalendario({ ano, editavel, marketing, onAno, abrir }: {
         <aside className="space-y-4">
           <section className="glass-2 rounded-[22px] p-4" data-tutorial="cal-pdf">
             <p className="flex items-center gap-2 text-[13px] font-semibold"><FileText className="h-4 w-4" /> O PDF de {ano.ano}</p>
-            <p className="mt-2 text-[13px] leading-snug text-muted-foreground">58 páginas, A4 deitado, no mesmo formato de 2026. A prévia, o envio ao marketing e a aprovação chegam no próximo passo.</p>
+            <p className="mt-2 text-[13px] leading-snug text-muted-foreground">58 páginas, A4 deitado, no mesmo formato de 2026. A prévia monta o PDF com o que está preenchido agora.</p>
+            {onPrevia && <Button variant="outline" className="mt-3 w-full gap-2" onClick={onPrevia}><Eye className="h-4 w-4" /> Ver a prévia</Button>}
             <div className="mt-3 flex gap-2 rounded-[14px] bg-white/60 p-3 text-[12.5px] leading-snug dark:bg-white/5"><Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /><span>O PDF final é do marketing. Ele aparece aqui para baixar <b>depois de aprovado</b>.</span></div>
           </section>
           {marketing && (

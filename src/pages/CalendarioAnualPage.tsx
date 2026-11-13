@@ -16,6 +16,7 @@ import { EntradaDoCalendario } from '@/components/calendario/EntradaDoCalendario
 import { InicioDoCalendario, type Parte } from '@/components/calendario/InicioDoCalendario';
 import { PercursosDoAno } from '@/components/calendario/PercursosDoAno';
 import { TextosDoProjeto } from '@/components/calendario/TextosDoProjeto';
+import { PreviaDoPdf } from '@/components/calendario/PreviaDoPdf';
 import { MesAMes } from '@/components/calendario/MesAMes';
 import { CoordenadorasDoCalendario } from '@/components/calendario/CoordenadorasDoCalendario';
 
@@ -66,6 +67,7 @@ function Preenchimento({ email, marketing, foraDaLista }: { email: string; marke
   const [estado, setEstado] = useState<'carregando' | 'sem_acesso' | 'erro' | 'pronto'>('carregando');
   const [ano, setAno] = useState<AnoDoCalendario | null>(null);
   const [itens, setItens] = useState<ItemDoCalendario[]>([]);
+  const [previaAberta, setPreviaAberta] = useState(false);
   // O tutorial (13/11/2026): abre sozinho na primeira vez de cada roteiro.
   const tutoriais = useTutoriaisVistos();
   const roteiro: RoteiroDoCalendario | null = parte === 'inicio' ? 'calendario-inicio' : parte === 'mes' ? 'calendario-mes' : null;
@@ -127,7 +129,8 @@ function Preenchimento({ email, marketing, foraDaLista }: { email: string; marke
       {parte === 'textos' && <TextosDoProjeto ano={ano} editavel={editavel} onAno={setAno} />}
       {parte === 'mes' && <MesAMes ano={ano} itens={itens} editavel={editavel} mes={mes} onMes={m => abrir('mes', m)} onAno={setAno} onItens={setItens} />}
       {parte === 'coordenadoras' && marketing && <CoordenadorasDoCalendario quem={email} />}
-      {(parte === 'inicio' || (parte === 'coordenadoras' && !marketing)) && <InicioDoCalendario ano={ano} editavel={editavel} marketing={marketing} onAno={setAno} abrir={abrir} />}
+      {(parte === 'inicio' || (parte === 'coordenadoras' && !marketing)) && <InicioDoCalendario ano={ano} editavel={editavel} marketing={marketing} onAno={setAno} abrir={abrir} onPrevia={() => setPreviaAberta(true)} />}
+      <PreviaDoPdf ano={ano} itens={itens} podeBaixar={marketing} aberta={previaAberta} onFechar={() => setPreviaAberta(false)} />
       {roteiro && (
         <JournalTutorial percurso={roteiro} passos={ROTEIROS_DO_CALENDARIO[roteiro]} rotulo="Tutorial do Calendário Anual"
           aberto={tutorialAberto} onFechar={() => setTutorialAberto(false)} onVisto={() => tutoriais.marcarVisto(roteiro)} />
