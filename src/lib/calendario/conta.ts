@@ -25,8 +25,16 @@ export async function entrarNoCalendario(email: string, senha: string): Promise<
   if (error) throw error;
 }
 
-/** Primeiro acesso: cria a senha. Sem sessão de volta = falta confirmar o e-mail. */
-export async function criarContaDoCalendario(nome: string, email: string, senha: string): Promise<{ precisaConfirmar: boolean }> {
+/**
+ * Primeiro acesso: cria a senha. Sem sessão de volta = falta confirmar o e-mail.
+ *
+ * E-mail que já tem conta (13/11/2026): com a confirmação de e-mail ligada, o
+ * servidor não cria outra conta nem manda link, e responde como se tivesse
+ * criado — só que com `identities` vazio. Sem olhar isso, a tela dizia
+ * "Enviamos um link" e nada chegava. É o caso das gestoras, que já têm conta
+ * da equipe com o e-mail da gestão.
+ */
+export async function criarContaDoCalendario(nome: string, email: string, senha: string): Promise<{ precisaConfirmar: boolean; jaTemConta: boolean }> {
   const { data, error } = await supabase.auth.signUp({
     email: email.trim().toLowerCase(),
     password: senha,
@@ -36,7 +44,8 @@ export async function criarContaDoCalendario(nome: string, email: string, senha:
     },
   });
   if (error) throw error;
-  return { precisaConfirmar: !data.session };
+  const jaTemConta = !!data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0;
+  return { precisaConfirmar: !data.session && !jaTemConta, jaTemConta };
 }
 
 /** O link de troca de senha volta para a tela de redefinir; de lá, para o calendário. */

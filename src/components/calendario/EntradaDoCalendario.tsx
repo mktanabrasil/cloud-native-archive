@@ -38,7 +38,12 @@ export function EntradaDoCalendario() {
       if (modo === 'entrar') await entrarNoCalendario(email, senha);
       else if (modo === 'primeiro') {
         const r = await criarContaDoCalendario(nome, email, senha);
-        if (r.precisaConfirmar) setAviso(`Enviamos um link de confirmação para ${email.trim().toLowerCase()}. Abra o link e volte aqui para entrar.`);
+        if (r.jaTemConta) {
+          // Volta para "Entrar" com o e-mail preenchido; a senha digitada era nova.
+          setModo('entrar');
+          setSenha('');
+          setErro('Esse e-mail já tem conta. Entre com a senha que você já usa; se não lembrar, toque em “Esqueci a senha”.');
+        } else if (r.precisaConfirmar) setAviso(`Enviamos um link de confirmação para ${email.trim().toLowerCase()}. Abra o link e volte aqui para entrar.`);
       } else {
         await recuperarSenhaDoCalendario(email);
         setAviso('Se esse e-mail tiver conta, chega um link para criar uma senha nova.');
