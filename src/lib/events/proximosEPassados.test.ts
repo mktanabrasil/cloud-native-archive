@@ -21,9 +21,13 @@ describe('jaAconteceu', () => {
     expect(jaAconteceu(ev('retiro', '2026-09-05T08:00', '2026-09-07T12:00'), agora)).toBe(true);
   });
 
-  it('terminou ontem às 23:59: já aconteceu; à meia-noite de hoje: ainda não', () => {
+  // Terminar à meia-noite em ponto é terminar no dia anterior, a mesma regra
+  // do calendário (13/11/2026). Antes, "das 20h às 00:00" ficava o dia seguinte
+  // inteiro em Próximos.
+  it('terminou ontem às 23:59, ou à meia-noite de hoje: já aconteceu; às 00:01, ainda não', () => {
     expect(jaAconteceu(ev('a', '2026-09-07T20:00', '2026-09-07T23:59'), agora)).toBe(true);
-    expect(jaAconteceu(ev('b', '2026-09-07T20:00', '2026-09-08T00:00'), agora)).toBe(false);
+    expect(jaAconteceu(ev('b', '2026-09-07T20:00', '2026-09-08T00:00'), agora)).toBe(true);
+    expect(jaAconteceu(ev('c', '2026-09-07T20:00', '2026-09-08T00:01'), agora)).toBe(false);
   });
 
   it('o que ainda vem não aconteceu', () => {

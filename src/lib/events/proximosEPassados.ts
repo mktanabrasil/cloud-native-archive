@@ -22,7 +22,8 @@ export const inicioDoDia = (agora: Date): Date => {
 };
 
 export const jaAconteceu = (evento: Pick<AppEvent, 'end_datetime'>, agora: Date = new Date()): boolean =>
-  new Date(evento.end_datetime).getTime() < inicioDoDia(agora).getTime();
+  // `<=`: terminar à meia-noite de hoje é ter terminado ontem (13/11/2026).
+  new Date(evento.end_datetime).getTime() <= inicioDoDia(agora).getTime();
 
 const porInicio = (a: AppEvent, b: AppEvent) =>
   new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime();

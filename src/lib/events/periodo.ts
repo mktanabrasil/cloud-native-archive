@@ -1,6 +1,7 @@
 import { format, isSameDay, isSameMonth, isSameYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { AppEvent } from '@/types';
+import { fimQueConta } from './diasDoEvento';
 
 /**
  * Data e horário do evento como texto, no card e no detalhe.
@@ -11,12 +12,16 @@ import type { AppEvent } from '@/types';
  */
 type Periodo = Pick<AppEvent, 'start_datetime' | 'end_datetime'>;
 
-const datas = (e: Periodo) => ({ ini: new Date(e.start_datetime), fim: new Date(e.end_datetime) });
+/** `fimDoDia`: o fim que conta para o dia (meia-noite em ponto é o dia anterior). */
+const datas = (e: Periodo) => {
+  const ini = new Date(e.start_datetime), fim = new Date(e.end_datetime);
+  return { ini, fim, fimDoDia: fimQueConta(ini, fim) };
+};
 
 /** Início e término em dias diferentes. Mesma régua da aba "Já aconteceram". */
 export const variosDias = (e: Periodo): boolean => {
-  const { ini, fim } = datas(e);
-  return !isSameDay(ini, fim);
+  const { ini, fimDoDia } = datas(e);
+  return !isSameDay(ini, fimDoDia);
 };
 
 const dia = (d: Date) => format(d, 'd', { locale: ptBR });
@@ -29,7 +34,7 @@ const diaMesAno = (d: Date) => format(d, "d 'de' MMMM 'de' yyyy", { locale: ptBR
  * Sem ano (detalhe): as mesmas formas, sem o "de yyyy".
  */
 export const textoDaData = (e: Periodo, { comAno = true }: { comAno?: boolean } = {}): string => {
-  const { ini, fim } = datas(e);
+  const { ini, fimDoDia: fim } = datas(e);
   const completo = comAno ? diaMesAno : diaMes;
   if (!variosDias(e)) return completo(ini);
   if (isSameMonth(ini, fim)) return `${dia(ini)} a ${completo(fim)}`;

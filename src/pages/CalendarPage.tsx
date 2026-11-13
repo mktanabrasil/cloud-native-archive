@@ -4,6 +4,8 @@ import { diasDoEvento, eDiaDeFim, eDiaDeInicio, ocorreNoDia } from '@/lib/events
 import { executarEmLote, textoDoLote, FRASES_LIXEIRA, frasesDeStatus } from '@/lib/events/lote';
 import { processarAvisosPendentes } from '@/hooks/useAvisosDoEvento';
 import { tituloEmTexto } from '@/lib/events/titulo';
+import { podeMexerNoEvento } from '@/lib/events/podeMexer';
+import { ConfirmarLixeira } from '@/components/events/ConfirmarLixeira';
 import { semAcento } from '@/lib/events/local';
 import {
   AlertDialog,
@@ -68,7 +70,11 @@ export default function CalendarPage() {
   const { events: rawEvents, selectedMonth, setSelectedMonth, setSelectedEvent, deleteEvent, updateEvent, detectConflicts, loading, refetchEvents } = useApp();
   const events = useFilteredEvents();
   const { isAuthenticated } = useAuth();
-  const { canEdit, userName, unit, isAdmin } = useUserRole();
+  const { canEdit, userName, unit, isAdmin, isMarketing, delegatedUnits } = useUserRole();
+  /** Os botões e o arrasto só onde o banco deixaria (13/11/2026). */
+  const pode = (e: AppEvent) => podeMexerNoEvento(e, { canEdit, isMarketing, unit, delegatedUnits });
+  /** Arrastar um confirmado muda a data para todos: pergunta antes (13/11/2026). */
+  const [novaData, setNovaData] = useState<{ antes: AppEvent; depois: AppEvent } | null>(null);
   const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const hideTitle = searchParams.get('hideTitle') === 'true';
@@ -166,6 +172,13 @@ export default function CalendarPage() {
     });
   }, [events, filterUnit, filterStatus, filterType, conflictOnly, search]);
 
+  /**
+   * A Lista mostra o mês escolhido (13/11/2026). O cabeçalho dizia "novembro"
+   * e a lista trazia tudo desde abril; no celular, onde a Lista é a primeira
+   * tela, isso era o calendário inteiro.
+   */
+  const doMes = useMemo(() => filtered.filter(e => diasDoEvento(e).some(d => isSameMonth(d, selectedMonth))), [filtered, selectedMonth]);
+
   const conflictDates = useMemo(() => {
     const dates = new Set<string>();
     events.filter(e => e.has_conflict && !e.deleted_at).forEach(e => {
@@ -244,6 +257,10 @@ export default function CalendarPage() {
     const eventId = e.dataTransfer.getData('text/plain');
     const event = events.find(ev => ev.id === eventId);
     if (!event) return;
+    if (!podeMexerNoEvento(event, { canEdit, isMarketing, unit, delegatedUnits }).arrastar) {
+      toast.error('Você não pode mudar a data deste evento.');
+      return;
+    }
 
     const oldStart = new Date(event.start_datetime);
     const oldEnd = new Date(event.end_datetime);
@@ -261,8 +278,9 @@ export default function CalendarPage() {
       updated_by: userName || 'Usuário'
     };
 
+    if (event.status === 'confirmado') { setNovaData({ antes: event, depois: updatedEvent }); return; }
     updateEvent(updatedEvent);
-  }, [events, updateEvent, userName]);
+  }, [events, updateEvent, userName, canEdit, isMarketing, unit, delegatedUnits]);
 
   const prev = () => setSelectedMonth(view === 'week'
     ? new Date(selectedMonth.getTime() - 7 * 86400000)
@@ -327,7 +345,7 @@ export default function CalendarPage() {
               </Button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Tabs value={view} onValueChange={(v) => setView(v as View)} className="w-full sm:w-auto">
                 <TabsList className="h-10">
                   {/* Esboço V2: abas só com o nome, sem ícone. */}
@@ -337,7 +355,7 @@ export default function CalendarPage() {
                 </TabsList>
               </Tabs>
               
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Select value={filterUnit} onValueChange={setFilterUnit}>
                   <SelectTrigger className="h-10 w-[130px] shadow-sm bg-background"><SelectValue placeholder="Unidade" /></SelectTrigger>
                   <SelectContent>
@@ -348,7 +366,7 @@ export default function CalendarPage() {
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
                   <SelectTrigger className="h-10 w-[110px] shadow-sm bg-background"><SelectValue placeholder="Status" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Todos os Status</SelectItem>
+                    <SelectItem value="all">Todos os status</SelectItem>
                     {EVENT_STATUSES.map(s => <SelectItem key={s} value={s}>{rotuloDoStatus(s)}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -443,7 +461,7 @@ export default function CalendarPage() {
                       return (
                       <button
                         key={e.id}
-                        draggable={inicio}
+                        draggable={inicio && pode(e).arrastar}
                         data-continuacao={inicio ? undefined : 'sim'}
                         aria-label={inicio ? undefined : `${tituloEmTexto(e.title)} (continua)`}
                         onDragStart={inicio ? (ev) => handleDragStart(ev, e) : undefined}
@@ -458,7 +476,7 @@ export default function CalendarPage() {
                           ? { background: `hsl(var(${cor}) / 0.16)`, borderColor: `hsl(var(${cor}))` }
                           : { background: `hsl(var(${cor}) / 0.08)` }}
                       >
-                        <span className="block truncate">{e.title}</span>
+                        <span className="block truncate">{tituloEmTexto(e.title)}</span>
                         {inicio && (
                           <span className="hidden truncate font-normal text-muted-foreground sm:block">{format(new Date(e.start_datetime), 'HH:mm')}</span>
                         )}
@@ -516,7 +534,7 @@ export default function CalendarPage() {
                       dayEvents.map(e => { const inicio = eDiaDeInicio(e, day); const cor = varDaUnidade[e.unit]; return (
                         <button
                           key={e.id}
-                          draggable={inicio}
+                          draggable={inicio && pode(e).arrastar}
                           data-continuacao={inicio ? undefined : 'sim'}
                           onDragStart={inicio ? (ev) => handleDragStart(ev, e) : undefined}
                           onClick={() => handleEventClick(e)}
@@ -526,7 +544,7 @@ export default function CalendarPage() {
                           )}
                           style={{ background: `hsl(var(${cor}) / ${inicio ? 0.16 : 0.08})`, borderColor: inicio ? `hsl(var(${cor}))` : 'transparent' }}
                         >
-                          <span className="line-clamp-2">{e.title}</span>
+                          <span className="line-clamp-2">{tituloEmTexto(e.title)}</span>
                           <span className="block font-normal not-italic text-muted-foreground">
                             {inicio
                               ? `${format(new Date(e.start_datetime), 'HH:mm')} - ${format(new Date(e.end_datetime), 'HH:mm')}`
@@ -556,11 +574,11 @@ export default function CalendarPage() {
               onChangeStatus={handleBulkStatusChange}
             />
           )}
-          {filtered.length === 0 ? (
-            <p className="rounded-[20px] border border-black/5 bg-card py-12 text-center text-sm text-muted-foreground dark:border-white/5">Nenhum evento encontrado</p>
+          {doMes.length === 0 ? (
+            <p className="rounded-[20px] border border-black/5 bg-card py-12 text-center text-sm text-muted-foreground dark:border-white/5">Nenhum evento em {format(selectedMonth, 'MMMM yyyy', { locale: ptBR })}</p>
           ) : (
           <div className="overflow-hidden rounded-[20px] border border-black/5 bg-card dark:border-white/5">
-          {[...filtered].sort((a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime()).map(e => {
+          {[...doMes].sort((a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime()).map(e => {
             const inicio = new Date(e.start_datetime);
             return (
             <div key={e.id} className="flex items-center gap-3 border-b border-border/70 px-4 py-3 transition-colors last:border-b-0 hover:bg-muted/40 sm:gap-4 sm:px-5">
@@ -577,7 +595,7 @@ export default function CalendarPage() {
                   <span className="mt-1 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">{format(inicio, 'MMM', { locale: ptBR }).replace('.', '')}</span>
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate font-semibold text-foreground">{e.title}</span>
+                  <span className="block truncate font-semibold text-foreground">{tituloEmTexto(e.title)}</span>
                   <span className="mt-0.5 flex items-center gap-1.5 text-[13px] text-muted-foreground">
                     <span className={`h-2 w-2 shrink-0 rounded-full ring-1 ring-black/10 ${unitDotColors[e.unit]}`} />
                     <span className="truncate">{e.unit} · {e.location}</span>
@@ -604,25 +622,23 @@ export default function CalendarPage() {
         </div>
       )}
 
-      <EventDetailPanel event={detailEvent} open={showDetail} onOpenChange={setShowDetail} onEdit={canEdit ? handleEdit : undefined} onDelete={canEdit ? handleDelete : undefined} />
+      <EventDetailPanel event={detailEvent} open={showDetail} onOpenChange={setShowDetail} onEdit={detailEvent && pode(detailEvent).editar ? handleEdit : undefined} onDelete={detailEvent && pode(detailEvent).lixeira ? handleDelete : undefined} />
 
-      <AlertDialog open={!!paraLixeira} onOpenChange={(open) => !open && setParaLixeira(null)}>
+      <ConfirmarLixeira eventos={paraLixeira} isAdmin={isAdmin} onConfirmar={confirmarLixeira} onCancelar={() => setParaLixeira(null)} />
+
+      <AlertDialog open={!!novaData} onOpenChange={(open) => !open && setNovaData(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {paraLixeira?.length === 1
-                ? `Mover "${tituloEmTexto(paraLixeira[0].title)}" para a lixeira?`
-                : `Mover ${paraLixeira?.length ?? 0} eventos para a lixeira?`}
+              {novaData && `Mudar "${tituloEmTexto(novaData.antes.title)}" para ${format(new Date(novaData.depois.start_datetime), "dd/MM 'às' HH:mm")}?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {paraLixeira?.length === 1 ? 'Ele sai' : 'Eles saem'} da programação e do calendário. {isAdmin ? 'Dá para restaurar depois, na aba Lixeira.' : 'Se precisar de volta, peça à administração geral, que pode restaurar.'}
+              O evento está confirmado: a data muda na programação e na agenda, e quem recebe os avisos de evento recebe o e-mail de nova data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmarLixeira} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {paraLixeira?.length === 1 ? 'Mover para a lixeira' : `Mover ${paraLixeira?.length ?? 0} para a lixeira`}
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => { if (novaData) updateEvent(novaData.depois); setNovaData(null); }}>Mudar a data</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -93,6 +93,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       
       // A bandeira de conflito nasce aqui, das datas — o que veio na coluna
       // é ignorado. Ver `conflitos.ts`.
+      // Em ordem de início (13/11/2026): a busca não ordenava, e as listas que
+      // não ordenam (a semana no celular, as células do mês) mostravam fora de ordem.
+      adaptedEvents.sort((a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime());
       setEvents(marcarConflitos(adaptedEvents));
       setErroAoCarregar(false);
     } catch (error) {

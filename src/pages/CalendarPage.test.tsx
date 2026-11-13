@@ -39,7 +39,8 @@ vi.mock('@/contexts/AppContext', () => ({
 }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ isAuthenticated: true }) }));
 vi.mock('@/hooks/useUserRole', () => ({
-  useUserRole: () => ({ canEdit: true, canCreate: true, userName: 'Admin', unit: 'Administração', isAdmin: true }),
+  // isMarketing: o admin é sempre da comunicação no app (useUserRole).
+  useUserRole: () => ({ canEdit: true, canCreate: true, userName: 'Admin', unit: 'Administração', isAdmin: true, isMarketing: true }),
 }));
 vi.mock('@/hooks/useFilteredEvents', () => ({ useFilteredEvents: () => espiao.eventos }));
 vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => espiao.mobile }));
@@ -216,5 +217,38 @@ describe('no celular', () => {
     montar();
     expect(screen.getByRole('button', { name: 'Mês anterior' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Próximo mês' })).toBeInTheDocument();
+  });
+});
+
+describe('varredura de lançamento (13/11/2026)', () => {
+  it('a Lista mostra o mês escolhido, não tudo', () => {
+    espiao.eventos = [...espiao.eventos, evento({ id: 'natal', title: 'Festa de dezembro', start_datetime: new Date(2026, 11, 8, 7).toISOString(), end_datetime: new Date(2026, 11, 8, 17).toISOString() })];
+    montar();
+    trocarPara(/lista/i);
+    expect(screen.getByText('Reunião de pais')).toBeInTheDocument();
+    expect(screen.queryByText('Festa de dezembro')).not.toBeInTheDocument();
+  });
+
+  it('arrastar um confirmado pergunta antes de mudar a data', async () => {
+    montar();
+    const barra = screen.getByRole('button', { name: /reunião de pais/i });
+    const celula = barra.closest('div.relative') as HTMLElement;
+    fireEvent.drop(celula.nextElementSibling as HTMLElement, { dataTransfer: { getData: () => 'pais' } });
+
+    const dialogo = await screen.findByRole('alertdialog');
+    expect(dialogo).toHaveTextContent('Mudar "Reunião de pais" para 16/10 às 19:00?');
+    expect(espiao.updateEvent).not.toHaveBeenCalled();
+    fireEvent.click(within(dialogo).getByRole('button', { name: /mudar a data/i }));
+    await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalledTimes(1));
+    expect(new Date((espiao.updateEvent.mock.calls[0][0] as AppEvent).start_datetime).getDate()).toBe(16);
+  });
+
+  it('arrastar um pendente muda direto', async () => {
+    espiao.eventos = espiao.eventos.map(e => e.id === 'pais' ? { ...e, status: 'pendente' as const } : e);
+    montar();
+    const celula = screen.getByRole('button', { name: /reunião de pais/i }).closest('div.relative') as HTMLElement;
+    fireEvent.drop(celula.nextElementSibling as HTMLElement, { dataTransfer: { getData: () => 'pais' } });
+    await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
 });

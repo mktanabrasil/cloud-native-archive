@@ -125,7 +125,9 @@ function ProgramacaoV2() {
    * visitante e o site embutido não mudam.
    */
   const daEquipe = useFilteredEvents(false, false);
-  const events = equipe ? daEquipe : daVitrine;
+  // Com restrição de unidade, a equipe via menos que a família: os públicos
+  // das outras unidades sumiam (13/11/2026). Junta as duas, sem repetir.
+  const events = equipe ? juntarSemRepetir(daEquipe, daVitrine) : daVitrine;
   /**
    * Sem evento nenhum, a página muda de figura: sem busca, sem abas, um painel só.
    * Mas só depois de a lista chegar: enquanto `loading`, o esqueleto ocupa o
@@ -374,7 +376,7 @@ function ProgramacaoV2() {
                 <span>Vendo como <b className="font-semibold text-foreground">visitante</b>. É isto que a família vê.</span>
               ) : (
                 <span>
-                  Você está vendo a página como <b className="font-semibold text-foreground">equipe</b>: eventos internos e pendentes, botões de banner e edição aparecem.
+                  Você está vendo a página como <b className="font-semibold text-foreground">equipe</b>: eventos internos e pendentes aparecem{isAdmin ? ', com os botões de banner e edição' : canEdit ? ', com o botão de edição' : ''}.
                 </span>
               )}
             </div>
@@ -405,6 +407,9 @@ function ProgramacaoV2() {
             <div
               key={event.id}
               aria-hidden={index !== currentSlide}
+              // Os slides escondidos também saem do Tab (13/11/2026).
+              // (React 18 não tipa `inert`; a string vazia liga o atributo.)
+              {...({ inert: index !== currentSlide ? '' : undefined } as Record<string, unknown>)}
               className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             >
               {/* Desktop Banner (21:9 preferencial, fallback para capa 16:9) */}
@@ -452,7 +457,7 @@ function ProgramacaoV2() {
                     </Badge>
                   ) : equipe && isAdmin && !event.show_in_banner && (
                     <Badge variant="outline" className="bg-slate-900/80 text-slate-200 border-slate-700 backdrop-blur-sm">
-                      Oculto para o Público
+                      Oculto para o público
                     </Badge>
                   )}
                 </div>
@@ -518,7 +523,7 @@ function ProgramacaoV2() {
                         </>
                       ) : (
                         <>
-                          <Eye className="h-5 w-5 mr-2" /> Ativar Banner
+                          <Eye className="h-5 w-5 mr-2" /> Ativar banner
                         </>
                       )}
                     </Button>
@@ -583,8 +588,8 @@ function ProgramacaoV2() {
           >
             <Info className="mt-0.5 h-4 w-4 shrink-0" />
             <div className="flex-1">
-              <p className="font-semibold">Este evento não está mais disponível</p>
-              <p>Ele pode ter sido remarcado ou fechado ao público. Veja abaixo a programação atual.</p>
+              <p className="font-semibold">{erroAoCarregar ? 'Não consegui carregar este evento agora' : 'Este evento não está mais disponível'}</p>
+              <p>{erroAoCarregar ? 'Tente abrir o link de novo em instantes.' : 'Ele pode ter sido remarcado ou fechado ao público. Veja abaixo a programação atual.'}</p>
               {equipe && <p className="mt-1 opacity-80">Se ele existe, está pendente, interno ou na lixeira.</p>}
             </div>
             <button type="button" onClick={fecharAviso} aria-label="Fechar aviso" className="rounded-md p-1 hover:bg-amber-100 dark:hover:bg-amber-900/50">
@@ -872,4 +877,10 @@ function ProgramacaoV2() {
       />
     </div>
   );
+}
+
+/** A lista da equipe mais a da vitrine, sem repetir pelo id (13/11/2026). */
+function juntarSemRepetir<T extends { id: string }>(a: T[], b: T[]): T[] {
+  const ids = new Set(a.map(e => e.id));
+  return [...a, ...b.filter(e => !ids.has(e.id))];
 }

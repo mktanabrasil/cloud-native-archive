@@ -324,6 +324,7 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
             </Bloco>
           )}
 
+          {(event.status === 'confirmado' || event.status === 'concluido') && event.visibility === 'publico' ? (
           <Bloco titulo="Compartilhar">
             {/* Havia um botão "Instagram" aqui, sem ação nenhuma: o
                 Instagram não aceita compartilhar link pela web. Saiu em
@@ -335,7 +336,7 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
               </Button>
               <Button variant="outline" className="gap-2" onClick={copyLink}>
                 <Copy className="h-4 w-4" />
-                <span>Copiar Link</span>
+                <span>Copiar link</span>
               </Button>
             </div>
             {linkParaCopiar && (
@@ -352,6 +353,15 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
               Este evento é {event.visibility === 'publico' ? 'público e aberto a todos' : 'interno para colaboradores'}.
             </p>
           </Bloco>
+          ) : (
+            // Pendente ou interno: o link levaria a família a "não está mais
+            // disponível" (13/11/2026). Diz quando ele passa a valer.
+            <Bloco titulo="Compartilhar">
+              <p className="text-sm text-muted-foreground" data-testid="sem-compartilhar">
+                O link para as famílias funciona quando o evento estiver confirmado e público.
+              </p>
+            </Bloco>
+          )}
         </div>
       </DialogContent>
     </Dialog>

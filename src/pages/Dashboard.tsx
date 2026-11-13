@@ -4,6 +4,10 @@ import { getStatusBadgeClass } from '@/lib/statusColors';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
+import { podeMexerNoEvento } from '@/lib/events/podeMexer';
+import { ConfirmarLixeira } from '@/components/events/ConfirmarLixeira';
+import { tituloEmTexto } from '@/lib/events/titulo';
+import { ocorreNoDia, diasDoEvento } from '@/lib/events/diasDoEvento';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { AppEvent, EventStatus, EVENT_UNITS, EVENT_STATUSES, EVENT_TYPES, Unit } from '@/types';
@@ -54,7 +58,11 @@ export default function Dashboard() {
   const { events: rawEvents, selectedMonth, setSelectedMonth, setSelectedEvent, deleteEvent, updateEvent } = useApp();
   const events = useFilteredEvents();
   const { isAuthenticated } = useAuth();
-  const { canEdit, unit, isMarketing } = useUserRole();
+  const { canEdit, unit, isMarketing, isAdmin, delegatedUnits } = useUserRole();
+  /** Os botões só onde o banco deixaria (13/11/2026). */
+  const pode = (e: AppEvent) => podeMexerNoEvento(e, { canEdit, isMarketing, unit, delegatedUnits });
+  /** A lixeira pergunta antes, como no Calendário (13/11/2026): antes movia no primeiro toque. */
+  const [paraLixeira, setParaLixeira] = useState<AppEvent[] | null>(null);
   const isMobile = useIsMobile();
   const [detailEvent, setDetailEvent] = useState<AppEvent | null>(null);
   const [showDetail, setShowDetail] = useState(false);
@@ -134,10 +142,9 @@ export default function Dashboard() {
     return d >= threeDaysAgo;
   }), [filtered, threeDaysAgo]);
 
-  const weekEvents = useMemo(() => filtered.filter(e => {
-    const d = new Date(e.start_datetime);
-    return isWithinInterval(d, { start: weekStart, end: weekEnd });
-  }), [filtered, weekStart, weekEnd]);
+  const weekEvents = useMemo(() => filtered
+    .filter(e => diasDoEvento(e).some(d => isWithinInterval(d, { start: weekStart, end: weekEnd })))
+    .sort((a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime()), [filtered, weekStart, weekEnd]);
 
   const stats = useMemo(() => {
     return monthEvents.reduce((acc, e) => {
@@ -168,8 +175,14 @@ export default function Dashboard() {
   };
 
   const handleDelete = (id: string) => {
-    deleteEvent(id);
+    const alvo = events.find(e => e.id === id);
     setShowDetail(false);
+    if (alvo) setParaLixeira([alvo]);
+  };
+  const confirmarLixeira = async () => {
+    const alvo = paraLixeira?.[0];
+    setParaLixeira(null);
+    if (alvo) { try { await deleteEvent(alvo.id); } catch { /* o contexto já avisou */ } }
   };
 
   const handleRevisar = (event: AppEvent) => {
@@ -204,7 +217,7 @@ export default function Dashboard() {
           <div className="flex flex-wrap items-center justify-start sm:justify-end gap-3 w-full">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 rounded-lg border border-border bg-background px-2 py-1.5 shadow-sm h-10">
-                <button onClick={prevMonth} className="p-1 hover:bg-accent rounded transition-colors"><ChevronLeft className="h-4 w-4 text-muted-foreground" /></button>
+                <button onClick={prevMonth} aria-label="Mês anterior" className="p-2 hover:bg-accent rounded transition-colors"><ChevronLeft className="h-4 w-4 text-muted-foreground" /></button>
                 <Popover>
                   <PopoverTrigger asChild>
                     <button className="flex items-center justify-center gap-1.5 rounded px-2 py-0.5 hover:bg-accent transition-colors min-w-[120px] sm:min-w-[160px]">
@@ -225,7 +238,7 @@ export default function Dashboard() {
                     />
                   </PopoverContent>
                 </Popover>
-                <button onClick={nextMonth} className="p-1 hover:bg-accent rounded transition-colors"><ChevronRight className="h-4 w-4 text-muted-foreground" /></button>
+                <button onClick={nextMonth} aria-label="Próximo mês" className="p-2 hover:bg-accent rounded transition-colors"><ChevronRight className="h-4 w-4 text-muted-foreground" /></button>
               </div>
 
               <Button 
@@ -238,8 +251,8 @@ export default function Dashboard() {
               </Button>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Select value={filterUnit} onValueChange={setFilterUnit}>
                 <SelectTrigger className="h-10 w-[130px] shadow-sm bg-background"><SelectValue placeholder="Unidade" /></SelectTrigger>
                 <SelectContent>
@@ -250,7 +263,7 @@ export default function Dashboard() {
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="h-10 w-[110px] shadow-sm bg-background"><SelectValue placeholder="Status" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos os Status</SelectItem>
+                  <SelectItem value="all">Todos os status</SelectItem>
                   {EVENT_STATUSES.map(s => <SelectItem key={s} value={s}>{rotuloDoStatus(s)}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -370,7 +383,7 @@ export default function Dashboard() {
                   {u}
                 </span>
                 {diasDaSemana.map(d => {
-                  const doDia = weekEvents.filter(e => e.unit === u && isSameDay(new Date(e.start_datetime), d));
+                  const doDia = weekEvents.filter(e => e.unit === u && ocorreNoDia(e, d));
                   return (
                     <div key={d.toISOString()} className="min-h-[58px] space-y-1 border-b border-l border-border/70 p-1.5">
                       {doDia.map(e => (
@@ -381,7 +394,7 @@ export default function Dashboard() {
                           className="block w-full rounded-r-lg border-l-[3px] px-2 py-1 text-left text-[11.5px] font-semibold leading-snug text-foreground transition-opacity hover:opacity-80"
                           style={{ background: `hsl(var(${varDaUnidade[u]}) / 0.16)`, borderColor: `hsl(var(${varDaUnidade[u]}))` }}
                         >
-                          <span className="line-clamp-2">{e.title}</span>
+                          <span className="line-clamp-2">{tituloEmTexto(e.title)}</span>
                           <span className="block font-normal text-muted-foreground">
                             {format(new Date(e.start_datetime), 'HH:mm')} · {rotuloDoStatus(e.status)}
                           </span>
@@ -399,7 +412,7 @@ export default function Dashboard() {
           {weekEvents.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">Nenhum evento nesta semana</p>
           ) : (
-            weekEvents.slice(0, 8).map(e => (
+            <>{weekEvents.slice(0, 8).map(e => (
               <button
                 key={e.id}
                 type="button"
@@ -411,14 +424,19 @@ export default function Dashboard() {
                   <span className="mt-1 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">{format(new Date(e.start_datetime), 'EEE', { locale: ptBR }).replace('.', '')}</span>
                 </span>
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-semibold text-foreground">{e.title}</span>
+                  <span className="block truncate text-sm font-semibold text-foreground">{tituloEmTexto(e.title)}</span>
                   <span className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
                     <span className={`h-2 w-2 rounded-full ${unitDotColors[e.unit]}`} />
                     {e.unit} · {format(new Date(e.start_datetime), 'HH:mm')} · {rotuloDoStatus(e.status)}
                   </span>
                 </span>
               </button>
-            ))
+            ))}
+            {weekEvents.length > 8 && (
+              <p className="px-4 py-3 text-center text-xs text-muted-foreground" data-testid="mais-da-semana">
+                e mais {weekEvents.length - 8} {weekEvents.length - 8 === 1 ? 'evento' : 'eventos'} nesta semana: veja no Calendário
+              </p>
+            )}</>
           )}
         </div>
       </Card>
@@ -430,7 +448,8 @@ export default function Dashboard() {
         event={editingEvent}
         revisao={revisando}
       />
-      <EventDetailPanel event={detailEvent} open={showDetail} onOpenChange={setShowDetail} onEdit={canEdit ? handleEdit : undefined} onDelete={canEdit ? handleDelete : undefined} />
+      <EventDetailPanel event={detailEvent} open={showDetail} onOpenChange={setShowDetail} onEdit={detailEvent && pode(detailEvent).editar ? handleEdit : undefined} onDelete={detailEvent && pode(detailEvent).lixeira ? handleDelete : undefined} />
+      <ConfirmarLixeira eventos={paraLixeira} isAdmin={isAdmin} onConfirmar={confirmarLixeira} onCancelar={() => setParaLixeira(null)} />
       <ConflictDialog events={monthEvents} selectedMonth={selectedMonth} open={showConflicts} onOpenChange={setShowConflicts} onEventClick={handleConflictEventClick} />
       {showFiltered && (
         <FilteredEventsDialog

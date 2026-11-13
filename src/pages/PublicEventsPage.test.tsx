@@ -909,13 +909,13 @@ describe('o herói da equipe (V2)', () => {
     expect(regiao()).not.toHaveTextContent('Já aconteceu');
   });
 
-  it('o interno entra com selo e sem o botão de banner; o público fora do banner, com "Ativar Banner"', () => {
+  it('o interno entra com selo e sem o botão de banner; o público fora do banner, com "Ativar banner"', () => {
     montarV2();
 
     expect(slide('Natal Interno')).toHaveTextContent('Interno · só a equipe');
-    expect(slide('Natal Interno')).not.toHaveTextContent(/Ativar Banner|Ocultar Banner/);
-    expect(slide('Público Fora do Banner')).toHaveTextContent('Oculto para o Público');
-    expect(slide('Público Fora do Banner')).toHaveTextContent('Ativar Banner');
+    expect(slide('Natal Interno')).not.toHaveTextContent(/Ativar banner|Ocultar Banner/i);
+    expect(slide('Público Fora do Banner')).toHaveTextContent('Oculto para o público');
+    expect(slide('Público Fora do Banner')).toHaveTextContent('Ativar banner');
   });
 
   it('na lista, o evento interno não tem o botão de banner; o público tem', () => {
