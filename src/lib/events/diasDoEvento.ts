@@ -14,6 +14,16 @@ import { eachDayOfInterval, isSameDay, startOfDay } from 'date-fns';
  */
 const TETO_DE_DIAS = 62;
 
+/**
+ * O fim que conta para os dias (13/11/2026): terminar à meia-noite em ponto é
+ * terminar no dia anterior. "Das 20h às 00:00" virava dois dias, e o evento
+ * aparecia como continuação no dia seguinte.
+ */
+export function fimQueConta(inicio: Date, fim: Date): Date {
+  const meiaNoite = fim.getHours() === 0 && fim.getMinutes() === 0 && fim.getSeconds() === 0 && fim.getMilliseconds() === 0;
+  return meiaNoite && fim.getTime() > inicio.getTime() ? new Date(fim.getTime() - 1) : fim;
+}
+
 interface Periodo {
   start_datetime: string;
   end_datetime: string;
@@ -22,7 +32,7 @@ interface Periodo {
 export function diasDoEvento(e: Periodo): Date[] {
   const inicio = startOfDay(new Date(e.start_datetime));
   if (Number.isNaN(inicio.getTime())) return [];
-  let fim = startOfDay(new Date(e.end_datetime));
+  let fim = startOfDay(fimQueConta(new Date(e.start_datetime), new Date(e.end_datetime)));
   if (Number.isNaN(fim.getTime()) || fim < inicio) fim = inicio;
   const dias = eachDayOfInterval({ start: inicio, end: fim });
   return dias.length > TETO_DE_DIAS ? dias.slice(0, TETO_DE_DIAS) : dias;
@@ -32,7 +42,7 @@ export function diasDoEvento(e: Periodo): Date[] {
 export function ocorreNoDia(e: Periodo, dia: Date): boolean {
   const inicio = startOfDay(new Date(e.start_datetime));
   if (Number.isNaN(inicio.getTime())) return false;
-  let fim = startOfDay(new Date(e.end_datetime));
+  let fim = startOfDay(fimQueConta(new Date(e.start_datetime), new Date(e.end_datetime)));
   if (Number.isNaN(fim.getTime()) || fim < inicio) fim = inicio;
   const d = startOfDay(dia);
   return d >= inicio && d <= fim && diasDoEvento(e).some(x => isSameDay(x, d));

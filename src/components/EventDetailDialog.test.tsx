@@ -230,3 +230,19 @@ describe('botão de banner no detalhe (11/11/2026)', () => {
     expect(alternar).toHaveBeenCalledWith(evento);
   });
 });
+
+
+describe('compartilhar só o que a família consegue abrir (13/11/2026)', () => {
+  it('confirmado e público: os botões; pendente ou interno: a explicação', () => {
+    const { unmount } = render(<EventDetailDialog open onOpenChange={() => {}} event={evento} />);
+    expect(screen.getByRole('button', { name: /whatsapp/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /copiar link/i })).toBeInTheDocument();
+    unmount();
+    for (const outro of [{ status: 'pendente' }, { visibility: 'interno' }]) {
+      const { unmount: sair } = render(<EventDetailDialog open onOpenChange={() => {}} event={{ ...evento, ...outro } as AppEvent} />);
+      expect(screen.queryByRole('button', { name: /copiar link/i })).not.toBeInTheDocument();
+      expect(screen.getByTestId('sem-compartilhar')).toHaveTextContent(/confirmado e público/);
+      sair();
+    }
+  });
+});

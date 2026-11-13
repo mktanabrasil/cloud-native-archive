@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { tituloEmTexto } from '@/lib/events/titulo';
 import { AppEvent, PARTNER_TYPES, Unit } from '@/types';
 import { categoriaDoAnexo, normalizarAnexo, rotuloDoTamanho } from '@/lib/events/anexos';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -57,7 +58,7 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
               {event.visibility === 'publico' ? 'Público' : 'Interno'}
             </span>
           </p>
-          <DialogTitle className="text-2xl font-bold leading-tight tracking-tight">{event.title}</DialogTitle>
+          <DialogTitle className="text-2xl font-bold leading-tight tracking-tight">{tituloEmTexto(event.title)}</DialogTitle>
           <p className="text-[13px] text-muted-foreground">Detalhes do evento · {rotuloDoTipo(event.event_type)}</p>
         </DialogHeader>
 

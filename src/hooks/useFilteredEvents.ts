@@ -15,7 +15,9 @@ export function useFilteredEvents(isPublicView: boolean = false, showTrash: bool
 
     // Se for visão pública, aplica filtro simplificado
     if (isPublicView) {
-      return baseEvents.filter(event => event.status === 'confirmado' && event.visibility === 'publico');
+      // "Concluído" é um confirmado que aconteceu (13/11/2026): continua em
+      // "Já aconteceram" e o link compartilhado continua abrindo.
+      return baseEvents.filter(event => (event.status === 'confirmado' || event.status === 'concluido') && event.visibility === 'publico');
     }
 
     // Admins sempre veem tudo (respeitando o filtro de lixeira)
@@ -37,8 +39,10 @@ export function useFilteredEvents(isPublicView: boolean = false, showTrash: bool
       if (viewRestrictions !== null && viewRestrictions !== undefined) {
         allowedUnits = viewRestrictions;
       } else {
-        // Sem restrições de cargo E sem restrição individual = Acesso Total
-        return events;
+        // Sem restrições de cargo E sem restrição individual = Acesso Total.
+        // `baseEvents`, e não `events` (13/11/2026): a comunicação lê a lixeira
+        // no banco, e os apagados apareciam sem selo na lista e no herói.
+        return baseEvents;
       }
     }
 

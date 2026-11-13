@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { tituloEmTexto } from '@/lib/events/titulo';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { AppEvent, UNIT_BG_COLORS } from '@/types';
@@ -37,7 +38,7 @@ export function LinhaDeEvento({
         <span className="mt-1 text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground">{format(inicio, 'MMM', { locale: ptBR }).replace('.', '')}</span>
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-sm font-semibold text-foreground">{evento.title}</span>
+        <span className="block truncate text-sm font-semibold text-foreground">{tituloEmTexto(evento.title)}</span>
         <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
           <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ring-1 ring-black/10 ${UNIT_BG_COLORS[evento.unit]}`} />
           <span className="truncate">
