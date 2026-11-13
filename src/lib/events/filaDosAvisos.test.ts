@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SEMPRE_RECEBEM as DO_APP, destinatariosDoAviso, CAIXAS_FIXAS_EM_TEXTO } from './avisos';
-import { SEMPRE_RECEBEM, configDaLeitura, destinatarios, reservar } from '../../../supabase/functions/eventos-aviso/fila';
+import { SEMPRE_RECEBEM, configDaLeitura, destinatarios, destinatariosDaDevolucao, reservar } from '../../../supabase/functions/eventos-aviso/fila';
 
 /** A fila de avisos na função (13/11/2026): caixas fixas, configuração, destinatários e a reserva. */
 
@@ -111,5 +111,22 @@ describe('a reserva de um aviso', () => {
   it('erro do banco: não envia', async () => {
     const cliente = { from: () => ({ update: () => ({ eq: () => ({ eq: () => ({ select: () => Promise.resolve({ data: null, error: { message: 'x' } }) }) }) }) }) };
     expect(await reservar(cliente, { id: 'a1', tentativas: 0 })).toBe(false);
+  });
+});
+
+describe('quem recebe a devolução (13/11/2026)', () => {
+  const ev = { created_by: 'Gestão DIC' };
+  it('lançado: só quem enviou', () => {
+    expect(destinatariosDaDevolucao(ev, perfis, LANCADO)).toEqual(['dic@ana.org']);
+    expect(destinatariosDaDevolucao({ created_by: '  gestão dic ' }, perfis, LANCADO)).toEqual(['dic@ana.org']);
+  });
+  it('no pré-lançamento, ninguém; nem as caixas fixas', () => {
+    expect(destinatariosDaDevolucao(ev, perfis, { ...LANCADO, pre_lancamento: true })).toEqual([]);
+  });
+  it('sem perfil, desativado ou excluído: ninguém', () => {
+    expect(destinatariosDaDevolucao({ created_by: 'Alguém de Fora' }, perfis, LANCADO)).toEqual([]);
+    expect(destinatariosDaDevolucao({ created_by: null }, perfis, LANCADO)).toEqual([]);
+    expect(destinatariosDaDevolucao(ev, perfis.map(p => ({ ...p, is_active: false })), LANCADO)).toEqual([]);
+    expect(destinatariosDaDevolucao(ev, perfis, { ...LANCADO, excluidos: ['dic@ana.org'] })).toEqual([]);
   });
 });

@@ -5,7 +5,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 // nodemailer negocia 587 (STARTTLS) e 465 (TLS direto) sem drama, e o erro
 // volta pela promessa que a gente espera.
 import nodemailer from 'npm:nodemailer@6.9.16';
-import { SEMPRE_RECEBEM, configDaLeitura, destinatarios, normEmail, reservar, type ConfigDeAvisos, type Perfil } from './fila.ts';
+import { SEMPRE_RECEBEM, configDaLeitura, destinatarios, destinatariosDaDevolucao, normEmail, reservar, type ConfigDeAvisos, type Perfil } from './fila.ts';
 
 // Rede de segurança: nada que escape de uma biblioteca pode derrubar o worker.
 // O aviso fica na fila e o painel mostra "Reenviar".
@@ -62,7 +62,7 @@ async function lerConfig(admin: any): Promise<{ config: ConfigDeAvisos | null; o
 const FUSO = 'America/Sao_Paulo';
 
 type Evento = Record<string, any>;
-type TipoDeAviso = 'confirmado' | 'cancelado' | 'alterado' | 'atualizado';
+type TipoDeAviso = 'confirmado' | 'cancelado' | 'alterado' | 'atualizado' | 'devolvido';
 interface Aviso { id: string; event_id: string; tipo: TipoDeAviso; evento: Evento; antes: Evento | null; tentativas: number; status: string; agenda_status: string }
 
 // ---------- texto ----------
@@ -84,7 +84,7 @@ function quando(e: Evento): string {
 
 function assunto(a: Aviso): string {
   const e = a.evento;
-  const prefixo = a.tipo === 'confirmado' ? 'Confirmado' : a.tipo === 'cancelado' ? 'Cancelado' : 'Nova data';
+  const prefixo = a.tipo === 'confirmado' ? 'Confirmado' : a.tipo === 'cancelado' ? 'Cancelado' : a.tipo === 'devolvido' ? 'Devolvido' : 'Nova data';
   return `${prefixo}: ${tituloEmTexto(e.title)} · ${dataCurta(e.start_datetime)} · ${e.unit}`;
 }
 
@@ -127,6 +127,7 @@ const horaCurta = (iso: string) => hora(iso).replace(':00', 'h').replace(':', 'h
 function previa(a: Aviso): string {
   const e = a.evento;
   const quandoCurto = `${dataCurta(e.start_datetime)}, das ${horaCurta(e.start_datetime)} às ${horaCurta(e.end_datetime || e.start_datetime)}`;
+  if (a.tipo === 'devolvido') return `Devolvido com observação: ${tituloEmTexto(String(e.review_note || '')).slice(0, 120)}`;
   if (a.tipo === 'cancelado') return `Estava marcado para ${dataCurta(e.start_datetime)} · ${e.location || 'Unidade ' + e.unit}`;
   if (a.tipo === 'alterado') return `Agora é ${quandoCurto} · ${e.location || 'Unidade ' + e.unit}`;
   return `${quandoCurto} · ${e.location || 'Unidade ' + e.unit}`;
@@ -164,8 +165,8 @@ function capa(e: Evento, cor: string): string {
 function corpoHtml(a: Aviso, site: string, linkAgenda?: string | null): string {
   const e = a.evento;
   const cor = CORES_DA_UNIDADE[e.unit] || '#f37964';
-  // "atualizado" só mexe na agenda, nunca vira e-mail.
-  const st = ESTILO_DO_STATUS[a.tipo as Exclude<TipoDeAviso, 'atualizado'>];
+  // "atualizado" só mexe na agenda, nunca vira e-mail; "devolvido" tem o e-mail dele.
+  const st = ESTILO_DO_STATUS[a.tipo as Exclude<TipoDeAviso, 'atualizado' | 'devolvido'>];
   const comBanner = !!(e.banner_url_desktop || e.banner_image_desktop || e.banner_url_mobile || e.banner_image_mobile);
   const quem = e.reviewed_by || e.updated_by || 'a administração';
   const quandoQuem = e.reviewed_at || e.updated_at ? `${quem}, em ${dataLonga(e.reviewed_at || e.updated_at)} às ${hora(e.reviewed_at || e.updated_at)}` : quem;
@@ -234,6 +235,86 @@ function corpoHtml(a: Aviso, site: string, linkAgenda?: string | null): string {
 </table>
 </td></tr></table>
 </body></html>`;
+}
+
+/** O botão da devolução: abre o evento no app, já no formulário (Visão Geral, `?evento=`). */
+const linkParaAjustar = (e: Evento, site: string) => `${site}/?tela=visao-geral&evento=${encodeURIComponent(e.id)}`;
+const SELO_DA_DEVOLUCAO = { rotulo: 'Devolvido para ajuste', bg: '#e5f4fd', fg: '#0b5f8a', borda: '#a8d8f3' };
+
+/**
+ * O e-mail de devolução (mockup aprovado em 13/11/2026): o mesmo modelo dos
+ * avisos, com a observação em destaque e um botão que abre o evento já no
+ * formulário. Sem .ics: a devolução não muda a agenda de ninguém.
+ */
+function corpoDevolucao(a: Aviso, site: string): string {
+  const e = a.evento;
+  const cor = CORES_DA_UNIDADE[e.unit] || '#f37964';
+  const s = SELO_DA_DEVOLUCAO;
+  const comBanner = !!(e.banner_url_desktop || e.banner_image_desktop || e.banner_url_mobile || e.banner_image_mobile);
+  const linha = (k: string, v: string) => `<tr><td style="width:120px;padding:9px 0;border-top:1px solid #efece6;color:#474747;vertical-align:top;font-size:14px">${k}</td><td style="padding:9px 0;border-top:1px solid #efece6;vertical-align:top;font-size:14px;color:#191b1a">${v}</td></tr>`;
+  let linhas = '';
+  if (e.submitted_at) linhas += linha('Enviado em', `${dataCurta(e.submitted_at)} às ${hora(e.submitted_at)}`);
+  linhas += linha('Devolvido por', escape(e.reviewed_by || 'a administração') + (e.reviewed_at ? `, em ${dataLonga(e.reviewed_at)} às ${hora(e.reviewed_at)}` : ''));
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escape(assunto(a))}</title></head>
+<body style="margin:0;padding:0;background:#f8f6f3;font-family:${FONTE};color:#191b1a">
+<div style="display:none;font-size:1px;line-height:1px;max-height:0;overflow:hidden;color:#f8f6f3">${escape(previa(a))}</div>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8f6f3"><tr><td align="center" style="padding:22px 12px 28px">
+<table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;width:100%">
+  <tr><td style="padding:0 2px 14px">
+    <table role="presentation" cellspacing="0" cellpadding="0"><tr>
+      <td style="vertical-align:middle;padding-right:10px"><img src="${site}/logo.png" width="36" height="36" alt="anabrasil" style="display:block;border-radius:10px"></td>
+      <td style="vertical-align:middle;font-size:20px;font-weight:700;letter-spacing:-.02em;color:#191b1a;font-family:${FONTE}">anabrasil</td>
+      <td style="vertical-align:middle;padding-left:10px;font-size:12px;color:#474747">Programação de eventos</td>
+    </tr></table>
+  </td></tr>
+  <tr><td>
+    <div style="background:#fefdfb;border:1px solid #e6e1d9;border-radius:12px;overflow:hidden">
+      ${capa(e, cor)}
+      <div style="padding:20px 24px 8px">
+        <span style="display:inline-block;padding:3px 10px;border-radius:999px;background:${s.bg};color:${s.fg};border:1px solid ${s.borda};font-size:12px;font-weight:600;margin-bottom:12px">${s.rotulo}</span>
+        ${comBanner ? `<div style="font-size:21px;font-weight:700;line-height:1.2;color:#191b1a;letter-spacing:-.01em;margin:0 0 10px">${escape(tituloEmTexto(e.title))}</div>` : ''}
+        <p style="margin:0 0 14px;font-size:15px;line-height:1.5;color:#191b1a">A administração leu o seu pedido e <b>devolveu com uma observação</b>. O evento continua pendente: ajuste o que ela pediu e envie de novo.</p>
+        <div style="border-left:4px solid ${s.fg};background:${s.bg};border-radius:0 10px 10px 0;padding:12px 16px;margin:0 0 16px">
+          <div style="font-size:12px;font-weight:600;color:${s.fg};letter-spacing:.02em;margin-bottom:4px">OBSERVAÇÃO DA ADMINISTRAÇÃO</div>
+          <div style="font-size:15px;line-height:1.5;color:#191b1a">${escape(e.review_note || '').replace(/\n/g, '<br>')}</div>
+        </div>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr>
+          ${blocoDeData(e, false)}
+          <td style="vertical-align:top">
+            <div style="font-size:16px;font-weight:600;color:#191b1a;line-height:1.3">${escape(semanaLonga(e.start_datetime))}</div>
+            <div style="font-size:14px;color:#474747;margin-top:2px">das ${hora(e.start_datetime)} às ${hora(e.end_datetime || e.start_datetime)} · ${escape(e.location || 'Unidade ' + (e.unit || ''))}</div>
+          </td>
+        </tr></table>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:14px;border-collapse:collapse">${linhas}</table>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:18px 0 4px"><tr>
+          <td><a href="${linkParaAjustar(e, site)}" style="display:block;text-align:center;background:#81e2cf;color:#191b1a;text-decoration:none;font-weight:600;font-size:15px;padding:13px 18px;border-radius:8px;font-family:${FONTE}">Abrir e ajustar o evento</a></td>
+        </tr></table>
+        <p style="margin:10px 0 0;font-size:13px;text-align:center;color:#474747;line-height:1.5">O botão abre o evento no app, já no formulário. Ao salvar, ele volta para a fila de aprovação.</p>
+      </div>
+      <div style="padding:12px 24px 16px;font-size:12px;color:#474747;border-top:1px solid #efece6;margin-top:14px;line-height:1.5">Você recebe este e-mail porque enviou este evento para aprovação.</div>
+    </div>
+  </td></tr>
+  <tr><td style="padding:20px 8px 0;text-align:center;font-size:12px;color:#474747;line-height:1.6">
+    <b style="color:#191b1a;font-size:13px">ANA Brasil</b><br>
+    ${FRASE_DA_ANA}<br>
+    <a href="https://anabrasil.org" style="color:#191b1a;text-decoration:none">anabrasil.org</a> &nbsp;·&nbsp; <a href="https://www.instagram.com/anabrasilorg" style="color:#191b1a;text-decoration:none">@anabrasilorg</a><br>
+    <span style="color:#8a8f8b">Aviso automático do sistema de eventos. Responda pelo app, ajustando o evento.</span>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+}
+
+function textoDaDevolucao(a: Aviso, site: string): string {
+  const e = a.evento;
+  return [
+    previa(a), '', 'ANA Brasil · Programação de eventos', '', 'DEVOLVIDO PARA AJUSTE', tituloEmTexto(e.title), `Unidade ${e.unit} · ${diaSemana(e.start_datetime)}`, '',
+    'A administração leu o seu pedido e devolveu com uma observação. O evento continua pendente: ajuste o que ela pediu e envie de novo.', '',
+    `Observação da administração: ${e.review_note || ''}`, '',
+    `Quando: ${quando(e)}`, `Onde: ${e.location || e.unit}`,
+    `Devolvido por: ${e.reviewed_by || 'a administração'}`, '',
+    `Abrir e ajustar o evento: ${linkParaAjustar(e, site)}`, '', 'Aviso automático do sistema de eventos da ANA Brasil.',
+  ].join('\n');
 }
 
 function corpoTexto(a: Aviso, site: string, linkAgenda?: string | null): string {
@@ -773,7 +854,18 @@ Deno.serve(async (req) => {
   for (const a of fila) {
     // Reserva (13/11/2026): se outra chamada já pegou este aviso, ele é dela.
     if (!(await reservar(admin, a))) { resultado[a.id] = 'em andamento em outra chamada'; continue; }
-    const para = destinatarios(a.evento, (perfis as Perfil[]) || [], config);
+    const devolucao = a.tipo === 'devolvido';
+    const para = devolucao
+      ? destinatariosDaDevolucao(a.evento, (perfis as Perfil[]) || [], config)
+      : destinatarios(a.evento, (perfis as Perfil[]) || [], config);
+    // A devolução sem ninguém para receber (pré-lançamento, ou quem enviou sem
+    // e-mail ativo) fica registrada como ignorada, sem SMTP.
+    if (devolucao && para.length === 0 && a.status === 'pendente') {
+      const motivo = config.pre_lancamento ? 'pré-lançamento: a devolução só sai depois de lançar' : 'quem enviou não tem e-mail ativo no app';
+      await admin.from('avisos_de_evento').update({ status: 'ignorado', erro: motivo }).eq('id', a.id);
+      resultado[a.id] = `ignorado: ${motivo}`;
+      continue;
+    }
     const precisaEmail = a.status === 'pendente' || (forcado === a.id && a.status === 'falhou');
     const precisaAgenda = a.agenda_status === 'pendente' || (forcado === a.id && a.agenda_status === 'falhou');
     let linkAgenda: string | null = a.evento.google_event_link || null;
@@ -807,9 +899,10 @@ Deno.serve(async (req) => {
           from: remetente,
           to: para,
           subject: assunto(a),
-          text: corpoTexto(a, SITE, linkAgenda),
-          html: corpoHtml(a, SITE, linkAgenda),
-          attachments: [{ filename: 'evento.ics', contentType: 'text/calendar; charset=utf-8; method=' + (a.tipo === 'cancelado' ? 'CANCEL' : 'PUBLISH'), content: ics(a, SITE) }],
+          text: devolucao ? textoDaDevolucao(a, SITE) : corpoTexto(a, SITE, linkAgenda),
+          html: devolucao ? corpoDevolucao(a, SITE) : corpoHtml(a, SITE, linkAgenda),
+          // A devolução não muda a agenda: sem .ics.
+          attachments: devolucao ? [] : [{ filename: 'evento.ics', contentType: 'text/calendar; charset=utf-8; method=' + (a.tipo === 'cancelado' ? 'CANCEL' : 'PUBLISH'), content: ics(a, SITE) }],
         });
       } finally {
         transporte.close();

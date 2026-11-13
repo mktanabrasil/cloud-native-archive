@@ -10,7 +10,8 @@ import type { AppEvent } from '@/types';
  */
 
 /** "atualizado" = título/descrição/visibilidade/unidade de um confirmado mudou: só agenda, sem e-mail. */
-export type TipoDeAviso = 'confirmado' | 'cancelado' | 'alterado' | 'atualizado';
+/** "devolvido" (13/11/2026): o e-mail para quem enviou, quando a administração devolve. */
+export type TipoDeAviso = 'confirmado' | 'cancelado' | 'alterado' | 'atualizado' | 'devolvido';
 export type StatusDoAviso = 'pendente' | 'enviado' | 'falhou' | 'ignorado';
 
 export interface AvisoDeEvento {
@@ -118,6 +119,7 @@ export const ROTULO_DO_TIPO: Record<TipoDeAviso, string> = {
   cancelado: 'Evento cancelado',
   alterado: 'Data alterada',
   atualizado: 'Detalhes atualizados',
+  devolvido: 'Devolução',
 };
 
 /** "Aviso enviado a 7 endereços" / "a 1 endereço". */
