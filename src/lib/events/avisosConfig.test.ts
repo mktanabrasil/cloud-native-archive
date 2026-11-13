@@ -31,8 +31,8 @@ describe('listaDeDestinatarios', () => {
   it('quem entra no lançamento e o resumo', () => {
     const l = listaDeDestinatarios(perfis, { ...CONFIG_PADRAO, excluidos: ['alyson-viana@hotmail.com'] });
     expect(quemEntraNoLancamento(l)).toEqual(['dic@anabrasil.org']);
-    expect(resumoDaLista(l)).toBe('4 hoje, 5 no lançamento');
-    expect(resumoDaLista(listaDeDestinatarios([], { pre_lancamento: false, extras: [], excluidos: [] }))).toBe('4 pessoas');
+    expect(resumoDaLista(l)).toBe('6 hoje, 7 no lançamento');
+    expect(resumoDaLista(listaDeDestinatarios([], { pre_lancamento: false, extras: [], excluidos: [] }))).toBe('6 pessoas');
   });
 });
 

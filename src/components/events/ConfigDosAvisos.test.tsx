@@ -32,19 +32,19 @@ beforeEach(() => { espiao.config = { pre_lancamento: true, extras: [], excluidos
 describe('ConfigDosAvisos', () => {
   it('lista fixas recebendo e gestão/criadores esperando o lançamento', async () => {
     render(<ConfigDosAvisos />);
-    await waitFor(() => expect(screen.getAllByTestId('linha-destinatario')).toHaveLength(6));
+    await waitFor(() => expect(screen.getAllByTestId('linha-destinatario')).toHaveLength(8));
     const linhas = screen.getAllByTestId('linha-destinatario');
     expect(linhas[0]).toHaveTextContent('mkt@anabrasil.org');
     expect(linhas[0]).toHaveTextContent('caixa fixa');
-    expect(linhas[4]).toHaveTextContent('dic@anabrasil.org · Juliana');
-    expect(linhas[4]).toHaveTextContent('gestão DIC');
-    expect(linhas[4]).toHaveTextContent('entra no lançamento');
-    expect(screen.getByText(/4 hoje, 6 no lançamento/)).toBeInTheDocument();
+    expect(linhas[6]).toHaveTextContent('dic@anabrasil.org · Juliana');
+    expect(linhas[6]).toHaveTextContent('gestão DIC');
+    expect(linhas[6]).toHaveTextContent('entra no lançamento');
+    expect(screen.getByText(/6 hoje, 8 no lançamento/)).toBeInTheDocument();
   });
 
   it('desligar o pré-lançamento pede confirmação e diz quem entra; confirmar salva', async () => {
     render(<ConfigDosAvisos />);
-    await waitFor(() => expect(screen.getAllByTestId('linha-destinatario')).toHaveLength(6));
+    await waitFor(() => expect(screen.getAllByTestId('linha-destinatario')).toHaveLength(8));
     const interruptor = screen.getByRole('switch', { name: /Modo pré-lançamento/ });
     expect(interruptor).toHaveAttribute('aria-checked', 'true'); // ligado, como o texto diz
     fireEvent.click(interruptor);
@@ -59,7 +59,7 @@ describe('ConfigDosAvisos', () => {
 
   it('"Não incluir" grava o excluído; adicionar um avulso grava em extras', async () => {
     render(<ConfigDosAvisos />);
-    await waitFor(() => expect(screen.getAllByTestId('linha-destinatario')).toHaveLength(6));
+    await waitFor(() => expect(screen.getAllByTestId('linha-destinatario')).toHaveLength(8));
     fireEvent.click(screen.getAllByRole('button', { name: 'Não incluir' })[1]); // Alyson
     await waitFor(() => expect(espiao.salvos[0]).toMatchObject({ excluidos: ['alyson-viana@hotmail.com'] }));
 

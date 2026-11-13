@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { CAIXAS_FIXAS_EM_TEXTO } from '@/lib/events/avisos';
 import { useSearchParams } from 'react-router-dom';
 import { AlertTriangle, CalendarCheck, Check, ExternalLink, Lock, RefreshCw, Unplug, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -232,7 +233,7 @@ export function AgendaDoGoogle() {
           <div className="flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/5 p-3 text-xs text-foreground" data-testid="modo-pre-lancamento">
             <Lock className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
             <p>
-              <b>Modo pré-lançamento ligado.</b> Só mkt@, contato@, parceiros@ e eventos@ recebem os e-mails.{' '}
+              <b>Modo pré-lançamento ligado.</b> Só {CAIXAS_FIXAS_EM_TEXTO} recebem os e-mails.{' '}
               {estado.modo === 'conexao'
                 ? <>Quem vê a agenda é definido por você no Google, no compartilhamento de "{nomeDaAgenda}".</>
                 : <>A gestão das unidades entra quando você lançar, no card "Avisos por e-mail" abaixo.</>}

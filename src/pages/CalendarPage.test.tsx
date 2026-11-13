@@ -18,9 +18,12 @@ const espiao = vi.hoisted(() => ({
   refetch: vi.fn(),
   toastOk: vi.fn(),
   toastErro: vi.fn(),
+  avisos: vi.fn(),
 }));
 
 vi.mock('sonner', () => ({ toast: { success: espiao.toastOk, error: espiao.toastErro } }));
+// Em lote, cada gravação pula os avisos; a tela chama uma vez no fim (13/11/2026).
+vi.mock('@/hooks/useAvisosDoEvento', () => ({ processarAvisosPendentes: espiao.avisos }));
 vi.mock('@/contexts/AppContext', () => ({
   useApp: () => ({
     events: espiao.eventos,
@@ -111,6 +114,7 @@ beforeEach(() => {
   espiao.refetch.mockReset().mockResolvedValue(undefined);
   espiao.toastOk.mockClear();
   espiao.toastErro.mockClear();
+  espiao.avisos.mockClear();
   espiao.eventos = [
     evento({ id: 'colonia', title: 'Colônia de férias', start_datetime: new Date(2026, 9, 13, 8).toISOString(), end_datetime: new Date(2026, 9, 17, 16).toISOString() }),
     evento({ id: 'pais', title: 'Reunião de pais', unit: 'Santana', start_datetime: new Date(2026, 9, 15, 19).toISOString(), end_datetime: new Date(2026, 9, 15, 21).toISOString() }),
@@ -176,6 +180,7 @@ describe('excluir pergunta antes', () => {
       description: expect.stringMatching(/^1 evento não pôde ser movido: já estão confirmados/),
     });
     expect(espiao.refetch).toHaveBeenCalledTimes(1);
+    expect(espiao.avisos).toHaveBeenCalledTimes(1);
     // o recusado continua selecionado
     expect(screen.getByText(/1 evento\(s\) selecionado/)).toBeInTheDocument();
   });
@@ -192,6 +197,7 @@ describe('excluir pergunta antes', () => {
     expect(espiao.updateEvent).toHaveBeenCalledTimes(2);
     expect(espiao.updateEvent.mock.calls[0][1]).toEqual({ emLote: true });
     expect(espiao.refetch).toHaveBeenCalledTimes(1);
+    expect(espiao.avisos).toHaveBeenCalledTimes(1);
   });
 });
 
