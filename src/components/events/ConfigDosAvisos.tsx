@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
-import type { PerfilParaAviso } from '@/lib/events/avisos';
+import { CAIXAS_FIXAS_EM_TEXTO, type PerfilParaAviso } from '@/lib/events/avisos';
 import {
   CONFIG_PADRAO, type ConfigDeAvisos, ROTULO_DO_ESTADO, ROTULO_DO_MOTIVO, emailValido, listaDeDestinatarios, normalizarEmail, quemEntraNoLancamento, resumoDaLista,
 } from '@/lib/events/avisosConfig';
@@ -73,7 +73,7 @@ export function ConfigDosAvisos() {
   };
 
   const alternar = (ligar: boolean) => {
-    if (ligar) { void salvar({ ...config, pre_lancamento: true }, 'Modo pré-lançamento ligado: só as quatro caixas recebem.'); return; }
+    if (ligar) { void salvar({ ...config, pre_lancamento: true }, 'Modo pré-lançamento ligado: só as caixas fixas recebem.'); return; }
     setConfirmarLancamento(true);
   };
   const lancar = () => { setConfirmarLancamento(false); void salvar({ ...config, pre_lancamento: false }, 'Lançado: a equipe toda passa a receber os avisos.'); };
@@ -106,7 +106,7 @@ export function ConfigDosAvisos() {
 
         {/* 1. Lançamento */}
         <section className="space-y-2">
-          <h3 className="text-sm font-semibold">1. Lançamento <span className="font-normal text-muted-foreground">· quem entra além das quatro caixas</span></h3>
+          <h3 className="text-sm font-semibold">1. Lançamento <span className="font-normal text-muted-foreground">· quem entra além das caixas fixas</span></h3>
           <div className={`flex items-start gap-3 rounded-xl border p-3 ${config.pre_lancamento ? 'border-warning/30 bg-warning/5' : 'border-border bg-muted/40'}`} data-testid="modo-lancamento">
             {/* O interruptor É o modo pré-lançamento: ligado quando o texto diz "ligado". Desligar = lançar (com confirmação). */}
             <Switch id="pre-lancamento" checked={config.pre_lancamento} disabled={!carregado || salvando} onCheckedChange={v => alternar(v)} aria-label="Modo pré-lançamento" className="mt-0.5" />
@@ -116,7 +116,7 @@ export function ConfigDosAvisos() {
               </p>
               <p className="text-muted-foreground">
                 {config.pre_lancamento
-                  ? 'Só mkt@, contato@, parceiros@ e eventos@ recebem os e-mails. Desligue para lançar: a gestão das unidades e quem cria eventos entram na hora.'
+                  ? `Só ${CAIXAS_FIXAS_EM_TEXTO} recebem os e-mails. Desligue para lançar: a gestão das unidades e quem cria eventos entram na hora.`
                   : 'Modo pré-lançamento desligado: a gestão das unidades, quem cria eventos e os e-mails adicionados recebem os avisos. Ligar de novo tira o acesso deles na hora.'}
               </p>
               {origem === 'variavel' && carregado && <p className="mt-1 text-muted-foreground">Hoje quem manda ainda é a variável do Coolify. Ao salvar qualquer coisa aqui, o Painel passa a mandar e a variável pode ser removida.</p>}
@@ -173,7 +173,7 @@ export function ConfigDosAvisos() {
             <DialogTitle>Lançar os avisos para a equipe toda?</DialogTitle>
             <DialogDescription>
               {entram.length === 0
-                ? 'Ninguém além das quatro caixas está na lista hoje. Os próximos cadastros passam a receber assim que forem feitos.'
+                ? 'Ninguém além das caixas fixas está na lista hoje. Os próximos cadastros passam a receber assim que forem feitos.'
                 : <>Agora mesmo, <b>{entram.length === 1 ? '1 pessoa passa' : `${entram.length} pessoas passam`}</b> a receber os e-mails de evento: {entram.join(', ')}. Quem está marcado como "não incluir" continua fora. Dá para religar depois, e o acesso é retirado na hora.</>}
             </DialogDescription>
           </DialogHeader>

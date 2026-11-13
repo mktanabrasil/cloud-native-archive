@@ -5,6 +5,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 // nodemailer negocia 587 (STARTTLS) e 465 (TLS direto) sem drama, e o erro
 // volta pela promessa que a gente espera.
 import nodemailer from 'npm:nodemailer@6.9.16';
+import { SEMPRE_RECEBEM, configDaLeitura, destinatarios, normEmail, reservar, type ConfigDeAvisos, type Perfil } from './fila.ts';
 
 // Rede de segurança: nada que escape de uma biblioteca pode derrubar o worker.
 // O aviso fica na fila e o painel mostra "Reenviar".
@@ -21,8 +22,9 @@ addEventListener('error', (e) => { console.error('[eventos-aviso] erro solto:', 
  * Em todos os casos processa o que estiver pendente (e o `aviso_id` pedido,
  * mesmo que já tenha falhado), envia pelo SMTP da ANA e grava o resultado.
  *
- * Destinatários (decisão de 14/09/2026): sempre mkt@, contato@, parceiros@ e
- * eventos@anabrasil.org; os perfis ativos da unidade do evento; quem criou.
+ * Destinatários (decisão de 14/09/2026): sempre as caixas fixas (mkt@, contato@,
+ * parceiros@, eventos@ e, desde 13/11/2026, adm@ e financeiro@); os perfis
+ * ativos da unidade do evento; quem criou. As regras estão em `fila.ts`.
  *
  * Segundo passo (15/09/2026): a Agenda do Google. O robô (conta de serviço,
  * GOOGLE_SA_KEY) é dono de UMA agenda — "ANA · Eventos", só da equipe — que
@@ -49,35 +51,19 @@ const cors = {
 const json = (corpo: unknown, status = 200) =>
   new Response(JSON.stringify(corpo), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
-const SEMPRE_RECEBEM = ['mkt@anabrasil.org', 'contato@anabrasil.org', 'parceiros@anabrasil.org', 'eventos@anabrasil.org'];
-/**
- * Configuração dos avisos (PR 3, 16/09/2026), editada pelo Painel e guardada em
- * system_configs (chave 'avisos'). Espelho de src/lib/events/avisosConfig.ts.
- * - pre_lancamento: ligado = só as quatro caixas fixas recebem e-mail (e, no
- *   modo robô, leem a agenda).
- * - extras: e-mails avulsos que recebem tudo quando lançado.
- * - excluidos: pessoas da regra que não recebem, mesmo lançado.
- * Sem linha no banco, vale a variável AVISOS_SO_EQUIPE do Coolify (transição).
- */
-interface ConfigDeAvisos { pre_lancamento: boolean; extras: string[]; excluidos: string[]; atualizado_por?: string | null; atualizado_em?: string | null }
 const CHAVE_DA_CONFIG = 'avisos';
-const CONFIG_DA_VARIAVEL: ConfigDeAvisos = { pre_lancamento: (Deno.env.get('AVISOS_SO_EQUIPE') || '').trim().toLowerCase() === 'true', extras: [], excluidos: [] };
-const normEmail = (e: string) => e.trim().toLowerCase();
 
-async function lerConfig(admin: any): Promise<{ config: ConfigDeAvisos; origem: 'painel' | 'variavel' }> {
-  const { data } = await admin.from('system_configs').select('value').eq('key', CHAVE_DA_CONFIG).maybeSingle();
-  const v = data?.value;
-  if (v && typeof v === 'object' && typeof v.pre_lancamento === 'boolean') {
-    return { config: { pre_lancamento: v.pre_lancamento, extras: Array.isArray(v.extras) ? v.extras.map(normEmail) : [], excluidos: Array.isArray(v.excluidos) ? v.excluidos.map(normEmail) : [], atualizado_por: v.atualizado_por ?? null, atualizado_em: v.atualizado_em ?? null }, origem: 'painel' };
-  }
-  return { config: CONFIG_DA_VARIAVEL, origem: 'variavel' };
+/** A configuração do Painel; `null` se a leitura falhou (ver `configDaLeitura`). */
+async function lerConfig(admin: any): Promise<{ config: ConfigDeAvisos | null; origem: 'painel' | 'variavel' | 'erro' }> {
+  const { data, error } = await admin.from('system_configs').select('value').eq('key', CHAVE_DA_CONFIG).maybeSingle();
+  if (error) console.error('[avisos] não consegui ler a configuração:', error.message);
+  return configDaLeitura(data, error, Deno.env.get('AVISOS_SO_EQUIPE'));
 }
 const FUSO = 'America/Sao_Paulo';
 
 type Evento = Record<string, any>;
 type TipoDeAviso = 'confirmado' | 'cancelado' | 'alterado' | 'atualizado';
 interface Aviso { id: string; event_id: string; tipo: TipoDeAviso; evento: Evento; antes: Evento | null; tentativas: number; status: string; agenda_status: string }
-interface Perfil { email: string | null; name: string | null; unit: string | null; is_active: boolean | null; permission_level: string | null }
 
 // ---------- texto ----------
 const tituloEmTexto = (t: string) => (t || '').replace(/<br\s*\/?>/gi, ' ').replace(/\s+/g, ' ').trim();
@@ -94,23 +80,6 @@ function quando(e: Evento): string {
   const i = e.start_datetime, f = e.end_datetime;
   if (!f || mesmoDia(i, f)) return `${dataLonga(i)}, das ${hora(i)} às ${hora(f || i)}`;
   return `de ${dataLonga(i)} às ${hora(i)} a ${dataLonga(f)} às ${hora(f)}`;
-}
-
-function destinatarios(evento: Evento, perfis: Perfil[], config: ConfigDeAvisos): string[] {
-  const lista = new Set<string>(SEMPRE_RECEBEM);
-  if (config.pre_lancamento) return Array.from(lista);
-  const excluidos = new Set(config.excluidos);
-  for (const p of perfis) {
-    if (!p.email || p.is_active === false) continue;
-    // Evento do Grupo ANA Brasil (11/11/2026) avisa as gestoras das três unidades.
-    const daUnidade = !!p.unit && p.unit !== 'Administração' && p.permission_level !== 'usuario_padrao'
-      && (p.unit === evento.unit || (evento.unit === 'Grupo ANA Brasil' && ['DIC', 'Nilópolis', 'Santana'].includes(p.unit)));
-    const criou = !!p.name && !!evento.created_by && p.name.trim().toLowerCase() === String(evento.created_by).trim().toLowerCase();
-    const email = normEmail(p.email);
-    if ((daUnidade || criou) && !excluidos.has(email)) lista.add(email);
-  }
-  for (const e of config.extras) if (e && !excluidos.has(e)) lista.add(e);
-  return Array.from(lista);
 }
 
 function assunto(a: Aviso): string {
@@ -137,6 +106,8 @@ const CORES_DA_UNIDADE: Record<string, string> = {
   'Nilópolis': '#81e2cf',
   'Santana': '#fbce00',
   'Administração': '#f37964',
+  // Grupo ANA Brasil (11/11/2026): o grafite do app. Sem ele a capa saía coral.
+  'Grupo ANA Brasil': '#484848',
 };
 const ESTILO_DO_STATUS = {
   confirmado: { rotulo: 'Confirmado', bg: '#e4f4ec', fg: '#1e7a4a', borda: '#a9dcc0' },
@@ -172,25 +143,29 @@ function blocoDeData(e: Evento, cancelado: boolean): string {
 }
 
 function capa(e: Evento, cor: string): string {
+  // O grafite do Grupo pede texto claro; as cores das unidades são claras e levam escuro.
+  const escura = cor === '#484848';
+  const tinta = escura ? '#fefdfb' : '#191b1a';
   const banner = e.banner_url_desktop || e.banner_image_desktop || e.banner_url_mobile || e.banner_image_mobile;
   const selo = (fundo: string, texto: string) => `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:${fundo};color:${texto};font-size:12px;font-weight:600">${escape(e.unit || '')}</span>`;
   if (banner) {
     return `<div style="border-bottom:4px solid ${cor};background:#e6e1d9">
       <img src="${escape(banner)}" width="600" alt="" style="display:block;width:100%;height:auto;max-height:340px;object-fit:cover">
     </div>
-    <div style="padding:14px 24px 0">${selo(cor, '#191b1a')}</div>`;
+    <div style="padding:14px 24px 0">${selo(cor, tinta)}</div>`;
   }
   const tamanho = tituloEmTexto(e.title).length < 30 ? '30px' : '24px';
   return `<div style="background:${cor};padding:20px 22px 22px">
-    <div style="margin-bottom:26px">${selo('rgba(25,27,26,.85)', '#fefdfb')}</div>
-    <div style="font-size:${tamanho};font-weight:800;line-height:1.05;text-transform:uppercase;color:#191b1a;letter-spacing:-.01em;word-break:break-word;font-family:${FONTE}">${escape(tituloEmTexto(e.title))}</div>
+    <div style="margin-bottom:26px">${escura ? selo('rgba(254,253,251,.92)', '#191b1a') : selo('rgba(25,27,26,.85)', '#fefdfb')}</div>
+    <div style="font-size:${tamanho};font-weight:800;line-height:1.05;text-transform:uppercase;color:${tinta};letter-spacing:-.01em;word-break:break-word;font-family:${FONTE}">${escape(tituloEmTexto(e.title))}</div>
   </div>`;
 }
 
 function corpoHtml(a: Aviso, site: string, linkAgenda?: string | null): string {
   const e = a.evento;
   const cor = CORES_DA_UNIDADE[e.unit] || '#f37964';
-  const st = ESTILO_DO_STATUS[a.tipo];
+  // "atualizado" só mexe na agenda, nunca vira e-mail.
+  const st = ESTILO_DO_STATUS[a.tipo as Exclude<TipoDeAviso, 'atualizado'>];
   const comBanner = !!(e.banner_url_desktop || e.banner_image_desktop || e.banner_url_mobile || e.banner_image_mobile);
   const quem = e.reviewed_by || e.updated_by || 'a administração';
   const quandoQuem = e.reviewed_at || e.updated_at ? `${quem}, em ${dataLonga(e.reviewed_at || e.updated_at)} às ${hora(e.reviewed_at || e.updated_at)}` : quem;
@@ -493,8 +468,14 @@ async function tokenDaConexao(admin: any, c: Conexao): Promise<string> {
 async function ehAdmin(admin: any, userId: string): Promise<boolean> {
   const { data: papel } = await admin.from('user_roles').select('role').eq('user_id', userId).maybeSingle();
   if (papel?.role === 'admin') return true;
-  const { data: perfil } = await admin.from('profiles').select('permission_level').eq('id', userId).maybeSingle();
+  const { data: perfil } = await admin.from('profiles').select('permission_level').eq('user_id', userId).maybeSingle();
   return perfil?.permission_level === 'admin_geral';
+}
+
+/** Tem perfil ativo: é da equipe. A conta de candidato não tem perfil (13/11/2026). */
+async function ehDaEquipe(admin: any, userId: string): Promise<boolean> {
+  const { data } = await admin.from('profiles').select('is_active').eq('user_id', userId).maybeSingle();
+  return !!data && data.is_active !== false;
 }
 
 const semSegredo = (c: Conexao | null) => c ? { google_email: c.google_email, calendar_id: c.calendar_id, calendar_nome: c.calendar_nome, conectado_por: c.conectado_por, conectado_em: c.conectado_em, erro: c.erro } : null;
@@ -589,8 +570,14 @@ Deno.serve(async (req) => {
   try { corpo = await req.json(); } catch { /* sem corpo: processa os pendentes */ }
 
   const admin = createClient(SUPABASE_URL, SERVICE);
+  // Só a equipe chama com JWT (13/11/2026): qualquer conta logada, inclusive a
+  // de candidato, podia pedir "Reenviar" de um aviso quantas vezes quisesse.
+  if (usuarioId && !(await ehDaEquipe(admin, usuarioId))) return json({ error: 'Só a equipe chama os avisos.' }, 403);
   const chaveBruta = Deno.env.get('GOOGLE_SA_KEY');
-  const { config, origem: origemDaConfig } = await lerConfig(admin);
+  const { config: lida, origem: origemDaConfig } = await lerConfig(admin);
+  // Sem a configuração, nada sai: o aviso fica pendente para a próxima chamada.
+  if (!lida && !corpo.salvar_config) return json({ error: 'Não consegui ler a configuração dos avisos agora; nada foi enviado. Tente de novo em instantes.' }, 503);
+  const config = lida as ConfigDeAvisos;
 
   // { estado: true }: o card do Painel pergunta como está a agenda. Só leitura.
   if (corpo.estado) {
@@ -698,7 +685,8 @@ Deno.serve(async (req) => {
   // Google vira um aviso "confirmado" com e-mail já ignorado (ninguém recebe
   // e-mail de novo) e agenda pendente; a fila abaixo faz o resto.
   if (corpo.carga) {
-    if (pedidoPor === 'banco') return json({ error: 'A carga inicial é pedida por uma pessoa logada.' }, 403);
+    if (!usuarioId) return json({ error: 'A carga inicial é pedida por uma pessoa logada.' }, 403);
+    if (!(await ehAdmin(admin, usuarioId))) return json({ error: 'Só a administração geral pede a carga da agenda.' }, 403);
     const { data: faltam } = await admin.from('events').select('*').eq('status', 'confirmado').is('deleted_at', null).is('google_event_id', null);
     const linhas = (faltam || []).map((e: any) => ({ event_id: e.id, tipo: 'confirmado', evento: e, antes: null, status: 'ignorado', erro: 'carga inicial: sem e-mail', agenda_status: 'pendente' }));
     if (linhas.length > 0) {
@@ -711,7 +699,8 @@ Deno.serve(async (req) => {
   // { reaplicar: true }: regrava no Google todo confirmado que já está lá
   // (cor, texto, local), sem e-mail — para quando a regra de montagem muda.
   if (corpo.reaplicar) {
-    if (pedidoPor === 'banco') return json({ error: 'Reaplicar é pedido por uma pessoa logada.' }, 403);
+    if (!usuarioId) return json({ error: 'Reaplicar é pedido por uma pessoa logada.' }, 403);
+    if (!(await ehAdmin(admin, usuarioId))) return json({ error: 'Só a administração geral reaplica a agenda.' }, 403);
     const { data: presentes } = await admin.from('events').select('*').eq('status', 'confirmado').is('deleted_at', null).not('google_event_id', 'is', null);
     const linhas = (presentes || []).map((e: any) => ({ event_id: e.id, tipo: 'atualizado', evento: e, antes: null, status: 'ignorado', erro: 'reaplicar na agenda: sem e-mail', agenda_status: 'pendente' }));
     if (linhas.length > 0) {
@@ -782,6 +771,8 @@ Deno.serve(async (req) => {
 
   const resultado: Record<string, string> = {};
   for (const a of fila) {
+    // Reserva (13/11/2026): se outra chamada já pegou este aviso, ele é dela.
+    if (!(await reservar(admin, a))) { resultado[a.id] = 'em andamento em outra chamada'; continue; }
     const para = destinatarios(a.evento, (perfis as Perfil[]) || [], config);
     const precisaEmail = a.status === 'pendente' || (forcado === a.id && a.status === 'falhou');
     const precisaAgenda = a.agenda_status === 'pendente' || (forcado === a.id && a.agenda_status === 'falhou');

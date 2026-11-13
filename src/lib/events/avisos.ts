@@ -30,13 +30,25 @@ export interface AvisoDeEvento {
   agenda_link?: string | null;
 }
 
-/** As caixas da ANA que recebem sempre, seja quem for que preencheu. */
+/**
+ * As caixas da ANA que recebem sempre, seja quem for que preencheu. adm@ e
+ * financeiro@ entraram em 13/11/2026 (pedido de 16/09). Espelho de
+ * `SEMPRE_RECEBEM` em supabase/functions/eventos-aviso/fila.ts.
+ */
 export const SEMPRE_RECEBEM = [
   'mkt@anabrasil.org',
   'contato@anabrasil.org',
   'parceiros@anabrasil.org',
   'eventos@anabrasil.org',
+  'adm@anabrasil.org',
+  'financeiro@anabrasil.org',
 ] as const;
+
+/** "mkt@, contato@, …, adm@ e financeiro@": as caixas fixas, para os textos do Painel. */
+export const CAIXAS_FIXAS_EM_TEXTO = (() => {
+  const curtas = SEMPRE_RECEBEM.map(e => e.slice(0, e.indexOf('@') + 1));
+  return `${curtas.slice(0, -1).join(', ')} e ${curtas[curtas.length - 1]}`;
+})();
 
 export interface PerfilParaAviso {
   email: string | null;
@@ -60,7 +72,8 @@ export function destinatariosDoAviso(
   const norm = (e: string | null | undefined) => (e || '').trim().toLowerCase();
 
   for (const p of perfis) {
-    if (!p.email || p.is_active === false) continue;
+    // Sem nível de acesso, fora — como no Painel e na função (13/11/2026).
+    if (!p.email || p.is_active === false || !p.permission_level) continue;
     // Evento do Grupo ANA Brasil (11/11/2026) avisa as gestoras das três unidades.
     const daUnidade = !!p.unit && p.unit !== 'Administração' && p.permission_level !== 'usuario_padrao'
       && (p.unit === evento.unit || (evento.unit === 'Grupo ANA Brasil' && ['DIC', 'Nilópolis', 'Santana'].includes(p.unit)));

@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect, useRef, DragEvent } from 're
 import { toast } from 'sonner';
 import { diasDoEvento, eDiaDeFim, eDiaDeInicio, ocorreNoDia } from '@/lib/events/diasDoEvento';
 import { executarEmLote, textoDoLote, FRASES_LIXEIRA, frasesDeStatus } from '@/lib/events/lote';
+import { processarAvisosPendentes } from '@/hooks/useAvisosDoEvento';
 import { tituloEmTexto } from '@/lib/events/titulo';
 import { semAcento } from '@/lib/events/local';
 import {
@@ -143,6 +144,9 @@ export default function CalendarPage() {
     (t.tudoRecusado ? toast.error : toast.success)(t.titulo, { description: t.descricao });
     setSelectedEvents(new Set(r.recusados));
     await refetchEvents();
+    // Em lote, cada gravação pula a chamada dos avisos; uma só, no fim (13/11/2026).
+    // Sem ela, os avisos ficavam pendentes até alguém salvar outra coisa.
+    void processarAvisosPendentes();
   };
 
   const filtered = useMemo(() => {
@@ -216,6 +220,7 @@ export default function CalendarPage() {
     // o que o banco recusou fica selecionado, para a pessoa ver quais foram
     setSelectedEvents(new Set(r.recusados));
     await refetchEvents();
+    void processarAvisosPendentes();
   };
 
   const handleDragStart = useCallback((e: DragEvent<HTMLElement>, event: AppEvent) => {

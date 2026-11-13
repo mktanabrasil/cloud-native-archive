@@ -6,7 +6,7 @@ import { SEMPRE_RECEBEM, type PerfilParaAviso } from './avisos';
  * chave a cada execução; a variável AVISOS_SO_EQUIPE do Coolify deixou de
  * mandar assim que a configuração existe.
  *
- * - `pre_lancamento`: ligado = só as quatro caixas fixas recebem e-mail.
+ * - `pre_lancamento`: ligado = só as caixas fixas recebem e-mail.
  * - `extras`: e-mails avulsos, sem cadastro, que recebem tudo (no lançamento).
  * - `excluidos`: pessoas da regra que NÃO recebem, mesmo lançado.
  */
