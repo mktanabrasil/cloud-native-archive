@@ -38,7 +38,7 @@ export function PedidoDeArte({ pedido, onChange }: Props) {
     <div className="space-y-3 rounded-2xl border border-border bg-card p-3 animate-in fade-in slide-in-from-top-1" data-testid="pedido-de-arte">
       <div className="space-y-2.5">
         <p className="text-sm font-semibold">
-          O que você precisa? <span className="font-normal text-muted-foreground">— pode marcar mais de um</span>
+          Em que formato? <span className="font-normal text-muted-foreground">— pode marcar mais de um</span>
         </p>
         {grupos.map(g => (
           <div key={g.rotulo} role="group" aria-label={g.rotulo}>
