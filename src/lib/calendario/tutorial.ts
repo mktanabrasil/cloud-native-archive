@@ -33,6 +33,11 @@ export const ROTEIROS_DO_CALENDARIO: Record<RoteiroDoCalendario, PassoTutorial[]
       texto: 'Aqui vocês acrescentam as atividades e os eventos das unidades. Os feriados e as datas relevantes do ano já estão lá.',
     },
     {
+      alvo: 'cal-textos',
+      titulo: 'Os textos do projeto',
+      texto: 'As páginas 2 a 10 do PDF. Vieram os textos de 2026: revisem e troquem o que mudou.',
+    },
+    {
       alvo: 'cal-pdf',
       titulo: 'O PDF final',
       texto: 'É montado pelo marketing, no formato de sempre, e aparece aqui para baixar depois de aprovado.',
