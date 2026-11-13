@@ -1,17 +1,24 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
-import { PERCURSOS, type PercursoId } from '@/lib/journal/tutorial';
+import { PERCURSOS, type PassoTutorial, type PercursoId } from '@/lib/journal/tutorial';
 
 interface Props {
-  percurso: PercursoId;
+  /**
+   * O roteiro. Os do Jornal vêm de `PERCURSOS`; outro roteiro (o do
+   * Calendário Anual, 13/11/2026) manda os próprios `passos`.
+   */
+  percurso: string;
+  passos?: PassoTutorial[];
+  /** O nome do diálogo para o leitor de tela. */
+  rotulo?: string;
   aberto: boolean;
   onFechar: () => void;
   /**
    * Concluir, pular e Esc valem o mesmo: ela viu o que quis ver. Quem guarda
    * a marca é quem abriu (o `useTutoriaisVistos` da página), por conta.
    */
-  onVisto?: (percurso: PercursoId) => void;
+  onVisto?: (percurso: string) => void;
 }
 
 /** Distância entre o holofote e a borda do elemento apontado. */
@@ -34,8 +41,8 @@ interface Caixa {
  * pode estar escondida —, o cartão aparece **centralizado, sem holofote**, em
  * vez de apontar para o nada. O passo continua sendo lido; só perde o dedo.
  */
-export function JournalTutorial({ percurso, aberto, onFechar, onVisto }: Props) {
-  const passos = PERCURSOS[percurso];
+export function JournalTutorial({ percurso, passos: passosDeFora, rotulo, aberto, onFechar, onVisto }: Props) {
+  const passos = passosDeFora ?? PERCURSOS[percurso as PercursoId] ?? [];
   const [indice, setIndice] = useState(0);
   const [caixa, setCaixa] = useState<Caixa | null>(null);
 
@@ -124,7 +131,12 @@ export function JournalTutorial({ percurso, aberto, onFechar, onVisto }: Props) 
   const ultimo = indice === passos.length - 1;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true" aria-label="Tutorial do Jornal">
+    // Sem o vidro do V2 (13/11/2026): `body.ui-v2 [role="dialog"]` pinta toda
+    // janela de branco translúcido com desfoque, e esta camada é a tela
+    // inteira. Desde 26/10 o holofote mostrava um borrão branco no lugar do
+    // botão, no Jornal também. O estilo na própria camada vence a regra.
+    <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true" aria-label={rotulo ?? 'Tutorial do Jornal'}
+      style={{ background: 'transparent', backdropFilter: 'none', WebkitBackdropFilter: 'none', boxShadow: 'none', border: 0, borderRadius: 0 }}>
       {/* O escurecimento com buraco: a sombra gigante cobre a tela inteira e o
           retângulo em si fica limpo, sem precisar de máscara nem de SVG.
           Sem transição de propósito — animar `top`/`left` faz o holofote entrar

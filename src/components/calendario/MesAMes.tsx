@@ -42,7 +42,12 @@ interface Props {
 }
 
 export function MesAMes({ ano, itens, editavel, mes, onMes, onAno, onItens }: Props) {
-  const [sel, setSel] = useState<string | null>(null);
+  // O mês abre com o dia 1 escolhido: no computador o formulário já aparece ao
+  // lado (13/11/2026). No celular, a janela do dia só abre no toque.
+  const [sel, setSel] = useState<string | null>(() => chaveDoDia(ano.ano, mes, 1));
+  const [diaNoCelular, setDiaNoCelular] = useState(false);
+  const [mesDoSel, setMesDoSel] = useState(mes);
+  if (mesDoSel !== mes) { setMesDoSel(mes); setSel(chaveDoDia(ano.ano, mes, 1)); }
   const percursos = useMemo(() => percursosCompletos(ano.percursos), [ano.percursos]);
   const [tema, setTema] = useState(percursos[mes - 1].tema);
   const [sugestoes, setSugestoes] = useState(percursos[mes - 1].sugestoes);
@@ -82,13 +87,15 @@ export function MesAMes({ ano, itens, editavel, mes, onMes, onAno, onItens }: Pr
 
       <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">
         <section className="glass-2 min-w-0 rounded-[22px] p-4">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2" data-tutorial="cal-tema-mes">
             <div><label htmlFor="cal-tema-mes" className="text-[12.5px] font-semibold">Tema do mês <span className="font-normal text-muted-foreground">(vai no título da página)</span></label>
               <Input id="cal-tema-mes" className="mt-1" value={tema} maxLength={80} disabled={!editavel} onChange={e => setTema(e.target.value)} onBlur={salvarPercurso} /></div>
             <div><label htmlFor="cal-sugestao-mes" className="text-[12.5px] font-semibold">Sugestão de atividade</label>
               <Input id="cal-sugestao-mes" className="mt-1" value={sugestoes} maxLength={120} disabled={!editavel} placeholder="—" onChange={e => setSugestoes(e.target.value)} onBlur={salvarPercurso} /></div>
           </div>
 
+          {/* O alvo do tutorial embrulha as duas: no computador vale a grade, no celular a lista. */}
+          <div data-tutorial="cal-grade">
           {/* Computador: a grade, como a página do PDF. */}
           <div className="mt-4 hidden overflow-hidden rounded-[14px] border border-black/10 bg-card lg:block dark:border-white/10" data-testid="grade-do-mes">
             <div className="grid grid-cols-7 border-b border-black/10 text-center text-[11px] font-semibold uppercase tracking-wide text-muted-foreground dark:border-white/10">
@@ -121,11 +128,12 @@ export function MesAMes({ ano, itens, editavel, mes, onMes, onAno, onItens }: Pr
                 <div key={d} className={`flex gap-3 rounded-[16px] p-3 ${fds ? FIM_DE_SEMANA : 'bg-card/80'}`}>
                   <span className="w-10 shrink-0 text-center leading-none"><b className="font-display text-[20px]">{d}</b><span className="block text-[10.5px] font-semibold uppercase text-muted-foreground">{DIAS_DA_SEMANA[diaDaSemana(chave)].slice(0, 3)}</span></span>
                   <div className="min-w-0 flex-1 space-y-1">{itensDoDia(itens, chave).map(i => <Pilula key={i.id} item={i} />)}</div>
-                  <button type="button" onClick={() => setSel(chave)} aria-label={`Abrir o dia ${d}`} className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-black/10 bg-card"><Plus className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => { setSel(chave); setDiaNoCelular(true); }} aria-label={`Abrir o dia ${d}`} className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-black/10 bg-card"><Plus className="h-4 w-4" /></button>
                 </div>
               );
             })}
-            <Button variant="outline" className="w-full" onClick={() => setSel(chaveDoDia(ano.ano, mes, 1))}><Plus className="h-4 w-4" /> Acrescentar em outro dia</Button>
+            <Button variant="outline" className="w-full" onClick={() => { setSel(chaveDoDia(ano.ano, mes, 1)); setDiaNoCelular(true); }}><Plus className="h-4 w-4" /> Acrescentar em outro dia</Button>
+          </div>
           </div>
 
           <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
@@ -137,14 +145,16 @@ export function MesAMes({ ano, itens, editavel, mes, onMes, onAno, onItens }: Pr
 
         {/* O dia: no computador ao lado; no celular, numa janela. */}
         <aside className="hidden lg:block">
+          <div data-tutorial="cal-dia">
           {sel ? <PainelDoDia chave={sel} ano={ano} itens={itens} editavel={editavel} onItens={onItens} />
             : <div className="glass-2 rounded-[22px] p-4 text-[13.5px] text-muted-foreground">Toque num dia para ver o que já tem e acrescentar uma atividade.</div>}
+          </div>
           <MesRevisado revisado={revisado} editavel={editavel} onAlternar={alternarRevisado} mes={mes} onMes={onMes} />
         </aside>
         <div className="lg:hidden"><MesRevisado revisado={revisado} editavel={editavel} onAlternar={alternarRevisado} mes={mes} onMes={onMes} /></div>
       </div>
 
-      <Dialog open={!!sel && typeof window !== 'undefined' && window.matchMedia?.('(max-width: 1023px)').matches} onOpenChange={o => { if (!o) setSel(null); }}>
+      <Dialog open={diaNoCelular && !!sel} onOpenChange={o => { if (!o) setDiaNoCelular(false); }}>
         <DialogContent className="max-h-[90svh] overflow-y-auto">
           <DialogHeader className="sr-only"><DialogTitle>O dia</DialogTitle><DialogDescription>O que já tem neste dia e o que acrescentar.</DialogDescription></DialogHeader>
           {sel && <PainelDoDia chave={sel} ano={ano} itens={itens} editavel={editavel} onItens={onItens} escolherDia />}
@@ -157,7 +167,7 @@ export function MesAMes({ ano, itens, editavel, mes, onMes, onAno, onItens }: Pr
 function MesRevisado({ revisado, editavel, onAlternar, mes, onMes }: { revisado: boolean; editavel: boolean; onAlternar: () => void; mes: number; onMes: (m: number) => void }) {
   return (
     <div className="mt-3 space-y-2">
-      <Button variant={revisado ? 'default' : 'outline'} className="w-full gap-2" disabled={!editavel} onClick={onAlternar} data-testid="mes-revisado">
+      <Button variant={revisado ? 'default' : 'outline'} className="w-full gap-2" disabled={!editavel} onClick={onAlternar} data-testid="mes-revisado" data-tutorial="cal-revisado">
         <Check className="h-4 w-4" /> {revisado ? `${MESES[mes - 1]} revisado` : `Marcar ${MESES[mes - 1].toLowerCase()} como revisado`}
       </Button>
       <div className="flex gap-2">

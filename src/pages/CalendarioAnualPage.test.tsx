@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 /**
@@ -12,9 +12,13 @@ const estado = vi.hoisted(() => ({
   auth: { isAuthenticated: false, loading: false, user: null as unknown, signOut: vi.fn() },
   papel: { isMarketing: false, loading: false, soCalendario: false },
   acesso: null as unknown,
+  vistos: new Set<string>(),
+  marcados: [] as string[],
 }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => estado.auth }));
 vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => estado.papel }));
+// O tutorial (13/11/2026): o "já vi" por conta, simulado.
+vi.mock('@/hooks/useTutoriaisVistos', () => ({ useTutoriaisVistos: () => ({ carregado: true, jaViu: (r: string) => estado.vistos.has(r), marcarVisto: (r: string) => { estado.marcados.push(r); }, esquecer: () => {} }) }));
 vi.mock('@/components/ThemeToggle', () => ({ TemaFlutuante: () => null }));
 vi.mock('@/components/news/InstitutionalFooterBar', () => ({ default: () => null }));
 vi.mock('@/lib/calendario/api', () => ({
@@ -40,6 +44,8 @@ beforeEach(() => {
   estado.auth = { isAuthenticated: false, loading: false, user: null, signOut: vi.fn() };
   estado.papel = { isMarketing: false, loading: false, soCalendario: false };
   estado.acesso = null;
+  estado.vistos = new Set(['calendario-inicio', 'calendario-mes']);
+  estado.marcados = [];
 });
 
 describe('quem chega em /calendario', () => {
@@ -92,5 +98,38 @@ describe('quem chega em /calendario', () => {
     estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'dic@anabrasil.org', user_metadata: {} } };
     abrir('/calendario?conflitos=true');
     await waitFor(() => expect(screen.getByTestId('onde')).toHaveTextContent('/?tela=calendario&conflitos=true'));
+  });
+});
+
+describe('o tutorial do calendário (13/11/2026)', () => {
+  const coordenadora = () => {
+    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'coord@ana.org', user_metadata: { conta: 'calendario', name: 'Coord' } } };
+    estado.acesso = { email: 'coord@ana.org', nome: 'Coord', ativo: true, so_calendario: true };
+  };
+
+  it('abre sozinho no primeiro acesso e marca como visto ao terminar', async () => {
+    coordenadora();
+    estado.vistos = new Set();
+    abrir();
+    const dialogo = await screen.findByRole('dialog', { name: 'Tutorial do Calendário Anual' });
+    expect(dialogo).toHaveTextContent('Aqui vocês montam o Calendário Anual');
+    fireEvent.click(screen.getByRole('button', { name: 'Pular' }));
+    expect(estado.marcados).toEqual(['calendario-inicio']);
+  });
+
+  it('depois de visto, não abre sozinho; volta pelo botão', async () => {
+    coordenadora();
+    abrir();
+    await screen.findByRole('heading', { name: 'Calendário Anual 2027' });
+    expect(screen.queryByRole('dialog', { name: 'Tutorial do Calendário Anual' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /ver o tutorial/i }));
+    expect(screen.getByRole('dialog', { name: 'Tutorial do Calendário Anual' })).toBeInTheDocument();
+  });
+
+  it('no mês a mês, o roteiro do mês', async () => {
+    coordenadora();
+    estado.vistos = new Set(['calendario-inicio']);
+    abrir('/calendario?parte=mes&m=2');
+    expect(await screen.findByRole('dialog', { name: 'Tutorial do Calendário Anual' })).toHaveTextContent('O tema do mês');
   });
 });
