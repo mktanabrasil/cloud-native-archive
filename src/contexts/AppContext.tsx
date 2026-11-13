@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { SELECT_PUBLICO } from '@/lib/events/camposPublicos';
 import { supabaseSemSessao } from '@/lib/supabaseSemSessao';
-import { ehCandidato } from '@/lib/vagas/conta';
+import { ehContaRestrita } from '@/lib/contasRestritas';
 import { descreverErroDeGravacao } from '@/lib/events/mensagemDeErro';
 import { conflitosDe, marcarConflitos } from '@/lib/events/conflitos';
 import { apagarDoBalde, urlsDeArquivosDoEvento } from '@/lib/events/anexos';
@@ -47,7 +47,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated: temSessao, user, loading: authLoading } = useAuth();
   /** Sessão de candidato (Trabalhe Conosco) não é equipe: vê a vitrine (13/11/2026). */
-  const isAuthenticated = temSessao && !ehCandidato(user);
+  const isAuthenticated = temSessao && !ehContaRestrita(user);
   const candidato = temSessao && !isAuthenticated;
   const [events, setEvents] = useState<AppEvent[]>([]);
   const [users, setUsers] = useState<AppUser[]>([]);

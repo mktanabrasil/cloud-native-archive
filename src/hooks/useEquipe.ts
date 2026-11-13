@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { ehCandidato } from '@/lib/vagas/conta';
+import { ehContaRestrita } from '@/lib/contasRestritas';
 
 /**
  * Quem tem sessão E é da equipe (13/11/2026).
@@ -13,5 +13,6 @@ import { ehCandidato } from '@/lib/vagas/conta';
  */
 export function useEquipe(): boolean {
   const { isAuthenticated, user } = useAuth();
-  return isAuthenticated && !ehCandidato(user);
+  // (14/11/2026: a conta do Calendário Anual também não é equipe.)
+  return isAuthenticated && !ehContaRestrita(user);
 }

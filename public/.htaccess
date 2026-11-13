@@ -42,7 +42,8 @@
   RewriteRule ^vagas(/|$) /vagas.html [L]
   RewriteRule ^portal-transparencia(-publico)?/?$ /transparencia.html [L]
   RewriteRule ^jornal-institucional/?$ /jornal.html [L]
-  RewriteRule ^(login|redefinir-senha|auth/confirm|visao-geral|calendario|usuarios|auditoria|design-manual|marketing|admin-toolbox|email-preview|pizza-da-alegria/(painel(/dashboard)?|retirada)|voluntariado/natalfeliz26/presenca)/?$ /app.html [L]
+  RewriteRule ^calendario/?$ /calendario.html [L]
+  RewriteRule ^(login|redefinir-senha|auth/confirm|visao-geral|usuarios|auditoria|design-manual|marketing|admin-toolbox|email-preview|pizza-da-alegria/(painel(/dashboard)?|retirada)|voluntariado/natalfeliz26/presenca)/?$ /app.html [L]
 
   # Todo o resto entrega o index.html, e o React resolve a rota.
   RewriteRule . /index.html [L]
@@ -54,7 +55,7 @@
   # 404 intermitente de 21/08/2026. `no-cache` não proíbe guardar, só obriga
   # a reconferir com o servidor a cada abertura. Os assets, que têm hash no
   # nome, continuam com a semana de cache que o servidor já dá.
-  <FilesMatch "^(index|enquete|enquete-resultado|mercado|transparencia|jornal|app|vagas|pizza|pizza-acompanhar|voluntariado|voluntariado-acompanhar|voluntariado-central)\.html$">
+  <FilesMatch "^(index|enquete|enquete-resultado|mercado|transparencia|jornal|app|vagas|pizza|pizza-acompanhar|voluntariado|voluntariado-acompanhar|voluntariado-central|calendario)\.html$">
     Header set Cache-Control "no-cache"
   </FilesMatch>
 

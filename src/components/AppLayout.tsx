@@ -24,7 +24,7 @@ import { TemaFlutuante } from './ThemeToggle';
 import { navItems } from '@/config/navigation';
 import { useSouResponsavel } from '@/hooks/useSouResponsavel';
 import { useAvisosDaEquipe } from '@/hooks/useAvisosDaEquipe';
-import { ehCandidato } from '@/lib/vagas/conta';
+import { ehContaRestrita } from '@/lib/contasRestritas';
 import { UiV2 } from '@/lib/uiV2';
 import AppLayoutClassico from '@/classico/AppLayout';
 
@@ -37,7 +37,7 @@ const COR_DA_AREA: Record<string, string> = {
   '/marketing': '#fbce00',
   '/usuarios': '#8A938F',
 };
-const ROTAS_DE_EVENTOS = ['/', '/visao-geral', '/calendario', '/eventos', '/lixeira'];
+const ROTAS_DE_EVENTOS = ['/', '/visao-geral', '/eventos', '/lixeira'];
 // Páginas que moram no Marketing, mas com endereço próprio.
 const ROTAS_DO_MARKETING = ['/marketing', '/auditoria', '/design-manual', '/portal-transparencia', '/admin-toolbox', '/pizza-da-alegria/painel'];
 const ROTULO_CURTO: Record<string, string> = { 'Jornal Institucional': 'Jornal', 'Mercado Solidário': 'Mercado' };
@@ -63,7 +63,7 @@ export default function AppLayout() {
 
   const { isAuthenticated: temSessao, signOut, user } = useAuth();
   // Conta de candidato (Trabalhe Conosco) vê o app como visitante: sem menu da equipe.
-  const isAuthenticated = temSessao && !ehCandidato(user);
+  const isAuthenticated = temSessao && !ehContaRestrita(user);
   const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh } = useUserRole();
   // A bolinha em "Vagas": novos + respostas não lidas (passo 5, 20/10/2026).
   const avisosDeVagas = useAvisosDaEquipe(isRh || souResponsavel, location.pathname);
