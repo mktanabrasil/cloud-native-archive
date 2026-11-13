@@ -17,6 +17,7 @@ import { InicioDoCalendario, type Parte } from '@/components/calendario/InicioDo
 import { PercursosDoAno } from '@/components/calendario/PercursosDoAno';
 import { TextosDoProjeto } from '@/components/calendario/TextosDoProjeto';
 import { PreviaDoPdf } from '@/components/calendario/PreviaDoPdf';
+import { RevisaoDoMarketing } from '@/components/calendario/RevisaoDoMarketing';
 import { MesAMes } from '@/components/calendario/MesAMes';
 import { CoordenadorasDoCalendario } from '@/components/calendario/CoordenadorasDoCalendario';
 
@@ -54,13 +55,13 @@ export default function CalendarioAnualPage() {
   );
   return (
     <MolduraDoCalendario atalho={atalho}>
-      <Preenchimento email={user?.email ?? ''} marketing={!doCalendario && isMarketing} foraDaLista={doCalendario ? 'aviso' : doHub} />
+      <Preenchimento email={user?.email ?? ''} nome={String(user?.user_metadata?.name ?? '') || user?.email || ''} marketing={!doCalendario && isMarketing} foraDaLista={doCalendario ? 'aviso' : doHub} />
     </MolduraDoCalendario>
   );
 }
 
 /** `foraDaLista`: sem liberação, a conta do calendário vê o aviso; a da equipe vai para o hub. */
-function Preenchimento({ email, marketing, foraDaLista }: { email: string; marketing: boolean; foraDaLista: 'aviso' | string }) {
+function Preenchimento({ email, nome, marketing, foraDaLista }: { email: string; nome: string; marketing: boolean; foraDaLista: 'aviso' | string }) {
   const [params, setParams] = useSearchParams();
   const parte = (params.get('parte') as Parte | null) ?? 'inicio';
   const mes = Math.min(12, Math.max(1, Number(params.get('m')) || 1));
@@ -129,7 +130,8 @@ function Preenchimento({ email, marketing, foraDaLista }: { email: string; marke
       {parte === 'textos' && <TextosDoProjeto ano={ano} editavel={editavel} onAno={setAno} />}
       {parte === 'mes' && <MesAMes ano={ano} itens={itens} editavel={editavel} mes={mes} onMes={m => abrir('mes', m)} onAno={setAno} onItens={setItens} />}
       {parte === 'coordenadoras' && marketing && <CoordenadorasDoCalendario quem={email} />}
-      {(parte === 'inicio' || (parte === 'coordenadoras' && !marketing)) && <InicioDoCalendario ano={ano} editavel={editavel} marketing={marketing} onAno={setAno} abrir={abrir} onPrevia={() => setPreviaAberta(true)} />}
+      {parte === 'revisao' && marketing && <RevisaoDoMarketing ano={ano} itens={itens} quem={nome} onAno={setAno} onPrevia={() => setPreviaAberta(true)} />}
+      {(parte === 'inicio' || ((parte === 'coordenadoras' || parte === 'revisao') && !marketing)) && <InicioDoCalendario ano={ano} editavel={editavel} marketing={marketing} onAno={setAno} abrir={abrir} onPrevia={() => setPreviaAberta(true)} />}
       <PreviaDoPdf ano={ano} itens={itens} podeBaixar={marketing} aberta={previaAberta} onFechar={() => setPreviaAberta(false)} />
       {roteiro && (
         <JournalTutorial percurso={roteiro} passos={ROTEIROS_DO_CALENDARIO[roteiro]} rotulo="Tutorial do Calendário Anual"

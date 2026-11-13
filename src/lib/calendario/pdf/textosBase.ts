@@ -259,3 +259,38 @@ export function corpoDaSecao(textos: Record<string, string> | null | undefined, 
   if (typeof escrito === 'string') return escrito;
   return SECOES_DO_TEXTO.find(s => s.id === id)?.corpo ?? '';
 }
+
+/* ---------- unidades novas (13/11/2026) ---------- */
+// Em 2027 o Social pode ganhar unidades. Cada uma é acrescentada por um botão
+// e vira a próxima na ordem (ANA IV, ANA V…), depois da ANA III e antes da
+// ANA PIAUÍ. O texto é delas: a unidade nova existe enquanto a chave
+// "ana-N" estiver nos textos, mesmo vazia.
+
+const ULTIMA_DA_BASE = 3;
+
+const ROMANOS: [number, string][] = [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
+export function romano(n: number): string {
+  let r = '';
+  for (const [v, s] of ROMANOS) while (n >= v) { r += s; n -= v; }
+  return r;
+}
+
+/** Os números das unidades novas que existem nos textos (4, 5…), em ordem. */
+export function unidadesNovas(textos: Record<string, string> | null | undefined): number[] {
+  return Object.keys(textos ?? {})
+    .map(k => /^ana-(\d+)$/.exec(k)?.[1])
+    .map(Number)
+    .filter(n => Number.isInteger(n) && n > ULTIMA_DA_BASE && typeof textos?.[`ana-${n}`] === 'string')
+    .sort((a, b) => a - b);
+}
+
+export const secaoDaUnidadeNova = (n: number): SecaoDoTexto => ({ id: `ana-${n}`, titulo: `ANA ${romano(n)}`, nivel: 1, novaPagina: false, compacto: true, corpo: '' });
+
+/** As seções do ano: as de 2026 com as unidades novas depois da ANA III. */
+export function secoesDoAno(textos: Record<string, string> | null | undefined, novas = unidadesNovas(textos)): SecaoDoTexto[] {
+  const depois = SECOES_DO_TEXTO.findIndex(s => s.id === `ana-${ULTIMA_DA_BASE}`) + 1;
+  return [...SECOES_DO_TEXTO.slice(0, depois), ...novas.map(secaoDaUnidadeNova), ...SECOES_DO_TEXTO.slice(depois)];
+}
+
+/** A próxima unidade nova: 4 se não há nenhuma, senão a seguinte à última. */
+export const proximaUnidade = (novas: number[]) => (novas.length ? novas[novas.length - 1] + 1 : ULTIMA_DA_BASE + 1);

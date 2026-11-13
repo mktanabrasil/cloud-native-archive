@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { BookOpen, CalendarDays, Check, ChevronRight, Eye, FileText, Image as ImageIcon, ListChecks, Lock, Users } from 'lucide-react';
+import { BookOpen, CalendarDays, Check, ChevronRight, Image as ImageIcon, ListChecks, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { salvarAno } from '@/lib/calendario/api';
-import { MESES, andamento, type AnoDoCalendario } from '@/lib/calendario/regras';
+import { MESES, andamento, autoriaDe, type AnoDoCalendario } from '@/lib/calendario/regras';
+import { SituacaoDoPdf } from './SituacaoDoPdf';
 
-export type Parte = 'inicio' | 'percursos' | 'mes' | 'coordenadoras' | 'textos';
+export type Parte = 'inicio' | 'percursos' | 'mes' | 'coordenadoras' | 'textos' | 'revisao';
 
 const PASSOS = ['Preenchimento pelas coordenadoras', 'Revisão do marketing', 'Aprovado · PDF liberado'];
 const indiceDoStatus = { preenchimento: 0, revisao: 1, aprovado: 2 } as const;
@@ -64,6 +65,7 @@ export function InicioDoCalendario({ ano, editavel, marketing, onAno, abrir, onP
             <h2 className="mt-3 text-[17px] font-semibold">1. Capa e tema do ano</h2>
             <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">O tema de {ano.ano}, que vai na capa. A foto da capa é escolhida pelo marketing.</p>
             <Input className="mt-3" value={tema} maxLength={120} disabled={!editavel} aria-label="Tema do ano" placeholder="Ex. de 2026: “Plantando hoje, o amanhã que sonhamos”" onChange={e => setTema(e.target.value)} />
+            {autoriaDe(ano, 'tema') && <p className="mt-1.5 text-[12px] text-muted-foreground">Por {autoriaDe(ano, 'tema')}</p>}
             {editavel && <Button variant="outline" className="mt-3" disabled={tema.trim() === ano.tema.trim()} onClick={salvarTema}>Salvar o tema</Button>}
           </section>
           <section className="glass-2 rounded-[22px] p-5" data-tutorial="cal-percursos">
@@ -87,12 +89,7 @@ export function InicioDoCalendario({ ano, editavel, marketing, onAno, abrir, onP
           </section>
         </div>
         <aside className="space-y-4">
-          <section className="glass-2 rounded-[22px] p-4" data-tutorial="cal-pdf">
-            <p className="flex items-center gap-2 text-[13px] font-semibold"><FileText className="h-4 w-4" /> O PDF de {ano.ano}</p>
-            <p className="mt-2 text-[13px] leading-snug text-muted-foreground">58 páginas, A4 deitado, no mesmo formato de 2026. A prévia monta o PDF com o que está preenchido agora.</p>
-            {onPrevia && <Button variant="outline" className="mt-3 w-full gap-2" onClick={onPrevia}><Eye className="h-4 w-4" /> Ver a prévia</Button>}
-            <div className="mt-3 flex gap-2 rounded-[14px] bg-white/60 p-3 text-[12.5px] leading-snug dark:bg-white/5"><Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /><span>O PDF final é do marketing. Ele aparece aqui para baixar <b>depois de aprovado</b>.</span></div>
-          </section>
+          <SituacaoDoPdf ano={ano} marketing={marketing} editavel={editavel} onAno={onAno} onPrevia={onPrevia} onRevisao={() => abrir('revisao')} />
           {marketing && (
             <section className="glass-2 rounded-[22px] p-4">
               <p className="flex items-center gap-2 text-[13px] font-semibold"><Users className="h-4 w-4" /> Quem preenche</p>

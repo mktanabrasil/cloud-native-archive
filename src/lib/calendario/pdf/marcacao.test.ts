@@ -37,3 +37,17 @@ describe('os textos de 2026', () => {
     expect(corpoDaSecao({}, 'scfv')).toMatch(/^Trata-se de um serviço/);
   });
 });
+
+describe('unidades novas (13/11/2026)', () => {
+  it('numeração romana e a ordem: depois da ANA III, antes da ANA PIAUÍ', async () => {
+    const { romano, secoesDoAno, unidadesNovas, proximaUnidade } = await import('./textosBase');
+    expect([4, 5, 9, 12].map(romano)).toEqual(['IV', 'V', 'IX', 'XII']);
+    const textos = { 'ana-5': 'Texto da V', 'ana-4': '', scfv: 'x', 'ana-2': 'mexido' };
+    expect(unidadesNovas(textos)).toEqual([4, 5]);
+    expect(proximaUnidade([4, 5])).toBe(6);
+    expect(proximaUnidade([])).toBe(4);
+    const ids = secoesDoAno(textos).map(s => s.id);
+    expect(ids.slice(ids.indexOf('ana-3'), ids.indexOf('ana-piaui') + 1)).toEqual(['ana-3', 'ana-4', 'ana-5', 'ana-piaui']);
+    expect(secoesDoAno(textos).find(s => s.id === 'ana-5')).toMatchObject({ titulo: 'ANA V', compacto: true, novaPagina: false });
+  });
+});

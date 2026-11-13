@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { linkDoArquivo } from '@/lib/calendario/api';
 import type { AnoDoCalendario, ItemDoCalendario } from '@/lib/calendario/regras';
 
 /**
@@ -76,7 +77,9 @@ export function PreviaDoPdf({ ano, itens, podeBaixar, aberta, onFechar }: {
     (async () => {
       const [{ gerarPdfDoCalendario }, pdfjs] = await Promise.all([import('@/lib/calendario/pdf/gerar'), import('pdfjs-dist')]);
       pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
-      const r = await gerarPdfDoCalendario(ano, itens, { previa: true });
+      // A foto da capa está no balde privado: entra por um link temporário.
+      const capaUrl = ano.capa_url ? await linkDoArquivo(ano.capa_url).catch(() => null) : null;
+      const r = await gerarPdfDoCalendario(ano, itens, { previa: true, capaUrl });
       const doc = await pdfjs.getDocument({ data: new Uint8Array(await r.blob.arrayBuffer()) }).promise;
       if (vivo) setEstado({ fase: 'pronta', blob: r.blob, doc: doc as unknown as DocumentoPdf, cheias: r.celulasCheias });
     })().catch((e: Error) => { if (vivo) setEstado({ fase: 'erro', mensagem: e?.message || 'Não deu para montar a prévia.' }); });

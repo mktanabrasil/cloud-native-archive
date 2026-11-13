@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { salvarAno } from '@/lib/calendario/api';
-import { MESES, percursosCompletos, type AnoDoCalendario, type Percurso } from '@/lib/calendario/regras';
+import { MESES, autoriaDe, percursosCompletos, type AnoDoCalendario, type Percurso } from '@/lib/calendario/regras';
 
 /**
  * Os percursos do ano (14/11/2026): a tabela da página de Metodologia do PDF
@@ -32,7 +32,10 @@ export function PercursosDoAno({ ano, editavel, onAno }: { ano: AnoDoCalendario;
         </div>
         {linhas.map((l, i) => (
           <div key={l.mes} className={`grid gap-2 px-4 py-2.5 sm:grid-cols-[120px_minmax(0,1fr)_minmax(0,0.8fr)] sm:items-center sm:gap-3 ${i % 2 ? 'bg-white/35 dark:bg-white/[.03]' : ''}`}>
-            <span className="text-[14px] font-semibold">{MESES[l.mes - 1]}</span>
+            <span className="text-[14px] font-semibold">
+              {MESES[l.mes - 1]}
+              {autoriaDe(ano, `percurso:${l.mes}`) && <span className="block text-[11px] font-normal text-muted-foreground">por {autoriaDe(ano, `percurso:${l.mes}`)}</span>}
+            </span>
             <Input aria-label={`Tema de ${MESES[l.mes - 1]}`} className="h-9" value={l.tema} maxLength={80} disabled={!editavel} onChange={e => mudar(l.mes, 'tema', e.target.value)} />
             <Input aria-label={`Sugestões de ${MESES[l.mes - 1]}`} className="h-9" value={l.sugestoes} maxLength={120} disabled={!editavel} placeholder="—" onChange={e => mudar(l.mes, 'sugestoes', e.target.value)} />
           </div>

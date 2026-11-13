@@ -7,6 +7,9 @@ export type StatusDoCalendario = 'preenchimento' | 'revisao' | 'aprovado';
 
 export interface Percurso { mes: number; tema: string; sugestoes: string }
 
+/** Quem mexeu por último numa parte, gravado pelo banco (13/11/2026). */
+export interface Autoria { nome: string; em: string }
+
 export interface AnoDoCalendario {
   ano: number;
   tema: string;
@@ -23,6 +26,8 @@ export interface AnoDoCalendario {
   pdf_url: string | null;
   atualizado_em: string;
   atualizado_por: string | null;
+  /** "tema", "percurso:3", "texto:scfv", "revisado:2", "capa" → quem mexeu por último. */
+  autoria?: Record<string, Autoria>;
 }
 
 export interface ItemDoCalendario {
@@ -35,6 +40,11 @@ export interface ItemDoCalendario {
   destaque: boolean;
   oculto: boolean;
   fonte: string | null;
+  /** Autoria (13/11/2026): quem acrescentou e quem mexeu por último; o banco é quem grava. */
+  criado_por_nome?: string | null;
+  criado_em?: string;
+  alterado_por_nome?: string | null;
+  alterado_em?: string | null;
 }
 
 export const UNIDADES_DO_CALENDARIO = ['DIC', 'Nilópolis', 'Santana'] as const;
@@ -103,3 +113,20 @@ export function andamento(ano: AnoDoCalendario) {
 
 /** Pode mexer: só em preenchimento (o marketing mexe sempre, mas isso o banco decide). */
 export const aberto = (ano: Pick<AnoDoCalendario, 'status'>) => ano.status === 'preenchimento';
+
+/** "14/11", no horário de Brasília. */
+export const diaEMes = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' });
+
+/** Quem mexeu por último numa parte do ano: "Gestão DIC · 14/11", ou nada. */
+export function autoriaDe(ano: Pick<AnoDoCalendario, 'autoria'>, chave: string): string | null {
+  const a = ano.autoria?.[chave];
+  return a?.nome ? `${a.nome} · ${diaEMes(a.em)}` : null;
+}
+
+/** A autoria de uma atividade: "Por Gestão DIC · 14/11 · editado por MKT ANA · 15/11". A base (feriados e datas) não tem. */
+export function autoriaDoItem(i: ItemDoCalendario): string | null {
+  const partes: string[] = [];
+  if (i.criado_por_nome) partes.push(`Por ${i.criado_por_nome}${i.criado_em ? ` · ${diaEMes(i.criado_em)}` : ''}`);
+  if (i.alterado_por_nome && i.alterado_em) partes.push(`${partes.length ? 'editado' : 'Editado'} por ${i.alterado_por_nome} · ${diaEMes(i.alterado_em)}`);
+  return partes.length ? partes.join(' · ') : null;
+}
