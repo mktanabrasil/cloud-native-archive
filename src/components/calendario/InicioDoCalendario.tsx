@@ -38,7 +38,7 @@ export function InicioDoCalendario({ ano, editavel, marketing, onAno, abrir }: {
           <h1 className="font-display text-[30px] font-bold tracking-tight sm:text-[34px]">Calendário Anual {ano.ano}</h1>
           <p className="mt-1 text-[14.5px] text-muted-foreground">As coordenadoras do Social preenchem; o marketing revisa e monta o PDF final, no formato de sempre.</p>
         </div>
-        <ol className="flex flex-wrap items-center gap-2" aria-label="Andamento">
+        <ol className="flex flex-wrap items-center gap-2" aria-label="Andamento" data-tutorial="cal-andamento">
           {PASSOS.map((t, i) => (
             <li key={t} className="flex items-center gap-2" aria-current={i === passo ? 'step' : undefined}>
               <span className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-[12.5px] ${i === passo ? 'bg-foreground font-semibold text-background' : i < passo ? 'bg-white/70 dark:bg-white/10' : 'bg-white/40 text-muted-foreground dark:bg-white/5'}`}>
@@ -58,20 +58,20 @@ export function InicioDoCalendario({ ano, editavel, marketing, onAno, abrir }: {
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="grid gap-4 sm:grid-cols-2">
-          <section className="glass-2 rounded-[22px] p-5">
+          <section className="glass-2 rounded-[22px] p-5" data-tutorial="cal-tema">
             <div className="flex items-start justify-between gap-3"><span className="grid h-10 w-10 place-items-center rounded-[12px] bg-primary/60"><ImageIcon className="h-5 w-5" /></span>{a.tema ? <Selo tom="ok"><Check className="h-3 w-3" /> Feito</Selo> : <Selo tom="falta">Falta o tema</Selo>}</div>
             <h2 className="mt-3 text-[17px] font-semibold">1. Capa e tema do ano</h2>
             <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">O tema de {ano.ano}, que vai na capa. A foto da capa é escolhida pelo marketing.</p>
             <Input className="mt-3" value={tema} maxLength={120} disabled={!editavel} aria-label="Tema do ano" placeholder="Ex. de 2026: “Plantando hoje, o amanhã que sonhamos”" onChange={e => setTema(e.target.value)} />
             {editavel && <Button variant="outline" className="mt-3" disabled={tema.trim() === ano.tema.trim()} onClick={salvarTema}>Salvar o tema</Button>}
           </section>
-          <section className="glass-2 rounded-[22px] p-5">
+          <section className="glass-2 rounded-[22px] p-5" data-tutorial="cal-percursos">
             <div className="flex items-start justify-between gap-3"><span className="grid h-10 w-10 place-items-center rounded-[12px] bg-primary/60"><ListChecks className="h-5 w-5" /></span><Selo tom={a.percursos === 12 ? 'ok' : 'falta'}>{a.percursos === 12 && <Check className="h-3 w-3" />} {a.percursos} de 12</Selo></div>
             <h2 className="mt-3 text-[17px] font-semibold">2. Percursos do ano</h2>
             <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">O tema transversal de cada mês e as sugestões de atividades. Vieram os de 2026, para revisar.</p>
             <Button variant="outline" className="mt-4" onClick={() => abrir('percursos')}>Abrir</Button>
           </section>
-          <section className="glass-2 rounded-[22px] p-5">
+          <section className="glass-2 rounded-[22px] p-5" data-tutorial="cal-mes">
             <div className="flex items-start justify-between gap-3"><span className="grid h-10 w-10 place-items-center rounded-[12px] bg-primary/60"><CalendarDays className="h-5 w-5" /></span><Selo tom={a.meses === 12 ? 'ok' : 'info'}>{a.meses} de 12 meses revisados</Selo></div>
             <h2 className="mt-3 text-[17px] font-semibold">3. Mês a mês</h2>
             <p className="mt-1 text-[13.5px] leading-relaxed text-muted-foreground">Feriados e datas relevantes de {ano.ano} já estão no calendário. Acrescentem as atividades e os eventos das unidades.</p>
@@ -85,7 +85,7 @@ export function InicioDoCalendario({ ano, editavel, marketing, onAno, abrir }: {
           </section>
         </div>
         <aside className="space-y-4">
-          <section className="glass-2 rounded-[22px] p-4">
+          <section className="glass-2 rounded-[22px] p-4" data-tutorial="cal-pdf">
             <p className="flex items-center gap-2 text-[13px] font-semibold"><FileText className="h-4 w-4" /> O PDF de {ano.ano}</p>
             <p className="mt-2 text-[13px] leading-snug text-muted-foreground">58 páginas, A4 deitado, no mesmo formato de 2026. A prévia, o envio ao marketing e a aprovação chegam no próximo passo.</p>
             <div className="mt-3 flex gap-2 rounded-[14px] bg-white/60 p-3 text-[12.5px] leading-snug dark:bg-white/5"><Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /><span>O PDF final é do marketing. Ele aparece aqui para baixar <b>depois de aprovado</b>.</span></div>

@@ -2,6 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { PercursoId } from '@/lib/journal/tutorial';
+import type { RoteiroDoCalendario } from '@/lib/calendario/tutorial';
+
+/** Os roteiros com "já vi" guardado: os do Jornal e os do Calendário Anual (13/11/2026). */
+type Roteiro = PercursoId | RoteiroDoCalendario;
 
 /**
  * Quais tutoriais a pessoa já viu — por conta, em qualquer computador.
@@ -20,7 +24,7 @@ import type { PercursoId } from '@/lib/journal/tutorial';
 export function useTutoriaisVistos() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
-  const [vistos, setVistos] = useState<Set<PercursoId>>(() => new Set());
+  const [vistos, setVistos] = useState<Set<Roteiro>>(() => new Set());
   const [carregado, setCarregado] = useState(false);
 
   useEffect(() => {
@@ -37,16 +41,16 @@ export function useTutoriaisVistos() {
       .eq('user_id', userId)
       .then(({ data }) => {
         if (cancelado) return;
-        setVistos(new Set((data ?? []).map(l => l.percurso as PercursoId)));
+        setVistos(new Set((data ?? []).map(l => l.percurso as Roteiro)));
         setCarregado(true);
       });
     return () => { cancelado = true; };
   }, [userId]);
 
-  const jaViu = useCallback((percurso: PercursoId) => vistos.has(percurso), [vistos]);
+  const jaViu = useCallback((percurso: Roteiro) => vistos.has(percurso), [vistos]);
 
   /** Marca na hora, na tela, e grava em seguida. Se a gravação falhar, a marca fica só nesta visita. */
-  const marcarVisto = useCallback((percurso: PercursoId) => {
+  const marcarVisto = useCallback((percurso: Roteiro) => {
     setVistos(prev => {
       if (prev.has(percurso)) return prev;
       const novo = new Set(prev);

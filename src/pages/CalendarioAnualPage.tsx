@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Navigate, useLocation, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, LogOut } from 'lucide-react';
+import { ArrowLeft, HelpCircle, LogOut } from 'lucide-react';
+import { JournalTutorial } from '@/components/journal/JournalTutorial';
+import { useTutoriaisVistos } from '@/hooks/useTutoriaisVistos';
+import { ROTEIROS_DO_CALENDARIO, type RoteiroDoCalendario } from '@/lib/calendario/tutorial';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -62,6 +65,14 @@ function Preenchimento({ email, marketing, foraDaLista }: { email: string; marke
   const [estado, setEstado] = useState<'carregando' | 'sem_acesso' | 'erro' | 'pronto'>('carregando');
   const [ano, setAno] = useState<AnoDoCalendario | null>(null);
   const [itens, setItens] = useState<ItemDoCalendario[]>([]);
+  // O tutorial (13/11/2026): abre sozinho na primeira vez de cada roteiro.
+  const tutoriais = useTutoriaisVistos();
+  const roteiro: RoteiroDoCalendario | null = parte === 'inicio' ? 'calendario-inicio' : parte === 'mes' ? 'calendario-mes' : null;
+  const [tutorialAberto, setTutorialAberto] = useState(false);
+  useEffect(() => {
+    if (estado === 'pronto' && roteiro && tutoriais.carregado && !tutoriais.jaViu(roteiro)) setTutorialAberto(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estado, roteiro, tutoriais.carregado]);
 
   const carregar = useCallback(async () => {
     try {
@@ -102,8 +113,11 @@ function Preenchimento({ email, marketing, foraDaLista }: { email: string; marke
   );
 
   const editavel = marketing || aberto(ano);
-  const voltar = parte !== 'inicio' && (
-    <div className="mx-auto w-full max-w-7xl px-4 pb-2 lg:px-6"><Button variant="ghost" size="sm" className="gap-1" onClick={() => abrir('inicio')}><ArrowLeft className="h-4 w-4" /> Início</Button></div>
+  const voltar = (
+    <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 pb-2 lg:px-6">
+      {parte !== 'inicio' ? <Button variant="ghost" size="sm" className="gap-1" onClick={() => abrir('inicio')}><ArrowLeft className="h-4 w-4" /> Início</Button> : <span />}
+      {roteiro && <Button variant="ghost" size="sm" className="gap-1" data-tutorial="cal-ajuda" onClick={() => setTutorialAberto(true)}><HelpCircle className="h-4 w-4" /> Ver o tutorial</Button>}
+    </div>
   );
   return (
     <>
@@ -112,6 +126,10 @@ function Preenchimento({ email, marketing, foraDaLista }: { email: string; marke
       {parte === 'mes' && <MesAMes ano={ano} itens={itens} editavel={editavel} mes={mes} onMes={m => abrir('mes', m)} onAno={setAno} onItens={setItens} />}
       {parte === 'coordenadoras' && marketing && <CoordenadorasDoCalendario quem={email} />}
       {(parte === 'inicio' || (parte === 'coordenadoras' && !marketing)) && <InicioDoCalendario ano={ano} editavel={editavel} marketing={marketing} onAno={setAno} abrir={abrir} />}
+      {roteiro && (
+        <JournalTutorial percurso={roteiro} passos={ROTEIROS_DO_CALENDARIO[roteiro]} rotulo="Tutorial do Calendário Anual"
+          aberto={tutorialAberto} onFechar={() => setTutorialAberto(false)} onVisto={() => tutoriais.marcarVisto(roteiro)} />
+      )}
     </>
   );
 }
