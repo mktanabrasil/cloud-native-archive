@@ -1605,3 +1605,84 @@ describe('Grupo ANA Brasil (11/11/2026)', () => {
     expect(opcoesDaUnidade()).toContain('Administração');
   });
 });
+
+describe('varredura de lançamento (13/11/2026)', () => {
+  const ligarArte = () => {
+    fireEvent.click(screen.getByRole('switch', { name: /pedido ao marketing/i }));
+    fireEvent.click(screen.getByRole('switch', { name: /^arte . impressa/i }));
+  };
+  const conteudo = () => screen.getByLabelText(/o que precisa estar na arte/i) as HTMLTextAreaElement;
+
+  it('o que se escreve na arte antes de marcar o formato fica, e vai junto ao marcar', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true };
+    abrir();
+    preencher();
+    ligarArte();
+    fireEvent.change(conteudo(), { target: { value: 'Título e data' } });
+    expect(conteudo().value).toBe('Título e data');
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /whatsapp/i }));
+    fireEvent.change(screen.getByLabelText(/legenda para a mensagem/i), { target: { value: 'Vem!' } });
+    // trocar de formato: desmarca o WhatsApp e marca o story; nada some
+    fireEvent.click(screen.getByRole('checkbox', { name: /whatsapp/i }));
+    expect(conteudo().value).toBe('Título e data');
+    fireEvent.click(screen.getByRole('checkbox', { name: /story do instagram/i }));
+    expect(conteudo().value).toBe('Título e data');
+    // a legenda (só do WhatsApp) espera: remarcar o WhatsApp a traz de volta
+    fireEvent.click(screen.getByRole('checkbox', { name: /whatsapp/i }));
+    expect((screen.getByLabelText(/legenda para a mensagem/i) as HTMLTextAreaElement).value).toBe('Vem!');
+    fireEvent.click(screen.getByRole('checkbox', { name: /whatsapp/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /criar evento/i }));
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
+    expect((espiao.addEvent.mock.calls[0][0] as AppEvent).marketing_items).toEqual([
+      { type: 'story_instagram', item: 'Story do Instagram', description: '', legenda: '', conteudo: 'Título e data' },
+    ]);
+  });
+
+  it('a gestora vê só a unidade dela (e as delegadas) no campo Unidade', () => {
+    espiao.papel = { ...espiao.papel, permissionLevel: 'gestor_unidade', delegatedUnits: ['Santana'] } as typeof espiao.papel;
+    abrir();
+    const select = screen.getByText('Unidade *').parentElement!.querySelector('select')!;
+    expect([...select.options].map(o => o.value).filter(Boolean)).toEqual(['DIC', 'Santana']);
+  });
+
+  it('reenviar depois de uma devolução tira a observação e renova a data do envio', async () => {
+    const devolvido = { ...eventoGravado(), status: 'pendente' as const, submitted_at: '2026-09-16T13:12:00.000Z', review_note: 'Falta o horário.', reviewed_by: 'MKT ANA' };
+    render(<EventFormDialog open onOpenChange={fechou} event={devolvido} />);
+    expect(screen.getByText('Falta o horário.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /salvar alterações/i }));
+    await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalled());
+    const salvo = espiao.updateEvent.mock.calls[0][0] as AppEvent;
+    expect(salvo.review_note).toBeNull();
+    expect(salvo.status).toBe('pendente');
+    expect(new Date(salvo.submitted_at!).getTime()).toBeGreaterThan(new Date('2026-09-16T13:12:00.000Z').getTime());
+  });
+
+  it('aprovar com a cobertura sem resposta grava "não"', async () => {
+    espiao.papel = { ...espiao.papel, userName: 'MKT ANA', isAdmin: true, isMarketing: true };
+    const pedido = { ...eventoGravado(), status: 'pendente' as const, submitted_at: '2026-03-19T13:00:00.000Z', marketing_request: true, marketing_coverage: true, marketing_confirmed: null };
+    render(<EventFormDialog open onOpenChange={fechou} event={pedido} revisao />);
+    expect(screen.getByText(/desligado ao aprovar = não/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /aprovar e confirmar/i }));
+    await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalled());
+    expect((espiao.updateEvent.mock.calls[0][0] as AppEvent).marketing_confirmed).toBe(false);
+  });
+
+  it('avisa, sem travar, um evento novo que começa no passado ou dura semanas', () => {
+    abrir();
+    const datas = document.querySelectorAll('input[type="datetime-local"]');
+    fireEvent.change(datas[0], { target: { value: '2020-10-10T14:00' } });
+    fireEvent.change(datas[1], { target: { value: '2020-10-10T18:00' } });
+    expect(screen.getByTestId('aviso-datas')).toHaveTextContent(/o início já passou/i);
+
+    fireEvent.change(datas[0], { target: { value: '2027-10-10T14:00' } });
+    fireEvent.change(datas[1], { target: { value: '2028-10-10T18:00' } });
+    expect(screen.getByTestId('aviso-datas')).toHaveTextContent(/dura 366 dias/i);
+
+    fireEvent.change(datas[1], { target: { value: '2027-10-10T18:00' } });
+    expect(screen.queryByTestId('aviso-datas')).not.toBeInTheDocument();
+  });
+});

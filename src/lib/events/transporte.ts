@@ -119,13 +119,22 @@ export interface ResumoDoTransporte {
   texto: string;
 }
 
+/**
+ * A locação vale só acima do teto da frota (13/11/2026). O interruptor só
+ * aparece lá; se a pessoa o ligava com 30 e corrigia para 20, ele sumia da
+ * tela ligado, o veículo virava opcional e o evento era salvo pedindo locação
+ * sem ela ver como desligar. Abaixo do teto, um `true` esquecido não conta.
+ */
+export const locacaoPedida = (e: Partial<CamposDeTransporte>): boolean =>
+  !!e.transport_needed && !!e.transport_external_support && totalDePessoas(e).total > TETO_DA_FROTA;
+
 export function resumoDoTransporte(e: Partial<CamposDeTransporte>): ResumoDoTransporte | null {
   if (!e.transport_needed) return null;
   const v = veiculo(e.transport_vehicle);
   const apoio = veiculo(e.transport_support_vehicle);
   const { passageiros, vagaMarketing, total } = totalDePessoas(e);
   const volumosos = !!e.transport_extra_equipment;
-  const apoioExterno = !!e.transport_external_support;
+  const apoioExterno = locacaoPedida(e);
   const lugares = (v?.lugares ?? 0) + (apoio?.lugares ?? 0);
   const motoristas = (v ? 1 : 0) + (apoio ? 1 : 0);
   const lotado = lugares > 0 && total >= lugares;
@@ -184,7 +193,7 @@ export function errosDeTransporte(e: Partial<CamposDeTransporte>): ErrosDeTransp
   const { total } = totalDePessoas(e);
   if (!(Number(e.transport_passengers) > 0)) erros.transport_passengers = 'Informe quantas pessoas vão';
   if (!e.transport_vehicle) {
-    if (!e.transport_external_support) erros.transport_vehicle = 'Escolha o veículo, ou desligue o transporte';
+    if (!locacaoPedida(e)) erros.transport_vehicle = 'Escolha o veículo, ou desligue o transporte';
     return erros;
   }
   if (e.transport_support_vehicle && e.transport_support_vehicle === e.transport_vehicle) {

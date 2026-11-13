@@ -58,7 +58,9 @@ export function descreverErroDeGravacao(
       titulo: contexto.unidade
         ? `Sem permissão para gravar em ${contexto.unidade}`
         : 'Sem permissão para gravar este evento',
-      descricao: 'Seu acesso aqui é de leitura. Nada foi perdido — peça à administração geral para liberar.',
+      // Não é 'acesso de leitura' (13/11/2026): quem chega aqui grava, só que não
+      // nesta unidade ou neste evento (outra unidade, ou já confirmado).
+      descricao: 'Sua conta não grava nesta unidade ou neste evento (de outra unidade, ou já confirmado). Nada foi perdido. Se precisar, peça à administração geral.',
     };
   }
 

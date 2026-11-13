@@ -40,7 +40,9 @@ import { contar, erroDeLimite, type CampoComLimite } from '@/lib/events/limites'
 import { apagarDoBalde, urlsDeArquivosDoEvento, urlsQueSairam, CAMPOS_DE_IMAGEM } from '@/lib/events/anexos';
 import { apagarRascunho, chaveDoRascunho, formularioAoRetomar, guardarRascunho, lerRascunho, quandoFoiGuardado, rascunhoDiferente, type Rascunho } from '@/lib/events/rascunho';
 import { tituloEmTexto } from '@/lib/events/titulo';
-import { FROTA, TETO_DA_FROTA, apoiosPossiveis, errosDeTransporte, motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
+import { FROTA, TETO_DA_FROTA, apoiosPossiveis, errosDeTransporte, locacaoPedida, motivoDoApoio, resumoDoTransporte } from '@/lib/events/transporte';
+import { avisoDeDatas } from '@/lib/events/avisoDeDatas';
+import { unidadesNoFormulario } from '@/lib/events/unidadesNoFormulario';
 import { estadoDaCobertura } from '@/lib/events/cobertura';
 import { errosDasListas, limparListas } from '@/lib/events/listas';
 import { toast } from 'sonner';
@@ -202,9 +204,17 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
   const [rodapeDaFolha, setRodapeDaFolha] = useState<HTMLDivElement | null>(null);
   const noRodape = (conteudo: ReactNode) => (rodapeDaFolha ? createPortal(conteudo, rodapeDaFolha) : conteudo);
   const { addEvent, updateEvent, detectConflicts, setSelectedEvent, events } = useApp();
-  const { userName, unit, isAdmin, isMarketing } = useUserRole();
+  const { userName, unit, isAdmin, isMarketing, permissionLevel, delegatedUnits } = useUserRole();
   const { user } = useAuth();
   const [form, setForm] = useState<Partial<AppEvent>>(emptyEvent());
+  /**
+   * O texto do pedido de arte enquanto nenhum formato está marcado (13/11/2026).
+   * O pedido mora nos itens do evento, um por formato; sem formato, não há
+   * item, e o que a pessoa digitava em "O que precisa estar na arte" sumia
+   * letra a letra. Desmarcar o formato para trocar por outro também apagava a
+   * legenda e o conteúdo. Aqui eles esperam o formato.
+   */
+  const [textoDaArte, setTextoDaArte] = useState({ legenda: '', conteudo: '' });
   /**
    * Rascunho guardado no aparelho (22/09/2026). `rascunho` é o que foi
    * encontrado ao abrir e ainda não foi retomado nem descartado; a faixa no
@@ -389,6 +399,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       // Evento antigo com texto livre abre em "Outro local", com o texto.
       setOutroLocal(!!event.location && !localFixo(event.location));
       setArteAberta(temArte(event.marketing_items));
+      { const p = lerPedidoDeArte(event.marketing_items); setTextoDaArte({ legenda: p.legenda, conteudo: p.conteudo }); }
     } else {
       const unidade = (unit as Unit) || 'DIC';
       // O local já vem sugerido pela unidade; a pessoa só mexe se for fora.
@@ -404,6 +415,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       refeicoesGuardadas.current.clear();
       setOutroLocal(false);
       setArteAberta(false);
+      setTextoDaArte({ legenda: '', conteudo: '' });
     }
     setConfirmarSaida(false);
     // Há rascunho deste evento (ou de um novo) neste aparelho? Oferece, sem
@@ -467,6 +479,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     setForm(retomado);
     setOutroLocal(!!retomado.location && !localFixo(retomado.location));
     setArteAberta(temArte(retomado.marketing_items));
+    { const p = lerPedidoDeArte(retomado.marketing_items); setTextoDaArte({ legenda: p.legenda, conteudo: p.conteudo }); }
     setRascunho(null);
     if (mesclou) {
       toast.warning('O evento mudou depois do seu rascunho', {
@@ -661,10 +674,15 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
         ? (form.status === 'cancelado' ? 'cancelado' : 'pendente')
         : (form.status as EventStatus),
       visibility: enviaParaAprovacao ? 'interno' : ((form.visibility as 'publico' | 'interno') || 'interno'),
-      submitted_at: enviaParaAprovacao ? (event?.submitted_at || new Date().toISOString()) : (event?.submitted_at ?? null),
+      // Reenviar depois de uma devolução (13/11/2026): a observação sai do topo
+      // (fica na auditoria) e o envio ganha a data de agora — o evento volta a
+      // "Aguardando aprovação". Antes a faixa "Devolvido" ficava para sempre.
+      submitted_at: enviaParaAprovacao
+        ? (event?.review_note || !event?.submitted_at ? new Date().toISOString() : event.submitted_at)
+        : (event?.submitted_at ?? null),
       reviewed_at: event?.reviewed_at ?? null,
       reviewed_by: event?.reviewed_by ?? null,
-      review_note: event?.review_note ?? null,
+      review_note: enviaParaAprovacao ? null : (event?.review_note ?? null),
       has_conflict: false,
       created_by: event?.created_by || userName || 'Usuário',
       updated_by: isEditing ? (userName || 'Usuário') : undefined,
@@ -727,7 +745,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       transport_passengers: form.transport_needed ? (Number(form.transport_passengers) || 0) : 0,
       transport_extra_equipment: form.transport_needed ? !!form.transport_extra_equipment : false,
       transport_support_vehicle: form.transport_needed ? (form.transport_support_vehicle || null) : null,
-      transport_external_support: form.transport_needed ? !!form.transport_external_support : false,
+      transport_external_support: locacaoPedida(form),
     };
   };
 
@@ -861,7 +879,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
    */
   const aprovar = () =>
     handleSubmit(
-      e => ({ ...e, status: 'confirmado', reviewed_at: new Date().toISOString(), reviewed_by: userName || 'Administração', review_note: null }),
+      // A cobertura pedida e sem resposta vira "não" ao confirmar (13/11/2026):
+      // a tela prometia, e o nulo ficava — a gestora seguia vendo "a confirmar".
+      e => ({ ...e, status: 'confirmado', reviewed_at: new Date().toISOString(), reviewed_by: userName || 'Administração', review_note: null, marketing_confirmed: e.marketing_request && e.marketing_coverage ? (e.marketing_confirmed ?? false) : null }),
       {
         titulo: 'Programação aprovada',
         descricao: `“${form.title?.trim()}” está confirmada${form.visibility === 'publico' ? ' e vai aparecer no site' : ''}.`,
@@ -933,15 +953,15 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 <div className="space-y-2">
                   {conflicts.map(c => (
                     <div key={c.id} className="rounded-xl border border-border bg-card p-3">
-                      <p className="font-medium text-foreground">{c.title}</p>
+                      <p className="font-medium text-foreground">{tituloEmTexto(c.title)}</p>
                       <p className="text-xs text-muted-foreground">{eventUnitLabel(c.unit)} · {new Date(c.start_datetime).toLocaleString('pt-BR')}</p>
                     </div>
                   ))}
                 </div>
                 <DialogFooter className="gap-2">
-                  <Button variant="outline" onClick={() => setShowConflictAlert(false)}>Voltar e Corrigir</Button>
+                  <Button variant="outline" onClick={() => setShowConflictAlert(false)}>Voltar e corrigir</Button>
                   <Button onClick={handleForceSubmit} disabled={salvando}>
-                    {salvando ? 'Salvando…' : enviaParaAprovacao && !isEditing ? 'Enviar mesmo assim' : 'Salvar Mesmo Assim'}
+                    {salvando ? 'Salvando…' : ajusteRef.current ? 'Aprovar mesmo assim' : enviaParaAprovacao && !isEditing ? 'Enviar mesmo assim' : 'Salvar mesmo assim'}
                   </Button>
                 </DialogFooter>
               </div>
@@ -1038,7 +1058,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       <SelectContent>
                         {/* Grupo ANA Brasil (11/11/2026): o evento geral. Só para quem
                             confirma eventos — a gestora grava só na própria unidade. */}
-                        {(isMarketing || form.unit === 'Grupo ANA Brasil' ? EVENT_UNITS : UNITS).map(u => <SelectItem key={u} value={u}>{eventUnitLabel(u)}</SelectItem>)}
+                        {unidadesNoFormulario({ isMarketing, permissionLevel, unit, delegatedUnits, atual: form.unit }).map(u => <SelectItem key={u} value={u}>{eventUnitLabel(u)}</SelectItem>)}
                       </SelectContent>
                     </Select>
                     {form.unit === 'Grupo ANA Brasil' && (
@@ -1084,6 +1104,13 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     />
                     {errors.end_datetime && <p role="alert" className="mt-1 text-xs text-destructive">{errors.end_datetime}</p>}
                   </div>
+                  {(() => {
+                    // Não impede salvar; só pede para conferir (13/11/2026).
+                    const aviso = errors.start_datetime || errors.end_datetime ? null : avisoDeDatas(form.start_datetime, form.end_datetime, { novo: !isEditing });
+                    return aviso && (
+                      <p className="sm:col-span-2 rounded-lg border border-warning/30 bg-warning/5 px-2.5 py-1.5 text-xs text-foreground" data-testid="aviso-datas">{aviso}</p>
+                    );
+                  })()}
                   {/* Quem edita de outro estado precisa saber em que relógio o
                       horário está. O fuso é o do computador de quem preenche.
                       `sm:col-span-2`, não `col-span-2`: no celular a grade tem uma
@@ -1341,7 +1368,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                           ? 'A unidade vê “marketing confirmado”; a vaga no transporte fica.'
                           : form.marketing_confirmed === false
                             ? 'A unidade vê “sem marketing — registro pela unidade”; a vaga sai do transporte.'
-                            : 'Ainda sem resposta: a unidade vê “presença a confirmar”. Desligado ao salvar = não.'}
+                            : 'Ainda sem resposta: a unidade vê “presença a confirmar”. Desligado ao aprovar = não.'}
                       </p>
                     </div>
                   )}
@@ -1721,7 +1748,10 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                 setArteAberta(v);
                                 // Desligar tira o pedido novo; os pedidos antigos ficam,
                                 // porque foram escritos por alguém e o marketing os leu.
-                                if (!v) setForm({ ...form, marketing_items: comPedidoDeArte(form.marketing_items, PEDIDO_VAZIO) });
+                                if (!v) {
+                                  setForm({ ...form, marketing_items: comPedidoDeArte(form.marketing_items, PEDIDO_VAZIO) });
+                                  setTextoDaArte({ legenda: '', conteudo: '' });
+                                }
                               }}
                             />
                             <Label htmlFor="marketing_grafica" className="cursor-pointer flex-1 text-sm font-medium text-foreground">
@@ -1735,8 +1765,11 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                               plastificado, a legenda, as cópias e o que vai na arte. */}
                           {arteAberta && (
                             <PedidoDeArte
-                              pedido={lerPedidoDeArte(form.marketing_items)}
-                              onChange={p => setForm({ ...form, marketing_items: comPedidoDeArte(form.marketing_items, p) })}
+                              pedido={pedidoNaTela(lerPedidoDeArte(form.marketing_items), textoDaArte)}
+                              onChange={p => {
+                                setTextoDaArte({ legenda: p.legenda, conteudo: p.conteudo });
+                                setForm({ ...form, marketing_items: comPedidoDeArte(form.marketing_items, p) });
+                              }}
                             />
                           )}
 
@@ -1898,12 +1931,12 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                                 opcional: no Natal Feliz foi preciso escolher a VAN só
                                 para conseguir salvar. */}
                             <Label className="text-xs font-medium mb-1 block">
-                              {form.transport_external_support
+                              {locacaoPedida(form)
                                 ? <>Veículo da ANA <span className="font-normal text-muted-foreground">(opcional com locação)</span></>
                                 : 'Veículo *'}
                             </Label>
                             <Select
-                              value={form.transport_vehicle || (form.transport_external_support ? 'nenhum' : '')}
+                              value={form.transport_vehicle || (locacaoPedida(form) ? 'nenhum' : '')}
                               onValueChange={v => setForm({ ...form, transport_vehicle: v === 'nenhum' ? '' : (v as TransportVehicle), ...(v === 'nenhum' ? { transport_support_vehicle: '' } : {}) })}
                             >
                               <SelectTrigger className={errors.transport_vehicle ? 'border-destructive' : undefined}>
@@ -2221,11 +2254,13 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     </Button>
                   )}
                 </div>
-                <div className="flex gap-2">
+                {/* No celular (375 px) "Enviar para aprovação (4 pendências)" não cabia ao
+                    lado de "Cancelar" e a ponta era cortada (13/11/2026): quebra a linha. */}
+                <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={() => pedirParaFechar(false)}>{enviaParaAprovacao && isEditing ? 'Fechar' : 'Cancelar'}</Button>
                 {/* A contagem no botão é o que responde "por que não salvou?"
                     sem obrigar a pessoa a caçar campo pela tela. */}
-                <Button onClick={() => handleSubmit()} disabled={salvando || travadoParaEla}>
+                <Button onClick={() => handleSubmit()} disabled={salvando || travadoParaEla} className="h-auto min-h-10 whitespace-normal text-center max-sm:flex-1" data-testid="botao-enviar">
                   {salvando
                     ? 'Salvando…'
                     : isEditing
@@ -2496,3 +2531,9 @@ function IndiceDoFormulario() {
     </nav>
   );
 }
+
+/** O pedido na tela: o dos itens, ou, sem formato marcado, o texto que espera o formato (13/11/2026). */
+function pedidoNaTela(doEvento: ReturnType<typeof lerPedidoDeArte>, texto: { legenda: string; conteudo: string }) {
+  return doEvento.whatsapp || doEvento.story || doEvento.cartaz ? doEvento : { ...doEvento, ...texto };
+}
+
