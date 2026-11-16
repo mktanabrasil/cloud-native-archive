@@ -11,20 +11,26 @@ describe('lerUnidadeDaUrl', () => {
     expect(lerUnidadeDaUrl('geral')).toBeNull();
   });
 
-  it('id conhecido volta como está', () => {
-    expect(lerUnidadeDaUrl('ana-santana')).toBe('ana-santana');
+  it('unidade do Jornal (CEI ou GOE) volta como está', () => {
+    expect(lerUnidadeDaUrl('cei-anisio-spinola')).toBe('cei-anisio-spinola');
+    expect(lerUnidadeDaUrl('goe')).toBe('goe');
   });
 
   it('id desconhecido é ignorado, não quebra', () => {
     expect(lerUnidadeDaUrl('unidade-que-nao-existe')).toBeUndefined();
+  });
+
+  it('uma NAVE também é ignorada: o Jornal é só da Educação (16/11/2026)', () => {
+    expect(lerUnidadeDaUrl('ana-santana')).toBeUndefined();
+    expect(lerUnidadeDaUrl('ana-dic')).toBeUndefined();
   });
 });
 
 describe('escreverUnidadeNaUrl', () => {
   it('vai e volta', () => {
     expect(escreverUnidadeNaUrl(null)).toBe('geral');
-    expect(escreverUnidadeNaUrl('ana-dic')).toBe('ana-dic');
+    expect(escreverUnidadeNaUrl('cei-calmon')).toBe('cei-calmon');
     expect(lerUnidadeDaUrl(escreverUnidadeNaUrl(null))).toBeNull();
-    expect(lerUnidadeDaUrl(escreverUnidadeNaUrl('ana-dic'))).toBe('ana-dic');
+    expect(lerUnidadeDaUrl(escreverUnidadeNaUrl('cei-calmon'))).toBe('cei-calmon');
   });
 });

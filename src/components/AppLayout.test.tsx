@@ -1,6 +1,6 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 const estado = vi.hoisted(() => ({
   papel: {} as Record<string, unknown>,
@@ -14,6 +14,11 @@ const MARKETING = {
 const GESTORA_DO_SOCIAL = {
   isAdmin: false, isManager: true, userName: 'Gestão', unit: 'DIC', canViewAuditoria: false,
   isMarketing: false, canAccessJournal: false, isRh: false, soCalendario: false, temCalendarioAnual: true, loading: false,
+};
+// A direção de um CEI: a gestão da Educação vê só a Educação (16/11/2026).
+const DIRECAO_DE_CEI = {
+  isAdmin: false, isManager: true, userName: 'Direção', unit: 'Anísio', canViewAuditoria: false,
+  isMarketing: false, canAccessJournal: true, isRh: false, soCalendario: false, soEducacao: true, temCalendarioAnual: false, loading: false,
 };
 
 vi.mock('@/contexts/AuthContext', () => ({
@@ -38,6 +43,11 @@ vi.mock('@/components/ui/dropdown-menu', () => {
 });
 
 const { default: AppLayout } = await import('./AppLayout');
+
+/** Mostra o endereço em que a página parou (para ver redirecionamentos). */
+function Endereco() {
+  return <p data-testid="endereco">{useLocation().pathname}</p>;
+}
 
 const abrir = (rota = '/') =>
   render(
@@ -144,6 +154,60 @@ describe('a faixa do setor', () => {
     estado.celular = false;
     abrir('/');
     expect(screen.getByRole('navigation', { name: 'Páginas de Social' })).toHaveTextContent(/^Social/);
+  });
+});
+
+/** Setores, PR 2 (16/11/2026): cada gestão vê o próprio setor. */
+describe('quem vê o quê', () => {
+  const barra = () => screen.getByRole('navigation', { name: 'Setores' });
+  const ondeEstou = () => screen.getByTestId('endereco').textContent;
+  const abrirComEndereco = (rota: string) =>
+    render(
+      <MemoryRouter initialEntries={[rota]}>
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route path="*" element={<Endereco />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+
+  it('a gestão do Social vê só o Social (sem a Educação)', () => {
+    estado.celular = false;
+    estado.papel = { ...GESTORA_DO_SOCIAL };
+    abrir('/');
+    expect(nomes(barra())).toEqual(['Social']);
+  });
+
+  it('a direção de um CEI vê só a Educação (sem o Social)', () => {
+    estado.celular = false;
+    estado.papel = { ...DIRECAO_DE_CEI };
+    abrir('/jornal-institucional');
+    expect(nomes(barra())).toEqual(['Educação']);
+  });
+
+  it('no celular, a direção de um CEI tem um setor só: sem doca', () => {
+    estado.papel = { ...DIRECAO_DE_CEI };
+    abrir('/jornal-institucional');
+    expect(screen.queryByRole('navigation', { name: 'Navegação' })).not.toBeInTheDocument();
+  });
+
+  it('para a direção de um CEI, o início é o Jornal', () => {
+    estado.papel = { ...DIRECAO_DE_CEI };
+    abrirComEndereco('/');
+    expect(ondeEstou()).toBe('/jornal-institucional');
+  });
+
+  it('as Programações continuam abrindo para ela pelo endereço', () => {
+    estado.papel = { ...DIRECAO_DE_CEI };
+    abrirComEndereco('/eventos');
+    expect(ondeEstou()).toBe('/eventos');
+  });
+
+  it('para a gestão do Social, o início continua nos Eventos', () => {
+    estado.papel = { ...GESTORA_DO_SOCIAL };
+    abrirComEndereco('/');
+    expect(ondeEstou()).toBe('/');
   });
 });
 

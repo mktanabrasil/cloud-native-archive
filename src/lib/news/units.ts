@@ -67,6 +67,18 @@ export const NEWS_UNIT_GROUPS: { label: string; units: NewsUnit[] }[] = [
   },
 ];
 
+/**
+ * O seletor do Jornal (16/11/2026): o Jornal é da Educação, então só os CEIs
+ * e o GOE. As NAVEs saíram dele, mas continuam em `NEWS_UNIT_GROUPS`, que o
+ * pedido de acesso usa para todo mundo escolher a própria unidade.
+ */
+export const JORNAL_UNIT_GROUPS = NEWS_UNIT_GROUPS.filter((g) => g.label === 'Educação');
+
+/** É unidade do Jornal (um CEI ou o GOE, ativo ou não)? */
+export function ehUnidadeDoJornal(id: string | undefined | null): boolean {
+  return newsUnitSegment(id) === 'educacao';
+}
+
 /** Segmento institucional da unidade — o mesmo corte usado em `NEWS_UNIT_GROUPS`. */
 export type NewsUnitSegment = 'social' | 'educacao';
 

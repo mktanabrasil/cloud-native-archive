@@ -67,7 +67,7 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
   const { isAuthenticated: temSessao, signOut, user } = useAuth();
   // Conta de candidato (Trabalhe Conosco) vê o app como visitante: sem menu da equipe.
   const isAuthenticated = temSessao && !ehContaRestrita(user);
-  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh, soCalendario, temCalendarioAnual, loading: carregandoPapel } = useUserRole();
+  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh, soCalendario, soEducacao, temCalendarioAnual, loading: carregandoPapel } = useUserRole();
   // A bolinha em "Vagas": novos + respostas não lidas (passo 5, 20/10/2026).
   const avisosDeVagas = useAvisosDaEquipe(isRh || souResponsavel, location.pathname);
   const { eligible: betaEligible, rawEnabled: betaOn, toggleBeta } = useBetaPreference();
@@ -100,8 +100,10 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
   const itensVisiveis = navItems.filter(item => {
     // Regra para páginas escondidas (não aparecem no menu, acessadas por outra página)
     if (item.hidden) return false;
-    // Antes do `marketingOnly`: o Jornal tem regra própria, e a gestão de
-    // unidade entra nele sem entrar nas outras páginas da comunicação.
+    // O Social é de todos, menos de quem vê só a Educação (16/11/2026).
+    if (item.setorSocial) return !soEducacao;
+    // Antes do `marketingOnly`: o Jornal tem regra própria, e a gestão da
+    // Educação entra nele sem entrar nas outras páginas da comunicação.
     if (item.journalOnly) return canAccessJournal;
     // RH, ou quem é responsável por algum processo (passo 3, 19/10/2026).
     if (item.rhOnly) return isRh || souResponsavel;
@@ -264,6 +266,10 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
   // com o interruptor ligado não entra em página nenhuma da equipe por enquanto.
   if (isAuthenticated && !carregandoPapel && soCalendario) return <Navigate to="/calendario" replace />;
 
+  // A gestão da Educação não vê o Social (16/11/2026): o início dela é o
+  // Jornal. Só a raiz muda; as Programações (`/eventos`) seguem públicas.
+  if (isAuthenticated && !carregandoPapel && soEducacao && location.pathname === '/') return <Navigate to="/jornal-institucional" replace />;
+
   return (
     <UiV2>
     <div className={cn('flex min-h-screen flex-col bg-transparent', isCleanView && 'min-h-0 h-auto bg-transparent overflow-visible')}>
@@ -285,7 +291,7 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
               </span>
             </Link>
 
-            {!comDoca && <nav className="flex min-w-0 flex-1 items-center justify-center gap-1">{itensVisiveis.map(item => linkDaBarra(item))}</nav>}
+            {!comDoca && <nav aria-label="Setores" className="flex min-w-0 flex-1 items-center justify-center gap-1">{itensVisiveis.map(item => linkDaBarra(item))}</nav>}
 
             <div className="ml-auto flex shrink-0 items-center gap-2">
               {isAuthenticated ? (

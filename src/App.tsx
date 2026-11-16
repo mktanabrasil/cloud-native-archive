@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate, useSearchParams } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -115,12 +115,27 @@ function JournalRoute({ children }: { children: React.ReactNode }) {
   if (!isAuthenticated && !isEmbed) return <Navigate to="/login" replace />;
   if (!canAccessJournal) {
     // Antes era um redirecionamento mudo. O id evita repetir se a rota renderizar duas vezes.
-    toast.info('O Jornal é da comunicação e da gestão de cada unidade.', {
+    toast.info('O Jornal é da Educação: da comunicação e da gestão dos CEIs e do GOE.', {
       id: 'jornal-sem-acesso',
       description: 'Você foi levado para a página inicial. Se precisa do Jornal, fale com a coordenação para liberar seu acesso.',
     });
     return <Navigate to="/" replace />;
   }
+  return <>{children}</>;
+}
+
+/**
+ * O Mercado Solidário no app é só do marketing (16/11/2026). Quem mais chegar
+ * ao endereço (um link antigo, o cartão no WhatsApp) vai para a vitrine
+ * pública, com o mesmo conteúdo: é a que o site incorpora, e ela não muda.
+ */
+function MercadoRoute({ children }: { children: React.ReactNode }) {
+  const { loading: authLoading } = useAuth();
+  const { isMarketing, loading: roleLoading } = useUserRole();
+  const location = useLocation();
+
+  if (authLoading || roleLoading) return null;
+  if (!isMarketing) return <Navigate to={{ pathname: '/mercado-solidario-publico', search: location.search }} replace />;
   return <>{children}</>;
 }
 
@@ -234,7 +249,9 @@ const App = () => (
                   <Route path="/marketing" element={
                     <ProtectedRoute><MarketingHubPage /></ProtectedRoute>
                   } />
-                  <Route path="/mercado-solidario" element={<MercadoSolidarioPage />} />
+                  <Route path="/mercado-solidario" element={
+                    <MercadoRoute><MercadoSolidarioPage /></MercadoRoute>
+                  } />
                   <Route path="/portal-transparencia" element={
                     <MarketingRoute><TransparencyPage /></MarketingRoute>
                   } />

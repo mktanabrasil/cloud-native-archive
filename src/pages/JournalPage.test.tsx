@@ -147,7 +147,7 @@ describe('quem entra na página', () => {
 
     montar();
 
-    expect(await screen.findByText(/área da comunicação/i)).toBeInTheDocument();
+    expect(await screen.findByText(/área da educação/i)).toBeInTheDocument();
     expect(screen.queryByText(/jornal da unidade/i)).not.toBeInTheDocument();
   });
 });
@@ -162,21 +162,21 @@ describe('quem entra na página', () => {
 describe('jornal de outra unidade', () => {
   const deOutraUnidade = (): JournalRecord => ({
     ...jornal(),
-    unit_id: 'ana-nilopolis',
+    unit_id: 'cei-anisio-spinola',
     profile_unit: 'Outra Unidade',
   });
 
-  const gestoraDeNilopolis = {
+  const gestoraDoAnisio = {
     canAccessJournal: true,
     isMarketing: false,
     isEquipeDeMarketing: false,
     loading: false,
-    unit: 'Nilópolis',
+    unit: 'Anísio',
     userName: 'Gestora',
   };
 
   it('oferece duplicar para a minha unidade, e não excluir', async () => {
-    espiao.papel = gestoraDeNilopolis;
+    espiao.papel = gestoraDoAnisio;
     espiao.journals = [deOutraUnidade()];
 
     montar();
@@ -188,7 +188,7 @@ describe('jornal de outra unidade', () => {
   });
 
   it('duplica para a unidade de quem clicou, não para a de origem', async () => {
-    espiao.papel = gestoraDeNilopolis;
+    espiao.papel = gestoraDoAnisio;
     espiao.journals = [deOutraUnidade()];
 
     montar();
@@ -196,14 +196,14 @@ describe('jornal de outra unidade', () => {
 
     await waitFor(() => expect(espiao.duplicate).toHaveBeenCalled());
     expect(espiao.duplicate.mock.calls[0][1]).toEqual({
-      unitId: 'ana-nilopolis',
-      profileUnit: 'Nilópolis',
+      unitId: 'cei-anisio-spinola',
+      profileUnit: 'Anísio',
     });
   });
 
   it('no próprio jornal, mantém excluir', async () => {
-    espiao.papel = gestoraDeNilopolis;
-    espiao.journals = [{ ...jornal(), unit_id: 'ana-nilopolis', profile_unit: 'Nilópolis' }];
+    espiao.papel = gestoraDoAnisio;
+    espiao.journals = [{ ...jornal(), unit_id: 'cei-anisio-spinola', profile_unit: 'Anísio' }];
 
     montar();
 
@@ -220,30 +220,46 @@ describe('jornal de outra unidade', () => {
  */
 describe('a unidade na URL', () => {
   it('sem parâmetro, mostra a unidade do perfil', async () => {
-    espiao.papel = { ...espiao.papel, isMarketing: false, unit: 'Santana' };
+    espiao.papel = { ...espiao.papel, isMarketing: false, unit: 'Calmon' };
     montar();
 
-    expect(await screen.findByText('ANA Jardim Santana', { selector: 'p' })).toBeInTheDocument();
+    expect(await screen.findByText('CEI Bem Querer Sen. João de Medeiros Calmon', { selector: 'p' })).toBeInTheDocument();
   });
 
   it('?unidade= abre direto na unidade pedida', async () => {
+    montar('/jornal-institucional?unidade=cei-capanema');
+
+    expect(await screen.findByText('CEI Bem Querer Min. Gustavo Capanema', { selector: 'p' })).toBeInTheDocument();
+  });
+
+  // O Jornal é da Educação (16/11/2026): uma NAVE no endereço não abre.
+  it('?unidade= de uma NAVE é ignorado, como um id desconhecido', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: false, unit: 'Calmon' };
     montar('/jornal-institucional?unidade=ana-dic');
 
-    expect(await screen.findByText('ANA DIC', { selector: 'p' })).toBeInTheDocument();
+    expect(await screen.findByText('CEI Bem Querer Sen. João de Medeiros Calmon', { selector: 'p' })).toBeInTheDocument();
+    expect(screen.queryByText('ANA DIC', { selector: 'p' })).not.toBeInTheDocument();
+  });
+
+  it('com a unidade do perfil no Social, abre na Institucional geral', async () => {
+    espiao.papel = { ...espiao.papel, isMarketing: true, unit: 'DIC' };
+    montar();
+
+    expect(await screen.findByText('Institucional geral', { selector: 'p' })).toBeInTheDocument();
   });
 
   it('?unidade=geral abre na Institucional geral', async () => {
-    espiao.papel = { ...espiao.papel, isMarketing: false, unit: 'Santana' };
+    espiao.papel = { ...espiao.papel, isMarketing: false, unit: 'Calmon' };
     montar('/jornal-institucional?unidade=geral');
 
     expect(await screen.findByText('Institucional geral', { selector: 'p' })).toBeInTheDocument();
   });
 
   it('id desconhecido é ignorado e vale a unidade do perfil', async () => {
-    espiao.papel = { ...espiao.papel, isMarketing: false, unit: 'Santana' };
+    espiao.papel = { ...espiao.papel, isMarketing: false, unit: 'Calmon' };
     montar('/jornal-institucional?unidade=nao-existe');
 
-    expect(await screen.findByText('ANA Jardim Santana', { selector: 'p' })).toBeInTheDocument();
+    expect(await screen.findByText('CEI Bem Querer Sen. João de Medeiros Calmon', { selector: 'p' })).toBeInTheDocument();
   });
 });
 
@@ -298,7 +314,7 @@ describe('Criar a partir de esboço', () => {
   });
 
   it('a gestora da unidade não vê', async () => {
-    espiao.papel = { ...espiao.papel, isMarketing: false, isEquipeDeMarketing: false, unit: 'Santana' };
+    espiao.papel = { ...espiao.papel, isMarketing: false, isEquipeDeMarketing: false, unit: 'Calmon' };
     montar();
     await screen.findAllByRole('button', { name: 'Criar jornal da unidade' });
     expect(botao()).toBeNull();

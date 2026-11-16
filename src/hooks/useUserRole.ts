@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTestView } from '@/contexts/TestViewContext';
+import { ehUnidadeDoJornal, newsUnitForProfileUnit } from '@/lib/news/units';
 
 export type UserRole = 'admin' | 'editor' | 'criador' | null;
 
@@ -199,7 +200,23 @@ export function useUserRole() {
   const soCalendario = acessoSoCalendario && !isMarketing;
 
   /**
-   * Quem entra no Jornal: a comunicação e a gestão de uma unidade.
+   * Espelho de `is_rh_or_admin` no banco (vagas, 25/09/2026): admin, ou
+   * vínculo "rh" ativo. É quem vê a aba Gestão em /vagas.
+   */
+  const isRh = isAdmin || (bondType === 'rh' && isActive);
+
+  const isUnitManager = permissionLevel === 'gestor_unidade' && isActive && !!unit;
+  /**
+   * A gestão de um CEI ou do GOE (16/11/2026): o setor dela é a Educação. A
+   * gestão de uma NAVE é do Social, e a de uma unidade fora do catálogo não
+   * é de nenhum dos dois (fica com o que toda a equipe vê).
+   */
+  const isGestaoDaEducacao = isUnitManager && ehUnidadeDoJornal(newsUnitForProfileUnit(unit)?.id);
+
+  /**
+   * Quem entra no Jornal: a comunicação e a gestão da Educação. Desde
+   * 16/11/2026 o Jornal é da Educação; a gestão do Social saiu dele (espelho
+   * de `journal_unit_of` no banco, que devolve só as unidades da Educação).
    *
    * Mora aqui, e não numa rota, porque a tela e a guarda precisam responder a
    * mesma coisa — e porque `MarketingRoute` protege outras quatro páginas
@@ -208,14 +225,9 @@ export function useUserRole() {
    * A unidade entra na conta de propósito: gestora sem unidade não tem jornal
    * nenhum para ver, e cairia numa lista vazia sem entender o porquê.
    */
-  /**
-   * Espelho de `is_rh_or_admin` no banco (vagas, 25/09/2026): admin, ou
-   * vínculo "rh" ativo. É quem vê a aba Gestão em /vagas.
-   */
-  const isRh = isAdmin || (bondType === 'rh' && isActive);
-
-  const isUnitManager = permissionLevel === 'gestor_unidade' && isActive && !!unit;
-  const canAccessJournal = isMarketing || isUnitManager;
+  const canAccessJournal = isMarketing || isGestaoDaEducacao;
+  /** Só a Educação no menu: a gestão da Educação não vê o Social (16/11/2026). */
+  const soEducacao = isGestaoDaEducacao && !isMarketing;
 
   /**
    * Ainda carregando enquanto as permissões não forem desta pessoa (26/10/2026).
@@ -250,7 +262,9 @@ export function useUserRole() {
     isEquipeDeMarketing,
     isRh,
     isUnitManager,
+    isGestaoDaEducacao,
     canAccessJournal,
+    soEducacao,
     soCalendario,
     temCalendarioAnual: acessoCalendario,
   };

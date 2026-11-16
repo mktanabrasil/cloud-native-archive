@@ -1,7 +1,7 @@
-import { findNewsUnit } from './units';
+import { ehUnidadeDoJornal } from './units';
 
 /**
- * A unidade que o Jornal está mostrando, na URL: `?unidade=ana-santana`.
+ * A unidade que o Jornal está mostrando, na URL: `?unidade=cei-anisio-spinola`.
  *
  * Até 10/09/2026 ela vivia só na memória da página. Qualquer coisa que
  * remontasse a página (voltar de outra aba, até o #93) ou recarregasse a aba
@@ -16,12 +16,13 @@ export const GERAL = 'geral';
 /**
  * Lê o parâmetro. Devolve `undefined` quando não há escolha na URL (ou ela não
  * corresponde a unidade nenhuma), para quem chama usar a unidade padrão; `null`
- * para a geral; o id quando é uma unidade conhecida.
+ * para a geral; o id quando é uma unidade do Jornal. Uma NAVE conta como
+ * desconhecida: o Jornal é só da Educação desde 16/11/2026.
  */
 export function lerUnidadeDaUrl(valor: string | null): string | null | undefined {
   if (valor === null || valor === '') return undefined;
   if (valor === GERAL) return null;
-  return findNewsUnit(valor) ? valor : undefined;
+  return ehUnidadeDoJornal(valor) ? valor : undefined;
 }
 
 /** O que gravar na URL para uma unidade. */
