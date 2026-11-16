@@ -339,7 +339,7 @@ describe('painel', () => {
       const janela = await abrir();
       fireEvent.click(await within(janela).findByRole('switch', { name: 'Envio automático' }));
       await vi.waitFor(() => expect(banco.ranking.chamadas).toEqual([['ligar', true]]));
-      expect(await within(janela).findByText(/Toda sexta, às 15h: 13\/11, 20\/11, 27\/11 e 04\/12/)).toBeInTheDocument();
+      expect(await within(janela).findByText(/Toda sexta, às 8h: 13\/11, 20\/11, 27\/11 e 04\/12/)).toBeInTheDocument();
       expect(within(janela).getByText('sexta, 20/11')).toBeInTheDocument();
       const envios = within(janela).getByRole('list', { name: 'Últimos envios' });
       expect(within(envios).getAllByRole('listitem')).toHaveLength(2);
