@@ -46,7 +46,7 @@ export function CoordenadorasDoCalendario({ quem }: { quem: string | null }) {
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pb-10 lg:px-6">
       <h1 className="font-display text-[26px] font-bold tracking-tight sm:text-[28px]">Coordenadoras com acesso</h1>
-      <p className="mt-1 text-[14px] text-muted-foreground">Cadastre o e-mail de cada coordenadora. Quem já tem conta da equipe entra com a senha de sempre em app.anabrasil.org/calendario; quem não tem, cria a senha no primeiro acesso.</p>
+      <p className="mt-1 text-[14px] text-muted-foreground">Cadastre o e-mail de cada coordenadora. Quem já tem conta da equipe entra com a senha de sempre em app.anabrasil.org/social/calendario; quem não tem, cria a senha no primeiro acesso.</p>
       <p className="mt-2 text-[13px] text-muted-foreground"><b className="text-foreground">Só o calendário:</b> ligado, a pessoa entra só aqui, mesmo com conta da equipe; o app inteiro a manda para o calendário. Desligue quando for liberar o resto do app para ela.</p>
       <section className="glass-2 mt-5 rounded-[22px] p-4">
         <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto]">

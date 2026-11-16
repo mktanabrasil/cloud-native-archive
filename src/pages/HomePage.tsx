@@ -23,7 +23,7 @@ interface HomePageProps {
  *
  * Não altera permissão de rota nenhuma: as páginas públicas continuam públicas
  * nos seus endereços (as Programações em `/eventos`, o Mercado Solidário em
- * `/mercado-solidario`) e as restritas continuam atrás dos mesmos guardas.
+ * `/mercado-solidario-publico`) e as restritas continuam atrás dos mesmos guardas.
  * O que muda é só o que a raiz mostra.
  *
  * A altura é `100svh` — a *small viewport height*, a menor que a tela assume,

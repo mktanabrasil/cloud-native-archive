@@ -238,11 +238,18 @@ interface PageGuideProps {
   activeTab?: string;
 }
 
+/** Os endereços por setor (16/11/2026) usam os guias dos endereços de antes. */
+const GUIA_DO_ENDERECO: Record<string, string> = {
+  '/social/eventos': '/',
+  '/marketing/auditoria': '/auditoria',
+  '/painel': '/usuarios',
+};
+
 export default function PageGuide({ activeTab }: PageGuideProps) {
   const [expanded, setExpanded] = useState(false);
   const location = useLocation();
-  const path = location.pathname;
-  
+  const path = GUIA_DO_ENDERECO[location.pathname] ?? location.pathname;
+
   const getGuideContent = (): GuideContent | null => {
     const guide = GUIDES[path];
     if (!guide) return null;

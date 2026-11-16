@@ -177,7 +177,7 @@ export default function VoluntariadoPresencaPage() {
   return (
     <MolduraDaCentral>
       <CabecalhoDaCentral largo rotulo="Natal Feliz 2026 · Voluntários" titulo="Presença"
-        direita={<Link to="/marketing?aba=voluntariado" className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.12] px-3.5 py-2 text-[13.5px] font-semibold text-white hover:bg-white/20"><ArrowLeft className="h-4 w-4" /> Painel</Link>}
+        direita={<Link to="/marketing/voluntariado" className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.12] px-3.5 py-2 text-[13.5px] font-semibold text-white hover:bg-white/20"><ArrowLeft className="h-4 w-4" /> Painel</Link>}
         pilulas={<span className="text-white/90" data-testid="contador"><b className="text-[26px] font-bold tabular-nums text-white" style={{ fontFamily: 'Poppins, sans-serif' }}>{presentes.size}</b><span className="text-[14px]"> de {total} presentes</span></span>} />
       <main className="mx-auto flex w-full max-w-[960px] flex-1 flex-col gap-4 px-4 pb-16 pt-5">
         <div className="inline-flex max-w-full gap-0.5 self-start rounded-full bg-black/[0.05] p-1 dark:bg-white/[0.07]" role="group" aria-label="Qual presença">
