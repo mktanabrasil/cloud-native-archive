@@ -22,6 +22,11 @@ export interface NavItem {
    * as abas Portal e Gestão. O candidato chega pelo endereço, sem menu.
    */
   rhOnly?: boolean;
+  /**
+   * O setor Social: toda a equipe (os Eventos são de todos), menos a gestão
+   * da Educação, que vê só a Educação (16/11/2026).
+   */
+  setorSocial?: boolean;
   hidden?: boolean;
 }
 
@@ -31,15 +36,16 @@ export interface NavItem {
  * páginas dele ficam na faixa logo abaixo da barra (`FaixaDoSetor`). As
  * páginas não mudaram de endereço; o que mudou foi só o menu.
  *
- * - Social: Eventos e Calendário Anual.
- * - Educação: o Jornal.
+ * - Social: Eventos e Calendário Anual. A gestão da Educação não o vê.
+ * - Educação: o Jornal, da comunicação e da gestão dos CEIs e do GOE. A
+ *   gestão do Social (as NAVEs) não a vê.
  * - Marketing: as abas de sempre e o Mercado Solidário, que saiu do menu de
  *   cima e é só do marketing (o embed público do site não muda).
  * - Painel: na barra só para o marketing; os outros chegam ao próprio perfil
  *   pelo menu da foto.
  */
 export const navItems: NavItem[] = [
-  { to: '/', label: 'Social', icon: HeartHandshake },
+  { to: '/', label: 'Social', icon: HeartHandshake, setorSocial: true },
   { to: '/visao-geral', label: 'Visão Geral', icon: LayoutDashboard, requireAuth: true, hidden: true },
   { to: '/calendario', label: 'Calendário', icon: Calendar, requireAuth: true, hidden: true },
   { to: '/jornal-institucional', label: 'Educação', icon: GraduationCap, requireAuth: true, journalOnly: true },

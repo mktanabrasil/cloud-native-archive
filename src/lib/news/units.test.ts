@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACTIVE_NEWS_UNITS, NEWS_UNIT_GROUPS, newsUnitSegment } from './units';
+import { ACTIVE_NEWS_UNITS, JORNAL_UNIT_GROUPS, NEWS_UNIT_GROUPS, ehUnidadeDoJornal, newsUnitSegment } from './units';
 
 describe('segmento da unidade', () => {
   it('NAVEs são Social', () => {
@@ -37,5 +37,28 @@ describe('segmento da unidade', () => {
     const porRotulo = Object.fromEntries(NEWS_UNIT_GROUPS.map((g) => [g.label, g.units]));
     porRotulo.Social.forEach((u) => expect(newsUnitSegment(u.id)).toBe('social'));
     porRotulo['Educação'].forEach((u) => expect(newsUnitSegment(u.id)).toBe('educacao'));
+  });
+});
+
+/** O Jornal é da Educação (16/11/2026): as NAVEs saíram do seletor dele. */
+describe('as unidades do Jornal', () => {
+  it('o seletor do Jornal tem só a Educação, com os CEIs e o GOE', () => {
+    expect(JORNAL_UNIT_GROUPS.map((g) => g.label)).toEqual(['Educação']);
+    const ids = JORNAL_UNIT_GROUPS.flatMap((g) => g.units.map((u) => u.id));
+    expect(ids).toContain('goe');
+    expect(ids).toContain('cei-anisio-spinola');
+    expect(ids.some((id) => id.startsWith('ana-'))).toBe(false);
+  });
+
+  it('o pedido de acesso continua com as NAVEs', () => {
+    expect(NEWS_UNIT_GROUPS.map((g) => g.label)).toEqual(['Social', 'Educação']);
+  });
+
+  it('ehUnidadeDoJornal: CEI e GOE sim; NAVE, desconhecida e vazia, não', () => {
+    expect(ehUnidadeDoJornal('cei-vandir')).toBe(true);
+    expect(ehUnidadeDoJornal('goe')).toBe(true);
+    expect(ehUnidadeDoJornal('ana-dic')).toBe(false);
+    expect(ehUnidadeDoJornal('nao-existe')).toBe(false);
+    expect(ehUnidadeDoJornal(null)).toBe(false);
   });
 });

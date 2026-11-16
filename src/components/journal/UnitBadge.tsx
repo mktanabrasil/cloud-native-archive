@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { NEWS_UNIT_GROUPS, newsUnitName, findNewsUnit } from '@/lib/news/units';
+import { JORNAL_UNIT_GROUPS, newsUnitName, findNewsUnit } from '@/lib/news/units';
 
 export type UnitBadgeVariant = 'banner' | 'line' | 'chip';
 
@@ -112,7 +112,8 @@ export function UnitBadge({
         <SelectValue placeholder="Trocar unidade" />
       </SelectTrigger>
       <SelectContent>
-        {NEWS_UNIT_GROUPS.map((group) => (
+        {/* Só a Educação (16/11/2026): as NAVEs saíram do Jornal. */}
+        {JORNAL_UNIT_GROUPS.map((group) => (
           <SelectGroup key={group.label}>
             <SelectLabel>{group.label}</SelectLabel>
             {group.units.map((unit) => (

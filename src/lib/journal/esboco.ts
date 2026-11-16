@@ -14,7 +14,7 @@ import {
   type JournalTemplate,
   type TextStyleKey,
 } from './types';
-import { NEWS_UNITS, type NewsUnit } from '@/lib/news/units';
+import { NEWS_UNITS, ehUnidadeDoJornal, type NewsUnit } from '@/lib/news/units';
 
 /**
  * "Criar a partir de esboço" (caminho 2, 05/10/2026).
@@ -140,6 +140,8 @@ export function conferirEsboco(esboco: Esboco, fotosNaPasta: Set<number>): Confe
 
   const unidade = unidadeDoEsboco(esboco.unidade?.nome);
   if (!unidade) erros.push(`Unidade “${esboco.unidade?.nome ?? 'sem nome'}” não encontrada no app. Corrija o nome no esboço.`);
+  // O Jornal é da Educação desde 16/11/2026: esboço de NAVE não vira jornal.
+  else if (!ehUnidadeDoJornal(unidade.id)) erros.push(`“${unidade.name}” é do Social, e o Jornal agora é só da Educação (CEIs e GOE).`);
 
   const mesLido = interpretarMes(esboco.mes);
   const mes = mesLido ? formatarMes(mesLido) : null;

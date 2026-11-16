@@ -18,6 +18,8 @@ const espiao = vi.hoisted(() => ({
   consultas: 0,
   papel: 'criador' as string | null,
   nivel: 'gestor_unidade' as string,
+  unidade: 'Santana',
+  vinculo: null as string | null,
 }));
 
 vi.mock('@/contexts/AuthContext', () => ({
@@ -38,7 +40,7 @@ vi.mock('@/integrations/supabase/client', () => {
         tabela === 'user_roles'
           ? cadeia(espiao.papel ? { role: espiao.papel } : null)
           : tabela === 'profiles'
-            ? cadeia({ permission_level: espiao.nivel, name: 'Gestora', is_active: true, unit: 'Santana', view_restrictions: null, delegated_units: [], is_beta_tester: false, bond_type: null })
+            ? cadeia({ permission_level: espiao.nivel, name: 'Gestora', is_active: true, unit: espiao.unidade, view_restrictions: null, delegated_units: [], is_beta_tester: false, bond_type: espiao.vinculo })
             : cadeia(null),
     },
   };
@@ -50,6 +52,8 @@ beforeEach(() => {
   espiao.consultas = 0;
   espiao.papel = 'criador';
   espiao.nivel = 'gestor_unidade';
+  espiao.unidade = 'Santana';
+  espiao.vinculo = null;
   espiao.user = { id: 'u1', email: 'gestora@ana.org' };
 });
 
@@ -159,5 +163,47 @@ describe('a sessão chegando (26/10/2026)', () => {
 
     // Nenhuma tela com a pessoa logada viu "pronto, e sem acesso".
     expect(vistos.filter((v) => v.comUsuario && !v.loading && !v.isMarketing)).toEqual([]);
+  });
+});
+
+/**
+ * Setores (16/11/2026): a gestão de um CEI ou do GOE é da Educação e vê só
+ * ela; a gestão de uma NAVE é do Social e saiu do Jornal.
+ */
+describe('o setor da gestão', () => {
+  const carregar = async () => {
+    const { result } = renderHook(() => useUserRole());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    return result.current;
+  };
+
+  it('a gestão de uma NAVE não entra no Jornal e vê o Social', async () => {
+    const papel = await carregar();
+    expect(papel.isUnitManager).toBe(true);
+    expect(papel.canAccessJournal).toBe(false);
+    expect(papel.soEducacao).toBe(false);
+  });
+
+  it.each(['Anísio', 'GOE', 'são josé'])('a gestão de %s é da Educação: Jornal, e só a Educação', async (unidade) => {
+    espiao.unidade = unidade;
+    const papel = await carregar();
+    expect(papel.isGestaoDaEducacao).toBe(true);
+    expect(papel.canAccessJournal).toBe(true);
+    expect(papel.soEducacao).toBe(true);
+  });
+
+  it('gestão de unidade fora do catálogo: nem Jornal, nem só a Educação', async () => {
+    espiao.unidade = 'Administração';
+    const papel = await carregar();
+    expect(papel.canAccessJournal).toBe(false);
+    expect(papel.soEducacao).toBe(false);
+  });
+
+  it('o marketing com unidade da Educação continua vendo tudo', async () => {
+    espiao.unidade = 'Anísio';
+    espiao.vinculo = 'marketing';
+    const papel = await carregar();
+    expect(papel.canAccessJournal).toBe(true);
+    expect(papel.soEducacao).toBe(false);
   });
 });

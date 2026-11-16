@@ -36,6 +36,7 @@ import { resumirImportacao } from '@/lib/journal/importar';
 import { JournalTutorial } from '@/components/journal/JournalTutorial';
 import { useTutoriaisVistos } from '@/hooks/useTutoriaisVistos';
 import {
+  ehUnidadeDoJornal,
   newsUnitName,
   newsUnitForProfileUnit,
   profileUnitForNewsUnit,
@@ -126,10 +127,12 @@ export default function JournalPage() {
   const { canAccessJournal, isMarketing, isEquipeDeMarketing, loading: roleLoading, unit: profileUnit, userName } = useUserRole();
   const { journals, loading, saving, savedAt, erroDeLista, erroDeCriacao, refresh, create, save, remove, duplicate } = useJournals();
 
-  const defaultUnitId = useMemo(
-    () => newsUnitForProfileUnit(profileUnit)?.id ?? null,
-    [profileUnit],
-  );
+  // A unidade do perfil só vale se for do Jornal (16/11/2026): quem é do
+  // marketing com unidade do Social abre na Institucional geral.
+  const defaultUnitId = useMemo(() => {
+    const id = newsUnitForProfileUnit(profileUnit)?.id ?? null;
+    return ehUnidadeDoJornal(id) ? id : null;
+  }, [profileUnit]);
   /**
    * A unidade em exibição vive na URL (`?unidade=`), não na memória da página.
    *
@@ -287,9 +290,9 @@ export default function JournalPage() {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-4 px-4 py-24 text-center">
         <Lock className="h-12 w-12 text-muted-foreground" />
-        <h1 className="text-xl font-semibold text-foreground">Área da comunicação</h1>
+        <h1 className="text-xl font-semibold text-foreground">Área da Educação</h1>
         <p className="text-sm text-muted-foreground">
-          O Jornal é da equipe de comunicação e da gestão de cada unidade. Fale com a coordenação
+          O Jornal é da equipe de comunicação e da gestão dos CEIs e do GOE. Fale com a coordenação
           para liberar seu acesso.
         </p>
       </div>

@@ -48,6 +48,11 @@ describe('esboço → páginas do Jornal', () => {
     expect(tudo).toMatch(/foto 9 não está na pasta \(fotos\/foto-09\.jpg\)/);
   });
 
+  it('esboço de uma NAVE trava: o Jornal é só da Educação (16/11/2026)', () => {
+    const c = conferirEsboco({ ...BASE, unidade: { nome: 'ANA Jardim Santana' } }, new Set([1, 2]));
+    expect(c.erros.join('\n')).toMatch(/“ANA Jardim Santana” é do Social/);
+  });
+
   it('coloca cada foto no seu quadro; a que não subiu fica vazia', () => {
     const c = conferirEsboco(BASE, new Set([1, 2]));
     const prontas = colocarFotos(c.paginas, c.fotoDoBloco, new Map([[1, 'https://x/1.jpg']]));
