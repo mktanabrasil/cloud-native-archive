@@ -21,6 +21,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AuthConfirmPage from "./pages/AuthConfirmPage";
 import DesignManualPage from "./pages/DesignManualPage";
 import JournalPage from "./pages/JournalPage";
+import JornaisDasUnidadesPage from "./pages/JornaisDasUnidadesPage";
 import MarketingHubPage from "./pages/MarketingHubPage";
 import EventsHubPage from "./pages/EventsHubPage";
 import TransparencyPage from "./pages/TransparencyPage";
@@ -238,6 +239,10 @@ const App = () => (
                   } />
                   <Route path="/jornal-institucional" element={
                     <JournalRoute><JournalPage /></JournalRoute>
+                  } />
+                  {/* O feed dos jornais finalizados (16/11/2026): quem entra no Jornal. */}
+                  <Route path="/jornais-das-unidades" element={
+                    <JournalRoute><JornaisDasUnidadesPage /></JournalRoute>
                   } />
 
                   <Route path="/pizza-da-alegria/painel" element={

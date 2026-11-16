@@ -147,7 +147,8 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
   },
   {
     arquivo: 'jornal.html',
-    regra: 'RewriteRule ^jornal-institucional/?$ /jornal.html [L]',
+    // O feed dos jornais das unidades (16/11/2026) usa o mesmo cartão.
+    regra: 'RewriteRule ^(jornal-institucional|jornais-das-unidades)/?$ /jornal.html [L]',
     titulo: 'Jornal Institucional · ANA Brasil',
     descricao: 'As notícias das unidades, nas edições do jornal da ANA Brasil.',
     imagem: '/og-jornal.jpg',

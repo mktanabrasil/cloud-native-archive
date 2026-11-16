@@ -21,6 +21,7 @@ import { JournalPropertiesPanel } from './JournalPropertiesPanel';
 import { JournalBlockList } from './JournalBlockList';
 import { JournalPageStrip } from './JournalPageStrip';
 import { useIsCompact } from '@/hooks/useIsCompact';
+import { useEsconderFaixaDoSetor } from '@/hooks/useFaixaDoSetor';
 import { useToque } from '@/hooks/useToque';
 import { MenuDaPagina } from './MenuDaPagina';
 import { SeletorDeMes } from './SeletorDeMes';
@@ -114,6 +115,11 @@ interface Props {
    * do que controle nenhum.
    */
   podeTrocarUnidade?: boolean;
+  /**
+   * Abre já com o menu "Baixar PDF" aberto: é o "Baixar PDF" do feed dos
+   * jornais das unidades (16/11/2026), que leva às mesmas duas qualidades.
+   */
+  abrirMenuDoPdf?: boolean;
 }
 
 /** Largura da miniatura na barra lateral; a altura decorre da proporção A4. */
@@ -159,7 +165,10 @@ export function JournalEditor({
   onDuplicarParaMinhaUnidade,
   onDesarquivar,
   podeTrocarUnidade = false,
+  abrirMenuDoPdf = false,
 }: Props) {
+  // O editor é tela cheia: a faixa do setor sai de cima enquanto ele está aberto.
+  useEsconderFaixaDoSetor();
   const [name, setName] = useState(journal.name);
   const [pages, setPages] = useState<JournalPage[]>(journal.pages?.length ? journal.pages : [createPage('capa')]);
   const [activePageId, setActivePageId] = useState<string>(pages[0].id);
@@ -871,7 +880,9 @@ export function JournalEditor({
             <p className="text-xs text-muted-foreground">
               {status === 'arquivado'
                 ? 'Você pode ler e exportar. Para voltar a editar, desarquive: ele volta como finalizado.'
-                : 'Você pode ler e exportar. Para trabalhar em cima dele, duplique para a sua unidade.'}
+                : onDuplicarParaMinhaUnidade
+                  ? 'Você pode ler e exportar. Para trabalhar em cima dele, duplique para a sua unidade.'
+                  : 'Você pode ler e baixar o PDF.'}
             </p>
           </div>
           {status === 'arquivado' && onDesarquivar && (
@@ -965,7 +976,7 @@ export function JournalEditor({
             {/* Sempre à vista, em qualquer largura: no celular ele sumia para
                 dentro do ⋯ (varredura de 16/09/2026). Abre as duas qualidades,
                 com o nome pelo uso, igual em todo aparelho. */}
-            <Popover>
+            <Popover defaultOpen={abrirMenuDoPdf}>
               <PopoverTrigger asChild>
                 <Button size="sm" className={toque ? 'h-11' : undefined} data-tutorial="pdf" disabled={exporting}>
                   {exporting ? (
