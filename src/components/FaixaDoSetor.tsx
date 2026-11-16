@@ -3,12 +3,13 @@ import { Link, useLocation } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PAGINAS_DOS_SETORES, navItems, setorDoCaminho, type NavItem } from '@/config/navigation';
+import { useFaixaDoSetorEscondida } from '@/hooks/useFaixaDoSetor';
 
 /**
  * A faixa do setor (16/11/2026): logo abaixo da barra, o nome do setor e as
  * páginas dele. Aparece só quando o setor tem mais de uma página para a
- * pessoa: Vagas e Painel já trazem as abas dentro da página, e a Educação,
- * por enquanto, só tem o Jornal.
+ * pessoa: Vagas e Painel já trazem as abas dentro da página. Some enquanto
+ * uma ferramenta de tela cheia (o editor do Jornal) está aberta.
  */
 export function FaixaDoSetor({ temCalendario, cor, compacta = false }: {
   /** Mostra o Calendário Anual (marketing ou gestora liberada na lista). */
@@ -28,8 +29,9 @@ export function FaixaDoSetor({ temCalendario, cor, compacta = false }: {
     if (!t || !aberta || t.scrollWidth <= t.clientWidth) return;
     t.scrollLeft = Math.max(0, aberta.offsetLeft - (t.clientWidth - aberta.offsetWidth) / 2);
   }, [location.pathname, location.search, compacta]);
+  const escondida = useFaixaDoSetorEscondida();
   const setor = setorDoCaminho(location.pathname);
-  if (!setor) return null;
+  if (!setor || escondida) return null;
   const paginas = (PAGINAS_DOS_SETORES[setor] ?? []).filter(p => !p.soComCalendario || temCalendario);
   if (paginas.length < 2) return null;
   const item = navItems.find(i => i.to === setor) as NavItem | undefined;

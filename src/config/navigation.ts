@@ -37,8 +37,9 @@ export interface NavItem {
  * páginas não mudaram de endereço; o que mudou foi só o menu.
  *
  * - Social: Eventos e Calendário Anual. A gestão da Educação não o vê.
- * - Educação: o Jornal, da comunicação e da gestão dos CEIs e do GOE. A
- *   gestão do Social (as NAVEs) não a vê.
+ * - Educação: o Jornal e os Jornais das unidades (o feed dos finalizados),
+ *   da comunicação e da gestão dos CEIs e do GOE. A gestão do Social (as
+ *   NAVEs) não a vê.
  * - Marketing: as abas de sempre e o Mercado Solidário, que saiu do menu de
  *   cima e é só do marketing (o embed público do site não muda).
  * - Painel: na barra só para o marketing; os outros chegam ao próprio perfil
@@ -71,6 +72,9 @@ export interface PaginaDoSetor {
   soComCalendario?: boolean;
 }
 
+/** O feed "Jornais das unidades", na Educação (16/11/2026). */
+export const ROTA_DO_FEED_DO_JORNAL = '/jornais-das-unidades';
+
 /** As rotas das páginas de Eventos (o hub e os endereços antigos dele). */
 export const ROTAS_DE_EVENTOS = ['/', '/visao-geral', '/eventos', '/lixeira'];
 
@@ -82,6 +86,11 @@ export const PAGINAS_DOS_SETORES: Record<string, PaginaDoSetor[]> = {
   '/': [
     { rotulo: 'Eventos', to: '/', aberta: (c) => ROTAS_DE_EVENTOS.includes(c) },
     { rotulo: 'Calendário Anual', to: '/calendario', aberta: (c) => c === '/calendario', soComCalendario: true },
+  ],
+  // O editor da unidade e o feed dos finalizados de todas (16/11/2026).
+  '/jornal-institucional': [
+    { rotulo: 'Jornal Institucional', to: '/jornal-institucional', aberta: (c) => c === '/jornal-institucional' },
+    { rotulo: 'Jornais das unidades', to: ROTA_DO_FEED_DO_JORNAL, aberta: (c) => c === ROTA_DO_FEED_DO_JORNAL },
   ],
   '/marketing': [
     { rotulo: 'Mercado Solidário', to: '/mercado-solidario', aberta: (c) => c.startsWith('/mercado-solidario') },
@@ -98,6 +107,7 @@ export const PAGINAS_DOS_SETORES: Record<string, PaginaDoSetor[]> = {
 /** Rotas que pertencem a cada setor além da própria (para saber qual está aberto). */
 export const ROTAS_DO_SETOR: Record<string, string[]> = {
   '/': [...ROTAS_DE_EVENTOS, '/calendario'],
+  '/jornal-institucional': ['/jornal-institucional', ROTA_DO_FEED_DO_JORNAL],
   '/marketing': ['/marketing', '/mercado-solidario', '/auditoria', '/design-manual', '/portal-transparencia', '/admin-toolbox', '/pizza-da-alegria/painel'],
 };
 

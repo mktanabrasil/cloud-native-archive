@@ -29,7 +29,9 @@ vi.mock('@/hooks/useTutoriaisVistos', () => ({
 /* Popover do Radix fica inline: fechar um popover neste DOM grande leva dezenas de
    segundos no jsdom (foco e aria-hidden varrendo as folhas), e não é o que se testa aqui. */
 vi.mock('@/components/ui/popover', () => ({
-  Popover: ({ children }: { children: React.ReactNode }) => <div data-popover-falso>{children}</div>,
+  Popover: ({ children, defaultOpen }: { children: React.ReactNode; defaultOpen?: boolean }) => (
+    <div data-popover-falso data-aberto-de-inicio={defaultOpen ? 'sim' : undefined}>{children}</div>
+  ),
   PopoverTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   PopoverContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
@@ -126,5 +128,28 @@ describe('JournalEditor · não perder trabalho', () => {
     fireEvent.click(screen.getByText(/^voltar$/i, { selector: 'button' }));
     expect(espiao.onBack).toHaveBeenCalled();
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+});
+
+/** O feed "Jornais das unidades" (16/11/2026) abre o editor só para ler. */
+describe('JournalEditor · aberto pelo feed', () => {
+  const lerPeloFeed = (abrirMenuDoPdf: boolean) =>
+    render(<JournalEditor journal={{ ...jornal(), status: 'finalizado' }} saving={false} savedAt={null} onBack={espiao.onBack} onSave={espiao.onSave} somenteLeitura abrirMenuDoPdf={abrirMenuDoPdf} />);
+
+  it('"Baixar PDF" chega com o menu do PDF já aberto', () => {
+    lerPeloFeed(true);
+    const menu = screen.getByText('Para imprimir');
+    expect(menu.closest('[data-popover-falso]')).toHaveAttribute('data-aberto-de-inicio', 'sim');
+  });
+
+  it('"Ler" chega com o menu fechado', () => {
+    lerPeloFeed(false);
+    expect(screen.getByText('Para imprimir').closest('[data-popover-falso]')).not.toHaveAttribute('data-aberto-de-inicio');
+  });
+
+  it('sem "Duplicar para minha unidade", o aviso não manda duplicar', () => {
+    lerPeloFeed(false);
+    expect(screen.getByText('Você pode ler e baixar o PDF.')).toBeInTheDocument();
+    expect(screen.queryByText(/duplique para a sua unidade/)).not.toBeInTheDocument();
   });
 });

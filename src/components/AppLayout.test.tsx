@@ -43,6 +43,13 @@ vi.mock('@/components/ui/dropdown-menu', () => {
 });
 
 const { default: AppLayout } = await import('./AppLayout');
+const { useEsconderFaixaDoSetor } = await import('@/hooks/useFaixaDoSetor');
+
+/** Faz o que o editor do Jornal faz ao abrir: pede a faixa do setor fora. */
+function EditorDeMentira() {
+  useEsconderFaixaDoSetor();
+  return <p>editor</p>;
+}
 
 /** Mostra o endereço em que a página parou (para ver redirecionamentos). */
 function Endereco() {
@@ -133,9 +140,33 @@ describe('a faixa do setor', () => {
     expect(aberto(screen.getByRole('navigation', { name: 'Páginas de Marketing' }))).toEqual(['Mercado Solidário']);
   });
 
-  it.each(['/jornal-institucional', '/vagas', '/usuarios'])('%s: setor de uma página só (ou com abas próprias), sem faixa', (rota) => {
+  it.each(['/vagas', '/usuarios'])('%s: setor com abas próprias, sem faixa', (rota) => {
     abrir(rota);
     expect(screen.queryByRole('navigation', { name: /^Páginas de/ })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['/jornal-institucional', 'Jornal Institucional'],
+    ['/jornais-das-unidades', 'Jornais das unidades'],
+  ])('Educação, em %s: o Jornal e o feed, com %s aberto', (rota, aberta) => {
+    abrir(rota);
+    const faixa = screen.getByRole('navigation', { name: 'Páginas de Educação' });
+    expect(nomes(faixa)).toEqual(['Jornal Institucional', 'Jornais das unidades']);
+    expect(aberto(faixa)).toEqual([aberta]);
+    expect(aberto(doca())).toEqual(['Educação']);
+  });
+
+  it('some enquanto o editor (tela cheia) está aberto', () => {
+    render(
+      <MemoryRouter initialEntries={['/jornal-institucional']}>
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route path="*" element={<EditorDeMentira />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole('navigation', { name: 'Páginas de Educação' })).not.toBeInTheDocument();
   });
 
   it('sem o Calendário Anual liberado, o Social tem uma página só: sem faixa', () => {

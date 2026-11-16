@@ -41,7 +41,7 @@
   RewriteRule ^voluntariado/natalfeliz26/central(/|$) /voluntariado-central.html [L]
   RewriteRule ^vagas(/|$) /vagas.html [L]
   RewriteRule ^portal-transparencia(-publico)?/?$ /transparencia.html [L]
-  RewriteRule ^jornal-institucional/?$ /jornal.html [L]
+  RewriteRule ^(jornal-institucional|jornais-das-unidades)/?$ /jornal.html [L]
   RewriteRule ^calendario/?$ /calendario.html [L]
   RewriteRule ^(login|redefinir-senha|auth/confirm|visao-geral|usuarios|auditoria|design-manual|marketing|admin-toolbox|email-preview|pizza-da-alegria/(painel(/dashboard)?|retirada)|voluntariado/natalfeliz26/presenca)/?$ /app.html [L]
 
