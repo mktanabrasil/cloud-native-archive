@@ -188,10 +188,10 @@ export interface EnvioDoRanking {
 export interface EstadoDoRanking {
   /** O endereço e o token do Evolution estão na configuração. */
   configurado: boolean;
-  /** O envio automático das sextas, 8h (eram 15h até 13/11). Nasce desligado. */
+  /** O envio automático das quartas, 8h (até 13/11, sextas às 15h). Nasce desligado. */
   ligado: boolean;
   grupo: string;
-  /** As sextas do envio (AAAA-MM-DD). */
+  /** As quartas do envio (AAAA-MM-DD). */
   datas: string[];
   proximo: string | null;
   /** Só a comunicação envia e liga; o financeiro só vê. */
