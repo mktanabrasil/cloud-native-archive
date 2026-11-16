@@ -38,6 +38,8 @@ export function useUserRole() {
   const [bondType, setBondType] = useState<string | null>(null);
   /** Liberada no Calendário Anual com "só o calendário" ligado (13/11/2026). */
   const [acessoSoCalendario, setAcessoSoCalendario] = useState(false);
+  // Liberada (e ativa) na lista do Calendário Anual: a página aparece na faixa do Social (16/11/2026).
+  const [acessoCalendario, setAcessoCalendario] = useState(false);
 
   /**
    * O que identifica a pessoa, e não o objeto que a carrega.
@@ -67,6 +69,7 @@ export function useUserRole() {
       setDelegatedUnits(activePersona.delegated_units || []);
       setBondType((activePersona as any).bond_type || null);
       setAcessoSoCalendario(false);
+      setAcessoCalendario(false);
       
       // If general admin, no restrictions. Otherwise, restrict to the persona's unit.
       setViewRestrictions(activePersona.permission_level === 'admin_geral' ? null : [activePersona.unit]);
@@ -79,6 +82,7 @@ export function useUserRole() {
     if (!isAuthenticated || !userId) {
       setRole(null);
       setAcessoSoCalendario(false);
+      setAcessoCalendario(false);
       setLoading(false);
       setAccessStatus(null);
       setCarregadoPara(null);
@@ -151,13 +155,16 @@ export function useUserRole() {
       // com o interruptor ligado enxerga só o calendário, por enquanto. O banco
       // devolve a própria linha; sem a tabela (ou sem linha), não está presa.
       let soCal = false;
+      let liberada = false;
       if (userEmail) {
         try {
           const { data: acesso } = await (supabase as any).from('calendario_acessos').select('ativo, so_calendario').eq('email', userEmail.toLowerCase()).maybeSingle();
           soCal = !!(acesso?.ativo && acesso?.so_calendario);
-        } catch { soCal = false; }
+          liberada = !!acesso?.ativo;
+        } catch { soCal = false; liberada = false; }
       }
       setAcessoSoCalendario(soCal);
+      setAcessoCalendario(liberada);
 
       setCarregadoPara(userId);
       setLoading(false);
@@ -245,6 +252,7 @@ export function useUserRole() {
     isUnitManager,
     canAccessJournal,
     soCalendario,
+    temCalendarioAnual: acessoCalendario,
   };
 }
 

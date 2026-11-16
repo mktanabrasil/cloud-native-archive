@@ -22,6 +22,8 @@ vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => estado.papel }));
 vi.mock('@/hooks/useTutoriaisVistos', () => ({ useTutoriaisVistos: () => ({ carregado: true, jaViu: (r: string) => estado.vistos.has(r), marcarVisto: (r: string) => { estado.marcados.push(r); }, esquecer: () => {} }) }));
 vi.mock('@/components/ThemeToggle', () => ({ TemaFlutuante: () => null }));
 vi.mock('@/components/news/InstitutionalFooterBar', () => ({ default: () => null }));
+// Setores (16/11/2026): a equipe vê o calendário dentro do app; a barra em si tem os testes dela.
+vi.mock('@/components/AppLayout', () => ({ default: ({ children }: { children: React.ReactNode }) => <div data-testid="dentro-do-app">{children}</div> }));
 vi.mock('@/lib/calendario/api', () => ({
   ANO_DO_CALENDARIO: 2027,
   meuAcesso: async () => estado.acesso,
@@ -71,6 +73,7 @@ describe('quem chega em /calendario', () => {
     expect(await screen.findByRole('heading', { name: 'Calendário Anual 2027' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /coordenadoras com acesso/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /app/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('dentro-do-app')).not.toBeInTheDocument();
   });
 
   it('o marketing: o preenchimento e quem tem acesso', async () => {
@@ -78,6 +81,7 @@ describe('quem chega em /calendario', () => {
     estado.papel = { isMarketing: true, loading: false, soCalendario: false };
     abrir();
     expect(await screen.findByRole('button', { name: /coordenadoras com acesso/i })).toBeInTheDocument();
+    expect(screen.getByTestId('dentro-do-app')).toBeInTheDocument();
   });
 
   it('a gestora liberada na lista (13/11/2026): o preenchimento; com só o calendário, sem o atalho para o app', async () => {
@@ -87,14 +91,15 @@ describe('quem chega em /calendario', () => {
     abrir();
     expect(await screen.findByRole('heading', { name: 'Calendário Anual 2027' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /app/i })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('dentro-do-app')).not.toBeInTheDocument();
   });
 
-  it('a gestora liberada, já solta do só o calendário: o preenchimento e o atalho para o app', async () => {
+  it('a gestora liberada, já solta do só o calendário: o preenchimento dentro do app, no setor Social', async () => {
     estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'dic@anabrasil.org', user_metadata: { name: 'Gestão DIC' } } };
     estado.acesso = { email: 'dic@anabrasil.org', nome: 'Gestão DIC', ativo: true, so_calendario: false };
     abrir();
     expect(await screen.findByRole('heading', { name: 'Calendário Anual 2027' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /app/i })).toBeInTheDocument();
+    expect(screen.getByTestId('dentro-do-app')).toBeInTheDocument();
   });
 
   it('o resto da equipe: o calendário de eventos, no hub (com o que veio na URL)', async () => {

@@ -12,6 +12,7 @@ import { ehContaDoCalendario } from '@/lib/calendario/conta';
 import { ANO_DO_CALENDARIO, lerAno, lerItens, meuAcesso } from '@/lib/calendario/api';
 import { aberto, type AnoDoCalendario, type ItemDoCalendario } from '@/lib/calendario/regras';
 import { MolduraDoCalendario } from '@/components/calendario/MolduraDoCalendario';
+import AppLayout from '@/components/AppLayout';
 import { EntradaDoCalendario } from '@/components/calendario/EntradaDoCalendario';
 import { InicioDoCalendario, type Parte } from '@/components/calendario/InicioDoCalendario';
 import { PercursosDoAno } from '@/components/calendario/PercursosDoAno';
@@ -31,6 +32,10 @@ import { CoordenadorasDoCalendario } from '@/components/calendario/Coordenadoras
  *   "só o calendário" ligado, sem o atalho para o app.
  * - O resto da equipe: o calendário de eventos, que mora na aba do hub
  *   (este endereço era dele até 14/11/2026).
+ *
+ * Setores (16/11/2026): quem é da equipe abre o calendário dentro do app, na
+ * faixa do Social, ao lado de Eventos. A moldura própria (só a marca, sem o
+ * menu) fica para a conta do calendário e para a gestora com "só o calendário".
  */
 export default function CalendarioAnualPage() {
   const { user, isAuthenticated, loading, signOut } = useAuth();
@@ -46,18 +51,27 @@ export default function CalendarioAnualPage() {
   // segue para o calendário de eventos, no hub.
   const resto = new URLSearchParams(location.search); resto.delete('parte'); resto.delete('m');
   const doHub = `/?tela=calendario${resto.toString() ? `&${resto}` : ''}`;
+  const preenchimento = <Preenchimento email={user?.email ?? ''} nome={String(user?.user_metadata?.name ?? '') || user?.email || ''} marketing={!doCalendario && isMarketing} foraDaLista={doCalendario ? 'aviso' : doHub} />;
+  if (!doCalendario && !soCalendario) return <AppLayout><TituloDaAba />{preenchimento}</AppLayout>;
   const atalho = (
     <span className="flex items-center gap-2">
-      {!doCalendario && !soCalendario && <Button asChild variant="ghost" size="sm" className="gap-1"><a href="/"><ArrowLeft className="h-4 w-4" /> App</a></Button>}
       <span className="hidden text-muted-foreground sm:inline">{primeiroNome(user)}</span>
       <Button variant="ghost" size="sm" className="gap-1" onClick={() => void signOut()}><LogOut className="h-4 w-4" /> Sair</Button>
     </span>
   );
   return (
-    <MolduraDoCalendario atalho={atalho}>
-      <Preenchimento email={user?.email ?? ''} nome={String(user?.user_metadata?.name ?? '') || user?.email || ''} marketing={!doCalendario && isMarketing} foraDaLista={doCalendario ? 'aviso' : doHub} />
-    </MolduraDoCalendario>
+    <MolduraDoCalendario atalho={atalho}>{preenchimento}</MolduraDoCalendario>
   );
+}
+
+/** O nome da aba do navegador, igual ao da moldura própria. */
+function TituloDaAba() {
+  useEffect(() => {
+    const antes = document.title;
+    document.title = 'Calendário Anual · ANA Brasil';
+    return () => { document.title = antes; };
+  }, []);
+  return null;
 }
 
 /** `foraDaLista`: sem liberação, a conta do calendário vê o aviso; a da equipe vai para o hub. */

@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, type ReactNode } from 'react';
 import { Link, useLocation, Outlet, Navigate } from 'react-router-dom';
-import { LogOut, Users, FlaskConical, ChevronDown, LayoutGrid, CalendarDays, type LucideIcon } from 'lucide-react';
+import { LogOut, Users, FlaskConical, ChevronDown, LayoutGrid, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -21,7 +21,8 @@ import {
 import ImpersonationBanner from '@/components/ImpersonationBanner';
 import logoImg from '@/assets/logo.png';
 import { TemaFlutuante } from './ThemeToggle';
-import { navItems } from '@/config/navigation';
+import { navItems, ROTAS_DO_SETOR, setorDoCaminho } from '@/config/navigation';
+import { FaixaDoSetor } from './FaixaDoSetor';
 import { useSouResponsavel } from '@/hooks/useSouResponsavel';
 import { useAvisosDaEquipe } from '@/hooks/useAvisosDaEquipe';
 import { ehContaRestrita } from '@/lib/contasRestritas';
@@ -29,20 +30,22 @@ import { UiV2 } from '@/lib/uiV2';
 import AppLayoutClassico from '@/classico/AppLayout';
 
 // Esboço V2 (kit visual, 26/10/2026): a cor de cada área aparece só na navegação.
+// Desde 16/11/2026 as áreas são os setores: Social (o azul dos Eventos),
+// Educação (o coral do Jornal), Vagas, Marketing e Painel.
 const COR_DA_AREA: Record<string, string> = {
   '/': '#01adff',
   '/jornal-institucional': '#f37964',
-  '/mercado-solidario': '#E2B979',
   '/vagas': '#81e2cf',
   '/marketing': '#fbce00',
   '/usuarios': '#8A938F',
 };
-const ROTAS_DE_EVENTOS = ['/', '/visao-geral', '/eventos', '/lixeira'];
-// Páginas que moram no Marketing, mas com endereço próprio.
-const ROTAS_DO_MARKETING = ['/marketing', '/auditoria', '/design-manual', '/portal-transparencia', '/admin-toolbox', '/pizza-da-alegria/painel'];
-const ROTULO_CURTO: Record<string, string> = { 'Jornal Institucional': 'Jornal', 'Mercado Solidário': 'Mercado' };
 
-export default function AppLayout() {
+/**
+ * `children`: o Calendário Anual (16/11/2026) entra no app pela própria rota,
+ * que fica fora deste layout por causa das contas só do calendário; para a
+ * equipe, ela embrulha a página aqui em vez do `<Outlet />`.
+ */
+export default function AppLayout({ children }: { children?: ReactNode } = {}) {
   const souResponsavel = useSouResponsavel();
   const [isMaisOpen, setIsMaisOpen] = useState(false);
   const location = useLocation();
@@ -64,7 +67,7 @@ export default function AppLayout() {
   const { isAuthenticated: temSessao, signOut, user } = useAuth();
   // Conta de candidato (Trabalhe Conosco) vê o app como visitante: sem menu da equipe.
   const isAuthenticated = temSessao && !ehContaRestrita(user);
-  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh, soCalendario, loading: carregandoPapel } = useUserRole();
+  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh, soCalendario, temCalendarioAnual, loading: carregandoPapel } = useUserRole();
   // A bolinha em "Vagas": novos + respostas não lidas (passo 5, 20/10/2026).
   const avisosDeVagas = useAvisosDaEquipe(isRh || souResponsavel, location.pathname);
   const { eligible: betaEligible, rawEnabled: betaOn, toggleBeta } = useBetaPreference();
@@ -73,7 +76,7 @@ export default function AppLayout() {
   // não tem o que oferecer.
   const { isGate: isEntryGate, entering: gateJustClosed } = useEntryGateTransition();
   const isMobile = useIsMobile();
-  // Com seis itens a barra de cima precisa de uns 1100 px. Abaixo disso a
+  // Com todos os setores a barra de cima precisa de uns 1100 px. Abaixo disso a
   // navegação desce para a doca, como no celular.
   const [menuCompacto, setMenuCompacto] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 1099px)').matches);
   useEffect(() => {
@@ -110,10 +113,15 @@ export default function AppLayout() {
     if (item.requireAuth) return isAuthenticated;
     return true;
   });
+  // O setor aberto: Social e Marketing têm várias rotas; os outros, a própria.
   const estaNaArea = (to: string) =>
-    to === '/' ? ROTAS_DE_EVENTOS.includes(location.pathname)
-      : to === '/marketing' ? ROTAS_DO_MARKETING.some(r => location.pathname.startsWith(r))
-      : location.pathname.startsWith(to);
+    ROTAS_DO_SETOR[to] ? setorDoCaminho(location.pathname) === to : location.pathname.startsWith(to);
+  // O Calendário Anual, na faixa do Social: o marketing e quem o marketing
+  // liberou na lista de acesso (a gestão social).
+  const temCalendario = isMarketing || temCalendarioAnual;
+  // Com um setor só (a gestora do Social, por exemplo), não há o que trocar:
+  // sem doca embaixo; as páginas ficam na faixa de cima.
+  const comDocaVisivel = mostraMoldura && comDoca && itensVisiveis.length > 1;
 
   const contagemDeVagas = (to: string) =>
     to === '/vagas' && avisosDeVagas > 0 ? (
@@ -171,14 +179,15 @@ export default function AppLayout() {
           <span className="truncate text-xs font-normal text-muted-foreground">{unit || user?.email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {(isAdmin || isManager) && (
-          <DropdownMenuItem asChild>
-            <Link to={`/usuarios${location.search}`} className="flex cursor-pointer items-center gap-2 py-2">
-              <Users className="h-4 w-4" />
-              <span>Painel</span>
-            </Link>
-          </DropdownMenuItem>
-        )}
+        {/* O Painel saiu da barra de quem não é do marketing (16/11/2026): o
+            próprio perfil (senha, foto, dados) fica aqui, para todos. Só o
+            marketing gere os outros lá (`podeGerirTodos` em UsersPage). */}
+        <DropdownMenuItem asChild>
+          <Link to={`/usuarios${location.search}`} className="flex cursor-pointer items-center gap-2 py-2">
+            <Users className="h-4 w-4" />
+            <span>{isMarketing ? 'Painel' : 'Meu perfil'}</span>
+          </Link>
+        </DropdownMenuItem>
         {betaEligible && (
           <div className="flex items-center justify-between gap-2 px-2 py-2 text-sm" onClick={e => e.preventDefault()}>
             <div className="flex items-center gap-2">
@@ -202,7 +211,7 @@ export default function AppLayout() {
   // Marketing na doca, quem é do RH vê Vagas; o Mercado, menos usado, vai para
   // o "Mais". E a área em que a pessoa está nunca fica escondida no "Mais".
   const prioridade = (to: string) => {
-    const base = ['/', '/jornal-institucional', '/vagas', '/marketing', '/mercado-solidario', '/usuarios'].indexOf(to);
+    const base = ['/', '/jornal-institucional', '/vagas', '/marketing', '/usuarios'].indexOf(to);
     if (to === '/marketing' && isMarketing) return -2;
     if (to === '/vagas' && (isRh || souResponsavel)) return -1;
     return base < 0 ? 99 : base;
@@ -235,8 +244,8 @@ export default function AppLayout() {
       <Icone className={grande ? 'h-[20px] w-[20px]' : barra ? 'h-4 w-4' : 'h-[18px] w-[18px]'} strokeWidth={ativo ? 2.1 : 1.8} />
     </span>
   );
-  // Eventos ganha o calendário na doca e na barra: o globo do menu antigo não dizia "eventos".
-  const iconeDoItem = (item: (typeof navItems)[number]): LucideIcon => (item.to === '/' ? CalendarDays : item.icon);
+  // O ícone de cada setor, o mesmo na doca, na barra e na faixa do setor.
+  const iconeDoItem = (item: (typeof navItems)[number]): LucideIcon => item.icon;
   const itemDaDoca = (rotulo: string, ativo: boolean, item?: (typeof navItems)[number]) => (
     <>
       <IconeDaDoca Icone={item ? iconeDoItem(item) : LayoutGrid} cor={item ? COR_DA_AREA[item.to] : undefined} ativo={ativo} />
@@ -249,7 +258,7 @@ export default function AppLayout() {
 
   // Embed e telas limpas (?embed, ?hideHeader…): o layout de antes, sem nenhuma
   // mudança — é o que o site já incorpora (pedido de 26/10/2026).
-  if (isCleanView) return <AppLayoutClassico />;
+  if (isCleanView) return children ? <>{children}</> : <AppLayoutClassico />;
 
   // "Só o calendário" (13/11/2026): a gestora liberada no Calendário Anual
   // com o interruptor ligado não entra em página nenhuma da equipe por enquanto.
@@ -291,19 +300,24 @@ export default function AppLayout() {
         </header>
       )}
 
-      <main className={cn('flex-1', !isCleanView ? 'mx-auto w-full overflow-x-clip' : 'overflow-visible', mostraMoldura && comDoca && 'pb-28')}>
+      <main className={cn('flex-1', !isCleanView ? 'mx-auto w-full overflow-x-clip' : 'overflow-visible', comDocaVisivel && 'pb-28')}>
         {/* Com sessão, o miolo espera o papel (13/11/2026): a conta "só o calendário"
             não pode ver a página da equipe nem por um instante antes de ir embora. */}
-        {isAuthenticated && carregandoPapel ? null : <Outlet />}
+        {isAuthenticated && carregandoPapel ? null : (
+          <>
+            {mostraMoldura && isAuthenticated && <FaixaDoSetor temCalendario={temCalendario} cor={to => COR_DA_AREA[to]} compacta={comDoca} />}
+            {children ?? <Outlet />}
+          </>
+        )}
       </main>
 
       {mostraMoldura && <TemaFlutuante />}
-      {mostraMoldura && comDoca && itensVisiveis.length > 0 && isMaisOpen && (
+      {comDocaVisivel && isMaisOpen && (
         // Véu leve atrás da doca aberta: tocar fora fecha.
         <button type="button" aria-label="Fechar o menu" onClick={() => setIsMaisOpen(false)}
           className="fixed inset-0 z-40 cursor-default bg-[rgb(16_22_21/0.18)] backdrop-blur-[2px] animate-in fade-in-0 duration-200 print:hidden" />
       )}
-      {mostraMoldura && comDoca && itensVisiveis.length > 0 && (
+      {comDocaVisivel && (
         <nav
           aria-label="Navegação"
           data-barra-de-baixo="sempre"
@@ -350,7 +364,7 @@ export default function AppLayout() {
                 aria-current={ativo ? 'page' : undefined}
                 className={classeDoItem(ativo)}
               >
-                {itemDaDoca(ROTULO_CURTO[item.label] ?? item.label, ativo, item)}
+                {itemDaDoca(item.label, ativo, item)}
                 {item.to === '/vagas' && avisosDeVagas > 0 && <span className="absolute right-[22%] top-0 h-2 w-2 rounded-full bg-[#f37964]" aria-label={`${avisosDeVagas} para ver`} />}
               </Link>
             );
