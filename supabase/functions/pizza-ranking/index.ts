@@ -10,12 +10,14 @@ addEventListener('unhandledrejection', (e) => { console.error('[pizza-ranking] p
  *
  * A arte (arte.ts) e a mensagem (ranking.ts) são feitas aqui, sem navegador,
  * e vão pelo Evolution API (serviço próprio no Coolify, ligado ao WhatsApp da
- * MKT) para o grupo ANABRASIL PUBLICAÇÕES, às sextas, 8h em Brasília:
- * 13/11, 20/11, 27/11 e 04/12 (decisão dele). Os campeões saem em 17/12.
- * Até 13/11 era às 15h; em 16/11 ele passou para as 8h da manhã.
+ * MKT) para o grupo ANABRASIL PUBLICAÇÕES, às quartas, 8h em Brasília:
+ * 18/11, 25/11 e 02/12 (decisão dele). Os campeões saem em 17/12.
+ * Até 13/11 era às sextas, 15h; em 16/11 ele passou para as 8h da manhã e,
+ * no mesmo dia, para as quartas.
  *
  * Quem chama:
- *  - o banco (pg_cron + pg_net, toda sexta às 11h UTC), com { acao: 'agendado' }
+ *  - o banco (pg_cron + pg_net, toda quarta às 11h UTC; o agendamento manteve
+ *    o nome antigo, 'pizza-ranking-sexta'), com { acao: 'agendado' }
  *    e o cabeçalho x-ranking-segredo: só envia numa das datas, entre 7h45 e
  *    9h, com o envio automático ligado e se o grupo ainda não recebeu no dia;
  *  - o painel (ADM, comunicação e financeiro veem; só a comunicação envia):
@@ -37,8 +39,8 @@ addEventListener('unhandledrejection', (e) => { console.error('[pizza-ranking] p
 /** A hora do envio em Brasília (16/11/2026: era 15h, passou para 8h). */
 export const HORA_DO_ENVIO = 8;
 
-/** As sextas da disputa, às HORA_DO_ENVIO em Brasília. */
-export const DATAS_DO_ENVIO = ['2026-11-13', '2026-11-20', '2026-11-27', '2026-12-04'];
+/** As quartas da disputa, às HORA_DO_ENVIO em Brasília (eram as sextas 13, 20 e 27/11 e 04/12). */
+export const DATAS_DO_ENVIO = ['2026-11-18', '2026-11-25', '2026-12-02'];
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -68,7 +70,7 @@ function minutosEmBrasilia(d: Date): number {
   const [h, m] = d.toLocaleTimeString('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false }).split(':').map(Number);
   return (h % 24) * 60 + m;
 }
-/** A próxima sexta do envio que ainda não passou da hora do envio. */
+/** A próxima data do envio que ainda não passou da hora do envio. */
 export function proximoEnvio(agora: Date): string | null {
   const hora = String(HORA_DO_ENVIO).padStart(2, '0');
   return DATAS_DO_ENVIO.find((d) => new Date(`${d}T${hora}:00:00-03:00`).getTime() > agora.getTime()) ?? null;
@@ -173,7 +175,7 @@ async function avisarFalha(cfg: Config, motivo: string) {
   } catch (e) { console.error('[pizza-ranking] aviso por e-mail:', e instanceof Error ? e.message : e); }
 }
 
-// --- O envio de sexta ------------------------------------------------------------------------
+// --- O envio agendado (quartas) ---------------------------------------------------------------
 
 // deno-lint-ignore no-explicit-any
 async function agendado(admin: any, cfg: Config) {

@@ -298,7 +298,7 @@ describe('painel', () => {
   });
 
   describe('Ranking para o WhatsApp (arte e envio pelo servidor)', () => {
-    const ESTADO = { configurado: true, ligado: false, grupo: 'ANABRASIL PUBLICAÇÕES', datas: ['2026-11-13', '2026-11-20', '2026-11-27', '2026-12-04'], proximo: '2026-11-20', podeEnviar: true,
+    const ESTADO = { configurado: true, ligado: false, grupo: 'ANABRASIL PUBLICAÇÕES', datas: ['2026-11-18', '2026-11-25', '2026-12-02'], proximo: '2026-11-18', podeEnviar: true,
       envios: [{ criado_em: '2026-11-13T18:00:05Z', destino: 'grupo', origem: 'agendado', situacao: 'enviado', detalhe: null, pizzas: 162 }, { criado_em: '2026-11-12T14:10:00Z', destino: 'teste', origem: 'painel', situacao: 'falhou', detalhe: 'O WhatsApp da MKT está desconectado do Evolution', pizzas: 150 }] };
     async function abrir() {
       globalThis.URL.createObjectURL ??= () => 'blob:x';
@@ -334,13 +334,13 @@ describe('painel', () => {
       await vi.waitFor(() => expect(banco.ranking.chamadas).toEqual([['enviar', 'teste'], ['enviar', 'grupo']]));
     });
 
-    it('liga o envio automático e mostra a próxima sexta e os últimos envios', async () => {
+    it('liga o envio automático e mostra a próxima quarta e os últimos envios', async () => {
       banco.ranking.estado = { ...ESTADO };
       const janela = await abrir();
       fireEvent.click(await within(janela).findByRole('switch', { name: 'Envio automático' }));
       await vi.waitFor(() => expect(banco.ranking.chamadas).toEqual([['ligar', true]]));
-      expect(await within(janela).findByText(/Toda sexta, às 8h: 13\/11, 20\/11, 27\/11 e 04\/12/)).toBeInTheDocument();
-      expect(within(janela).getByText('sexta, 20/11')).toBeInTheDocument();
+      expect(await within(janela).findByText(/Toda quarta, às 8h: 18\/11, 25\/11 e 02\/12/)).toBeInTheDocument();
+      expect(within(janela).getByText('quarta, 18/11')).toBeInTheDocument();
       const envios = within(janela).getByRole('list', { name: 'Últimos envios' });
       expect(within(envios).getAllByRole('listitem')).toHaveLength(2);
       expect(within(envios).getByText('Enviado')).toBeInTheDocument();

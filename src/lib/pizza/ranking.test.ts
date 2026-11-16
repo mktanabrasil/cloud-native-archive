@@ -49,6 +49,9 @@ describe('ranking da Pizza', () => {
     expect(sexta).toContain('https://app.anabrasil.org/pizza-da-alegria?c=3');
     expect(mensagemDoRanking(r, new Date('2026-11-27T18:00:00Z'))).toContain('Ainda dá tempo: pedidos até *05/12*.');
     expect(mensagemDoRanking(r, new Date('2026-12-04T18:00:00Z'))).toContain('*Última semana!* Os pedidos fecham no sábado, *05/12*.');
+    // 16/11/2026: o último envio passou para a quarta, 02/12, às 8h; continua "Última semana!".
+    expect(mensagemDoRanking(r, new Date('2026-12-02T11:00:00Z'))).toContain('*Última semana!* Os pedidos fecham no sábado, *05/12*.');
+    expect(mensagemDoRanking(r, new Date('2026-11-25T11:00:00Z'))).toContain('Ainda dá tempo: pedidos até *05/12*.');
     expect(mensagemDoRanking(r, new Date('2026-12-05T12:00:00Z'))).toContain('*Hoje é o último dia*');
     const fim = mensagemDoRanking(r, new Date('2026-12-07T12:00:00Z'));
     expect(fim).toContain('Os pedidos já foram encerrados');
