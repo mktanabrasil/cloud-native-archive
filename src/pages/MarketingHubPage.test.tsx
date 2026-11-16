@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 /**
- * Setores (16/11/2026): as abas do Marketing viraram a faixa do setor; a
- * página mostra a aba que está no endereço.
+ * Setores (16/11/2026): as abas do Marketing viraram a faixa do setor, e cada
+ * uma tem o próprio endereço (`/marketing/pizza`).
  */
 const papel = vi.hoisted(() => ({ isMarketing: true, loading: false }));
 vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => papel }));
@@ -17,14 +17,25 @@ vi.mock('@/components/pizza/PainelDaPizza', () => ({ PainelDaPizza: () => <p>aba
 vi.mock('@/components/voluntariado/PainelDoVoluntariado', () => ({ PainelDoVoluntariado: () => <p>aba: voluntariado</p> }));
 
 const { default: MarketingHubPage } = await import('./MarketingHubPage');
-const abrir = (url: string) => render(<MemoryRouter initialEntries={[url]}><MarketingHubPage /></MemoryRouter>);
+function Endereco() {
+  return <p data-testid="endereco">{useLocation().pathname}</p>;
+}
+const abrir = (url: string) =>
+  render(
+    <MemoryRouter initialEntries={[url]}>
+      <Routes>
+        <Route path="/marketing/:aba" element={<MarketingHubPage />} />
+      </Routes>
+      <Endereco />
+    </MemoryRouter>,
+  );
 
-describe('o Marketing pela URL', () => {
+describe('o Marketing pelo endereço', () => {
   it.each([
-    ['/marketing?aba=pizza', 'aba: pizza'],
-    ['/marketing?aba=voluntariado', 'aba: voluntariado'],
-    ['/marketing', 'aba: auditoria'],
-    ['/marketing?aba=nao-existe', 'aba: auditoria'],
+    ['/marketing/pizza', 'aba: pizza'],
+    ['/marketing/voluntariado', 'aba: voluntariado'],
+    ['/marketing/transparencia', 'aba: transparência'],
+    ['/marketing/auditoria', 'aba: auditoria'],
   ])('%s abre %s, sem as abas antigas', (url, texto) => {
     abrir(url);
     expect(screen.getByText(texto)).toBeInTheDocument();
@@ -32,9 +43,15 @@ describe('o Marketing pela URL', () => {
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
   });
 
+  it('aba desconhecida vai para a Auditoria', () => {
+    abrir('/marketing/nao-existe');
+    expect(screen.getByTestId('endereco')).toHaveTextContent('/marketing/auditoria');
+    expect(screen.getByText('aba: auditoria')).toBeInTheDocument();
+  });
+
   it('quem não é do marketing vê o acesso restrito', () => {
     papel.isMarketing = false;
-    abrir('/marketing?aba=pizza');
+    abrir('/marketing/pizza');
     expect(screen.getByRole('heading', { name: 'Acesso restrito' })).toBeInTheDocument();
     papel.isMarketing = true;
   });

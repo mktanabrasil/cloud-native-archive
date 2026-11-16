@@ -1,4 +1,5 @@
-import { useSearchParams } from 'react-router-dom';
+import type { ComponentType } from 'react';
+import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { PainelDaPizza } from '@/components/pizza/PainelDaPizza';
 import { PainelDoVoluntariado } from '@/components/voluntariado/PainelDoVoluntariado';
@@ -8,28 +9,31 @@ import AuditPage from '@/pages/AuditPage';
 import DesignManualPage from '@/pages/DesignManualPage';
 import TransparencyPage from '@/pages/TransparencyPage';
 import AdminToolboxPage from '@/pages/AdminToolboxPage';
+import { ABA_INICIAL_DO_MARKETING, rotaDoMarketing, type AbaDoMarketing } from '@/config/navigation';
 
-const tabs = [
-  { value: 'auditoria', Component: AuditPage },
-  { value: 'design-manual', Component: DesignManualPage },
-  { value: 'transparencia', Component: TransparencyPage },
-  { value: 'widgets', Component: AdminToolboxPage },
-  { value: 'enquetes', Component: EnquetesPage },
-  { value: 'pizza', Component: PainelDaPizza },
-  { value: 'voluntariado', Component: PainelDoVoluntariado },
-];
+const ABAS: Record<AbaDoMarketing, ComponentType> = {
+  auditoria: AuditPage,
+  'design-manual': DesignManualPage,
+  transparencia: TransparencyPage,
+  widgets: AdminToolboxPage,
+  enquetes: EnquetesPage,
+  pizza: PainelDaPizza,
+  voluntariado: PainelDoVoluntariado,
+};
 
 /**
- * O setor Marketing (16/11/2026): as abas deixaram de ficar aqui dentro e
- * viraram a faixa do setor (`FaixaDoSetor`), junto com o Mercado Solidário.
- * A aba aberta é a do endereço (`?aba=pizza`), então a faixa, o voltar do
- * navegador e os links antigos (`?aba=voluntariado`) continuam valendo.
+ * O setor Marketing (16/11/2026): as abas viraram a faixa do setor
+ * (`FaixaDoSetor`), junto com o Mercado Solidário, e cada uma tem o próprio
+ * endereço (`/marketing/pizza`). O `/marketing?aba=pizza` de antes leva até
+ * ele (`MarketingSemAba`, em App.tsx); aba desconhecida vai para a inicial.
  */
 export default function MarketingHubPage() {
   const { isMarketing, loading } = useUserRole();
-  const [params] = useSearchParams();
-  const aba = tabs.find((t) => t.value === params.get('aba')) ?? tabs[0];
+  const { aba } = useParams<{ aba: string }>();
+  const location = useLocation();
+  const Aba = aba && aba in ABAS ? ABAS[aba as AbaDoMarketing] : null;
 
+  if (!Aba) return <Navigate to={{ pathname: rotaDoMarketing(ABA_INICIAL_DO_MARKETING), search: location.search }} replace />;
   if (loading) return null;
 
   if (!isMarketing) {
@@ -46,7 +50,7 @@ export default function MarketingHubPage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">
-      <aba.Component key={aba.value} />
+      <Aba key={aba} />
     </div>
   );
 }

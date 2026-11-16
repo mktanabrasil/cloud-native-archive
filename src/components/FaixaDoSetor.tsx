@@ -35,7 +35,6 @@ export function FaixaDoSetor({ temCalendario, cor, compacta = false }: {
   const paginas = (PAGINAS_DOS_SETORES[setor] ?? []).filter(p => !p.soComCalendario || temCalendario);
   if (paginas.length < 2) return null;
   const item = navItems.find(i => i.to === setor) as NavItem | undefined;
-  const busca = new URLSearchParams(location.search);
   const Icone = item?.icon;
 
   return (
@@ -54,7 +53,7 @@ export function FaixaDoSetor({ temCalendario, cor, compacta = false }: {
         )}
         <ul className={cn('flex min-w-0 gap-1.5', compacta ? 'flex-nowrap' : 'flex-wrap')}>
           {paginas.map(p => {
-            const aberta = p.aberta(location.pathname, busca);
+            const aberta = p.aberta(location.pathname);
             return (
               <li key={p.to} className="shrink-0">
                 <Link

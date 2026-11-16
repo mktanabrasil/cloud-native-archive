@@ -57,7 +57,7 @@ describe('percursos e andamento', () => {
 describe('as contas que não são equipe', () => {
   it('candidato vai para a área dele; a do calendário, para /calendario; a equipe, para nenhum lugar', () => {
     expect(destinoDaContaRestrita({ user_metadata: { conta: 'candidato' } })).toBe('/vagas/minha-area');
-    expect(destinoDaContaRestrita({ user_metadata: { conta: 'calendario' } })).toBe('/calendario');
+    expect(destinoDaContaRestrita({ user_metadata: { conta: 'calendario' } })).toBe('/social/calendario');
     expect(destinoDaContaRestrita({ user_metadata: {} })).toBeNull();
     expect(ehContaRestrita({ user_metadata: { conta: 'calendario' } })).toBe(true);
     expect(ehContaRestrita(null)).toBe(false);

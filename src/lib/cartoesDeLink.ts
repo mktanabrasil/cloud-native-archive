@@ -71,7 +71,7 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
   },
   {
     arquivo: 'mercado.html',
-    regra: 'RewriteRule ^mercado-solidario(-publico)?/?$ /mercado.html [L]',
+    regra: 'RewriteRule ^(marketing/)?mercado-solidario(-publico)?/?$ /mercado.html [L]',
     titulo: 'Mercado Solidário · ANA Brasil',
     descricao: 'Juntos podemos transformar alimentos em esperança: comida de qualidade na mesa de quem precisa.',
     imagem: '/og-mercado.jpg',
@@ -148,7 +148,7 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
   {
     arquivo: 'jornal.html',
     // O feed dos jornais das unidades (16/11/2026) usa o mesmo cartão.
-    regra: 'RewriteRule ^(jornal-institucional|jornais-das-unidades)/?$ /jornal.html [L]',
+    regra: 'RewriteRule ^(educacao(/jornal|/jornais-das-unidades)?|jornal-institucional|jornais-das-unidades)/?$ /jornal.html [L]',
     titulo: 'Jornal Institucional · ANA Brasil',
     descricao: 'As notícias das unidades, nas edições do jornal da ANA Brasil.',
     imagem: '/og-jornal.jpg',
@@ -158,7 +158,7 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
     // O Calendário Anual dos educadores (14/11/2026): o link vai às
     // coordenadoras pelo WhatsApp. A imagem é a do app até ter arte própria.
     arquivo: 'calendario.html',
-    regra: 'RewriteRule ^calendario/?$ /calendario.html [L]',
+    regra: 'RewriteRule ^(social/)?calendario/?$ /calendario.html [L]',
     titulo: 'Calendário Anual · ANA Brasil',
     descricao: 'Para as coordenadoras do Social preencherem o calendário anual dos educadores.',
     imagem: '/og-app.jpg',
@@ -167,7 +167,7 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
   {
     // As páginas da equipe: pedem login e têm um cartão só.
     arquivo: 'app.html',
-    regra: 'RewriteRule ^(login|redefinir-senha|auth/confirm|visao-geral|usuarios|auditoria|design-manual|marketing|admin-toolbox|email-preview|pizza-da-alegria/(painel(/dashboard)?|retirada)|voluntariado/natalfeliz26/presenca)/?$ /app.html [L]',
+    regra: 'RewriteRule ^(login|redefinir-senha|auth/confirm|social(/eventos)?|painel|marketing(/[^/]+)?|visao-geral|usuarios|auditoria|design-manual|admin-toolbox|email-preview|pizza-da-alegria/(painel(/dashboard)?|retirada)|voluntariado/natalfeliz26/presenca)/?$ /app.html [L]',
     titulo: 'ANA Brasil · Área da equipe',
     descricao: 'O app da ANA Brasil: eventos, jornal e comunicação das unidades. Entre com a sua conta.',
     imagem: '/og-app.jpg',

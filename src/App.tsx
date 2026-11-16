@@ -11,20 +11,18 @@ import { pedidoFoiEnviado } from "@/lib/pedidoEnviado";
 import { TestViewProvider } from "@/contexts/TestViewContext";
 import AppLayout from "@/components/AppLayout";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import Dashboard from "./pages/Dashboard";
 
 import UsersPage from "./pages/UsersPage";
-import AuditPage from "./pages/AuditPage";
 import LoginPage from "./pages/LoginPage";
 import PublicEventsPage from "./pages/PublicEventsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AuthConfirmPage from "./pages/AuthConfirmPage";
-import DesignManualPage from "./pages/DesignManualPage";
 import JournalPage from "./pages/JournalPage";
 import JornaisDasUnidadesPage from "./pages/JornaisDasUnidadesPage";
+import { REDIRECIONAMENTOS } from "@/config/navigation";
+import { MarketingSemAba, Redireciona } from "@/components/Redireciona";
 import MarketingHubPage from "./pages/MarketingHubPage";
 import EventsHubPage from "./pages/EventsHubPage";
-import TransparencyPage from "./pages/TransparencyPage";
 import MercadoSolidarioPage from "./pages/MercadoSolidarioPage";
 import MercadoSolidarioPublicPage from "./pages/MercadoSolidarioPublicPage";
 import EnquetePublicaPage from "./pages/EnquetePublicaPage";
@@ -54,10 +52,8 @@ import VoluntariadoCentralPage from "./pages/VoluntariadoCentralPage";
 import VoluntariadoPresencaPage from "./pages/VoluntariadoPresencaPage";
 import { ROTAS_DO_CANDIDATO } from "@/lib/vagas/conta";
 import { destinoDaContaRestrita } from "@/lib/contasRestritas";
-import { ROTA_DO_CALENDARIO } from "@/lib/calendario/conta";
 import CalendarioAnualPage from "./pages/CalendarioAnualPage";
 import NotFound from "./pages/NotFound";
-import AdminToolboxPage from "./pages/AdminToolboxPage";
 import OAuthConsent from "./pages/OAuthConsent";
 
 
@@ -89,22 +85,10 @@ function ComMargem({ children }: { children: React.ReactNode }) {
   return <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">{children}</div>;
 }
 
-function MarketingRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading: authLoading } = useAuth();
-  const { isMarketing, loading: roleLoading } = useUserRole();
-  const [searchParams] = useSearchParams();
-  const isEmbed = searchParams.get('embed') === 'true';
-
-  if (authLoading || roleLoading) return null;
-  if (!isAuthenticated && !isEmbed) return <Navigate to="/login" replace />;
-  if (!isMarketing) return <Navigate to="/" replace />;
-  return <>{children}</>;
-}
-
 /**
- * Guarda do Jornal. Separada da `MarketingRoute` de propósito: aquela é usada
- * por Auditoria, Manual de Design, Portal da Transparência e Widgets, e
- * afrouxá-la para receber a gestão abriria as quatro de uma vez.
+ * Guarda do Jornal (e do feed). Auditoria, Manual de Design, Portal da
+ * Transparência e Widgets são abas do Marketing (`/marketing/…`), que barra
+ * quem não é do marketing na própria página; a gestão entra só aqui.
  */
 function JournalRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -215,12 +199,17 @@ const App = () => (
                 {/* Calendário Anual dos educadores (14/11/2026): fora da barra do app. As
                     coordenadoras entram com conta própria; quem é da equipe e não é do
                     marketing segue para o calendário de eventos, na aba do hub. */}
-                <Route path={ROTA_DO_CALENDARIO} element={<CalendarioAnualPage />} />
+                <Route path="/social/calendario" element={<CalendarioAnualPage />} />
+                {/* Endereços por setor (16/11/2026): os de antes levam aos novos,
+                    com o resto do link junto. Ver REDIRECIONAMENTOS. */}
+                {Object.entries(REDIRECIONAMENTOS).map(([antigo, novo]) => (
+                  <Route key={antigo} path={antigo} element={<Redireciona para={novo} />} />
+                ))}
                 <Route element={<AppLayout />}>
+                  {/* A raiz: a porta de entrada para quem chega sem sessão; quem
+                      está logado segue para o setor dele (EventsHubPage). */}
                   <Route path="/" element={<EventsHubPage />} />
-                  <Route path="/visao-geral" element={
-                    <ProtectedRoute><ComMargem><Dashboard /></ComMargem></ProtectedRoute>
-                  } />
+                  <Route path="/social/eventos" element={<EventsHubPage />} />
                   {/* Endereço próprio das Programações. Antes só redirecionava para a
                       raiz, que era onde elas viviam; com a porta de entrada na raiz,
                       elas passam a morar aqui — igualmente públicas, sem guarda. */}
@@ -228,20 +217,14 @@ const App = () => (
                   {/* Aberta a quem está logado: cada pessoa se vê aqui. Quem
                       gerencia os outros é a comunicação, e isso a própria tela
                       decide — ver `podeGerirTodos` em UsersPage. */}
-                  <Route path="/usuarios" element={
+                  <Route path="/painel" element={
                     <ProtectedRoute><ComMargem><UsersPage /></ComMargem></ProtectedRoute>
                   } />
-                  <Route path="/auditoria" element={
-                    <MarketingRoute><ComMargem><AuditPage /></ComMargem></MarketingRoute>
-                  } />
-                  <Route path="/design-manual" element={
-                    <MarketingRoute><ComMargem><DesignManualPage /></ComMargem></MarketingRoute>
-                  } />
-                  <Route path="/jornal-institucional" element={
+                  <Route path="/educacao/jornal" element={
                     <JournalRoute><JournalPage /></JournalRoute>
                   } />
                   {/* O feed dos jornais finalizados (16/11/2026): quem entra no Jornal. */}
-                  <Route path="/jornais-das-unidades" element={
+                  <Route path="/educacao/jornais-das-unidades" element={
                     <JournalRoute><JornaisDasUnidadesPage /></JournalRoute>
                   } />
 
@@ -251,17 +234,12 @@ const App = () => (
                   <Route path="/pizza-da-alegria/painel/dashboard" element={
                     <ProtectedRoute><PizzaDashboardPage /></ProtectedRoute>
                   } />
-                  <Route path="/marketing" element={
-                    <ProtectedRoute><MarketingHubPage /></ProtectedRoute>
-                  } />
-                  <Route path="/mercado-solidario" element={
+                  <Route path="/marketing" element={<MarketingSemAba />} />
+                  <Route path="/marketing/mercado-solidario" element={
                     <MercadoRoute><MercadoSolidarioPage /></MercadoRoute>
                   } />
-                  <Route path="/portal-transparencia" element={
-                    <MarketingRoute><TransparencyPage /></MarketingRoute>
-                  } />
-                  <Route path="/admin-toolbox" element={
-                    <MarketingRoute><ComMargem><AdminToolboxPage /></ComMargem></MarketingRoute>
+                  <Route path="/marketing/:aba" element={
+                    <ProtectedRoute><MarketingHubPage /></ProtectedRoute>
                   } />
                   <Route path="*" element={<NotFound />} />
 

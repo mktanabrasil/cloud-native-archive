@@ -78,25 +78,26 @@ beforeEach(() => {
 /**
  * Setores (16/11/2026): o menu de cima são os setores — Social, Educação,
  * Vagas, Marketing e Painel — e as páginas de cada um ficam na faixa logo
- * abaixo da barra. As páginas não mudaram de endereço.
+ * abaixo da barra. Desde 16/11/2026 os endereços também são por setor
+ * (/social/…, /educacao/…, /marketing/…, /painel).
  */
 describe('a doca do celular, por setores', () => {
   it('o marketing vê os cinco setores, sem "Mais"', () => {
-    abrir('/');
+    abrir('/social/eventos');
     expect(nomes(doca())).toEqual(['Social', 'Educação', 'Vagas', 'Marketing', 'Painel']);
     expect(within(doca()).queryByRole('button', { name: /Mais/ })).not.toBeInTheDocument();
   });
 
   it.each([
-    ['/', 'Social'],
+    ['/social/eventos', 'Social'],
     ['/eventos', 'Social'],
-    ['/calendario', 'Social'],
-    ['/jornal-institucional', 'Educação'],
-    ['/marketing?aba=pizza', 'Marketing'],
-    ['/mercado-solidario', 'Marketing'],
+    ['/social/calendario', 'Social'],
+    ['/educacao/jornal', 'Educação'],
+    ['/marketing/pizza', 'Marketing'],
+    ['/marketing/mercado-solidario', 'Marketing'],
     ['/pizza-da-alegria/painel', 'Marketing'],
-    ['/auditoria', 'Marketing'],
-    ['/usuarios', 'Painel'],
+    ['/marketing/auditoria', 'Marketing'],
+    ['/painel', 'Painel'],
   ])('em %s, o setor aberto é %s', (rota, setor) => {
     abrir(rota);
     expect(aberto(doca())).toEqual([setor]);
@@ -104,30 +105,30 @@ describe('a doca do celular, por setores', () => {
 
   it('com um setor só, não há doca', () => {
     estado.papel = { ...GESTORA_DO_SOCIAL };
-    abrir('/');
+    abrir('/social/eventos');
     expect(screen.queryByRole('navigation', { name: 'Navegação' })).not.toBeInTheDocument();
   });
 });
 
 describe('a faixa do setor', () => {
   it('Social: Eventos e Calendário Anual, com a página aberta marcada', () => {
-    abrir('/');
+    abrir('/social/eventos');
     const faixa = screen.getByRole('navigation', { name: 'Páginas de Social' });
     expect(nomes(faixa)).toEqual(['Eventos', 'Calendário Anual']);
     expect(aberto(faixa)).toEqual(['Eventos']);
   });
 
-  it('o Calendário Anual aparece aberto em /calendario', () => {
-    abrir('/calendario');
+  it('o Calendário Anual aparece aberto em /social/calendario', () => {
+    abrir('/social/calendario');
     expect(aberto(screen.getByRole('navigation', { name: 'Páginas de Social' }))).toEqual(['Calendário Anual']);
   });
 
-  it('Marketing: o Mercado Solidário e as abas de antes, pela URL', () => {
-    abrir('/marketing?aba=voluntariado');
+  it('Marketing: o Mercado Solidário e as abas, cada uma no seu endereço', () => {
+    abrir('/marketing/voluntariado');
     const faixa = screen.getByRole('navigation', { name: 'Páginas de Marketing' });
     expect(nomes(faixa)).toEqual(['Mercado Solidário', 'Pizza da Alegria', 'Voluntariado', 'Enquetes', 'Manual Design', 'Portal Transparência', 'Widgets', 'Auditoria']);
     expect(aberto(faixa)).toEqual(['Voluntariado']);
-    expect(within(faixa).getByRole('link', { name: 'Pizza da Alegria' })).toHaveAttribute('href', '/marketing?aba=pizza');
+    expect(within(faixa).getByRole('link', { name: 'Pizza da Alegria' })).toHaveAttribute('href', '/marketing/pizza');
   });
 
   it('sem aba na URL, o Marketing abre na Auditoria, como antes', () => {
@@ -136,18 +137,18 @@ describe('a faixa do setor', () => {
   });
 
   it('o Mercado Solidário fica marcado na faixa do Marketing', () => {
-    abrir('/mercado-solidario');
+    abrir('/marketing/mercado-solidario');
     expect(aberto(screen.getByRole('navigation', { name: 'Páginas de Marketing' }))).toEqual(['Mercado Solidário']);
   });
 
-  it.each(['/vagas', '/usuarios'])('%s: setor com abas próprias, sem faixa', (rota) => {
+  it.each(['/vagas', '/painel'])('%s: setor com abas próprias, sem faixa', (rota) => {
     abrir(rota);
     expect(screen.queryByRole('navigation', { name: /^Páginas de/ })).not.toBeInTheDocument();
   });
 
   it.each([
-    ['/jornal-institucional', 'Jornal Institucional'],
-    ['/jornais-das-unidades', 'Jornais das unidades'],
+    ['/educacao/jornal', 'Jornal Institucional'],
+    ['/educacao/jornais-das-unidades', 'Jornais das unidades'],
   ])('Educação, em %s: o Jornal e o feed, com %s aberto', (rota, aberta) => {
     abrir(rota);
     const faixa = screen.getByRole('navigation', { name: 'Páginas de Educação' });
@@ -158,7 +159,7 @@ describe('a faixa do setor', () => {
 
   it('some enquanto o editor (tela cheia) está aberto', () => {
     render(
-      <MemoryRouter initialEntries={['/jornal-institucional']}>
+      <MemoryRouter initialEntries={['/educacao/jornal']}>
         <Routes>
           <Route element={<AppLayout />}>
             <Route path="*" element={<EditorDeMentira />} />
@@ -171,19 +172,19 @@ describe('a faixa do setor', () => {
 
   it('sem o Calendário Anual liberado, o Social tem uma página só: sem faixa', () => {
     estado.papel = { ...GESTORA_DO_SOCIAL, temCalendarioAnual: false };
-    abrir('/');
+    abrir('/social/eventos');
     expect(screen.queryByRole('navigation', { name: 'Páginas de Social' })).not.toBeInTheDocument();
   });
 
   it('a gestora liberada no calendário vê as duas páginas do Social', () => {
     estado.papel = { ...GESTORA_DO_SOCIAL };
-    abrir('/');
+    abrir('/social/eventos');
     expect(nomes(screen.getByRole('navigation', { name: 'Páginas de Social' }))).toEqual(['Eventos', 'Calendário Anual']);
   });
 
   it('no computador, a faixa mostra o nome do setor', () => {
     estado.celular = false;
-    abrir('/');
+    abrir('/social/eventos');
     expect(screen.getByRole('navigation', { name: 'Páginas de Social' })).toHaveTextContent(/^Social/);
   });
 });
@@ -206,27 +207,27 @@ describe('quem vê o quê', () => {
   it('a gestão do Social vê só o Social (sem a Educação)', () => {
     estado.celular = false;
     estado.papel = { ...GESTORA_DO_SOCIAL };
-    abrir('/');
+    abrir('/social/eventos');
     expect(nomes(barra())).toEqual(['Social']);
   });
 
   it('a direção de um CEI vê só a Educação (sem o Social)', () => {
     estado.celular = false;
     estado.papel = { ...DIRECAO_DE_CEI };
-    abrir('/jornal-institucional');
+    abrir('/educacao/jornal');
     expect(nomes(barra())).toEqual(['Educação']);
   });
 
   it('no celular, a direção de um CEI tem um setor só: sem doca', () => {
     estado.papel = { ...DIRECAO_DE_CEI };
-    abrir('/jornal-institucional');
+    abrir('/educacao/jornal');
     expect(screen.queryByRole('navigation', { name: 'Navegação' })).not.toBeInTheDocument();
   });
 
   it('para a direção de um CEI, o início é o Jornal', () => {
     estado.papel = { ...DIRECAO_DE_CEI };
     abrirComEndereco('/');
-    expect(ondeEstou()).toBe('/jornal-institucional');
+    expect(ondeEstou()).toBe('/educacao/jornal');
   });
 
   it('as Programações continuam abrindo para ela pelo endereço', () => {
@@ -235,10 +236,16 @@ describe('quem vê o quê', () => {
     expect(ondeEstou()).toBe('/eventos');
   });
 
-  it('para a gestão do Social, o início continua nos Eventos', () => {
+  it('para a gestão do Social, os Eventos continuam abrindo', () => {
     estado.papel = { ...GESTORA_DO_SOCIAL };
-    abrirComEndereco('/');
-    expect(ondeEstou()).toBe('/');
+    abrirComEndereco('/social/eventos');
+    expect(ondeEstou()).toBe('/social/eventos');
+  });
+
+  it('a direção de um CEI que abre os Eventos da equipe vai para o Jornal', () => {
+    estado.papel = { ...DIRECAO_DE_CEI };
+    abrirComEndereco('/social/eventos');
+    expect(ondeEstou()).toBe('/educacao/jornal');
   });
 });
 
@@ -247,12 +254,12 @@ describe('o menu da foto', () => {
 
   it('quem não é do marketing (a gestão de unidade inclusive) chega ao próprio perfil por ele', () => {
     estado.papel = { ...GESTORA_DO_SOCIAL };
-    abrir('/');
-    expect(within(menu()).getByRole('link', { name: 'Meu perfil' })).toHaveAttribute('href', '/usuarios');
+    abrir('/social/eventos');
+    expect(within(menu()).getByRole('link', { name: 'Meu perfil' })).toHaveAttribute('href', '/painel');
   });
 
   it('o marketing continua vendo "Painel"', () => {
-    abrir('/');
-    expect(within(menu()).getByRole('link', { name: 'Painel' })).toHaveAttribute('href', '/usuarios');
+    abrir('/social/eventos');
+    expect(within(menu()).getByRole('link', { name: 'Painel' })).toHaveAttribute('href', '/painel');
   });
 });

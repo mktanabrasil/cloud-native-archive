@@ -15,7 +15,13 @@ import { comMaiusculas } from '@/lib/vagas/maiusculas';
  * Criar a conta não basta para entrar: o e-mail precisa estar liberado pelo
  * marketing (`calendario_acessos`). Sem isso, ela entra e vê só o aviso.
  */
-export const ROTA_DO_CALENDARIO = '/calendario';
+export const ROTA_DO_CALENDARIO = '/social/calendario';
+/**
+ * O endereço de volta do e-mail de confirmação continua o de antes
+ * (16/11/2026): é ele que está liberado na lista de endereços do login, e o
+ * app o leva para `ROTA_DO_CALENDARIO`, com o resto do link junto.
+ */
+export const ROTA_DE_VOLTA_DO_CALENDARIO = '/calendario';
 
 export const ehContaDoCalendario = (u: Pick<User, 'user_metadata'> | null | undefined): boolean =>
   u?.user_metadata?.conta === 'calendario';
@@ -39,7 +45,7 @@ export async function criarContaDoCalendario(nome: string, email: string, senha:
     email: email.trim().toLowerCase(),
     password: senha,
     options: {
-      emailRedirectTo: `${window.location.origin}${ROTA_DO_CALENDARIO}`,
+      emailRedirectTo: `${window.location.origin}${ROTA_DE_VOLTA_DO_CALENDARIO}`,
       data: { conta: 'calendario', name: comMaiusculas(nome, { pessoa: true }) },
     },
   });

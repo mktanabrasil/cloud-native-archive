@@ -21,7 +21,8 @@ import {
 import ImpersonationBanner from '@/components/ImpersonationBanner';
 import logoImg from '@/assets/logo.png';
 import { TemaFlutuante } from './ThemeToggle';
-import { navItems, ROTAS_DO_SETOR, setorDoCaminho } from '@/config/navigation';
+import { navItems, ROTAS, ROTAS_DO_SETOR, setorDoCaminho } from '@/config/navigation';
+import { ROTA_DO_CALENDARIO } from '@/lib/calendario/conta';
 import { FaixaDoSetor } from './FaixaDoSetor';
 import { useSouResponsavel } from '@/hooks/useSouResponsavel';
 import { useAvisosDaEquipe } from '@/hooks/useAvisosDaEquipe';
@@ -33,11 +34,11 @@ import AppLayoutClassico from '@/classico/AppLayout';
 // Desde 16/11/2026 as áreas são os setores: Social (o azul dos Eventos),
 // Educação (o coral do Jornal), Vagas, Marketing e Painel.
 const COR_DA_AREA: Record<string, string> = {
-  '/': '#01adff',
-  '/jornal-institucional': '#f37964',
+  [ROTAS.eventos]: '#01adff',
+  [ROTAS.jornal]: '#f37964',
   '/vagas': '#81e2cf',
-  '/marketing': '#fbce00',
-  '/usuarios': '#8A938F',
+  [ROTAS.marketing]: '#fbce00',
+  [ROTAS.painel]: '#8A938F',
 };
 
 /**
@@ -185,7 +186,7 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
             próprio perfil (senha, foto, dados) fica aqui, para todos. Só o
             marketing gere os outros lá (`podeGerirTodos` em UsersPage). */}
         <DropdownMenuItem asChild>
-          <Link to={`/usuarios${location.search}`} className="flex cursor-pointer items-center gap-2 py-2">
+          <Link to={`${ROTAS.painel}${location.search}`} className="flex cursor-pointer items-center gap-2 py-2">
             <Users className="h-4 w-4" />
             <span>{isMarketing ? 'Painel' : 'Meu perfil'}</span>
           </Link>
@@ -213,13 +214,13 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
   // Marketing na doca, quem é do RH vê Vagas; o Mercado, menos usado, vai para
   // o "Mais". E a área em que a pessoa está nunca fica escondida no "Mais".
   const prioridade = (to: string) => {
-    const base = ['/', '/jornal-institucional', '/vagas', '/marketing', '/usuarios'].indexOf(to);
-    if (to === '/marketing' && isMarketing) return -2;
+    const base = [ROTAS.eventos, ROTAS.jornal, '/vagas', ROTAS.marketing, ROTAS.painel].indexOf(to);
+    if (to === ROTAS.marketing && isMarketing) return -2;
     if (to === '/vagas' && (isRh || souResponsavel)) return -1;
     return base < 0 ? 99 : base;
   };
   const ordenados = itensVisiveis.length > 5
-    ? [...itensVisiveis].sort((a, b) => (a.to === '/' ? -9 : prioridade(a.to)) - (b.to === '/' ? -9 : prioridade(b.to)))
+    ? [...itensVisiveis].sort((a, b) => (a.to === ROTAS.eventos ? -9 : prioridade(a.to)) - (b.to === ROTAS.eventos ? -9 : prioridade(b.to)))
     : itensVisiveis;
   let naDoca = ordenados.length > 5 ? ordenados.slice(0, 4) : ordenados;
   let noMais = ordenados.length > 5 ? ordenados.slice(4) : [];
@@ -264,11 +265,12 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
 
   // "Só o calendário" (13/11/2026): a gestora liberada no Calendário Anual
   // com o interruptor ligado não entra em página nenhuma da equipe por enquanto.
-  if (isAuthenticated && !carregandoPapel && soCalendario) return <Navigate to="/calendario" replace />;
+  if (isAuthenticated && !carregandoPapel && soCalendario) return <Navigate to={ROTA_DO_CALENDARIO} replace />;
 
-  // A gestão da Educação não vê o Social (16/11/2026): o início dela é o
-  // Jornal. Só a raiz muda; as Programações (`/eventos`) seguem públicas.
-  if (isAuthenticated && !carregandoPapel && soEducacao && location.pathname === '/') return <Navigate to="/jornal-institucional" replace />;
+  // A gestão da Educação não vê o Social (16/11/2026): o início dela (a raiz)
+  // e os Eventos da equipe levam ao Jornal. As Programações (`/eventos`)
+  // seguem públicas.
+  if (isAuthenticated && !carregandoPapel && soEducacao && (location.pathname === '/' || location.pathname === ROTAS.eventos)) return <Navigate to={ROTAS.jornal} replace />;
 
   return (
     <UiV2>

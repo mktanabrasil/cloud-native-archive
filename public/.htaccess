@@ -33,7 +33,7 @@
   # A raiz e a vitrine (/, /eventos) usam o próprio index.html.
   RewriteRule ^enquete/[^/]+/resultado/?$ /enquete-resultado.html [L]
   RewriteRule ^enquete/ /enquete.html [L]
-  RewriteRule ^mercado-solidario(-publico)?/?$ /mercado.html [L]
+  RewriteRule ^(marketing/)?mercado-solidario(-publico)?/?$ /mercado.html [L]
   RewriteRule ^pizza-da-alegria/?$ /pizza.html [L]
   RewriteRule ^pizza-da-alegria/acompanhar/ /pizza-acompanhar.html [L]
   RewriteRule ^voluntariado(/natalfeliz26)?/?$ /voluntariado.html [L]
@@ -41,9 +41,9 @@
   RewriteRule ^voluntariado/natalfeliz26/central(/|$) /voluntariado-central.html [L]
   RewriteRule ^vagas(/|$) /vagas.html [L]
   RewriteRule ^portal-transparencia(-publico)?/?$ /transparencia.html [L]
-  RewriteRule ^(jornal-institucional|jornais-das-unidades)/?$ /jornal.html [L]
-  RewriteRule ^calendario/?$ /calendario.html [L]
-  RewriteRule ^(login|redefinir-senha|auth/confirm|visao-geral|usuarios|auditoria|design-manual|marketing|admin-toolbox|email-preview|pizza-da-alegria/(painel(/dashboard)?|retirada)|voluntariado/natalfeliz26/presenca)/?$ /app.html [L]
+  RewriteRule ^(educacao(/jornal|/jornais-das-unidades)?|jornal-institucional|jornais-das-unidades)/?$ /jornal.html [L]
+  RewriteRule ^(social/)?calendario/?$ /calendario.html [L]
+  RewriteRule ^(login|redefinir-senha|auth/confirm|social(/eventos)?|painel|marketing(/[^/]+)?|visao-geral|usuarios|auditoria|design-manual|admin-toolbox|email-preview|pizza-da-alegria/(painel(/dashboard)?|retirada)|voluntariado/natalfeliz26/presenca)/?$ /app.html [L]
 
   # Todo o resto entrega o index.html, e o React resolve a rota.
   RewriteRule . /index.html [L]

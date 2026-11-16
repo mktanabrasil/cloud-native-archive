@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { ROTAS } from '@/config/navigation';
 import { destinoDaContaRestrita } from '@/lib/contasRestritas';
 import { retornoDoGoogle } from '@/lib/events/conexaoGoogle';
 import { Globe, LayoutDashboard, Calendar, Trash2, Plus } from 'lucide-react';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import EventFormDialog from '@/components/EventFormDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
-import { useEntryGateTransition } from '@/hooks/useIsEntryGate';
+import { useEntryGateTransition, useIsCleanView } from '@/hooks/useIsEntryGate';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import PublicEventsPage from '@/pages/PublicEventsPage';
@@ -38,12 +39,14 @@ export default function EventsHubPage() {
    */
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const limpa = useIsCleanView();
 
   // O Google só devolve para a raiz (URI de redirecionamento fixo). Se veio
   // com o nosso `state`, é a conexão da agenda: segue para o Painel terminar.
   useEffect(() => {
     const retorno = retornoDoGoogle(window.location.search);
-    if (retorno) navigate(`/usuarios?tab=agenda&code=${encodeURIComponent(retorno.code)}&state=${encodeURIComponent(retorno.state)}`, { replace: true });
+    if (retorno) navigate(`${ROTAS.painel}?tab=agenda&code=${encodeURIComponent(retorno.code)}&state=${encodeURIComponent(retorno.state)}`, { replace: true });
     // A conexão do Drive da Pizza da Alegria (07/10/2026) volta pelo mesmo caminho.
     const p = new URLSearchParams(window.location.search);
     if (p.get('code') && p.get('state')?.startsWith('drive:')) navigate(`/pizza-da-alegria/painel?code=${encodeURIComponent(p.get('code')!)}&state=${encodeURIComponent(p.get('state')!)}`, { replace: true });
@@ -66,8 +69,20 @@ export default function EventsHubPage() {
 
   // Sem sessão, a raiz é a porta de entrada — salvo em embed, onde a raiz
   // continua servindo as Programações para não quebrar iframes já publicados.
+  // Em /social/eventos, sem sessão, volta para a porta (16/11/2026).
   if (!isAuthenticated) {
-    return isGate ? <HomePage /> : <PublicEventsPage />;
+    if (isGate) return <HomePage />;
+    if (location.pathname !== '/' && !limpa) return <Navigate to="/" replace />;
+    return <PublicEventsPage />;
+  }
+
+  // Com sessão, a raiz leva ao setor (16/11/2026): os Eventos ficam em
+  // /social/eventos, com o resto do link junto (`?tela=calendario` dos
+  // e-mails). A volta do Google fica na raiz: o efeito acima a encaminha.
+  const voltaDoGoogle = !!retornoDoGoogle(location.search) || !!searchParams.get('state')?.startsWith('drive:');
+  // Embed (`?embed=true`, `hideHeader`…) fica como sempre esteve, na raiz.
+  if (location.pathname === '/' && !voltaDoGoogle && !limpa) {
+    return <Navigate to={{ pathname: ROTAS.eventos, search: location.search, hash: location.hash }} replace />;
   }
 
   return (

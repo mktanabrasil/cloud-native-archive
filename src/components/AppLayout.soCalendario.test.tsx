@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 /**
  * "Só o calendário" (13/11/2026): a gestora liberada no Calendário Anual com
  * o interruptor ligado não entra em página nenhuma da equipe; o app a manda
- * para /calendario, e nada da página aparece antes de o papel carregar.
+ * para /social/calendario, e nada da página aparece antes de o papel carregar.
  */
 const estado = vi.hoisted(() => ({ papel: { soCalendario: false, loading: false } }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ isAuthenticated: true, signOut: vi.fn(), user: { email: 'dic@anabrasil.org', user_metadata: {} } }) }));
@@ -25,7 +25,7 @@ const abrir = (rota: string) => render(
   <MemoryRouter initialEntries={[rota]}>
     <Routes>
       <Route element={<AppLayout />}><Route path="*" element={<p>página da equipe</p>} /></Route>
-      <Route path="/calendario" element={<p>calendário anual</p>} />
+      <Route path="/social/calendario" element={<p>calendário anual</p>} />
     </Routes>
   </MemoryRouter>,
 );
@@ -33,7 +33,7 @@ const abrir = (rota: string) => render(
 beforeEach(() => { estado.papel = { soCalendario: false, loading: false }; });
 
 describe('só o calendário', () => {
-  it.each(['/', '/eventos', '/mercado-solidario', '/jornal-institucional', '/usuarios'])('ligado: %s manda para /calendario', (rota) => {
+  it.each(['/', '/eventos', '/social/eventos', '/marketing/mercado-solidario', '/educacao/jornal', '/painel'])('ligado: %s manda para /social/calendario', (rota) => {
     estado.papel = { soCalendario: true, loading: false };
     abrir(rota);
     expect(screen.getByText('calendário anual')).toBeInTheDocument();
