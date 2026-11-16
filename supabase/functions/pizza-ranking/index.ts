@@ -10,13 +10,14 @@ addEventListener('unhandledrejection', (e) => { console.error('[pizza-ranking] p
  *
  * A arte (arte.ts) e a mensagem (ranking.ts) são feitas aqui, sem navegador,
  * e vão pelo Evolution API (serviço próprio no Coolify, ligado ao WhatsApp da
- * MKT) para o grupo ANABRASIL PUBLICAÇÕES, às sextas, 15h em Brasília:
+ * MKT) para o grupo ANABRASIL PUBLICAÇÕES, às sextas, 8h em Brasília:
  * 13/11, 20/11, 27/11 e 04/12 (decisão dele). Os campeões saem em 17/12.
+ * Até 13/11 era às 15h; em 16/11 ele passou para as 8h da manhã.
  *
  * Quem chama:
- *  - o banco (pg_cron + pg_net, toda sexta às 18h UTC), com { acao: 'agendado' }
- *    e o cabeçalho x-ranking-segredo: só envia numa das datas, entre 14h45 e
- *    16h, com o envio automático ligado e se o grupo ainda não recebeu no dia;
+ *  - o banco (pg_cron + pg_net, toda sexta às 11h UTC), com { acao: 'agendado' }
+ *    e o cabeçalho x-ranking-segredo: só envia numa das datas, entre 7h45 e
+ *    9h, com o envio automático ligado e se o grupo ainda não recebeu no dia;
  *  - o painel (ADM, comunicação e financeiro veem; só a comunicação envia):
  *    'estado', 'arte' (a prévia), 'enviar' (teste para o próprio número ou o
  *    grupo agora) e 'ligar' (o envio automático, que nasce desligado).
@@ -33,7 +34,10 @@ addEventListener('unhandledrejection', (e) => { console.error('[pizza-ranking] p
  * uma chamada e outra.
  */
 
-/** As sextas da disputa, 15h em Brasília. */
+/** A hora do envio em Brasília (16/11/2026: era 15h, passou para 8h). */
+export const HORA_DO_ENVIO = 8;
+
+/** As sextas da disputa, às HORA_DO_ENVIO em Brasília. */
 export const DATAS_DO_ENVIO = ['2026-11-13', '2026-11-20', '2026-11-27', '2026-12-04'];
 
 const cors = {
@@ -64,9 +68,10 @@ function minutosEmBrasilia(d: Date): number {
   const [h, m] = d.toLocaleTimeString('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hour12: false }).split(':').map(Number);
   return (h % 24) * 60 + m;
 }
-/** A próxima sexta do envio que ainda não passou das 15h. */
+/** A próxima sexta do envio que ainda não passou da hora do envio. */
 export function proximoEnvio(agora: Date): string | null {
-  return DATAS_DO_ENVIO.find((d) => new Date(`${d}T15:00:00-03:00`).getTime() > agora.getTime()) ?? null;
+  const hora = String(HORA_DO_ENVIO).padStart(2, '0');
+  return DATAS_DO_ENVIO.find((d) => new Date(`${d}T${hora}:00:00-03:00`).getTime() > agora.getTime()) ?? null;
 }
 const espera = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -156,7 +161,7 @@ async function registrar(admin: any, e: { destino: Destino; origem: Origem; situ
 }
 
 async function avisarFalha(cfg: Config, motivo: string) {
-  const texto = `⚠️ O ranking da Pizza da Alegria não foi para o grupo ${cfg.grupo_nome} hoje às 15h.\n\nMotivo: ${motivo}\n\nDá para mandar pelo painel da Pizza (Ranking para o WhatsApp → Enviar ao grupo agora) ou baixar a imagem e mandar à mão.`;
+  const texto = `⚠️ O ranking da Pizza da Alegria não foi para o grupo ${cfg.grupo_nome} hoje às ${HORA_DO_ENVIO}h.\n\nMotivo: ${motivo}\n\nDá para mandar pelo painel da Pizza (Ranking para o WhatsApp → Enviar ao grupo agora) ou baixar a imagem e mandar à mão.`;
   try { await evolution(cfg, '/message/sendText', { number: cfg.teste, text: texto }); }
   catch (e) { console.error('[pizza-ranking] aviso no WhatsApp:', e instanceof Error ? e.message : e); }
   const host = Deno.env.get('SMTP_HOST'), user = Deno.env.get('SMTP_USER'), pass = Deno.env.get('SMTP_PASS');
@@ -177,7 +182,8 @@ async function agendado(admin: any, cfg: Config) {
   if (!DATAS_DO_ENVIO.includes(hoje)) return json({ pulado: 'fora_das_datas', hoje });
   const pular = async (detalhe: string) => { await registrar(admin, { destino: 'grupo', origem: 'agendado', situacao: 'pulado', detalhe }); return json({ pulado: detalhe }); };
   const min = minutosEmBrasilia(agora);
-  if (min < 14 * 60 + 45 || min > 16 * 60) return pular(`Fora do horário (${Math.floor(min / 60)}h${String(min % 60).padStart(2, '0')} em Brasília): confira o fuso do agendamento.`);
+  // A janela: 15 min antes da hora até 1 h depois (o pg_cron chama na hora cheia).
+  if (min < HORA_DO_ENVIO * 60 - 15 || min > (HORA_DO_ENVIO + 1) * 60) return pular(`Fora do horário (${Math.floor(min / 60)}h${String(min % 60).padStart(2, '0')} em Brasília): confira o fuso do agendamento.`);
   if (!cfg.ligado) return pular('Envio automático desligado no painel.');
   const { data: ja } = await admin.from('pizza_ranking_envios').select('id')
     .eq('destino', 'grupo').eq('situacao', 'enviado').gte('criado_em', new Date(`${hoje}T00:00:00-03:00`).toISOString()).limit(1);

@@ -10,7 +10,7 @@ import { arteDoRanking, enviarRanking, estadoDoRanking, ligarRanking, type Envio
  * "Ranking para o WhatsApp" (11/11/2026): a arte e a mensagem da disputa da
  * Pizza da Alegria, com os números do momento. Desde a versão com envio
  * automático, as duas vêm da função `pizza-ranking`, a mesma que manda ao
- * grupo ANABRASIL PUBLICAÇÕES às sextas, 15h: o que aparece aqui é o que vai.
+ * grupo ANABRASIL PUBLICAÇÕES às sextas, 8h (eram 15h até 13/11): o que aparece aqui é o que vai.
  *
  * A comunicação liga o envio automático (nasce desligado), manda um teste
  * para a conversa "Mensagens para mim" do WhatsApp da MKT ou envia ao grupo
@@ -71,8 +71,8 @@ function EnvioAutomatico({ estado, aoMudar }: { estado: EstadoDoRanking; aoMudar
           <h3 id="envio-automatico" className="font-semibold">Envio automático ao grupo {estado.grupo}</h3>
           <p className="text-sm text-muted-foreground">
             {estado.ligado
-              ? <>Toda sexta, às 15h: {listaDeDatas(estado.datas)}.{estado.proximo ? <> Próximo: <strong className="text-foreground">sexta, {ddmm(estado.proximo)}</strong>.</> : ' Não há mais envios.'}</>
-              : <>Desligado: nada vai sozinho para o grupo. Ligado, vai toda sexta às 15h ({listaDeDatas(estado.datas)}).</>}
+              ? <>Toda sexta, às 8h: {listaDeDatas(estado.datas)}.{estado.proximo ? <> Próximo: <strong className="text-foreground">sexta, {ddmm(estado.proximo)}</strong>.</> : ' Não há mais envios.'}</>
+              : <>Desligado: nada vai sozinho para o grupo. Ligado, vai toda sexta às 8h ({listaDeDatas(estado.datas)}).</>}
           </p>
         </div>
         <label className="flex shrink-0 items-center gap-2 text-sm font-medium">

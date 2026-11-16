@@ -188,7 +188,7 @@ export interface EnvioDoRanking {
 export interface EstadoDoRanking {
   /** O endereço e o token do Evolution estão na configuração. */
   configurado: boolean;
-  /** O envio automático das sextas, 15h. Nasce desligado. */
+  /** O envio automático das sextas, 8h (eram 15h até 13/11). Nasce desligado. */
   ligado: boolean;
   grupo: string;
   /** As sextas do envio (AAAA-MM-DD). */
