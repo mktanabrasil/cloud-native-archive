@@ -13,6 +13,7 @@ import { useTelaLarga } from '@/hooks/useTelaLarga';
 import { CaixaDaDevolutiva, Selo, Vidro, quando } from './pecas';
 import { Devolutiva } from './Devolutiva';
 import { FolhaAoLado, useFolhaDoSemanario } from './PreviaDoSemanario';
+import { PedidosDeProfessoras } from './PedidosDeProfessoras';
 
 /** Primeiro o que espera devolutiva, depois o que está em preenchimento, por fim os respondidos. */
 const ORDEM: Record<Semanario['status'], number> = { enviado: 0, preenchimento: 1, com_devolutiva: 2 };
@@ -53,10 +54,12 @@ const iniciais = (nome: string) => nome.split(/\s+/).filter(Boolean).slice(0, 2)
  * para ler (a RLS recorta). No computador, o escolhido abre ao lado da lista,
  * com a folha e a devolutiva; no celular, a lista abre a ficha.
  */
-export function ListaDaUnidade({ titulo, marketing, podeDevolver = () => false }: {
+export function ListaDaUnidade({ titulo, marketing, podeDevolver = () => false, pedidos = false }: {
   titulo: string;
   marketing: boolean;
   podeDevolver?: (s: Semanario) => boolean;
+  /** A orientadora vê aqui os pedidos de acesso das professoras do CEI dela (PR 7). */
+  pedidos?: boolean;
 }) {
   const telaLarga = useTelaLarga();
   const [params, setParams] = useSearchParams();
@@ -118,6 +121,8 @@ export function ListaDaUnidade({ titulo, marketing, podeDevolver = () => false }
           ))}
         </div>
       </div>
+
+      {pedidos && <PedidosDeProfessoras />}
 
       {estado === 'carregando' && <p className="py-10 text-center text-[14px] text-muted-foreground">Carregando os semanários…</p>}
       {estado === 'erro' && (

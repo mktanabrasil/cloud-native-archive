@@ -45,7 +45,7 @@ export default function SemanarioPage() {
         ? <FichaDoSemanario key={id} id={id} souADona={s => !!user && s.professora_id === user.id} podeDevolver={podeDevolver} />
         : professora
           ? <ListaDaProfessora professoraId={user!.id} />
-          : <ListaDaUnidade titulo={isOrientadora && !isMarketing ? `Semanários · ${unit || 'CEI'}` : 'Semanários das unidades'} marketing={isMarketing} podeDevolver={podeDevolver} />}
+          : <ListaDaUnidade titulo={isOrientadora && !isMarketing ? `Semanários · ${unit || 'CEI'}` : 'Semanários das unidades'} marketing={isMarketing} podeDevolver={podeDevolver} pedidos={isOrientadora && !isMarketing} />}
     </AppLayout>
   );
 }

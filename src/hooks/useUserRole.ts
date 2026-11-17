@@ -317,13 +317,17 @@ export function useAccessRequests() {
     return { avisoEnviado: data?.avisoEnviado === true, avisoErro: data?.avisoErro ?? null };
   };
 
-  const rejectRequest = async (requestId: string) => {
-    await (supabase
+  /** Recusa. Devolve false se o pedido já tinha sido resolvido (por exemplo, pela orientadora no Semanário). */
+  const rejectRequest = async (requestId: string): Promise<boolean> => {
+    const { data } = await (supabase
       .from('access_requests') as any)
       .update({ status: 'rejected', reviewed_at: new Date().toISOString() })
-      .eq('id', requestId);
+      .eq('id', requestId)
+      .eq('status', 'pending')
+      .select('id');
 
     await fetchRequests();
+    return !!data?.length;
   };
 
   return { requests, loading, approveRequest, rejectRequest, refetch: fetchRequests };

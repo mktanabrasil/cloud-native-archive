@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { mensagemDaFuncao } from '@/lib/erroDaFuncao';
 import type { ConteudoDoSemanario, Semanario } from './regras';
 
 /**
@@ -102,4 +103,36 @@ export async function avisarPorEmail(id: string, tipo: 'envio' | 'devolutiva'): 
   if (error) throw error;
   const r = (data ?? {}) as { enviado?: boolean; motivo?: string };
   return r.enviado ? { enviado: true } : { enviado: false, motivo: r.motivo ?? 'desconhecido' };
+}
+
+// --- Pedidos de acesso de professoras (PR 7, 17/11/2026) ---------------------------------
+
+/** Um pedido de acesso como Professora, pendente, do CEI da orientadora. */
+export interface PedidoDeProfessora { id: string; user_id: string; name: string; email: string; requested_unit: string; requested_at: string }
+
+/**
+ * Os pedidos de professora que a orientadora logada pode resolver (função do
+ * banco, só os do CEI dela). `null` quando a leitura falha (inclusive antes
+ * de o SQL do PR 7 ser aplicado): quem chama mantém o que já mostrava.
+ */
+export async function lerPedidosDeProfessora(): Promise<PedidoDeProfessora[] | null> {
+  const { data, error } = await db.rpc('semanario_pedidos_de_professora');
+  if (error) return null;
+  return (data as PedidoDeProfessora[]) ?? [];
+}
+
+/** Aprova: a função admin-approve-user grava vínculo, nível e CEI a partir do pedido. */
+export async function aprovarPedidoDeProfessora(p: PedidoDeProfessora): Promise<{ avisoEnviado: boolean }> {
+  const { data, error } = await supabase.functions.invoke('admin-approve-user', {
+    body: { requestId: p.id, userId: p.user_id, role: 'viewer' },
+  });
+  if (error) throw new Error(await mensagemDaFuncao(error, data, 'Não foi possível aprovar agora.'));
+  return { avisoEnviado: !!(data as { avisoEnviado?: boolean } | null)?.avisoEnviado };
+}
+
+/** Recusa. Devolve false se o pedido já tinha sido resolvido por outra pessoa. */
+export async function recusarPedidoDeProfessora(id: string): Promise<boolean> {
+  const { data, error } = await db.rpc('semanario_recusar_pedido', { _id: id });
+  falhou(error);
+  return data === true;
 }

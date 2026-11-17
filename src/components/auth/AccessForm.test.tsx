@@ -27,6 +27,24 @@ vi.mock('@/contexts/AuthContext', () => ({
   useAuth: () => auth,
 }));
 
+// O Select do Radix é lento demais no jsdom: aqui ele vira um <select> nativo.
+vi.mock('@/components/ui/select', async () => {
+  const React = await import('react');
+  type P = { children?: React.ReactNode; value?: string; onValueChange?: (v: string) => void; 'aria-label'?: string };
+  const SelectTrigger = (_: P) => null;
+  const Select = ({ children, value, onValueChange }: P) => {
+    const gatilho = React.Children.toArray(children).find((c) => React.isValidElement(c) && c.type === SelectTrigger) as React.ReactElement<P> | undefined;
+    return React.createElement('select', { 'aria-label': gatilho?.props['aria-label'], value: value ?? '', onChange: (e: React.ChangeEvent<HTMLSelectElement>) => onValueChange?.(e.target.value) },
+      React.createElement('option', { value: '' }, '—'), children);
+  };
+  const Passa = ({ children }: P) => React.createElement(React.Fragment, null, children);
+  return {
+    Select, SelectTrigger, SelectValue: () => null, SelectContent: Passa, SelectLabel: () => null,
+    SelectGroup: ({ children }: P) => React.createElement('optgroup', null, children),
+    SelectItem: ({ children, value }: P) => React.createElement('option', { value }, children),
+  };
+});
+
 /** Monta o formulário já no modo de solicitação, com os campos preenchidos. */
 function pedirAcesso(container: HTMLElement) {
   fireEvent.click(screen.getByRole('button', { name: /Solicite acesso/i }));
@@ -102,6 +120,54 @@ describe('pedido de acesso', () => {
         requested_permission_level: 'visualizador',
       }),
     );
+  });
+});
+
+/** Escolhe o nível pedido (o primeiro seletor do formulário). */
+const pedirComo = (valor: string) => fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: valor } });
+
+describe('pedido como Professora (Semanário, 17/11/2026)', () => {
+  it('pede o CEI, só da Educação, e manda o vínculo à parte do papel', async () => {
+    const { container } = render(<AccessForm title="Entrar" />);
+    const form = pedirAcesso(container);
+    pedirComo('professora');
+    expect(screen.getByText(/A orientadora pedagógica do seu CEI/)).toBeInTheDocument();
+    const cei = screen.getByRole('combobox', { name: 'CEI' });
+    const opcoes = [...cei.querySelectorAll('option')].map(o => o.textContent);
+    expect(opcoes).toContain('Grupo de Oração Esperança');
+    expect(opcoes.some(o => /Jardim Nilópolis/.test(o ?? ''))).toBe(false);
+    fireEvent.change(cei, { target: { value: 'Anísio' } });
+    fireEvent.submit(form);
+
+    await waitFor(() => expect(auth.signUp).toHaveBeenCalled());
+    expect(auth.signUp).toHaveBeenCalledWith('maria@exemplo.org', 'senha-de-teste', expect.objectContaining({
+      requested_role: 'viewer', requested_permission_level: 'visualizador', requested_unit: 'Anísio', requested_bond: 'professora',
+    }));
+  });
+
+  it('sem o CEI, não manda o pedido', async () => {
+    const { container } = render(<AccessForm title="Entrar" />);
+    const form = pedirAcesso(container);
+    pedirComo('professora');
+    fireEvent.submit(form);
+    expect(await screen.findByText('Falta a unidade')).toBeInTheDocument();
+    expect(auth.signUp).not.toHaveBeenCalled();
+  });
+
+  it('de Gestão (com uma NAVE) para Professora, a unidade se apaga', () => {
+    const { container } = render(<AccessForm title="Entrar" />);
+    pedirAcesso(container);
+    pedirComo('criador');
+    fireEvent.change(screen.getByRole('combobox', { name: 'Unidade' }), { target: { value: 'Nilópolis' } });
+    pedirComo('professora');
+    expect(screen.getByRole('combobox', { name: 'CEI' })).toHaveValue('');
+  });
+
+  it('os outros pedidos não levam vínculo', async () => {
+    const { container } = render(<AccessForm title="Entrar" />);
+    fireEvent.submit(pedirAcesso(container));
+    await waitFor(() => expect(auth.signUp).toHaveBeenCalled());
+    expect(auth.signUp.mock.calls[0][2]).not.toHaveProperty('requested_bond');
   });
 });
 

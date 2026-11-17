@@ -50,6 +50,18 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Pedido de Professora (Semanário, 17/11/2026): tudo vem do pedido, nada
+    // do navegador. Aprova o admin, a gestão, o marketing ou a orientadora
+    // pedagógica do CEI pedido; o resto da função segue igual.
+    const { data: pedido } = await adminClient
+      .from('access_requests')
+      .select('id, user_id, status, requested_bond, requested_unit')
+      .eq('id', requestId)
+      .maybeSingle();
+    if (pedido?.requested_bond === 'professora') {
+      return await aprovarProfessora(pedido as Pedido, callerId, userClient, adminClient, SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+
     // Quem pode aprovar. Antes daqui só se exigia estar logado: o `callerId`
     // era calculado e nunca usado, então qualquer conta aprovava qualquer
     // pedido — inclusive um pedido de admin, o que transformava qualquer
@@ -134,6 +146,63 @@ Deno.serve(async (req) => {
 
     console.log(`[AUDIT] Admin ${callerId} aprovou e ativou usuário ${userId}`);
 
+    const { avisoEnviado, avisoErro } = await avisarAprovado(adminClient, userId, SUPABASE_URL, SUPABASE_ANON_KEY);
+    return responder({ success: true, avisoEnviado, avisoErro });
+  } catch (err) {
+    console.error('Erro inesperado:', err);
+    return responder({ error: (err as Error).message || 'Erro interno.' }, 500);
+  }
+});
+
+const responder = (corpo: unknown, status = 200) =>
+  new Response(JSON.stringify(corpo), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+/**
+ * Aprova um pedido de Professora (17/11/2026). Vínculo, nível e unidade saem
+ * do pedido; a conta é a do pedido. A orientadora só aprova pedido pendente
+ * do CEI dela.
+ */
+type Cliente = ReturnType<typeof createClient>;
+interface Pedido { id: string; user_id: string; status: string; requested_bond: string | null; requested_unit: string | null }
+
+async function aprovarProfessora(pedido: Pedido, callerId: string, userClient: Cliente, adminClient: Cliente, url: string, anon: string): Promise<Response> {
+  const { data: ehAdmin } = await adminClient.rpc('is_admin', { _user_id: callerId });
+  const { data: ehMarketing } = ehAdmin ? { data: true } : await adminClient.rpc('is_marketing_user', { _user_id: callerId });
+  let pode = ehAdmin === true || ehMarketing === true;
+  if (!pode) {
+    const { data: perfil } = await adminClient.from('profiles').select('permission_level, is_active').eq('user_id', callerId).maybeSingle();
+    pode = perfil?.is_active !== false && perfil?.permission_level === 'gestor_unidade';
+  }
+  if (!pode) {
+    const { data: ehOrientadora } = await userClient.rpc('eh_orientadora_de', { _unidade: pedido.requested_unit });
+    if (ehOrientadora !== true) return responder({ error: 'Só a orientadora pedagógica do CEI, o marketing ou a gestão aprovam este pedido.' }, 403);
+  }
+  // Quem chegar primeiro resolve: pedido já aprovado ou recusado não volta, para ninguém.
+  if (pedido.status !== 'pending') return responder({ error: 'Este pedido já foi resolvido.' }, 409);
+  if (!pedido.requested_unit) return responder({ error: 'O pedido chegou sem o CEI.' }, 400);
+
+  // A troca de status é a trava: se alguém recusou ou aprovou no meio do caminho, nada muda.
+  const { data: trocado, error: e1 } = await adminClient.from('access_requests')
+    .update({ status: 'approved', reviewed_at: new Date().toISOString(), reviewed_by: callerId })
+    .eq('id', pedido.id).eq('status', 'pending').select('id');
+  if (e1) throw e1;
+  if (!trocado?.length) return responder({ error: 'Este pedido já foi resolvido.' }, 409);
+  const { error: e2 } = await adminClient.from('user_roles').upsert({ user_id: pedido.user_id, role: 'viewer' }, { onConflict: 'user_id' });
+  if (e2) throw e2;
+  const { error: e3 } = await adminClient.from('profiles').update({
+    is_active: true, permission_level: 'usuario_padrao', bond_type: 'professora', unit: pedido.requested_unit, updated_at: new Date().toISOString(),
+  }).eq('user_id', pedido.user_id);
+  if (e3) throw e3;
+  const { error: e4 } = await adminClient.auth.admin.updateUserById(pedido.user_id, { email_confirm: true });
+  if (e4) console.error('Erro ao confirmar email:', e4);
+  console.log(`[AUDIT] ${callerId} aprovou a professora ${pedido.user_id} (${pedido.requested_unit})`);
+
+  const { avisoEnviado, avisoErro } = await avisarAprovado(adminClient, pedido.user_id, url, anon);
+  return responder({ success: true, avisoEnviado, avisoErro });
+}
+
+/** 4. Avisar a pessoa de que o acesso saiu. */
+async function avisarAprovado(adminClient: Cliente, userId: string, SUPABASE_URL: string, SUPABASE_ANON_KEY: string): Promise<{ avisoEnviado: boolean; avisoErro: string | null }> {
     // 4. Avisar a pessoa de que o acesso saiu.
     //
     // A conta já existe neste ponto — ela criou a senha ao solicitar —, então
@@ -172,15 +241,5 @@ Deno.serve(async (req) => {
       console.warn('Aprovado, mas o aviso por e-mail não saiu:', avisoErro);
     }
 
-    return new Response(JSON.stringify({ success: true, avisoEnviado, avisoErro }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  } catch (err) {
-    console.error('Erro inesperado:', err);
-    return new Response(JSON.stringify({ error: err.message || 'Erro interno.' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
-});
+    return { avisoEnviado, avisoErro };
+}
