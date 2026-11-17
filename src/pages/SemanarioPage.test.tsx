@@ -14,6 +14,8 @@ const estado = vi.hoisted(() => ({
   salvos: [] as { id: string; campos: Record<string, unknown> }[],
   enviados: [] as string[],
   cheios: [] as string[],
+  devolutivas: [] as string[],
+  larga: false,
 }));
 
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => estado.auth }));
@@ -25,6 +27,7 @@ vi.mock('@/lib/semanario/pdf/gerar', () => ({
   gerarPdfDoSemanario: vi.fn(async () => ({ blob: new Blob(['%PDF']), cheios: estado.cheios, tamanho: 13.11 })),
   nomeDoArquivo: () => 'Semanário.pdf',
 }));
+vi.mock('@/hooks/useTelaLarga', () => ({ useTelaLarga: () => estado.larga }));
 vi.mock('pdfjs-dist', () => ({ GlobalWorkerOptions: {}, getDocument: () => ({ promise: new Promise(() => {}), destroy: async () => {} }) }));
 vi.mock('@/lib/semanario/api', () => ({
   lerMeus: async () => estado.linhas,
@@ -45,6 +48,13 @@ vi.mock('@/lib/semanario/api', () => ({
   }),
   desfazerEnvio: vi.fn(async (id: string) => { const l = estado.linhas.find(x => x.id === id)!; l.status = 'preenchimento'; return { ...l }; }),
   apagar: vi.fn(async () => {}),
+  darDevolutiva: vi.fn(async (id: string, texto: string) => {
+    estado.devolutivas.push(texto);
+    const l = estado.linhas.find(x => x.id === id)!;
+    const t = texto.trim() || null;
+    Object.assign(l, { devolutiva: t, status: t ? 'com_devolutiva' : 'enviado', devolutiva_por: t ? 'Orientação' : null, devolutiva_em: t ? '2026-11-19T13:05:00Z' : null });
+    return { ...l };
+  }),
 }));
 
 const dia = { projeto: 'Identidade', proposta: 'Roda', objetivo: 'Conversar', desenvolvimento: 'Em roda, com espelho' };
@@ -79,6 +89,8 @@ beforeEach(() => {
   estado.salvos = [];
   estado.enviados = [];
   estado.cheios = [];
+  estado.devolutivas = [];
+  estado.larga = false;
 });
 afterEach(() => { vi.useRealTimers(); });
 /** O relógio inteiro falso (o do beforeEach só finge a data), para o salvamento automático. */
@@ -231,7 +243,7 @@ describe('a professora', () => {
 });
 
 describe('quem só lê', () => {
-  it('a orientadora vê os do CEI dela e abre um, sem campos para escrever', async () => {
+  it('a orientadora vê os do CEI dela e abre um: só a devolutiva se escreve', async () => {
     estado.papel = { ...estado.papel, isProfessora: false, isOrientadora: true };
     estado.auth = { ...estado.auth, user: { id: 'ori-1', user_metadata: {} } };
     estado.linhas = [linha({ status: 'enviado', enviado_em: '2026-11-17T19:20:00Z', dias: { seg: dia } })];
@@ -239,7 +251,8 @@ describe('quem só lê', () => {
     expect(await screen.findByText('Semanários · Anísio')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Professora Teste'));
     expect(await screen.findByText('Semana de 23 a 27 de novembro')).toBeInTheDocument();
-    expect(screen.queryAllByRole('textbox')).toHaveLength(0);
+    // O único campo é o da devolutiva: o planejamento é só para ler.
+    expect(screen.getAllByRole('textbox')).toEqual([screen.getByLabelText('Devolutiva')]);
     expect(screen.queryByRole('button', { name: /Enviar à orientadora/ })).not.toBeInTheDocument();
   });
 
@@ -250,5 +263,124 @@ describe('quem só lê', () => {
     abrir();
     expect(await screen.findByText('Semanários das unidades')).toBeInTheDocument();
     expect(screen.getByText(/Anísio · AG I B/)).toBeInTheDocument();
+  });
+});
+
+describe('a devolutiva da orientadora', () => {
+  const orientadora = (unit = 'Anísio') => {
+    estado.papel = { ...estado.papel, isProfessora: false, isOrientadora: true, unit };
+    estado.auth = { ...estado.auth, user: { id: 'ori-1', user_metadata: {} } };
+  };
+
+  it('no semanário enviado do CEI dela: escreve, envia e o botão vira "Atualizar"', async () => {
+    orientadora();
+    estado.linhas = [linha({ status: 'enviado', enviado_em: '2026-11-17T19:20:00Z' })];
+    abrir('/educacao/semanario/s1');
+    const campo = await screen.findByLabelText('Devolutiva');
+    expect(screen.getByRole('button', { name: /Enviar devolutiva/ })).toBeDisabled();
+    fireEvent.change(campo, { target: { value: 'Muito bom o projeto Identidade!' } });
+    fireEvent.click(screen.getByRole('button', { name: /Enviar devolutiva/ }));
+    await waitFor(() => expect(estado.devolutivas).toEqual(['Muito bom o projeto Identidade!']));
+    expect(await screen.findByRole('button', { name: /Atualizar devolutiva/ })).toBeDisabled();
+    expect(screen.getByText('Com devolutiva')).toBeInTheDocument();
+  });
+
+  it('apagar a devolutiva pede confirmação e volta a aguardar', async () => {
+    orientadora();
+    estado.linhas = [linha({ status: 'com_devolutiva', devolutiva: 'Boa semana.', devolutiva_por: 'Orientação', devolutiva_em: '2026-11-19T13:05:00Z' })];
+    abrir('/educacao/semanario/s1');
+    fireEvent.click(await screen.findByRole('button', { name: /Apagar a devolutiva/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Apagar$/ }));
+    await waitFor(() => expect(estado.devolutivas).toEqual(['']));
+    expect(await screen.findByText('Aguardando devolutiva')).toBeInTheDocument();
+  });
+
+  it('ainda em preenchimento: a devolutiva espera o envio', async () => {
+    orientadora();
+    estado.linhas = [linha()];
+    abrir('/educacao/semanario/s1');
+    expect(await screen.findByText(/A devolutiva abre quando a professora enviar/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Devolutiva')).not.toBeInTheDocument();
+  });
+
+  it('orientadora de outro CEI e o marketing não escrevem devolutiva', async () => {
+    orientadora('Calmon');
+    estado.linhas = [linha({ status: 'enviado' })];
+    const { unmount } = abrir('/educacao/semanario/s1');
+    expect(await screen.findByText('Semana de 23 a 27 de novembro')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Devolutiva')).not.toBeInTheDocument();
+    unmount();
+    estado.papel = { ...estado.papel, isOrientadora: false, isMarketing: true, unit: 'Administração' };
+    abrir('/educacao/semanario/s1');
+    expect(await screen.findByText('Semana de 23 a 27 de novembro')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Devolutiva')).not.toBeInTheDocument();
+  });
+
+  it('no computador: os que aguardam vêm primeiro e o escolhido abre ao lado, com a devolutiva', async () => {
+    orientadora();
+    estado.larga = true;
+    estado.linhas = [
+      linha({ id: 'a', professora_nome: 'Carla Dias', status: 'com_devolutiva', devolutiva: 'Ok.' }),
+      linha({ id: 'b', professora_nome: 'Paula Lima', status: 'enviado', enviado_em: '2026-11-16T15:00:00Z' }),
+      linha({ id: 'c', professora_nome: 'Juliana Rocha' }),
+    ];
+    abrir();
+    expect(await screen.findByText('1 semanário aguardando devolutiva')).toBeInTheDocument();
+    const nomes = screen.getAllByRole('listitem').map(li => li.querySelector('b')?.textContent);
+    expect(nomes).toEqual(['Paula Lima', 'Juliana Rocha', 'Carla Dias']);
+    expect(await screen.findByRole('heading', { name: 'Paula Lima' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Devolutiva')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Carla Dias/ }));
+    expect(await screen.findByRole('heading', { name: 'Carla Dias' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Atualizar devolutiva/ })).toBeInTheDocument();
+  });
+
+  it('salvar sem ?ver= não pula para outra professora', async () => {
+    orientadora();
+    estado.larga = true;
+    estado.linhas = [
+      linha({ id: 'b', professora_nome: 'Paula Lima', status: 'enviado', enviado_em: '2026-11-16T15:00:00Z' }),
+      linha({ id: 'c', professora_nome: 'Juliana Rocha', status: 'enviado', enviado_em: '2026-11-17T15:00:00Z' }),
+    ];
+    abrir();
+    expect(await screen.findByRole('heading', { name: 'Paula Lima' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Devolutiva'), { target: { value: 'Boa semana.' } });
+    fireEvent.click(screen.getByRole('button', { name: /Enviar devolutiva/ }));
+    await waitFor(() => expect(estado.devolutivas).toEqual(['Boa semana.']));
+    expect(await screen.findByRole('button', { name: /Atualizar devolutiva/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Paula Lima' })).toBeInTheDocument();
+  });
+
+  it('o rascunho não some ao trocar de professora na lista', async () => {
+    orientadora();
+    estado.larga = true;
+    estado.linhas = [
+      linha({ id: 'r1', professora_nome: 'Paula Lima', status: 'enviado', enviado_em: '2026-11-16T15:00:00Z' }),
+      linha({ id: 'r2', professora_nome: 'Juliana Rocha', status: 'enviado', enviado_em: '2026-11-17T15:00:00Z' }),
+    ];
+    abrir();
+    fireEvent.change(await screen.findByLabelText('Devolutiva'), { target: { value: 'Rascunho para a Paula' } });
+    fireEvent.click(screen.getByRole('button', { name: /Juliana Rocha/ }));
+    expect(await screen.findByRole('heading', { name: 'Juliana Rocha' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Devolutiva')).toHaveValue('');
+    fireEvent.click(screen.getByRole('button', { name: /Paula Lima/ }));
+    expect(await screen.findByRole('heading', { name: 'Paula Lima' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Devolutiva')).toHaveValue('Rascunho para a Paula');
+  });
+
+  it('a professora desfez o envio enquanto ela escrevia: avisa e guarda o texto', async () => {
+    const api = await import('@/lib/semanario/api');
+    const { toast } = await import('sonner');
+    orientadora();
+    estado.linhas = [linha({ id: 'd1', status: 'enviado', enviado_em: '2026-11-17T19:20:00Z' })];
+    vi.mocked(api.darDevolutiva).mockImplementationOnce(async (id: string) => {
+      estado.linhas.find(x => x.id === id)!.status = 'preenchimento';
+      throw new Error('A devolutiva vem depois do envio.');
+    });
+    abrir('/educacao/semanario/d1');
+    fireEvent.change(await screen.findByLabelText('Devolutiva'), { target: { value: 'Texto guardado' } });
+    fireEvent.click(screen.getByRole('button', { name: /Enviar devolutiva/ }));
+    await waitFor(() => expect(toast.info).toHaveBeenCalledWith('A professora desfez o envio', expect.anything()));
+    expect(await screen.findByText(/O seu rascunho está guardado/)).toBeInTheDocument();
   });
 });

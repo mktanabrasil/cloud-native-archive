@@ -73,9 +73,12 @@ export async function desfazerEnvio(id: string): Promise<Semanario> {
 
 /** A devolutiva da orientadora. Texto vazio apaga a devolutiva. */
 export async function darDevolutiva(id: string, devolutiva: string): Promise<Semanario> {
-  const { data, error } = await db.from(TABELA).update({ devolutiva }).eq('id', id).select('*').single();
+  const { data, error } = await db.from(TABELA).update({ devolutiva }).eq('id', id).select('*');
   falhou(error);
-  return data as Semanario;
+  // A RLS esconde o que ela não pode mudar: sem linha de volta, não gravou.
+  const linha = (data as Semanario[] | null)?.[0];
+  if (!linha) throw new Error('Este semanário não está mais com você: o vínculo de orientação mudou, ou ele não existe mais.');
+  return linha;
 }
 
 /** Apaga um semanário ainda em preenchimento (só a própria professora). */

@@ -18,7 +18,9 @@ import {
 } from '@/lib/semanario/regras';
 import { cn } from '@/lib/utils';
 import { gerarPdfDoSemanario } from '@/lib/semanario/pdf/gerar';
+import { useTelaLarga } from '@/hooks/useTelaLarga';
 import { CaixaDaDevolutiva, Rotulo, Selo, Vidro, quando } from './pecas';
+import { Devolutiva } from './Devolutiva';
 import { AvisoDeFolhaCheia, FolhaAoLado, PreviaDoSemanario, useFolhaDoSemanario } from './PreviaDoSemanario';
 
 const conteudoDe = (s: Semanario): ConteudoDoSemanario => ({
@@ -31,20 +33,6 @@ const conteudoDe = (s: Semanario): ConteudoDoSemanario => ({
 
 type Gravacao = 'salvo' | 'pendente' | 'salvando' | 'erro';
 
-/** Tela larga (lg): só nela a folha fica ao lado; no celular ela nem é desenhada. */
-function useTelaLarga() {
-  const consulta = '(min-width: 1024px)';
-  const [larga, setLarga] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.(consulta).matches);
-  useEffect(() => {
-    const mq = window.matchMedia?.(consulta);
-    if (!mq) return;
-    const mudar = () => setLarga(mq.matches);
-    mudar();
-    mq.addEventListener?.('change', mudar);
-    return () => mq.removeEventListener?.('change', mudar);
-  }, []);
-  return larga;
-}
 
 /**
  * Um semanário aberto (mockup aprovado em 17/11/2026). A professora dona
@@ -53,7 +41,12 @@ function useTelaLarga() {
  * Depois do envio só a avaliação continua aberta. Quem só lê (a orientadora,
  * o marketing) vê os mesmos campos travados.
  */
-export function FichaDoSemanario({ id, souADona }: { id: string; souADona: (s: Semanario) => boolean }) {
+export function FichaDoSemanario({ id, souADona, podeDevolver = () => false }: {
+  id: string;
+  souADona: (s: Semanario) => boolean;
+  /** A orientadora pedagógica da unidade do semanário escreve a devolutiva. */
+  podeDevolver?: (s: Semanario) => boolean;
+}) {
   const navigate = useNavigate();
   const [estado, setEstado] = useState<'carregando' | 'erro' | 'sumiu' | 'pronto'>('carregando');
   const [linha, setLinha] = useState<Semanario | null>(null);
@@ -250,7 +243,9 @@ export function FichaDoSemanario({ id, souADona }: { id: string; souADona: (s: S
         {!dona && <span>{linha.unidade}</span>}
       </p>
 
-      {linha.devolutiva && <div className="mt-4"><CaixaDaDevolutiva texto={linha.devolutiva} por={linha.devolutiva_por} em={linha.devolutiva_em} /></div>}
+      {podeDevolver(linha)
+        ? <div className="mt-4"><Devolutiva semanario={linha} onSalvo={setLinha} /></div>
+        : linha.devolutiva && <div className="mt-4"><CaixaDaDevolutiva texto={linha.devolutiva} por={linha.devolutiva_por} em={linha.devolutiva_em} /></div>}
       {dona && linha.status !== 'preenchimento' && (
         <p className="mt-3 flex items-center gap-1.5 text-[12.5px] text-muted-foreground"><Lock className="h-3.5 w-3.5" /> Enviado: o planejamento está travado. A avaliação das propostas continua aberta.</p>
       )}
