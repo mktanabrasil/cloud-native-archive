@@ -21,7 +21,7 @@ import {
 import ImpersonationBanner from '@/components/ImpersonationBanner';
 import logoImg from '@/assets/logo.png';
 import { TemaFlutuante } from './ThemeToggle';
-import { navItems, ROTAS, ROTAS_DO_SETOR, setorDoCaminho } from '@/config/navigation';
+import { COR_DO_SETOR, navItems, ROTAS, ROTAS_DO_SETOR, setorDoCaminho, setoresVisiveis } from '@/config/navigation';
 import { ROTA_DO_CALENDARIO } from '@/lib/calendario/conta';
 import { FaixaDoSetor } from './FaixaDoSetor';
 import { useSouResponsavel } from '@/hooks/useSouResponsavel';
@@ -30,16 +30,9 @@ import { ehContaRestrita } from '@/lib/contasRestritas';
 import { UiV2 } from '@/lib/uiV2';
 import AppLayoutClassico from '@/classico/AppLayout';
 
-// Esboço V2 (kit visual, 26/10/2026): a cor de cada área aparece só na navegação.
-// Desde 16/11/2026 as áreas são os setores: Social (o azul dos Eventos),
-// Educação (o coral do Jornal), Vagas, Marketing e Painel.
-const COR_DA_AREA: Record<string, string> = {
-  [ROTAS.eventos]: '#01adff',
-  [ROTAS.jornal]: '#f37964',
-  '/vagas': '#81e2cf',
-  [ROTAS.marketing]: '#fbce00',
-  [ROTAS.painel]: '#8A938F',
-};
+// Esboço V2 (kit visual, 26/10/2026): a cor de cada área aparece só na navegação
+// (e, desde 17/11/2026, nos atalhos da página inicial). Ver `COR_DO_SETOR`.
+const COR_DA_AREA = COR_DO_SETOR;
 
 /**
  * `children`: o Calendário Anual (16/11/2026) entra no app pela própria rota,
@@ -98,24 +91,7 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
     return () => document.body.classList.remove('ui-v2');
   }, [isCleanView]);
 
-  const itensVisiveis = navItems.filter(item => {
-    // Regra para páginas escondidas (não aparecem no menu, acessadas por outra página)
-    if (item.hidden) return false;
-    // O Social é de todos, menos de quem vê só a Educação (16/11/2026).
-    if (item.setorSocial) return !soEducacao;
-    // Antes do `marketingOnly`: o Jornal tem regra própria, e a gestão da
-    // Educação entra nele sem entrar nas outras páginas da comunicação.
-    if (item.journalOnly) return canAccessJournal;
-    // RH, ou quem é responsável por algum processo (passo 3, 19/10/2026).
-    if (item.rhOnly) return isRh || souResponsavel;
-    if (item.marketingOnly) return isMarketing;
-    if (item.adminOnly) return isAdmin;
-    if (item.managerOnly) return isAdmin || isManager;
-    if (item.mktOrAdminOnly) return isAdmin;
-    if (item.auditoriaOnly) return canViewAuditoria;
-    if (item.requireAuth) return isAuthenticated;
-    return true;
-  });
+  const itensVisiveis = setoresVisiveis({ isAuthenticated, soEducacao, canAccessJournal, isRh, souResponsavel, isMarketing, isAdmin, isManager, canViewAuditoria });
   // O setor aberto: Social e Marketing têm várias rotas; os outros, a própria.
   const estaNaArea = (to: string) =>
     ROTAS_DO_SETOR[to] ? setorDoCaminho(location.pathname) === to : location.pathname.startsWith(to);
@@ -267,10 +243,10 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
   // com o interruptor ligado não entra em página nenhuma da equipe por enquanto.
   if (isAuthenticated && !carregandoPapel && soCalendario) return <Navigate to={ROTA_DO_CALENDARIO} replace />;
 
-  // A gestão da Educação não vê o Social (16/11/2026): o início dela (a raiz)
-  // e os Eventos da equipe levam ao Jornal. As Programações (`/eventos`)
-  // seguem públicas.
-  if (isAuthenticated && !carregandoPapel && soEducacao && (location.pathname === '/' || location.pathname === ROTAS.eventos)) return <Navigate to={ROTAS.jornal} replace />;
+  // A gestão da Educação não vê o Social (16/11/2026): os Eventos da equipe
+  // levam ao Jornal. A raiz é a página inicial dela, com os jornais (17/11);
+  // as Programações (`/eventos`) seguem públicas.
+  if (isAuthenticated && !carregandoPapel && soEducacao && location.pathname === ROTAS.eventos) return <Navigate to={ROTAS.jornal} replace />;
 
   return (
     <UiV2>

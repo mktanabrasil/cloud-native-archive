@@ -63,13 +63,7 @@ describe('a raiz, por quem chega', () => {
     expect(screen.getByText('calendário anual')).toBeInTheDocument();
   });
 
-  it('a equipe vai para /social/eventos, com o resto do link junto', () => {
-    estado.auth = equipe;
-    abrir('/?tela=calendario');
-    expect(endereco()).toBe('/social/eventos?tela=calendario');
-    expect(screen.getByText('Visão Geral')).toBeInTheDocument();
-  });
-
+  // A raiz com sessão é a página inicial desde 17/11/2026 (ver RaizPage.test).
   it('em /social/eventos, a equipe recebe o hub', () => {
     estado.auth = equipe;
     abrir('/social/eventos');

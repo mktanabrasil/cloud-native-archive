@@ -215,6 +215,21 @@ export default function JournalPage() {
     [journals, editingId],
   );
 
+  /**
+   * `?abrir=<id>` (17/11/2026): a busca da página inicial abre o jornal
+   * direto. Abre assim que a lista chega e some do endereço, para o "Voltar"
+   * cair na lista da unidade. Jornal que a pessoa não vê não está na lista,
+   * e o parâmetro só some.
+   */
+  const pedidoParaAbrir = searchParams.get('abrir');
+  useEffect(() => {
+    if (!pedidoParaAbrir || loading) return;
+    if (journals.some((journal) => journal.id === pedidoParaAbrir)) setEditingId(pedidoParaAbrir);
+    const params = new URLSearchParams(searchParams);
+    params.delete('abrir');
+    setSearchParams(params, { replace: true });
+  }, [pedidoParaAbrir, loading, journals, searchParams, setSearchParams]);
+
   /** Jornais da unidade selecionada — base para contadores e filtros. */
   const unitJournals = useMemo(
     () => journals.filter((journal) => (journal.unit_id ?? null) === activeUnitId),

@@ -43,6 +43,16 @@ vi.mock('@/hooks/useJournals', () => ({
   }),
 }));
 
+// O editor inteiro não é o que se testa aqui: só que ele abre, e com que jornal.
+vi.mock('@/components/journal/JournalEditor', () => ({
+  JournalEditor: ({ journal, onBack }: { journal: JournalRecord; onBack: () => void }) => (
+    <div data-testid="editor">
+      <input readOnly value={journal.name} aria-label="Nome do jornal" />
+      <button type="button" onClick={onBack}>Voltar</button>
+    </div>
+  ),
+}));
+
 const { default: JournalPage } = await import('./JournalPage');
 
 /** A página lê a unidade da URL, então precisa de um roteador por baixo. */
@@ -218,6 +228,23 @@ describe('jornal de outra unidade', () => {
  * A unidade em exibição vive na URL: sobrevive ao F5 e vira link direto. Na
  * memória da página, qualquer remontagem devolvia a pessoa para a unidade dela.
  */
+/** A busca da página inicial abre um jornal direto (17/11/2026). */
+describe('?abrir= no endereço', () => {
+  it('abre o jornal pedido, e o parâmetro sai do endereço', async () => {
+    espiao.journals = [jornal()];
+    montar('/educacao/jornal?unidade=geral&abrir=jornal-1');
+    expect(await screen.findByDisplayValue('Jornal ANA — Agosto')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /voltar/i })).toBeInTheDocument();
+  });
+
+  it('jornal que não está na lista não abre nada: fica a lista', async () => {
+    espiao.journals = [jornal()];
+    montar('/educacao/jornal?unidade=geral&abrir=nao-existe');
+    expect(await screen.findByText('Jornal ANA — Agosto')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Jornal ANA — Agosto')).not.toBeInTheDocument();
+  });
+});
+
 describe('a unidade na URL', () => {
   it('sem parâmetro, mostra a unidade do perfil', async () => {
     espiao.papel = { ...espiao.papel, isMarketing: false, unit: 'Calmon' };

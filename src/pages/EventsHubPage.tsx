@@ -76,15 +76,6 @@ export default function EventsHubPage() {
     return <PublicEventsPage />;
   }
 
-  // Com sessão, a raiz leva ao setor (16/11/2026): os Eventos ficam em
-  // /social/eventos, com o resto do link junto (`?tela=calendario` dos
-  // e-mails). A volta do Google fica na raiz: o efeito acima a encaminha.
-  const voltaDoGoogle = !!retornoDoGoogle(location.search) || !!searchParams.get('state')?.startsWith('drive:');
-  // Embed (`?embed=true`, `hideHeader`…) fica como sempre esteve, na raiz.
-  if (location.pathname === '/' && !voltaDoGoogle && !limpa) {
-    return <Navigate to={{ pathname: ROTAS.eventos, search: location.search, hash: location.hash }} replace />;
-  }
-
   return (
     <>
       {/* Durante a saída as duas telas coexistem: a porta é uma camada fixa por
