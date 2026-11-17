@@ -220,7 +220,7 @@ export function FichaDoSemanario({ id, souADona }: { id: string; souADona: (s: S
           <div>
             <Rotulo htmlFor="sem-agrupamento">Agrupamento</Rotulo>
             {tudoAberto ? (
-              <Input id="sem-agrupamento" value={c.agrupamento} maxLength={LIMITES.agrupamento} placeholder="Ex.: Maternal I B"
+              <Input id="sem-agrupamento" value={c.agrupamento} maxLength={LIMITES.agrupamento} placeholder="Ex.: AG I A"
                 onChange={e => mudar({ ...c, agrupamento: e.target.value })} className="mt-1 rounded-[12px] border-black/10 bg-white/80 text-[13.5px] dark:border-white/10 dark:bg-white/5" />
             ) : <p id="sem-agrupamento" className="mt-1 rounded-[12px] bg-black/[.04] px-3 py-2 text-[13.5px] dark:bg-white/[.05]">{c.agrupamento || '—'}</p>}
           </div>
