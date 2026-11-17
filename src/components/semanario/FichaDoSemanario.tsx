@@ -22,6 +22,7 @@ import { useTelaLarga } from '@/hooks/useTelaLarga';
 import { CaixaDaDevolutiva, Rotulo, Selo, Vidro, quando } from './pecas';
 import { Devolutiva } from './Devolutiva';
 import { AvisoDeFolhaCheia, FolhaAoLado, PreviaDoSemanario, useFolhaDoSemanario } from './PreviaDoSemanario';
+import { useTutorialDoSemanario } from './TutorialDoSemanario';
 
 const conteudoDe = (s: Semanario): ConteudoDoSemanario => ({
   agrupamento: s.agrupamento ?? '',
@@ -151,6 +152,8 @@ export function FichaDoSemanario({ id, souADona, podeDevolver = () => false }: {
 
   // A folha (página 2) refeita enquanto se escreve: ao lado do preenchimento e na prévia.
   const folha = useFolhaDoSemanario(c && linha ? { ...c, professora_nome: linha.professora_nome, semana: linha.semana } : null);
+  // O tutorial do preenchimento: só para a dona, enquanto ela ainda preenche.
+  const tut = useTutorialDoSemanario(linha && souADona(linha) && linha.status === 'preenchimento' ? 'semanario-ficha' : null, estado === 'pronto');
 
   if (estado === 'carregando') return <p className="px-6 py-10 text-center text-[14px] text-muted-foreground">Abrindo o semanário…</p>;
   if (estado === 'sumiu') return (
@@ -232,10 +235,11 @@ export function FichaDoSemanario({ id, souADona, podeDevolver = () => false }: {
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
         <Link to={ROTAS.semanario} className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> Semanário</Link>
         <span className="flex flex-wrap items-center gap-2">
-          {dona && <span className={cn('text-[12px] font-semibold', gravacao === 'erro' ? 'text-[hsl(var(--destructive))]' : gravacao === 'salvo' ? 'text-[hsl(var(--success))]' : 'text-muted-foreground')} role="status">{textoDaGravacao}</span>}
+          {tut.botao}
+          {dona && <span data-tutorial="sem-gravacao" className={cn('text-[12px] font-semibold', gravacao === 'erro' ? 'text-[hsl(var(--destructive))]' : gravacao === 'salvo' ? 'text-[hsl(var(--success))]' : 'text-muted-foreground')} role="status">{textoDaGravacao}</span>}
           {dona && gravacao === 'erro' && <Button size="sm" variant="outline" className="rounded-full" onClick={() => void gravar()}>Tentar salvar de novo</Button>}
-          <Button variant="outline" className="gap-1.5 rounded-full" onClick={() => setPrevia(true)}><Eye className="h-4 w-4" /> Ver a prévia</Button>
-          {tudoAberto && <Button className="gap-1.5 rounded-full" disabled={ocupado || conferindo} onClick={() => void pedirEnvio()}>{conferindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Enviar à orientadora</Button>}
+          <Button variant="outline" className="gap-1.5 rounded-full" data-tutorial="sem-previa" onClick={() => setPrevia(true)}><Eye className="h-4 w-4" /> Ver a prévia</Button>
+          {tudoAberto && <Button className="gap-1.5 rounded-full" data-tutorial="sem-enviar" disabled={ocupado || conferindo} onClick={() => void pedirEnvio()}>{conferindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Enviar à orientadora</Button>}
           {dona && linha.status === 'enviado' && <Button variant="outline" className="gap-1.5 rounded-full" disabled={ocupado} onClick={() => void desfazer()}><Undo2 className="h-4 w-4" /> Desfazer o envio</Button>}
         </span>
       </div>
@@ -258,7 +262,7 @@ export function FichaDoSemanario({ id, souADona, podeDevolver = () => false }: {
       <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
       <div className="min-w-0 space-y-3">
         {dona && folha.fase === 'pronta' && <AvisoDeFolhaCheia cheios={folha.cheios} className="lg:hidden" />}
-        <Vidro className="grid gap-3 p-4 sm:grid-cols-3">
+        <Vidro className="grid gap-3 p-4 sm:grid-cols-3" data-tutorial="sem-cabecalho">
           <div>
             <Rotulo htmlFor="sem-agrupamento">Agrupamento</Rotulo>
             {tudoAberto ? (
@@ -276,6 +280,7 @@ export function FichaDoSemanario({ id, souADona, podeDevolver = () => false }: {
           </div>
         </Vidro>
 
+        <div className="space-y-3" data-tutorial="sem-dias">
         {DIAS.map(d => {
           const dia = c.dias[d.chave];
           const n = CAMPOS_DO_DIA.filter(f => (dia?.[f.chave] ?? '').trim()).length;
@@ -303,7 +308,9 @@ export function FichaDoSemanario({ id, souADona, podeDevolver = () => false }: {
           );
         })}
 
-        <Vidro className="space-y-3 p-4">
+        </div>
+
+        <Vidro className="space-y-3 p-4" data-tutorial="sem-campos-da-semana">
           {CAMPOS_DA_SEMANA.map(f => {
             const aberto = f.chave === 'avaliacao' ? avaliacaoAberta : tudoAberto;
             return (
@@ -326,7 +333,7 @@ export function FichaDoSemanario({ id, souADona, podeDevolver = () => false }: {
       </div>
       {telaLarga && (
         <aside>
-          <div className="sticky top-24"><FolhaAoLado estado={folha} /></div>
+          <div className="sticky top-24" data-tutorial="sem-folha"><FolhaAoLado estado={folha} /></div>
         </aside>
       )}
       </div>
@@ -366,6 +373,7 @@ export function FichaDoSemanario({ id, souADona, podeDevolver = () => false }: {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {tut.tutorial}
     </main>
   );
 }

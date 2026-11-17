@@ -12,6 +12,7 @@ import {
 import { cn } from '@/lib/utils';
 import { CaixaDaDevolutiva, Selo, Vidro } from './pecas';
 import { baixarSemanario } from './PreviaDoSemanario';
+import { useTutorialDoSemanario } from './TutorialDoSemanario';
 
 
 /** Mensagem legível para os erros do banco ao criar. */
@@ -50,6 +51,7 @@ export function ListaDaProfessora({ professoraId }: { professoraId: string }) {
     catch { setEstado('erro'); }
   }, [professoraId]);
   useEffect(() => { void carregar(); }, [carregar]);
+  const tut = useTutorialDoSemanario('semanario-inicio', estado === 'pronto');
 
   const abrir = (id: string) => navigate(`${ROTAS.semanario}/${id}`);
   const comecar = async () => {
@@ -79,23 +81,26 @@ export function ListaDaProfessora({ professoraId }: { professoraId: string }) {
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-16 lg:px-6">
       <div className="mt-2">
-        <h1 className="font-display text-[30px] font-bold tracking-tight">Semanário</h1>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1 className="font-display text-[30px] font-bold tracking-tight">Semanário</h1>
+          {tut.botao}
+        </div>
         <p className="mt-1 text-[14.5px] text-muted-foreground">O planejamento da semana, no modelo da Orientação Pedagógica. Vocês preenchem; o documento sai sempre igual.</p>
       </div>
 
       {andamento.length === 0 && (
-        <Vidro className="mt-5 p-5">
+        <Vidro className="mt-5 p-5" data-tutorial="sem-semana">
           <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Próxima semana</p>
           <h2 className="mt-1 font-display text-[22px] font-bold tracking-tight">{periodoPorExtenso(proxima)}</h2>
           <p className="mt-0.5 text-[13.5px] text-muted-foreground">Ainda não começado · enviar até <b className="text-foreground">{diaComSemana(prazoDeEnvio(proxima))}</b></p>
         </Vidro>
       )}
 
-      {andamento.map(s => {
+      {andamento.map((s, i) => {
         const sit = situacao(s, hoje);
         const feitos = diasCompletos(s.dias);
         return (
-          <Vidro key={s.id} className="mt-5 p-5">
+          <Vidro key={s.id} className="mt-5 p-5" data-tutorial={i === 0 ? 'sem-semana' : undefined}>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-[12px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{s.semana === proxima ? 'Próxima semana' : s.semana === estaSemana ? 'Esta semana' : 'Mais adiante'}</p>
@@ -120,7 +125,7 @@ export function ListaDaProfessora({ professoraId }: { professoraId: string }) {
         );
       })}
 
-      <div className="mt-4 flex flex-wrap items-center gap-2 text-[13.5px]">
+      <div className="mt-4 flex flex-wrap items-center gap-2 text-[13.5px]" data-tutorial="sem-comecar">
         <label htmlFor="semana-nova" className="text-muted-foreground">Começar um semanário para</label>
         <select id="semana-nova" value={semanaNova} onChange={e => setSemanaNova(e.target.value)}
           className="h-9 w-full min-w-0 max-w-full rounded-full border sm:w-auto border-black/15 bg-white/70 px-3 text-[13.5px] dark:border-white/15 dark:bg-white/5">
@@ -130,7 +135,7 @@ export function ListaDaProfessora({ professoraId }: { professoraId: string }) {
       </div>
 
       {devolutiva && (
-        <div className="mt-6">
+        <div className="mt-6" data-tutorial="sem-devolutiva">
           <CaixaDaDevolutiva texto={devolutiva.devolutiva!} por={devolutiva.devolutiva_por} em={devolutiva.devolutiva_em}
             titulo={`Devolutiva da orientadora · ${periodoPorExtenso(devolutiva.semana)}`} />
         </div>
@@ -139,7 +144,7 @@ export function ListaDaProfessora({ professoraId }: { professoraId: string }) {
       {anteriores.length > 0 && (
         <>
           <h2 className="mt-8 text-[12px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Semanas anteriores</h2>
-          <Vidro className="mt-2 px-5 py-1">
+          <Vidro className="mt-2 px-5 py-1" data-tutorial="sem-anteriores">
             <ul className="divide-y divide-black/[.07] dark:divide-white/[.08]">
               {anteriores.map(s => {
                 const sit = situacao(s, hoje);
@@ -161,6 +166,7 @@ export function ListaDaProfessora({ professoraId }: { professoraId: string }) {
           </Vidro>
         </>
       )}
+      {tut.tutorial}
     </main>
   );
 }

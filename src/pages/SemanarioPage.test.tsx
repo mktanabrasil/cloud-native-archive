@@ -20,6 +20,8 @@ const estado = vi.hoisted(() => ({
   pedidos: [] as { id: string; user_id: string; name: string; email: string; requested_unit: string; requested_at: string }[],
   aprovados: [] as string[],
   recusados: [] as string[],
+  jaViuTudo: true,
+  vistos: [] as string[],
   aviso: { enviado: true } as { enviado: boolean; motivo?: string } | 'erro',
 }));
 
@@ -31,6 +33,9 @@ vi.mock('sonner', () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), err
 vi.mock('@/lib/semanario/pdf/gerar', () => ({
   gerarPdfDoSemanario: vi.fn(async () => ({ blob: new Blob(['%PDF']), cheios: estado.cheios, tamanho: 13.11 })),
   nomeDoArquivo: () => 'Semanário.pdf',
+}));
+vi.mock('@/hooks/useTutoriaisVistos', () => ({
+  useTutoriaisVistos: () => ({ carregado: true, jaViu: () => estado.jaViuTudo, marcarVisto: (r: string) => { estado.vistos.push(r); }, esquecer: () => {} }),
 }));
 vi.mock('@/hooks/useTelaLarga', () => ({ useTelaLarga: () => estado.larga }));
 vi.mock('pdfjs-dist', () => ({ GlobalWorkerOptions: {}, getDocument: () => ({ promise: new Promise(() => {}), destroy: async () => {} }) }));
@@ -108,6 +113,8 @@ beforeEach(() => {
   estado.pedidos = [];
   estado.aprovados = [];
   estado.recusados = [];
+  estado.jaViuTudo = true;
+  estado.vistos = [];
   estado.aviso = { enviado: true };
 });
 afterEach(() => { vi.useRealTimers(); });
@@ -492,5 +499,46 @@ describe('os pedidos de acesso das professoras (PR 7)', () => {
     abrir();
     expect(await screen.findByText(/Nenhum semanário desta semana/)).toBeInTheDocument();
     expect(screen.queryByText(/pediu acesso/)).not.toBeInTheDocument();
+  });
+});
+
+describe('o tutorial (PR 8)', () => {
+  const tutorial = () => screen.queryByRole('dialog', { name: 'Tutorial do Semanário' });
+
+  it('a professora vê o do início na primeira vez; fechar marca como visto', async () => {
+    estado.jaViuTudo = false;
+    abrir();
+    expect(await screen.findByRole('dialog', { name: 'Tutorial do Semanário' })).toBeInTheDocument();
+    expect(screen.getByText('Aqui você faz o seu semanário')).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(tutorial()).not.toBeInTheDocument());
+    expect(estado.vistos).toEqual(['semanario-inicio']);
+  });
+
+  it('já visto, não abre sozinho; o botão abre de novo', async () => {
+    abrir();
+    fireEvent.click(await screen.findByRole('button', { name: /Ver o tutorial/ }));
+    expect(await screen.findByRole('dialog', { name: 'Tutorial do Semanário' })).toBeInTheDocument();
+  });
+
+  it('a ficha da professora em preenchimento tem o roteiro do preenchimento', async () => {
+    estado.jaViuTudo = false;
+    estado.linhas = [linha()];
+    abrir('/educacao/semanario/s1');
+    expect(await screen.findByText('Salva sozinho')).toBeInTheDocument();
+  });
+
+  it('a orientadora tem o dela; o marketing não tem tutorial', async () => {
+    estado.jaViuTudo = false;
+    estado.papel = { ...estado.papel, isProfessora: false, isOrientadora: true, unit: 'Anísio' };
+    estado.auth = { ...estado.auth, user: { id: 'ori-1', user_metadata: {} } };
+    const { unmount } = abrir();
+    expect(await screen.findByText('Os semanários do seu CEI')).toBeInTheDocument();
+    unmount();
+    estado.papel = { ...estado.papel, isOrientadora: false, isMarketing: true, unit: 'Administração' };
+    abrir();
+    expect(await screen.findByText(/Nenhum semanário desta semana/)).toBeInTheDocument();
+    expect(tutorial()).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Ver o tutorial/ })).not.toBeInTheDocument();
   });
 });
