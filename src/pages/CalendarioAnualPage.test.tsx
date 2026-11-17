@@ -3,15 +3,15 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 /**
- * /calendario (14/11/2026): cada um vê o que é seu. Sem sessão, a entrada; a
- * conta do calendário, o preenchimento (se o marketing liberou); o marketing,
- * o preenchimento e quem tem acesso; o resto da equipe, o calendário de
- * eventos no hub.
+ * /social/calendario (14/11/2026): cada um vê o que é seu. Desde 17/11/2026
+ * o calendário é uma página do setor Social: sem sessão, o login do app; o
+ * marketing e a gestão do Social, o preenchimento dentro do app; o resto da
+ * equipe, o calendário de eventos no hub; a conta antiga só do calendário, um
+ * aviso.
  */
 const estado = vi.hoisted(() => ({
   auth: { isAuthenticated: false, loading: false, user: null as unknown, signOut: vi.fn() },
-  papel: { isMarketing: false, loading: false },
-  acesso: null as unknown,
+  papel: { isMarketing: false, temCalendarioAnual: false, loading: false },
   vistos: new Set<string>(),
   marcados: [] as string[],
   itens: [] as unknown[],
@@ -26,10 +26,9 @@ vi.mock('@/components/news/InstitutionalFooterBar', () => ({ default: () => null
 vi.mock('@/components/AppLayout', () => ({ default: ({ children }: { children: React.ReactNode }) => <div data-testid="dentro-do-app">{children}</div> }));
 vi.mock('@/lib/calendario/api', () => ({
   ANO_DO_CALENDARIO: 2027,
-  meuAcesso: async () => estado.acesso,
   lerAno: async () => ({ ano: 2027, tema: '', percursos: [], textos: {}, meses_revisados: [], capa_url: null, status: 'preenchimento', observacao: null, enviado_em: null, enviado_por: null, aprovado_em: null, aprovado_por: null, pdf_url: null, atualizado_em: '', atualizado_por: null }),
   lerItens: async () => estado.itens,
-  salvarAno: vi.fn(), listarAcessos: async () => [],
+  salvarAno: vi.fn(),
   enviarAoMarketing: vi.fn(), devolverAsCoordenadoras: vi.fn(), aprovarComPdf: vi.fn(), trocarCapa: vi.fn(), linkDoArquivo: vi.fn(async () => 'https://x'),
 }));
 
@@ -46,64 +45,56 @@ const abrir = (url = '/calendario') => render(
 
 beforeEach(() => {
   estado.auth = { isAuthenticated: false, loading: false, user: null, signOut: vi.fn() };
-  estado.papel = { isMarketing: false, loading: false };
-  estado.acesso = null;
+  estado.papel = { isMarketing: false, temCalendarioAnual: false, loading: false };
   estado.vistos = new Set(['calendario-inicio', 'calendario-mes']);
   estado.marcados = [];
   estado.itens = [];
 });
 
+/** A gestão de uma unidade do Social (17/11/2026: quem preenche, pela regra do setor). */
+function gestora() {
+  estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'dic@anabrasil.org', user_metadata: { name: 'Gestão DIC' } } };
+  estado.papel = { isMarketing: false, temCalendarioAnual: true, loading: false };
+}
+
 describe('quem chega em /calendario', () => {
-  it('sem sessão: a entrada, com primeiro acesso', () => {
-    abrir();
-    expect(screen.getByRole('heading', { name: 'Calendário Anual' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Primeiro acesso' })).toBeInTheDocument();
+  it('sem sessão: o login do app, que volta para cá', () => {
+    abrir('/calendario?parte=mes');
+    expect(screen.getByTestId('onde')).toHaveTextContent('/login?redirect=%2Fcalendario%3Fparte%3Dmes');
   });
 
-  it('conta do calendário sem liberação: o aviso, e nada do calendário', async () => {
+  it('conta antiga só do calendário: o aviso, e nada do calendário', async () => {
     estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'coord@ana.org', user_metadata: { conta: 'calendario', name: 'Coord' } } };
     abrir();
-    expect(await screen.findByText('Seu acesso ainda não foi liberado')).toBeInTheDocument();
+    expect(await screen.findByText('O Calendário Anual mudou de lugar')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Calendário Anual 2027' })).not.toBeInTheDocument();
   });
 
-  it('conta do calendário liberada: o preenchimento, sem a lista de acessos', async () => {
-    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'coord@ana.org', user_metadata: { conta: 'calendario', name: 'Coord' } } };
-    estado.acesso = { email: 'coord@ana.org', nome: 'Coord', ativo: true };
+  it('o marketing: o preenchimento dentro do app, sem lista de acesso', async () => {
+    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'mkt@anabrasil.org', user_metadata: {} } };
+    estado.papel = { isMarketing: true, temCalendarioAnual: true, loading: false };
     abrir();
     expect(await screen.findByRole('heading', { name: 'Calendário Anual 2027' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /coordenadoras com acesso/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /app/i })).not.toBeInTheDocument();
-    expect(screen.queryByTestId('dentro-do-app')).not.toBeInTheDocument();
-  });
-
-  it('o marketing: o preenchimento e quem tem acesso', async () => {
-    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'mkt@anabrasil.org', user_metadata: {} } };
-    estado.papel = { isMarketing: true, loading: false };
-    abrir();
-    expect(await screen.findByRole('button', { name: /coordenadoras com acesso/i })).toBeInTheDocument();
     expect(screen.getByTestId('dentro-do-app')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /coordenadoras com acesso/i })).not.toBeInTheDocument();
   });
 
-  it('a gestora liberada na lista: o preenchimento dentro do app, no setor Social (sem a trava desde 17/11/2026)', async () => {
-    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'dic@anabrasil.org', user_metadata: { name: 'Gestão DIC' } } };
-    estado.acesso = { email: 'dic@anabrasil.org', nome: 'Gestão DIC', ativo: true };
+  it('a gestão do Social: o preenchimento dentro do app', async () => {
+    gestora();
     abrir();
     expect(await screen.findByRole('heading', { name: 'Calendário Anual 2027' })).toBeInTheDocument();
     expect(screen.getByTestId('dentro-do-app')).toBeInTheDocument();
   });
 
   it('o resto da equipe: o calendário de eventos, no hub (com o que veio na URL)', async () => {
-    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'dic@anabrasil.org', user_metadata: {} } };
+    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'educador@anabrasil.org', user_metadata: {} } };
     abrir('/calendario?conflitos=true');
     await waitFor(() => expect(screen.getByTestId('onde')).toHaveTextContent('/social/eventos?tela=calendario&conflitos=true'));
   });
 });
 
 describe('o tutorial do calendário (13/11/2026)', () => {
-  const coordenadora = () => {
-    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'coord@ana.org', user_metadata: { conta: 'calendario', name: 'Coord' } } };
-    estado.acesso = { email: 'coord@ana.org', nome: 'Coord', ativo: true };
-  };
+  const coordenadora = gestora;
 
   it('abre sozinho no primeiro acesso e marca como visto ao terminar', async () => {
     coordenadora();
@@ -133,10 +124,7 @@ describe('o tutorial do calendário (13/11/2026)', () => {
 });
 
 describe('os textos do projeto (13/11/2026)', () => {
-  const coordenadora = () => {
-    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'coord@ana.org', user_metadata: { conta: 'calendario', name: 'Coord' } } };
-    estado.acesso = { email: 'coord@ana.org', nome: 'Coord', ativo: true };
-  };
+  const coordenadora = gestora;
 
   it('o início leva aos textos, que vêm de 2026 agrupados pela página do PDF', async () => {
     coordenadora();
@@ -170,10 +158,7 @@ describe('os textos do projeto (13/11/2026)', () => {
 });
 
 describe('autoria e revisão (13/11/2026)', () => {
-  const coordenadora = () => {
-    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'coord@ana.org', user_metadata: { conta: 'calendario', name: 'Coord' } } };
-    estado.acesso = { email: 'coord@ana.org', nome: 'Coord', ativo: true };
-  };
+  const coordenadora = gestora;
 
   it('no dia, a atividade mostra quem acrescentou', async () => {
     coordenadora();
@@ -184,11 +169,11 @@ describe('autoria e revisão (13/11/2026)', () => {
 
   it('o marketing abre a revisão; a coordenadora que tenta cai no início', async () => {
     estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'mkt@anabrasil.org', user_metadata: { name: 'MKT ANA' } } };
-    estado.papel = { isMarketing: true, loading: false };
+    estado.papel = { isMarketing: true, temCalendarioAnual: true, loading: false };
     const { unmount } = abrir('/calendario?parte=revisao');
     expect(await screen.findByRole('heading', { name: 'Calendário Anual 2027 · revisão' })).toBeInTheDocument();
     unmount();
-    estado.papel = { isMarketing: false, loading: false };
+    estado.papel = { isMarketing: false, temCalendarioAnual: false, loading: false };
     coordenadora();
     abrir('/calendario?parte=revisao');
     expect(await screen.findByRole('heading', { name: 'Calendário Anual 2027' })).toBeInTheDocument();
@@ -198,8 +183,7 @@ describe('autoria e revisão (13/11/2026)', () => {
 
 describe('unidade nova nos textos (13/11/2026)', () => {
   it('o botão acrescenta a ANA IV, em branco; ela é gravada mesmo vazia; a última pode sair', async () => {
-    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'coord@ana.org', user_metadata: { conta: 'calendario', name: 'Coord' } } };
-    estado.acesso = { email: 'coord@ana.org', nome: 'Coord', ativo: true };
+    gestora();
     const { salvarAno } = await import('@/lib/calendario/api');
     vi.mocked(salvarAno).mockReset();
     vi.mocked(salvarAno).mockImplementation(async (_ano, c) => ({ ...(await (await import('@/lib/calendario/api')).lerAno(2027)), ...c }) as never);

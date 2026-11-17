@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTestView } from '@/contexts/TestViewContext';
-import { ehUnidadeDoJornal, newsUnitForProfileUnit } from '@/lib/news/units';
+import { ehUnidadeDoJornal, newsUnitForProfileUnit, newsUnitSegment } from '@/lib/news/units';
 
 export type UserRole = 'admin' | 'editor' | 'criador' | null;
 
@@ -37,8 +37,6 @@ export function useUserRole() {
   const [unit, setUnit] = useState<string | null>(null);
   const [delegatedUnits, setDelegatedUnits] = useState<string[]>([]);
   const [bondType, setBondType] = useState<string | null>(null);
-  // Liberada (e ativa) na lista do Calendário Anual: a página aparece na faixa do Social (16/11/2026).
-  const [acessoCalendario, setAcessoCalendario] = useState(false);
 
   /**
    * O que identifica a pessoa, e não o objeto que a carrega.
@@ -67,7 +65,6 @@ export function useUserRole() {
       setUnit(activePersona.unit);
       setDelegatedUnits(activePersona.delegated_units || []);
       setBondType((activePersona as any).bond_type || null);
-      setAcessoCalendario(false);
       
       // If general admin, no restrictions. Otherwise, restrict to the persona's unit.
       setViewRestrictions(activePersona.permission_level === 'admin_geral' ? null : [activePersona.unit]);
@@ -79,7 +76,6 @@ export function useUserRole() {
 
     if (!isAuthenticated || !userId) {
       setRole(null);
-      setAcessoCalendario(false);
       setLoading(false);
       setAccessStatus(null);
       setCarregadoPara(null);
@@ -148,18 +144,6 @@ export function useUserRole() {
         setRole(null);
         setAccessStatus(requestData?.status || null);
       }
-      // Liberada no Calendário Anual: a página entra na faixa do Social. O banco
-      // devolve a própria linha; sem a tabela (ou sem linha), não está liberada.
-      // ("Só o calendário", a trava de 13/11, saiu em 17/11/2026: com o app por
-      // setores, a gestora do Social vê o Social, e o calendário está nele.)
-      let liberada = false;
-      if (userEmail) {
-        try {
-          const { data: acesso } = await (supabase as any).from('calendario_acessos').select('ativo').eq('email', userEmail.toLowerCase()).maybeSingle();
-          liberada = !!acesso?.ativo;
-        } catch { liberada = false; }
-      }
-      setAcessoCalendario(liberada);
 
       setCarregadoPara(userId);
       setLoading(false);
@@ -204,6 +188,14 @@ export function useUserRole() {
    * é de nenhum dos dois (fica com o que toda a equipe vê).
    */
   const isGestaoDaEducacao = isUnitManager && ehUnidadeDoJornal(newsUnitForProfileUnit(unit)?.id);
+  /** A gestão de uma NAVE: o setor dela é o Social. */
+  const isGestaoDoSocial = isUnitManager && newsUnitSegment(newsUnitForProfileUnit(unit)?.id) === 'social';
+  /**
+   * Quem preenche o Calendário Anual (17/11/2026): o marketing e a gestão do
+   * Social, pela regra do setor; não há mais lista de acesso. Espelho de
+   * `eh_do_calendario` no banco.
+   */
+  const temCalendarioAnual = isMarketing || isGestaoDoSocial;
 
   /**
    * Quem entra no Jornal: a comunicação e a gestão da Educação. Desde
@@ -257,7 +249,8 @@ export function useUserRole() {
     isGestaoDaEducacao,
     canAccessJournal,
     soEducacao,
-    temCalendarioAnual: acessoCalendario,
+    isGestaoDoSocial,
+    temCalendarioAnual,
   };
 }
 

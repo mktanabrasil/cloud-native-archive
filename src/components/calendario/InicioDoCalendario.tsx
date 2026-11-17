@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookOpen, CalendarDays, Check, ChevronRight, Image as ImageIcon, ListChecks, Users } from 'lucide-react';
+import { BookOpen, CalendarDays, Check, ChevronRight, Image as ImageIcon, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,7 @@ import { salvarAno } from '@/lib/calendario/api';
 import { MESES, andamento, autoriaDe, type AnoDoCalendario } from '@/lib/calendario/regras';
 import { SituacaoDoPdf } from './SituacaoDoPdf';
 
-export type Parte = 'inicio' | 'percursos' | 'mes' | 'coordenadoras' | 'textos' | 'revisao';
+export type Parte = 'inicio' | 'percursos' | 'mes' | 'textos' | 'revisao';
 
 const PASSOS = ['Preenchimento pelas coordenadoras', 'Revisão do marketing', 'Aprovado · PDF liberado'];
 const indiceDoStatus = { preenchimento: 0, revisao: 1, aprovado: 2 } as const;
@@ -90,13 +90,6 @@ export function InicioDoCalendario({ ano, editavel, marketing, onAno, abrir, onP
         </div>
         <aside className="space-y-4">
           <SituacaoDoPdf ano={ano} marketing={marketing} editavel={editavel} onAno={onAno} onPrevia={onPrevia} onRevisao={() => abrir('revisao')} />
-          {marketing && (
-            <section className="glass-2 rounded-[22px] p-4">
-              <p className="flex items-center gap-2 text-[13px] font-semibold"><Users className="h-4 w-4" /> Quem preenche</p>
-              <p className="mt-1 text-[13px] text-muted-foreground">Só entra quem o marketing liberar aqui.</p>
-              <Button variant="outline" className="mt-3 w-full" onClick={() => abrir('coordenadoras')}>Coordenadoras com acesso</Button>
-            </section>
-          )}
         </aside>
       </div>
     </div>

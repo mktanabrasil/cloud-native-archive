@@ -9,59 +9,74 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { ROTAS_DO_CANDIDATO, ehCandidato, primeiroNome } from '@/lib/vagas/conta';
 import { ehContaDoCalendario } from '@/lib/calendario/conta';
-import { ANO_DO_CALENDARIO, lerAno, lerItens, meuAcesso } from '@/lib/calendario/api';
+import { ANO_DO_CALENDARIO, lerAno, lerItens } from '@/lib/calendario/api';
 import { aberto, type AnoDoCalendario, type ItemDoCalendario } from '@/lib/calendario/regras';
 import { MolduraDoCalendario } from '@/components/calendario/MolduraDoCalendario';
 import AppLayout from '@/components/AppLayout';
 import { ROTAS } from '@/config/navigation';
-import { EntradaDoCalendario } from '@/components/calendario/EntradaDoCalendario';
 import { InicioDoCalendario, type Parte } from '@/components/calendario/InicioDoCalendario';
 import { PercursosDoAno } from '@/components/calendario/PercursosDoAno';
 import { TextosDoProjeto } from '@/components/calendario/TextosDoProjeto';
 import { PreviaDoPdf } from '@/components/calendario/PreviaDoPdf';
 import { RevisaoDoMarketing } from '@/components/calendario/RevisaoDoMarketing';
 import { MesAMes } from '@/components/calendario/MesAMes';
-import { CoordenadorasDoCalendario } from '@/components/calendario/CoordenadorasDoCalendario';
 
 /**
- * /social/calendario (14/11/2026): o Calendário Anual dos educadores.
+ * /social/calendario (14/11/2026): o Calendário Anual dos educadores, uma
+ * página do setor Social.
  *
- * - Sem sessão: a entrada (entrar, primeiro acesso, esqueci a senha).
- * - Conta do calendário: o preenchimento, se o marketing liberou o e-mail.
- * - Marketing: o mesmo preenchimento, mais quem tem acesso.
- * - Gestora liberada na lista (13/11/2026): o preenchimento também.
+ * Desde 17/11/2026 não há lista de acesso nem entrada própria: quem preenche
+ * é a gestão de cada unidade do Social (e o marketing, que revisa e monta o
+ * PDF), pela regra do setor; o login é o do app.
+ *
+ * - Sem sessão: o login do app, que volta para cá.
+ * - Marketing e gestão do Social: o preenchimento, dentro do app.
  * - O resto da equipe: o calendário de eventos, que mora na aba do hub
  *   (este endereço era dele até 14/11/2026).
- *
- * Setores (16/11/2026): quem é da equipe abre o calendário dentro do app, na
- * faixa do Social, ao lado de Eventos. A moldura própria (só a marca, sem o
- * menu) fica para a conta do calendário. A trava "só o calendário", que
- * prendia a gestora aqui, saiu em 17/11/2026.
+ * - Conta antiga "só do calendário" (de antes de 17/11): um aviso.
  */
 export default function CalendarioAnualPage() {
   const { user, isAuthenticated, loading, signOut } = useAuth();
-  const { isMarketing, loading: carregandoPapel } = useUserRole();
+  const { isMarketing, temCalendarioAnual, loading: carregandoPapel } = useUserRole();
   const location = useLocation();
 
   if (loading) return null;
-  if (!isAuthenticated) return <MolduraDoCalendario><EntradaDoCalendario /></MolduraDoCalendario>;
+  if (!isAuthenticated) return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   if (ehCandidato(user)) return <Navigate to={ROTAS_DO_CANDIDATO.minhaArea} replace />;
-  const doCalendario = ehContaDoCalendario(user);
-  if (!doCalendario && carregandoPapel) return null;
-  // Equipe que não é do marketing: fica se estiver liberada na lista; se não,
-  // segue para o calendário de eventos, no hub.
-  const resto = new URLSearchParams(location.search); resto.delete('parte'); resto.delete('m');
-  const doHub = `${ROTAS.eventos}?tela=calendario${resto.toString() ? `&${resto}` : ''}`;
-  const preenchimento = <Preenchimento email={user?.email ?? ''} nome={String(user?.user_metadata?.name ?? '') || user?.email || ''} marketing={!doCalendario && isMarketing} foraDaLista={doCalendario ? 'aviso' : doHub} />;
-  if (!doCalendario) return <AppLayout><TituloDaAba />{preenchimento}</AppLayout>;
-  const atalho = (
-    <span className="flex items-center gap-2">
-      <span className="hidden text-muted-foreground sm:inline">{primeiroNome(user)}</span>
-      <Button variant="ghost" size="sm" className="gap-1" onClick={() => void signOut()}><LogOut className="h-4 w-4" /> Sair</Button>
-    </span>
-  );
+  if (ehContaDoCalendario(user)) {
+    const sair = (
+      <span className="flex items-center gap-2">
+        <span className="hidden text-muted-foreground sm:inline">{primeiroNome(user)}</span>
+        <Button variant="ghost" size="sm" className="gap-1" onClick={() => void signOut()}><LogOut className="h-4 w-4" /> Sair</Button>
+      </span>
+    );
+    return <MolduraDoCalendario atalho={sair}><ContaAntiga /></MolduraDoCalendario>;
+  }
+  if (carregandoPapel) return null;
+  // Quem não preenche segue para o calendário de eventos, no hub.
+  if (!temCalendarioAnual) {
+    const resto = new URLSearchParams(location.search); resto.delete('parte'); resto.delete('m');
+    return <Navigate to={`${ROTAS.eventos}?tela=calendario${resto.toString() ? `&${resto}` : ''}`} replace />;
+  }
   return (
-    <MolduraDoCalendario atalho={atalho}>{preenchimento}</MolduraDoCalendario>
+    <AppLayout>
+      <TituloDaAba />
+      <Preenchimento nome={String(user?.user_metadata?.name ?? '') || user?.email || ''} marketing={isMarketing} />
+    </AppLayout>
+  );
+}
+
+/** A conta antiga "só do calendário": o calendário agora é pela conta da equipe. */
+function ContaAntiga() {
+  return (
+    <div className="mx-auto max-w-md px-4 py-10">
+      <div className="glass-2 rounded-[22px] p-6 text-center" role="status">
+        <h1 className="font-display text-[22px] font-bold">O Calendário Anual mudou de lugar</h1>
+        <p className="mt-2 text-[14px] text-muted-foreground">
+          Agora ele é preenchido pela gestão de cada unidade do Social, dentro do app, com a conta da equipe. Saia e entre com o e-mail da gestão da sua unidade.
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -75,12 +90,12 @@ function TituloDaAba() {
   return null;
 }
 
-/** `foraDaLista`: sem liberação, a conta do calendário vê o aviso; a da equipe vai para o hub. */
-function Preenchimento({ email, nome, marketing, foraDaLista }: { email: string; nome: string; marketing: boolean; foraDaLista: 'aviso' | string }) {
+/** O preenchimento: só chega aqui quem pode (ver acima); o banco confere de novo. */
+function Preenchimento({ nome, marketing }: { nome: string; marketing: boolean }) {
   const [params, setParams] = useSearchParams();
   const parte = (params.get('parte') as Parte | null) ?? 'inicio';
   const mes = Math.min(12, Math.max(1, Number(params.get('m')) || 1));
-  const [estado, setEstado] = useState<'carregando' | 'sem_acesso' | 'erro' | 'pronto'>('carregando');
+  const [estado, setEstado] = useState<'carregando' | 'fechado' | 'erro' | 'pronto'>('carregando');
   const [ano, setAno] = useState<AnoDoCalendario | null>(null);
   const [itens, setItens] = useState<ItemDoCalendario[]>([]);
   const [previaAberta, setPreviaAberta] = useState(false);
@@ -95,15 +110,11 @@ function Preenchimento({ email, nome, marketing, foraDaLista }: { email: string;
 
   const carregar = useCallback(async () => {
     try {
-      if (!marketing) {
-        const acesso = await meuAcesso(email);
-        if (!acesso?.ativo) { setEstado('sem_acesso'); return; }
-      }
       const [a, i] = await Promise.all([lerAno(ANO_DO_CALENDARIO), lerItens(ANO_DO_CALENDARIO)]);
-      if (!a) { setEstado(marketing ? 'erro' : 'sem_acesso'); return; }
+      if (!a) { setEstado(marketing ? 'erro' : 'fechado'); return; }
       setAno(a); setItens(i); setEstado('pronto');
     } catch { setEstado('erro'); }
-  }, [email, marketing]);
+  }, [marketing]);
   useEffect(() => { void carregar(); }, [carregar]);
 
   const abrir = (p: Parte, m?: number) => {
@@ -115,12 +126,11 @@ function Preenchimento({ email, nome, marketing, foraDaLista }: { email: string;
   };
 
   if (estado === 'carregando') return <p className="px-6 py-10 text-center text-[14px] text-muted-foreground">Carregando o calendário…</p>;
-  if (estado === 'sem_acesso' && foraDaLista !== 'aviso') return <Navigate to={foraDaLista} replace />;
-  if (estado === 'sem_acesso') return (
+  if (estado === 'fechado') return (
     <div className="mx-auto max-w-md px-4 py-10">
       <div className="glass-2 rounded-[22px] p-6 text-center" role="status">
-        <h1 className="font-display text-[22px] font-bold">Seu acesso ainda não foi liberado</h1>
-        <p className="mt-2 text-[14px] text-muted-foreground">O marketing libera o e-mail <b>{email}</b> para o Calendário Anual. Quando for liberado, é só entrar de novo.</p>
+        <h1 className="font-display text-[22px] font-bold">O Calendário Anual de {ANO_DO_CALENDARIO} ainda não foi aberto</h1>
+        <p className="mt-2 text-[14px] text-muted-foreground">O marketing abre o ano para o preenchimento. Quando abrir, ele aparece aqui.</p>
       </div>
     </div>
   );
@@ -144,9 +154,8 @@ function Preenchimento({ email, nome, marketing, foraDaLista }: { email: string;
       {parte === 'percursos' && <PercursosDoAno ano={ano} editavel={editavel} onAno={setAno} />}
       {parte === 'textos' && <TextosDoProjeto ano={ano} editavel={editavel} onAno={setAno} />}
       {parte === 'mes' && <MesAMes ano={ano} itens={itens} editavel={editavel} mes={mes} onMes={m => abrir('mes', m)} onAno={setAno} onItens={setItens} />}
-      {parte === 'coordenadoras' && marketing && <CoordenadorasDoCalendario quem={email} />}
       {parte === 'revisao' && marketing && <RevisaoDoMarketing ano={ano} itens={itens} quem={nome} onAno={setAno} onPrevia={() => setPreviaAberta(true)} />}
-      {(parte === 'inicio' || ((parte === 'coordenadoras' || parte === 'revisao') && !marketing)) && <InicioDoCalendario ano={ano} editavel={editavel} marketing={marketing} onAno={setAno} abrir={abrir} onPrevia={() => setPreviaAberta(true)} />}
+      {(parte === 'inicio' || (parte === 'revisao' && !marketing)) && <InicioDoCalendario ano={ano} editavel={editavel} marketing={marketing} onAno={setAno} abrir={abrir} onPrevia={() => setPreviaAberta(true)} />}
       <PreviaDoPdf ano={ano} itens={itens} podeBaixar={marketing} aberta={previaAberta} onFechar={() => setPreviaAberta(false)} />
       {roteiro && (
         <JournalTutorial percurso={roteiro} passos={ROTEIROS_DO_CALENDARIO[roteiro]} rotulo="Tutorial do Calendário Anual"
