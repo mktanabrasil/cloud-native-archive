@@ -7,7 +7,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { darDevolutiva, lerUm } from '@/lib/semanario/api';
+import { avisarPorEmail, darDevolutiva, lerUm } from '@/lib/semanario/api';
 import { LIMITES, diaComSemana, prazoDaDevolutiva, prazoDeEnvio, type Semanario } from '@/lib/semanario/regras';
 import { Vidro, quando } from './pecas';
 
@@ -54,8 +54,13 @@ export function Devolutiva({ semanario, onSalvo }: { semanario: Semanario; onSal
       rascunhos.delete(semanario.id);
       onSalvo(s);
       toast.success(novo.trim() ? (atual ? 'Devolutiva atualizada' : 'Devolutiva enviada') : 'Devolutiva apagada', {
-        description: novo.trim() ? 'A professora vê a devolutiva no app.' : 'O semanário volta a aguardar a devolutiva.',
+        description: novo.trim() ? 'A professora recebe um e-mail e vê a devolutiva no app.' : 'O semanário volta a aguardar a devolutiva.',
       });
+      // O e-mail para a professora (apagar não avisa). Se não sair, ela vê no app.
+      if (s.devolutiva) {
+        void avisarPorEmail(s.id, 'devolutiva').catch(() =>
+          toast.info('O e-mail para a professora não saiu', { description: 'A devolutiva está gravada; ela vê no app.' }));
+      }
     } catch (e) {
       // Pode ser que a professora tenha desfeito o envio enquanto ela escrevia: relê e mostra.
       const agora = await lerUm(semanario.id).catch(() => null);

@@ -10,7 +10,7 @@ import {
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ROTAS } from '@/config/navigation';
-import { apagar, desfazerEnvio, enviar, lerUm, salvar } from '@/lib/semanario/api';
+import { apagar, avisarPorEmail, desfazerEnvio, enviar, lerUm, salvar } from '@/lib/semanario/api';
 import {
   CAMPOS_DA_SEMANA, CAMPOS_DO_DIA, DIAS, LIMITES, ROTULO_DA_SITUACAO, dataDoDia, diaCompleto, diaComSemana,
   faltasParaEnviar, hojeIso, periodoCurto, periodoPorExtenso, prazoDaDevolutiva, prazoDeEnvio, situacao, textosLongos,
@@ -193,7 +193,12 @@ export function FichaDoSemanario({ id, souADona, podeDevolver = () => false }: {
       const nova = await enviar(linha.id, agora);
       gravada.current = Math.max(gravada.current, v);
       setLinha(nova); setSalvoAs(nova.atualizado_em); setGravacao(versao.current === gravada.current ? 'salvo' : 'pendente'); setConfirmar(null);
-      toast.success('Enviado à orientadora', { description: 'Ela lê e dá a devolutiva por aqui. A avaliação continua aberta para depois da semana.' });
+      toast.success('Enviado à orientadora', { description: 'Ela recebe um e-mail, lê e dá a devolutiva por aqui. A avaliação continua aberta para depois da semana.' });
+      // O e-mail para a orientadora: se não sair, o semanário já está com ela no app.
+      void avisarPorEmail(nova.id, 'envio').then(
+        r => { if (!r.enviado && r.motivo === 'sem orientadora') toast.info('O CEI ainda não tem orientadora no app', { description: 'O semanário está enviado; ela vê quando tiver acesso.' }); },
+        () => toast.info('O e-mail para a orientadora não saiu', { description: 'O semanário está enviado do mesmo jeito; ela vê no app.' }),
+      );
     } catch (e) { toast.error('Não foi possível enviar', { description: (e as Error).message }); }
     finally { setOcupado(false); }
   };
