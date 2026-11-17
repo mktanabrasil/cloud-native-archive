@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Plus } from 'lucide-react';
+import { ChevronRight, Download, Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { ROTAS } from '@/config/navigation';
@@ -11,6 +11,7 @@ import {
 } from '@/lib/semanario/regras';
 import { cn } from '@/lib/utils';
 import { CaixaDaDevolutiva, Selo, Vidro } from './pecas';
+import { baixarSemanario } from './PreviaDoSemanario';
 
 
 /** Mensagem legível para os erros do banco ao criar. */
@@ -36,6 +37,13 @@ export function ListaDaProfessora({ professoraId }: { professoraId: string }) {
   const opcoes = [estaSemana, proxima, somar(proxima, 7), somar(proxima, 14)];
   const [semanaNova, setSemanaNova] = useState(proxima);
   const [criando, setCriando] = useState(false);
+  const [baixando, setBaixando] = useState<string | null>(null);
+  const baixar = async (s: Semanario) => {
+    setBaixando(s.id);
+    try { await baixarSemanario(s); }
+    catch (e) { toast.error('Não foi possível gerar o PDF', { description: (e as Error).message }); }
+    finally { setBaixando(null); }
+  };
 
   const carregar = useCallback(async () => {
     try { setLista(await lerMeus(professoraId)); setEstado('pronto'); }
@@ -136,12 +144,16 @@ export function ListaDaProfessora({ professoraId }: { professoraId: string }) {
               {anteriores.map(s => {
                 const sit = situacao(s, hoje);
                 return (
-                  <li key={s.id}>
-                    <button type="button" onClick={() => abrir(s.id)} className="flex w-full flex-wrap items-center gap-3 py-3.5 text-left">
+                  <li key={s.id} className="flex items-center gap-2">
+                    <button type="button" onClick={() => abrir(s.id)} className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 py-3.5 text-left">
                       <span className="min-w-0 flex-1"><b className="block text-[14.5px]">{periodoPorExtenso(s.semana)}</b><span className="text-[12.5px] text-muted-foreground">{s.agrupamento || 'Sem agrupamento'}</span></span>
                       <Selo situacao={sit}>{ROTULO_DA_SITUACAO[sit]}</Selo>
                       <ChevronRight className="h-4 w-4 text-muted-foreground" aria-hidden />
                     </button>
+                    <Button variant="outline" size="sm" className="shrink-0 gap-1.5 rounded-full" disabled={baixando === s.id}
+                      aria-label={`Baixar o PDF de ${periodoPorExtenso(s.semana)}`} onClick={() => void baixar(s)}>
+                      {baixando === s.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} PDF
+                    </Button>
                   </li>
                 );
               })}
