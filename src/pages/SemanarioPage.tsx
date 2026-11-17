@@ -35,14 +35,17 @@ export default function SemanarioPage() {
   if (!temSemanario) return <SemAcesso />;
 
   const professora = isProfessora && !isMarketing;
+  // A orientadora escreve a devolutiva dos semanários do CEI dela (o banco confere de novo).
+  const mesmaUnidade = (a: string | null | undefined, b: string) => (a ?? '').trim().toLowerCase() === b.trim().toLowerCase();
+  const podeDevolver = (s: { unidade: string }) => !!isOrientadora && !isMarketing && mesmaUnidade(unit, s.unidade);
   return (
     <AppLayout>
       <TituloDaAba />
       {id
-        ? <FichaDoSemanario key={id} id={id} souADona={s => !!user && s.professora_id === user.id} />
+        ? <FichaDoSemanario key={id} id={id} souADona={s => !!user && s.professora_id === user.id} podeDevolver={podeDevolver} />
         : professora
           ? <ListaDaProfessora professoraId={user!.id} />
-          : <ListaDaUnidade titulo={isOrientadora && !isMarketing ? `Semanários · ${unit || 'CEI'}` : 'Semanários das unidades'} marketing={isMarketing} />}
+          : <ListaDaUnidade titulo={isOrientadora && !isMarketing ? `Semanários · ${unit || 'CEI'}` : 'Semanários das unidades'} marketing={isMarketing} podeDevolver={podeDevolver} />}
     </AppLayout>
   );
 }
