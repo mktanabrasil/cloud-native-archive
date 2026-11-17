@@ -37,8 +37,6 @@ export function useUserRole() {
   const [unit, setUnit] = useState<string | null>(null);
   const [delegatedUnits, setDelegatedUnits] = useState<string[]>([]);
   const [bondType, setBondType] = useState<string | null>(null);
-  /** Liberada no Calendário Anual com "só o calendário" ligado (13/11/2026). */
-  const [acessoSoCalendario, setAcessoSoCalendario] = useState(false);
   // Liberada (e ativa) na lista do Calendário Anual: a página aparece na faixa do Social (16/11/2026).
   const [acessoCalendario, setAcessoCalendario] = useState(false);
 
@@ -69,7 +67,6 @@ export function useUserRole() {
       setUnit(activePersona.unit);
       setDelegatedUnits(activePersona.delegated_units || []);
       setBondType((activePersona as any).bond_type || null);
-      setAcessoSoCalendario(false);
       setAcessoCalendario(false);
       
       // If general admin, no restrictions. Otherwise, restrict to the persona's unit.
@@ -82,7 +79,6 @@ export function useUserRole() {
 
     if (!isAuthenticated || !userId) {
       setRole(null);
-      setAcessoSoCalendario(false);
       setAcessoCalendario(false);
       setLoading(false);
       setAccessStatus(null);
@@ -152,19 +148,17 @@ export function useUserRole() {
         setRole(null);
         setAccessStatus(requestData?.status || null);
       }
-      // "Só o calendário" (13/11/2026): a gestora liberada no Calendário Anual
-      // com o interruptor ligado enxerga só o calendário, por enquanto. O banco
-      // devolve a própria linha; sem a tabela (ou sem linha), não está presa.
-      let soCal = false;
+      // Liberada no Calendário Anual: a página entra na faixa do Social. O banco
+      // devolve a própria linha; sem a tabela (ou sem linha), não está liberada.
+      // ("Só o calendário", a trava de 13/11, saiu em 17/11/2026: com o app por
+      // setores, a gestora do Social vê o Social, e o calendário está nele.)
       let liberada = false;
       if (userEmail) {
         try {
-          const { data: acesso } = await (supabase as any).from('calendario_acessos').select('ativo, so_calendario').eq('email', userEmail.toLowerCase()).maybeSingle();
-          soCal = !!(acesso?.ativo && acesso?.so_calendario);
+          const { data: acesso } = await (supabase as any).from('calendario_acessos').select('ativo').eq('email', userEmail.toLowerCase()).maybeSingle();
           liberada = !!acesso?.ativo;
-        } catch { soCal = false; liberada = false; }
+        } catch { liberada = false; }
       }
-      setAcessoSoCalendario(soCal);
       setAcessoCalendario(liberada);
 
       setCarregadoPara(userId);
@@ -196,8 +190,6 @@ export function useUserRole() {
    * para tudo o que o banco também libera ao admin.
    */
   const isEquipeDeMarketing = bondType === 'marketing' && isActive;
-  /** Só o Calendário Anual, por enquanto; o marketing nunca fica preso. */
-  const soCalendario = acessoSoCalendario && !isMarketing;
 
   /**
    * Espelho de `is_rh_or_admin` no banco (vagas, 25/09/2026): admin, ou
@@ -265,7 +257,6 @@ export function useUserRole() {
     isGestaoDaEducacao,
     canAccessJournal,
     soEducacao,
-    soCalendario,
     temCalendarioAnual: acessoCalendario,
   };
 }

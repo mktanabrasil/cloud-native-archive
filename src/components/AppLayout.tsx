@@ -22,7 +22,6 @@ import ImpersonationBanner from '@/components/ImpersonationBanner';
 import logoImg from '@/assets/logo.png';
 import { TemaFlutuante } from './ThemeToggle';
 import { COR_DO_SETOR, navItems, ROTAS, ROTAS_DO_SETOR, setorDoCaminho, setoresVisiveis } from '@/config/navigation';
-import { ROTA_DO_CALENDARIO } from '@/lib/calendario/conta';
 import { FaixaDoSetor } from './FaixaDoSetor';
 import { useSouResponsavel } from '@/hooks/useSouResponsavel';
 import { useAvisosDaEquipe } from '@/hooks/useAvisosDaEquipe';
@@ -61,7 +60,7 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
   const { isAuthenticated: temSessao, signOut, user } = useAuth();
   // Conta de candidato (Trabalhe Conosco) vê o app como visitante: sem menu da equipe.
   const isAuthenticated = temSessao && !ehContaRestrita(user);
-  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh, soCalendario, soEducacao, temCalendarioAnual, loading: carregandoPapel } = useUserRole();
+  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh, soEducacao, temCalendarioAnual, loading: carregandoPapel } = useUserRole();
   // A bolinha em "Vagas": novos + respostas não lidas (passo 5, 20/10/2026).
   const avisosDeVagas = useAvisosDaEquipe(isRh || souResponsavel, location.pathname);
   const { eligible: betaEligible, rawEnabled: betaOn, toggleBeta } = useBetaPreference();
@@ -239,10 +238,6 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
   // mudança — é o que o site já incorpora (pedido de 26/10/2026).
   if (isCleanView) return children ? <>{children}</> : <AppLayoutClassico />;
 
-  // "Só o calendário" (13/11/2026): a gestora liberada no Calendário Anual
-  // com o interruptor ligado não entra em página nenhuma da equipe por enquanto.
-  if (isAuthenticated && !carregandoPapel && soCalendario) return <Navigate to={ROTA_DO_CALENDARIO} replace />;
-
   // A gestão da Educação não vê o Social (16/11/2026): os Eventos da equipe
   // levam ao Jornal. A raiz é a página inicial dela, com os jornais (17/11);
   // as Programações (`/eventos`) seguem públicas.
@@ -285,8 +280,8 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
       )}
 
       <main className={cn('flex-1', !isCleanView ? 'mx-auto w-full overflow-x-clip' : 'overflow-visible', comDocaVisivel && 'pb-28')}>
-        {/* Com sessão, o miolo espera o papel (13/11/2026): a conta "só o calendário"
-            não pode ver a página da equipe nem por um instante antes de ir embora. */}
+        {/* Com sessão, o miolo espera o papel (13/11/2026): quem é desviada (a gestão
+            da Educação nos Eventos) não vê a página nem por um instante antes de ir. */}
         {isAuthenticated && carregandoPapel ? null : (
           <>
             {mostraMoldura && isAuthenticated && <FaixaDoSetor temCalendario={temCalendario} cor={to => COR_DA_AREA[to]} compacta={comDoca} />}

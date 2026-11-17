@@ -13,6 +13,7 @@ import { ANO_DO_CALENDARIO, lerAno, lerItens, meuAcesso } from '@/lib/calendario
 import { aberto, type AnoDoCalendario, type ItemDoCalendario } from '@/lib/calendario/regras';
 import { MolduraDoCalendario } from '@/components/calendario/MolduraDoCalendario';
 import AppLayout from '@/components/AppLayout';
+import { ROTAS } from '@/config/navigation';
 import { EntradaDoCalendario } from '@/components/calendario/EntradaDoCalendario';
 import { InicioDoCalendario, type Parte } from '@/components/calendario/InicioDoCalendario';
 import { PercursosDoAno } from '@/components/calendario/PercursosDoAno';
@@ -23,23 +24,23 @@ import { MesAMes } from '@/components/calendario/MesAMes';
 import { CoordenadorasDoCalendario } from '@/components/calendario/CoordenadorasDoCalendario';
 
 /**
- * /calendario (14/11/2026): o Calendário Anual dos educadores.
+ * /social/calendario (14/11/2026): o Calendário Anual dos educadores.
  *
  * - Sem sessão: a entrada (entrar, primeiro acesso, esqueci a senha).
  * - Conta do calendário: o preenchimento, se o marketing liberou o e-mail.
  * - Marketing: o mesmo preenchimento, mais quem tem acesso.
- * - Gestora liberada na lista (13/11/2026): o preenchimento também. Com
- *   "só o calendário" ligado, sem o atalho para o app.
+ * - Gestora liberada na lista (13/11/2026): o preenchimento também.
  * - O resto da equipe: o calendário de eventos, que mora na aba do hub
  *   (este endereço era dele até 14/11/2026).
  *
  * Setores (16/11/2026): quem é da equipe abre o calendário dentro do app, na
  * faixa do Social, ao lado de Eventos. A moldura própria (só a marca, sem o
- * menu) fica para a conta do calendário e para a gestora com "só o calendário".
+ * menu) fica para a conta do calendário. A trava "só o calendário", que
+ * prendia a gestora aqui, saiu em 17/11/2026.
  */
 export default function CalendarioAnualPage() {
   const { user, isAuthenticated, loading, signOut } = useAuth();
-  const { isMarketing, loading: carregandoPapel, soCalendario } = useUserRole();
+  const { isMarketing, loading: carregandoPapel } = useUserRole();
   const location = useLocation();
 
   if (loading) return null;
@@ -50,9 +51,9 @@ export default function CalendarioAnualPage() {
   // Equipe que não é do marketing: fica se estiver liberada na lista; se não,
   // segue para o calendário de eventos, no hub.
   const resto = new URLSearchParams(location.search); resto.delete('parte'); resto.delete('m');
-  const doHub = `/?tela=calendario${resto.toString() ? `&${resto}` : ''}`;
+  const doHub = `${ROTAS.eventos}?tela=calendario${resto.toString() ? `&${resto}` : ''}`;
   const preenchimento = <Preenchimento email={user?.email ?? ''} nome={String(user?.user_metadata?.name ?? '') || user?.email || ''} marketing={!doCalendario && isMarketing} foraDaLista={doCalendario ? 'aviso' : doHub} />;
-  if (!doCalendario && !soCalendario) return <AppLayout><TituloDaAba />{preenchimento}</AppLayout>;
+  if (!doCalendario) return <AppLayout><TituloDaAba />{preenchimento}</AppLayout>;
   const atalho = (
     <span className="flex items-center gap-2">
       <span className="hidden text-muted-foreground sm:inline">{primeiroNome(user)}</span>
