@@ -23,6 +23,7 @@ import { REDIRECIONAMENTOS } from "@/config/navigation";
 import { MarketingSemAba, Redireciona } from "@/components/Redireciona";
 import MarketingHubPage from "./pages/MarketingHubPage";
 import EventsHubPage from "./pages/EventsHubPage";
+import RaizPage from "./pages/RaizPage";
 import MercadoSolidarioPage from "./pages/MercadoSolidarioPage";
 import MercadoSolidarioPublicPage from "./pages/MercadoSolidarioPublicPage";
 import EnquetePublicaPage from "./pages/EnquetePublicaPage";
@@ -206,9 +207,9 @@ const App = () => (
                   <Route key={antigo} path={antigo} element={<Redireciona para={novo} />} />
                 ))}
                 <Route element={<AppLayout />}>
-                  {/* A raiz: a porta de entrada para quem chega sem sessão; quem
-                      está logado segue para o setor dele (EventsHubPage). */}
-                  <Route path="/" element={<EventsHubPage />} />
+                  {/* A raiz: a porta de entrada para quem chega sem sessão; para
+                      quem está logado, a página inicial (17/11/2026). */}
+                  <Route path="/" element={<RaizPage />} />
                   <Route path="/social/eventos" element={<EventsHubPage />} />
                   {/* Endereço próprio das Programações. Antes só redirecionava para a
                       raiz, que era onde elas viviam; com a porta de entrada na raiz,

@@ -97,6 +97,54 @@ export const navItems: NavItem[] = [
   { to: ROTAS.painel, label: 'Painel', icon: Users, requireAuth: true, marketingOnly: true },
 ];
 
+/** A cor de cada setor: na barra, na doca, na faixa e nos atalhos da página inicial. */
+export const COR_DO_SETOR: Record<string, string> = {
+  [ROTAS.eventos]: '#01adff',
+  [ROTAS.jornal]: '#f37964',
+  '/vagas': '#81e2cf',
+  [ROTAS.marketing]: '#fbce00',
+  [ROTAS.painel]: '#8A938F',
+};
+
+/** O que decide quais setores a pessoa vê (tudo vem de `useUserRole`). */
+export interface QuemVe {
+  isAuthenticated: boolean;
+  soEducacao?: boolean;
+  canAccessJournal?: boolean;
+  isRh?: boolean;
+  /** Responsável por algum processo de vaga (passo 3, 19/10/2026). */
+  souResponsavel?: boolean;
+  isMarketing?: boolean;
+  isAdmin?: boolean;
+  isManager?: boolean;
+  canViewAuditoria?: boolean;
+}
+
+/**
+ * Os setores que a pessoa vê, na ordem do menu. Uma regra só para a barra, a
+ * doca e a página inicial (17/11/2026), para nunca discordarem.
+ */
+export function setoresVisiveis(q: QuemVe): NavItem[] {
+  return navItems.filter(item => {
+    // Regra para páginas escondidas (não aparecem no menu, acessadas por outra página)
+    if (item.hidden) return false;
+    // O Social é de todos, menos de quem vê só a Educação (16/11/2026).
+    if (item.setorSocial) return !q.soEducacao;
+    // Antes do `marketingOnly`: o Jornal tem regra própria, e a gestão da
+    // Educação entra nele sem entrar nas outras páginas da comunicação.
+    if (item.journalOnly) return !!q.canAccessJournal;
+    // RH, ou quem é responsável por algum processo (passo 3, 19/10/2026).
+    if (item.rhOnly) return !!(q.isRh || q.souResponsavel);
+    if (item.marketingOnly) return !!q.isMarketing;
+    if (item.adminOnly) return !!q.isAdmin;
+    if (item.managerOnly) return !!(q.isAdmin || q.isManager);
+    if (item.mktOrAdminOnly) return !!q.isAdmin;
+    if (item.auditoriaOnly) return !!q.canViewAuditoria;
+    if (item.requireAuth) return q.isAuthenticated;
+    return true;
+  });
+}
+
 /* ---------- a faixa de cada setor ---------- */
 
 export interface PaginaDoSetor {

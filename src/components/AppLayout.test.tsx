@@ -224,10 +224,10 @@ describe('quem vê o quê', () => {
     expect(screen.queryByRole('navigation', { name: 'Navegação' })).not.toBeInTheDocument();
   });
 
-  it('para a direção de um CEI, o início é o Jornal', () => {
+  it('a direção de um CEI fica na página inicial (17/11/2026: com os jornais)', () => {
     estado.papel = { ...DIRECAO_DE_CEI };
     abrirComEndereco('/');
-    expect(ondeEstou()).toBe('/educacao/jornal');
+    expect(ondeEstou()).toBe('/');
   });
 
   it('as Programações continuam abrindo para ela pelo endereço', () => {
