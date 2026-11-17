@@ -44,7 +44,7 @@ const dia = { projeto: 'Identidade', proposta: 'Roda', objetivo: 'Conversar', de
 function linha(campos: Partial<Semanario> = {}): Semanario {
   return {
     id: 's1', professora_id: 'prof-1', professora_nome: 'Professora Teste', unidade: 'Anísio', semana: '2026-11-23',
-    agrupamento: 'Maternal I B', dias: {}, formas_registro: '', materiais: '', avaliacao: '', status: 'preenchimento',
+    agrupamento: 'AG I B', dias: {}, formas_registro: '', materiais: '', avaliacao: '', status: 'preenchimento',
     enviado_em: null, devolutiva: null, devolutiva_por: null, devolutiva_por_id: null, devolutiva_em: null,
     criado_em: '2026-11-17T10:00:00Z', atualizado_em: '2026-11-17T10:00:00Z', ...campos,
   };
@@ -174,7 +174,7 @@ describe('a professora', () => {
     abrir('/educacao/semanario/s1');
     const agrupamento = await screen.findByLabelText('Agrupamento');
     relogioFalso();
-    fireEvent.change(agrupamento, { target: { value: 'Maternal I C' } });
+    fireEvent.change(agrupamento, { target: { value: 'AG I C' } });
     await act(async () => { vi.advanceTimersByTime(1000); });
     vi.useRealTimers();
     fireEvent.click(screen.getByRole('button', { name: /Enviar à orientadora/ }));
@@ -183,7 +183,7 @@ describe('a professora', () => {
     expect(estado.enviados).toEqual([]);
     await act(async () => { soltar(); });
     await waitFor(() => expect(estado.enviados).toEqual(['s1']));
-    expect(estado.salvos.at(-1)?.campos).toMatchObject({ agrupamento: 'Maternal I C' });
+    expect(estado.salvos.at(-1)?.campos).toMatchObject({ agrupamento: 'AG I C' });
   });
 
   it('com devolutiva: ela aparece no topo e o envio não se desfaz', async () => {
@@ -213,6 +213,6 @@ describe('quem só lê', () => {
     estado.linhas = [linha()];
     abrir();
     expect(await screen.findByText('Semanários das unidades')).toBeInTheDocument();
-    expect(screen.getByText(/Anísio · Maternal I B/)).toBeInTheDocument();
+    expect(screen.getByText(/Anísio · AG I B/)).toBeInTheDocument();
   });
 });
