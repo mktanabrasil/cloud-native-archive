@@ -42,7 +42,7 @@ describe('conteúdo', () => {
     expect(faltasParaEnviar({ ...conteudoVazio() })).toEqual([
       'Agrupamento', '2ª FEIRA', '3ª FEIRA', '4ª FEIRA', '5ª FEIRA', '6ª FEIRA', 'Formas de registro', 'Materiais',
     ]);
-    expect(faltasParaEnviar({ agrupamento: 'Maternal I B', dias: semanaCheia, formas_registro: 'Fotos', materiais: 'Papel' })).toEqual([]);
+    expect(faltasParaEnviar({ agrupamento: 'AG I B', dias: semanaCheia, formas_registro: 'Fotos', materiais: 'Papel' })).toEqual([]);
     expect(faltasParaEnviar({ agrupamento: 'M', dias: { ...semanaCheia, qui: { ...diaCheio, objetivo: '  ' } }, formas_registro: 'F', materiais: 'M' })).toEqual(['5ª FEIRA']);
   });
 
