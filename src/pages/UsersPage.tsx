@@ -169,7 +169,7 @@ export default function UsersPage() {
     if (error || (data as any)?.error) {
       toast({ 
         title: 'Erro ao cadastrar', 
-        description: (data as any)?.error || error?.message || 'Falha ao criar usuário.', 
+        description: await mensagemDaFuncao(error, data, 'Falha ao criar usuário.'),
         variant: 'destructive' 
       });
       return;
