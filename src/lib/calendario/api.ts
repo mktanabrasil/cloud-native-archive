@@ -13,7 +13,6 @@ const db = supabase as unknown as SupabaseClient;
 /** O ano em preenchimento agora. */
 export const ANO_DO_CALENDARIO = 2027;
 
-export interface AcessoDoCalendario { email: string; nome: string; ativo: boolean; criado_em: string; criado_por: string | null }
 
 const falhou = (error: { message?: string } | null) => { if (error) throw error; };
 
@@ -66,33 +65,6 @@ export async function apagarItem(id: string): Promise<void> {
 }
 
 /** O acesso de quem está logado (o banco só devolve a própria linha a quem não é do marketing). */
-export async function meuAcesso(email: string): Promise<AcessoDoCalendario | null> {
-  const { data, error } = await db.from('calendario_acessos').select('*').eq('email', email.trim().toLowerCase()).maybeSingle();
-  falhou(error);
-  return (data as AcessoDoCalendario | null) ?? null;
-}
-
-export async function listarAcessos(): Promise<AcessoDoCalendario[]> {
-  const { data, error } = await db.from('calendario_acessos').select('*').order('nome');
-  falhou(error);
-  return (data as AcessoDoCalendario[]) ?? [];
-}
-
-export async function liberarAcesso(email: string, nome: string, por: string | null): Promise<void> {
-  const { error } = await db.from('calendario_acessos').upsert({ email: email.trim().toLowerCase(), nome: nome.trim(), ativo: true, criado_por: por }, { onConflict: 'email' });
-  falhou(error);
-}
-
-export async function definirAcessoAtivo(email: string, ativo: boolean): Promise<void> {
-  const { error } = await db.from('calendario_acessos').update({ ativo }).eq('email', email);
-  falhou(error);
-}
-
-export async function removerAcesso(email: string): Promise<void> {
-  const { error } = await db.from('calendario_acessos').delete().eq('email', email);
-  falhou(error);
-}
-
 /* ---------- envio, revisão e aprovação (13/11/2026) ---------- */
 
 async function mudarAno(ano: number, campos: Record<string, unknown>, aviso: string): Promise<AnoDoCalendario> {

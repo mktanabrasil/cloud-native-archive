@@ -1,63 +1,16 @@
 import type { User } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
-import { comMaiusculas } from '@/lib/vagas/maiusculas';
 
 /**
- * A conta do Calendário Anual (14/11/2026).
+ * A conta antiga "só do Calendário Anual" (14/11 a 17/11/2026).
  *
- * As coordenadoras do Social preenchem o calendário com conta própria, no
- * mesmo esquema da conta de candidato: o mesmo Supabase Auth, mas a conta
- * nasce com `conta: 'calendario'` nos metadados. No banco, o desvio na
- * `handle_new_user` (migração 20261114100000) não cria perfil: o banco não
- * entrega nada da equipe a ela. No app, a mesma marca a leva sempre para
- * `/calendario`, de qualquer endereço.
- *
- * Criar a conta não basta para entrar: o e-mail precisa estar liberado pelo
- * marketing (`calendario_acessos`). Sem isso, ela entra e vê só o aviso.
+ * Por três dias, as coordenadoras puderam criar uma conta só para o
+ * calendário (`conta: 'calendario'` nos metadados, sem perfil no banco). Desde
+ * 17/11/2026 o calendário é uma página do setor Social, preenchida pela gestão
+ * de cada unidade com a conta da equipe; não há mais entrada nem lista
+ * própria. Quem ainda entrar com uma conta dessas vê um aviso (ver
+ * `CalendarioAnualPage`), e qualquer rota da equipe a devolve para lá.
  */
 export const ROTA_DO_CALENDARIO = '/social/calendario';
-/**
- * O endereço de volta do e-mail de confirmação continua o de antes
- * (16/11/2026): é ele que está liberado na lista de endereços do login, e o
- * app o leva para `ROTA_DO_CALENDARIO`, com o resto do link junto.
- */
-export const ROTA_DE_VOLTA_DO_CALENDARIO = '/calendario';
 
 export const ehContaDoCalendario = (u: Pick<User, 'user_metadata'> | null | undefined): boolean =>
   u?.user_metadata?.conta === 'calendario';
-
-export async function entrarNoCalendario(email: string, senha: string): Promise<void> {
-  const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password: senha });
-  if (error) throw error;
-}
-
-/**
- * Primeiro acesso: cria a senha. Sem sessão de volta = falta confirmar o e-mail.
- *
- * E-mail que já tem conta (13/11/2026): com a confirmação de e-mail ligada, o
- * servidor não cria outra conta nem manda link, e responde como se tivesse
- * criado — só que com `identities` vazio. Sem olhar isso, a tela dizia
- * "Enviamos um link" e nada chegava. É o caso das gestoras, que já têm conta
- * da equipe com o e-mail da gestão.
- */
-export async function criarContaDoCalendario(nome: string, email: string, senha: string): Promise<{ precisaConfirmar: boolean; jaTemConta: boolean }> {
-  const { data, error } = await supabase.auth.signUp({
-    email: email.trim().toLowerCase(),
-    password: senha,
-    options: {
-      emailRedirectTo: `${window.location.origin}${ROTA_DE_VOLTA_DO_CALENDARIO}`,
-      data: { conta: 'calendario', name: comMaiusculas(nome, { pessoa: true }) },
-    },
-  });
-  if (error) throw error;
-  const jaTemConta = !!data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0;
-  return { precisaConfirmar: !data.session && !jaTemConta, jaTemConta };
-}
-
-/** O link de troca de senha volta para a tela de redefinir; de lá, para o calendário. */
-export async function recuperarSenhaDoCalendario(email: string): Promise<void> {
-  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-    redirectTo: `${window.location.origin}/redefinir-senha`,
-  });
-  if (error) throw error;
-}

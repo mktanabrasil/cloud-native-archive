@@ -177,6 +177,21 @@ describe('o setor da gestão', () => {
     return result.current;
   };
 
+  it('o Calendário Anual é da gestão do Social e do marketing, pelo setor (17/11/2026)', async () => {
+    expect((await carregar()).temCalendarioAnual).toBe(true);
+  });
+
+  it('a gestão da Educação não preenche o Calendário Anual', async () => {
+    espiao.unidade = 'Anísio';
+    expect((await carregar()).temCalendarioAnual).toBe(false);
+  });
+
+  it('o marketing preenche o Calendário Anual', async () => {
+    espiao.unidade = 'Administração';
+    espiao.vinculo = 'marketing';
+    expect((await carregar()).temCalendarioAnual).toBe(true);
+  });
+
   it('a gestão de uma NAVE não entra no Jornal e vê o Social', async () => {
     const papel = await carregar();
     expect(papel.isUnitManager).toBe(true);
