@@ -10,7 +10,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
  */
 const estado = vi.hoisted(() => ({
   auth: { isAuthenticated: false, loading: false, user: null as unknown, signOut: vi.fn() },
-  papel: { isMarketing: false, loading: false, soCalendario: false },
+  papel: { isMarketing: false, loading: false },
   acesso: null as unknown,
   vistos: new Set<string>(),
   marcados: [] as string[],
@@ -46,7 +46,7 @@ const abrir = (url = '/calendario') => render(
 
 beforeEach(() => {
   estado.auth = { isAuthenticated: false, loading: false, user: null, signOut: vi.fn() };
-  estado.papel = { isMarketing: false, loading: false, soCalendario: false };
+  estado.papel = { isMarketing: false, loading: false };
   estado.acesso = null;
   estado.vistos = new Set(['calendario-inicio', 'calendario-mes']);
   estado.marcados = [];
@@ -78,25 +78,15 @@ describe('quem chega em /calendario', () => {
 
   it('o marketing: o preenchimento e quem tem acesso', async () => {
     estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'mkt@anabrasil.org', user_metadata: {} } };
-    estado.papel = { isMarketing: true, loading: false, soCalendario: false };
+    estado.papel = { isMarketing: true, loading: false };
     abrir();
     expect(await screen.findByRole('button', { name: /coordenadoras com acesso/i })).toBeInTheDocument();
     expect(screen.getByTestId('dentro-do-app')).toBeInTheDocument();
   });
 
-  it('a gestora liberada na lista (13/11/2026): o preenchimento; com só o calendário, sem o atalho para o app', async () => {
+  it('a gestora liberada na lista: o preenchimento dentro do app, no setor Social (sem a trava desde 17/11/2026)', async () => {
     estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'dic@anabrasil.org', user_metadata: { name: 'Gestão DIC' } } };
-    estado.acesso = { email: 'dic@anabrasil.org', nome: 'Gestão DIC', ativo: true, so_calendario: true };
-    estado.papel = { isMarketing: false, loading: false, soCalendario: true };
-    abrir();
-    expect(await screen.findByRole('heading', { name: 'Calendário Anual 2027' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /app/i })).not.toBeInTheDocument();
-    expect(screen.queryByTestId('dentro-do-app')).not.toBeInTheDocument();
-  });
-
-  it('a gestora liberada, já solta do só o calendário: o preenchimento dentro do app, no setor Social', async () => {
-    estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'dic@anabrasil.org', user_metadata: { name: 'Gestão DIC' } } };
-    estado.acesso = { email: 'dic@anabrasil.org', nome: 'Gestão DIC', ativo: true, so_calendario: false };
+    estado.acesso = { email: 'dic@anabrasil.org', nome: 'Gestão DIC', ativo: true };
     abrir();
     expect(await screen.findByRole('heading', { name: 'Calendário Anual 2027' })).toBeInTheDocument();
     expect(screen.getByTestId('dentro-do-app')).toBeInTheDocument();
@@ -105,14 +95,14 @@ describe('quem chega em /calendario', () => {
   it('o resto da equipe: o calendário de eventos, no hub (com o que veio na URL)', async () => {
     estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'dic@anabrasil.org', user_metadata: {} } };
     abrir('/calendario?conflitos=true');
-    await waitFor(() => expect(screen.getByTestId('onde')).toHaveTextContent('/?tela=calendario&conflitos=true'));
+    await waitFor(() => expect(screen.getByTestId('onde')).toHaveTextContent('/social/eventos?tela=calendario&conflitos=true'));
   });
 });
 
 describe('o tutorial do calendário (13/11/2026)', () => {
   const coordenadora = () => {
     estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'coord@ana.org', user_metadata: { conta: 'calendario', name: 'Coord' } } };
-    estado.acesso = { email: 'coord@ana.org', nome: 'Coord', ativo: true, so_calendario: true };
+    estado.acesso = { email: 'coord@ana.org', nome: 'Coord', ativo: true };
   };
 
   it('abre sozinho no primeiro acesso e marca como visto ao terminar', async () => {
@@ -194,11 +184,11 @@ describe('autoria e revisão (13/11/2026)', () => {
 
   it('o marketing abre a revisão; a coordenadora que tenta cai no início', async () => {
     estado.auth = { ...estado.auth, isAuthenticated: true, user: { email: 'mkt@anabrasil.org', user_metadata: { name: 'MKT ANA' } } };
-    estado.papel = { isMarketing: true, loading: false, soCalendario: false };
+    estado.papel = { isMarketing: true, loading: false };
     const { unmount } = abrir('/calendario?parte=revisao');
     expect(await screen.findByRole('heading', { name: 'Calendário Anual 2027 · revisão' })).toBeInTheDocument();
     unmount();
-    estado.papel = { isMarketing: false, loading: false, soCalendario: false };
+    estado.papel = { isMarketing: false, loading: false };
     coordenadora();
     abrir('/calendario?parte=revisao');
     expect(await screen.findByRole('heading', { name: 'Calendário Anual 2027' })).toBeInTheDocument();

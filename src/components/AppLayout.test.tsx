@@ -8,17 +8,17 @@ const estado = vi.hoisted(() => ({
 }));
 const MARKETING = {
   isAdmin: true, isManager: true, userName: 'Comunicação', unit: 'Administração', canViewAuditoria: true,
-  isMarketing: true, canAccessJournal: true, isRh: true, soCalendario: false, temCalendarioAnual: false, loading: false,
+  isMarketing: true, canAccessJournal: true, isRh: true, temCalendarioAnual: false, loading: false,
 };
 // A gestão de uma unidade do Social, liberada no Calendário Anual (e já solta do "só o calendário").
 const GESTORA_DO_SOCIAL = {
   isAdmin: false, isManager: true, userName: 'Gestão', unit: 'DIC', canViewAuditoria: false,
-  isMarketing: false, canAccessJournal: false, isRh: false, soCalendario: false, temCalendarioAnual: true, loading: false,
+  isMarketing: false, canAccessJournal: false, isRh: false, temCalendarioAnual: true, loading: false,
 };
 // A direção de um CEI: a gestão da Educação vê só a Educação (16/11/2026).
 const DIRECAO_DE_CEI = {
   isAdmin: false, isManager: true, userName: 'Direção', unit: 'Anísio', canViewAuditoria: false,
-  isMarketing: false, canAccessJournal: true, isRh: false, soCalendario: false, soEducacao: true, temCalendarioAnual: false, loading: false,
+  isMarketing: false, canAccessJournal: true, isRh: false, soEducacao: true, temCalendarioAnual: false, loading: false,
 };
 
 vi.mock('@/contexts/AuthContext', () => ({
@@ -246,6 +246,15 @@ describe('quem vê o quê', () => {
     estado.papel = { ...DIRECAO_DE_CEI };
     abrirComEndereco('/social/eventos');
     expect(ondeEstou()).toBe('/educacao/jornal');
+  });
+});
+
+/** Com sessão, o miolo espera o papel: ninguém vê uma página que não é dela nem por um instante. */
+describe('enquanto o papel carrega', () => {
+  it('a página não aparece', () => {
+    estado.papel = { ...GESTORA_DO_SOCIAL, loading: true };
+    abrir('/social/eventos');
+    expect(screen.queryByText('conteúdo')).not.toBeInTheDocument();
   });
 });
 
