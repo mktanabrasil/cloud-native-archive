@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronDown, Lock, Send, Trash2, Undo2 } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Eye, Loader2, Lock, Send, Trash2, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,9 @@ import {
   type CampoDoDia, type ChaveDoDia, type ConteudoDoSemanario, type Semanario,
 } from '@/lib/semanario/regras';
 import { cn } from '@/lib/utils';
+import { gerarPdfDoSemanario } from '@/lib/semanario/pdf/gerar';
 import { CaixaDaDevolutiva, Rotulo, Selo, Vidro, quando } from './pecas';
+import { AvisoDeFolhaCheia, FolhaAoLado, PreviaDoSemanario, useFolhaDoSemanario } from './PreviaDoSemanario';
 
 const conteudoDe = (s: Semanario): ConteudoDoSemanario => ({
   agrupamento: s.agrupamento ?? '',
@@ -28,6 +30,21 @@ const conteudoDe = (s: Semanario): ConteudoDoSemanario => ({
 });
 
 type Gravacao = 'salvo' | 'pendente' | 'salvando' | 'erro';
+
+/** Tela larga (lg): só nela a folha fica ao lado; no celular ela nem é desenhada. */
+function useTelaLarga() {
+  const consulta = '(min-width: 1024px)';
+  const [larga, setLarga] = useState(() => typeof window !== 'undefined' && !!window.matchMedia?.(consulta).matches);
+  useEffect(() => {
+    const mq = window.matchMedia?.(consulta);
+    if (!mq) return;
+    const mudar = () => setLarga(mq.matches);
+    mudar();
+    mq.addEventListener?.('change', mudar);
+    return () => mq.removeEventListener?.('change', mudar);
+  }, []);
+  return larga;
+}
 
 /**
  * Um semanário aberto (mockup aprovado em 17/11/2026). A professora dona
@@ -46,6 +63,11 @@ export function FichaDoSemanario({ id, souADona }: { id: string; souADona: (s: S
   const [diaAberto, setDiaAberto] = useState<ChaveDoDia | null>(null);
   const [confirmar, setConfirmar] = useState<'enviar' | 'apagar' | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const [previa, setPrevia] = useState(false);
+  // O que não coube na folha, conferido no PDF de verdade na hora de enviar.
+  const [cheiosNoEnvio, setCheiosNoEnvio] = useState<string[]>([]);
+  const [conferindo, setConferindo] = useState(false);
+  const telaLarga = useTelaLarga();
 
   // O que ainda não foi para o banco: a versão do texto e o relógio da gravação.
   const versao = useRef(0);
@@ -134,6 +156,9 @@ export function FichaDoSemanario({ id, souADona }: { id: string; souADona: (s: S
     return () => { window.removeEventListener('beforeunload', avisar); void gravar(); };
   }, [gravar]);
 
+  // A folha (página 2) refeita enquanto se escreve: ao lado do preenchimento e na prévia.
+  const folha = useFolhaDoSemanario(c && linha ? { ...c, professora_nome: linha.professora_nome, semana: linha.semana } : null);
+
   if (estado === 'carregando') return <p className="px-6 py-10 text-center text-[14px] text-muted-foreground">Abrindo o semanário…</p>;
   if (estado === 'sumiu') return (
     <div className="mx-auto max-w-md px-4 py-10 text-center">
@@ -151,14 +176,28 @@ export function FichaDoSemanario({ id, souADona }: { id: string; souADona: (s: S
   const hoje = hojeIso();
   const sit = situacao(linha, hoje);
   const faltas = faltasParaEnviar(c);
-  const longos = textosLongos(c);
+  const longos = [...textosLongos(c), ...cheiosNoEnvio];
+
+  /** Antes de abrir a confirmação, confere no PDF se tudo cabe na folha. */
+  const pedirEnvio = async () => {
+    setConferindo(true);
+    try {
+      const r = await gerarPdfDoSemanario({ ...(atual.current.c ?? c), professora_nome: linha.professora_nome, semana: linha.semana });
+      setCheiosNoEnvio(r.cheios);
+    } catch { setCheiosNoEnvio([]); /* sem o PDF, o banco ainda segura os tetos de tamanho */ }
+    finally { setConferindo(false); setConfirmar('enviar'); }
+  };
 
   const enviarAgora = async () => {
     setOcupado(true);
     try {
       await esperarGravacao();
+      // Confere de novo o que vai sair: ela pode ter escrito durante a conferência.
       const v = versao.current;
-      const nova = await enviar(linha.id, atual.current.c ?? c);
+      const agora = atual.current.c ?? c;
+      const conferido = await gerarPdfDoSemanario({ ...agora, professora_nome: linha.professora_nome, semana: linha.semana }).catch(() => null);
+      if (conferido?.cheios.length) { setCheiosNoEnvio(conferido.cheios); return; }
+      const nova = await enviar(linha.id, agora);
       gravada.current = Math.max(gravada.current, v);
       setLinha(nova); setSalvoAs(nova.atualizado_em); setGravacao(versao.current === gravada.current ? 'salvo' : 'pendente'); setConfirmar(null);
       toast.success('Enviado à orientadora', { description: 'Ela lê e dá a devolutiva por aqui. A avaliação continua aberta para depois da semana.' });
@@ -191,13 +230,14 @@ export function FichaDoSemanario({ id, souADona }: { id: string; souADona: (s: S
     );
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 pb-16 lg:px-6">
+    <main className="mx-auto w-full max-w-7xl px-4 pb-16 lg:px-6">
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
         <Link to={ROTAS.semanario} className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> Semanário</Link>
         <span className="flex flex-wrap items-center gap-2">
           {dona && <span className={cn('text-[12px] font-semibold', gravacao === 'erro' ? 'text-[hsl(var(--destructive))]' : gravacao === 'salvo' ? 'text-[hsl(var(--success))]' : 'text-muted-foreground')} role="status">{textoDaGravacao}</span>}
           {dona && gravacao === 'erro' && <Button size="sm" variant="outline" className="rounded-full" onClick={() => void gravar()}>Tentar salvar de novo</Button>}
-          {tudoAberto && <Button className="gap-1.5 rounded-full" disabled={ocupado} onClick={() => setConfirmar('enviar')}><Send className="h-4 w-4" /> Enviar à orientadora</Button>}
+          <Button variant="outline" className="gap-1.5 rounded-full" onClick={() => setPrevia(true)}><Eye className="h-4 w-4" /> Ver a prévia</Button>
+          {tudoAberto && <Button className="gap-1.5 rounded-full" disabled={ocupado || conferindo} onClick={() => void pedirEnvio()}>{conferindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Enviar à orientadora</Button>}
           {dona && linha.status === 'enviado' && <Button variant="outline" className="gap-1.5 rounded-full" disabled={ocupado} onClick={() => void desfazer()}><Undo2 className="h-4 w-4" /> Desfazer o envio</Button>}
         </span>
       </div>
@@ -215,7 +255,9 @@ export function FichaDoSemanario({ id, souADona }: { id: string; souADona: (s: S
         <p className="mt-3 flex items-center gap-1.5 text-[12.5px] text-muted-foreground"><Lock className="h-3.5 w-3.5" /> Enviado: o planejamento está travado. A avaliação das propostas continua aberta.</p>
       )}
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+      <div className="min-w-0 space-y-3">
+        {dona && folha.fase === 'pronta' && <AvisoDeFolhaCheia cheios={folha.cheios} className="lg:hidden" />}
         <Vidro className="grid gap-3 p-4 sm:grid-cols-3">
           <div>
             <Rotulo htmlFor="sem-agrupamento">Agrupamento</Rotulo>
@@ -282,6 +324,14 @@ export function FichaDoSemanario({ id, souADona }: { id: string; souADona: (s: S
           </div>
         )}
       </div>
+      {telaLarga && (
+        <aside>
+          <div className="sticky top-24"><FolhaAoLado estado={folha} /></div>
+        </aside>
+      )}
+      </div>
+
+      <PreviaDoSemanario estado={folha} semanario={{ ...c, professora_nome: linha.professora_nome, semana: linha.semana }} aberta={previa} onFechar={() => setPrevia(false)} />
 
       <AlertDialog open={confirmar === 'enviar'} onOpenChange={o => !o && setConfirmar(null)}>
         <AlertDialogContent>
@@ -290,7 +340,7 @@ export function FichaDoSemanario({ id, souADona }: { id: string; souADona: (s: S
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-[14px]">
                 {faltas.length > 0 && <p>Preencha antes: <b>{faltas.join(', ')}</b>.</p>}
-                {longos.length > 0 && <p>Texto acima do limite em: <b>{longos.join(', ')}</b>. Encurte para caber na folha.</p>}
+                {longos.length > 0 && <p>Não cabe na folha: <b>{longos.join(', ')}</b>. Encurte esse texto para caber.</p>}
                 {!faltas.length && !longos.length && <p>A orientadora pedagógica recebe o semanário de {periodoPorExtenso(linha.semana)} para a devolutiva. Depois do envio só a avaliação continua aberta; dá para desfazer o envio enquanto ela não responder.</p>}
               </div>
             </AlertDialogDescription>

@@ -13,12 +13,19 @@ const estado = vi.hoisted(() => ({
   linhas: [] as Semanario[],
   salvos: [] as { id: string; campos: Record<string, unknown> }[],
   enviados: [] as string[],
+  cheios: [] as string[],
 }));
 
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => estado.auth }));
 vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => estado.papel }));
 vi.mock('@/components/AppLayout', () => ({ default: ({ children }: { children: React.ReactNode }) => <div data-testid="app">{children}</div> }));
 vi.mock('sonner', () => ({ toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), info: vi.fn() }) }));
+// O PDF de verdade precisa das fontes; aqui só a conta do que não coube.
+vi.mock('@/lib/semanario/pdf/gerar', () => ({
+  gerarPdfDoSemanario: vi.fn(async () => ({ blob: new Blob(['%PDF']), cheios: estado.cheios, tamanho: 13.11 })),
+  nomeDoArquivo: () => 'Semanário.pdf',
+}));
+vi.mock('pdfjs-dist', () => ({ GlobalWorkerOptions: {}, getDocument: () => ({ promise: new Promise(() => {}), destroy: async () => {} }) }));
 vi.mock('@/lib/semanario/api', () => ({
   lerMeus: async () => estado.linhas,
   lerDaSemana: async () => estado.linhas,
@@ -71,6 +78,7 @@ beforeEach(() => {
   estado.linhas = [];
   estado.salvos = [];
   estado.enviados = [];
+  estado.cheios = [];
 });
 afterEach(() => { vi.useRealTimers(); });
 /** O relógio inteiro falso (o do beforeEach só finge a data), para o salvamento automático. */
@@ -184,6 +192,34 @@ describe('a professora', () => {
     await act(async () => { soltar(); });
     await waitFor(() => expect(estado.enviados).toEqual(['s1']));
     expect(estado.salvos.at(-1)?.campos).toMatchObject({ agrupamento: 'AG I C' });
+  });
+
+  it('completo, mas um dia não cabe na folha: diz qual e não envia', async () => {
+    estado.linhas = [linha({ dias: { seg: dia, ter: dia, qua: dia, qui: dia, sex: dia }, formas_registro: 'Fotos', materiais: 'Papel' })];
+    estado.cheios = ['3ª FEIRA'];
+    abrir('/educacao/semanario/s1');
+    fireEvent.click(await screen.findByRole('button', { name: /Enviar à orientadora/ }));
+    expect(await screen.findByText(/Não cabe na folha:/)).toHaveTextContent('3ª FEIRA');
+    expect(screen.queryByRole('button', { name: /^Enviar$/ })).not.toBeInTheDocument();
+  });
+
+  it('escreveu demais enquanto conferia: o envio confere de novo e não sai', async () => {
+    estado.linhas = [linha({ dias: { seg: dia, ter: dia, qua: dia, qui: dia, sex: dia }, formas_registro: 'Fotos', materiais: 'Papel' })];
+    abrir('/educacao/semanario/s1');
+    fireEvent.click(await screen.findByRole('button', { name: /Enviar à orientadora/ }));
+    const enviarBotao = await screen.findByRole('button', { name: /^Enviar$/ });
+    estado.cheios = ['4ª FEIRA'];
+    fireEvent.click(enviarBotao);
+    expect(await screen.findByText(/Não cabe na folha:/)).toHaveTextContent('4ª FEIRA');
+    expect(estado.enviados).toEqual([]);
+  });
+
+  it('a prévia mostra as duas páginas e o botão de baixar', async () => {
+    estado.linhas = [linha()];
+    abrir('/educacao/semanario/s1');
+    fireEvent.click(await screen.findByRole('button', { name: /Ver a prévia/ }));
+    expect(await screen.findByText('Prévia do semanário · 2 páginas')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Baixar PDF/ })).toBeInTheDocument();
   });
 
   it('com devolutiva: ela aparece no topo e o envio não se desfaz', async () => {
