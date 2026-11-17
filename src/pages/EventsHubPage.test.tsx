@@ -97,4 +97,12 @@ describe('a raiz, por quem chega', () => {
     abrir('/social/eventos');
     expect(endereco()).toBe('/');
   });
+
+  // O F5 em /social/eventos (17/11/2026): enquanto a sessão carrega, quem
+  // está logado parece sem sessão. A página espera em vez de mandar à raiz.
+  it('com a sessão ainda carregando, /social/eventos fica onde está', () => {
+    estado.auth = { isAuthenticated: false, user: null, loading: true } as typeof estado.auth;
+    abrir('/social/eventos?tela=visao-geral');
+    expect(endereco()).toBe('/social/eventos?tela=visao-geral');
+  });
 });
