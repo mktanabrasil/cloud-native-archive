@@ -53,11 +53,24 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { email, password, name, role, permissionLevel, unit, bond_type, partner_category } = body;
+    const { email, password, name, role, unit, bond_type, partner_category } = body;
+    // O Painel manda `permission_level` (o nome do campo do formulário); até
+    // 17/11/2026 só se lia `permissionLevel`, e o nível escolhido nunca chegava.
+    const permissionLevel = body.permissionLevel ?? body.permission_level;
 
     if (!email || !password || !name || !role) {
       return new Response(JSON.stringify({ error: 'Parâmetros ausentes.' }), {
         status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Conceder administrador é privilégio de administrador (a mesma regra da
+    // admin-approve-user). Antes o papel nem chegava a ser gravado (passo 2);
+    // agora que chega, a gestão não pode criar um admin.
+    if (callerRole.role !== 'admin' && (role === 'admin' || permissionLevel === 'admin_geral')) {
+      return new Response(JSON.stringify({ error: 'Apenas administradores podem conceder acesso de administrador.' }), {
+        status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -76,15 +89,37 @@ Deno.serve(async (req) => {
 
     const userId = newAuthUser.user.id;
 
-    // 2. Create user role
+    // 2. O papel. A handle_new_user já criou a linha (usuario_padrao), e o
+    // insert de antes batia na chave única e falhava em silêncio: o papel
+    // escolhido nunca era gravado. Upsert, como na admin-approve-user.
     const { error: roleErr } = await adminClient
       .from('user_roles')
-      .insert({ user_id: userId, role: role });
+      .upsert({ user_id: userId, role: role }, { onConflict: 'user_id' });
 
     if (roleErr) {
       // Cleanup auth user if role creation fails? 
       // Better to just report error and let admin fix manually
       console.error('Error creating role:', roleErr);
+    }
+
+    // 2.5 O pedido de acesso que a conta nova gera sozinha (17/11/2026).
+    //
+    // A handle_new_user cria um pedido "pendente" para toda conta nova, e o
+    // pré-cadastro também passa por ela: cada pessoa cadastrada aqui caía na
+    // lista de Solicitações como "viewer, sem unidade", e aprovar esse pedido
+    // regravava a unidade como Administração. Quem pré-cadastra já decidiu:
+    // o pedido sai resolvido. Vem ANTES do perfil de propósito: o gatilho
+    // antigo de aprovação (handle_access_request_approval) mexe no perfil
+    // quando o pedido vira "approved", e o passo 3 grava por cima o nível, a
+    // unidade e o vínculo escolhidos aqui. Se o passo 3 falhar, o pedido volta
+    // a pendente e o Painel mostra o erro.
+    const { error: pedidoErr } = await adminClient
+      .from('access_requests')
+      .update({ status: 'approved', reviewed_at: new Date().toISOString(), reviewed_by: userData.user.id })
+      .eq('user_id', userId)
+      .eq('status', 'pending');
+    if (pedidoErr) {
+      console.error('Error resolving access request:', pedidoErr);
     }
 
     // 3. Update profile (profile is usually created by trigger, but we ensure fields are set)
@@ -103,7 +138,16 @@ Deno.serve(async (req) => {
       .eq('user_id', userId);
 
     if (profileErr) {
-       console.error('Error updating profile:', profileErr);
+      console.error('Error updating profile:', profileErr);
+      // O pedido não pode sumir da lista com o perfil pela metade: volta a
+      // pendente, e quem cadastrou fica sabendo.
+      await adminClient.from('access_requests')
+        .update({ status: 'pending', reviewed_at: null, reviewed_by: null })
+        .eq('user_id', userId).eq('status', 'approved');
+      return new Response(JSON.stringify({ error: `A conta de ${email} foi criada, mas o perfil não foi salvo (${profileErr.message}). Ajuste a pessoa no Painel; o pedido dela ficou nas Solicitações.` }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     console.log(`[AUDIT] Admin ${userData.user.id} criou usuário ${userId} (${email})`);
