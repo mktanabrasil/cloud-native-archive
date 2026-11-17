@@ -225,10 +225,15 @@ export function useUserRole() {
 
   /**
    * Só a Educação no menu: a gestão da Educação não vê o Social (16/11/2026).
-   * A professora e a orientadora entram aqui junto com a página do Semanário
-   * (PR 3): antes dela, tirar o Social as deixaria sem setor nenhum.
+   * A professora e a orientadora pedagógica também (17/11/2026): o setor
+   * delas é a Educação, e lá elas veem só o Semanário.
    */
-  const soEducacao = isGestaoDaEducacao && !isMarketing;
+  const soEducacao = (isGestaoDaEducacao || isProfessora || isOrientadora) && !isMarketing;
+  /**
+   * Quem vê só o Semanário: a professora e a orientadora que não são gestão
+   * nem marketing. A página inicial delas é o próprio Semanário.
+   */
+  const soSemanario = (isProfessora || isOrientadora) && !isGestaoDaEducacao && !isMarketing;
 
   /**
    * Ainda carregando enquanto as permissões não forem desta pessoa (26/10/2026).
@@ -267,6 +272,7 @@ export function useUserRole() {
     isProfessora,
     isOrientadora,
     temSemanario,
+    soSemanario,
     canAccessJournal,
     soEducacao,
     isGestaoDoSocial,

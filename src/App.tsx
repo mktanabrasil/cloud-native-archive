@@ -19,7 +19,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AuthConfirmPage from "./pages/AuthConfirmPage";
 import JournalPage from "./pages/JournalPage";
 import JornaisDasUnidadesPage from "./pages/JornaisDasUnidadesPage";
-import { REDIRECIONAMENTOS } from "@/config/navigation";
+import { REDIRECIONAMENTOS, ROTAS } from "@/config/navigation";
 import { MarketingSemAba, Redireciona } from "@/components/Redireciona";
 import MarketingHubPage from "./pages/MarketingHubPage";
 import EventsHubPage from "./pages/EventsHubPage";
@@ -54,6 +54,7 @@ import VoluntariadoPresencaPage from "./pages/VoluntariadoPresencaPage";
 import { ROTAS_DO_CANDIDATO } from "@/lib/vagas/conta";
 import { destinoDaContaRestrita } from "@/lib/contasRestritas";
 import CalendarioAnualPage from "./pages/CalendarioAnualPage";
+import SemanarioPage from "./pages/SemanarioPage";
 import NotFound from "./pages/NotFound";
 import OAuthConsent from "./pages/OAuthConsent";
 
@@ -93,12 +94,14 @@ function ComMargem({ children }: { children: React.ReactNode }) {
  */
 function JournalRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading: authLoading } = useAuth();
-  const { canAccessJournal, loading: roleLoading } = useUserRole();
+  const { canAccessJournal, temSemanario, loading: roleLoading } = useUserRole();
   const [searchParams] = useSearchParams();
   const isEmbed = searchParams.get('embed') === 'true';
 
   if (authLoading || roleLoading) return null;
   if (!isAuthenticated && !isEmbed) return <Navigate to="/login" replace />;
+  // A professora e a orientadora: a Educação delas é o Semanário.
+  if (!canAccessJournal && temSemanario) return <Navigate to={ROTAS.semanario} replace />;
   if (!canAccessJournal) {
     // Antes era um redirecionamento mudo. O id evita repetir se a rota renderizar duas vezes.
     toast.info('O Jornal é da Educação: da comunicação e da gestão dos CEIs e do GOE.', {
@@ -201,6 +204,9 @@ const App = () => (
                     coordenadoras entram com conta própria; quem é da equipe e não é do
                     marketing segue para o calendário de eventos, na aba do hub. */}
                 <Route path="/social/calendario" element={<CalendarioAnualPage />} />
+                {/* Semanário (17/11/2026): a página monta a própria barra, como o calendário. */}
+                <Route path="/educacao/semanario" element={<SemanarioPage />} />
+                <Route path="/educacao/semanario/:id" element={<SemanarioPage />} />
                 {/* Endereços por setor (16/11/2026): os de antes levam aos novos,
                     com o resto do link junto. Ver REDIRECIONAMENTOS. */}
                 {Object.entries(REDIRECIONAMENTOS).map(([antigo, novo]) => (

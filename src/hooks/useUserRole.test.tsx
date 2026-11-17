@@ -237,13 +237,14 @@ describe('os papéis do Semanário', () => {
     espiao.unidade = unidade;
   };
 
-  it('a professora de um CEI entra no Semanário, sem o Jornal (o só a Educação vem com a página, no PR 3)', async () => {
+  it('a professora de um CEI entra no Semanário e vê só a Educação, sem o Jornal', async () => {
     comVinculo('professora', 'Anísio');
     const papel = await carregar();
     expect(papel.isProfessora).toBe(true);
     expect(papel.isOrientadora).toBe(false);
     expect(papel.temSemanario).toBe(true);
-    expect(papel.soEducacao).toBe(false);
+    expect(papel.soEducacao).toBe(true);
+    expect(papel.soSemanario).toBe(true);
     expect(papel.canAccessJournal).toBe(false);
     expect(papel.temCalendarioAnual).toBe(false);
   });
@@ -253,7 +254,8 @@ describe('os papéis do Semanário', () => {
     const papel = await carregar();
     expect(papel.isOrientadora).toBe(true);
     expect(papel.temSemanario).toBe(true);
-    expect(papel.soEducacao).toBe(false);
+    expect(papel.soEducacao).toBe(true);
+    expect(papel.soSemanario).toBe(true);
     expect(papel.canAccessJournal).toBe(false);
   });
 
@@ -265,11 +267,12 @@ describe('os papéis do Semanário', () => {
     expect(papel.soEducacao).toBe(false);
   });
 
-  it('o marketing vê o Semanário (só leitura vem no PR da tela)', async () => {
+  it('o marketing vê o Semanário, só para ler', async () => {
     comVinculo('marketing', 'Administração');
     const papel = await carregar();
     expect(papel.temSemanario).toBe(true);
     expect(papel.isProfessora).toBe(false);
     expect(papel.soEducacao).toBe(false);
+    expect(papel.soSemanario).toBe(false);
   });
 });

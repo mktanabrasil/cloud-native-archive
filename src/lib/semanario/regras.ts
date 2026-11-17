@@ -82,7 +82,8 @@ const paraData = (iso: string) => {
   return new Date(Date.UTC(a, m - 1, d));
 };
 const paraIso = (data: Date) => data.toISOString().slice(0, 10);
-const somarDias = (iso: string, dias: number) => {
+/** Soma dias a uma data 'AAAA-MM-DD'. */
+export const somarDias = (iso: string, dias: number) => {
   const data = paraData(iso);
   data.setUTCDate(data.getUTCDate() + dias);
   return paraIso(data);

@@ -21,7 +21,7 @@ import {
 import ImpersonationBanner from '@/components/ImpersonationBanner';
 import logoImg from '@/assets/logo.png';
 import { TemaFlutuante } from './ThemeToggle';
-import { COR_DO_SETOR, navItems, ROTAS, ROTAS_DO_SETOR, setorDoCaminho, setoresVisiveis } from '@/config/navigation';
+import { COR_DO_SETOR, navItems, ROTAS, ROTAS_DO_SETOR, setorDoCaminho, setoresVisiveis, destinoDoSetor } from '@/config/navigation';
 import { FaixaDoSetor } from './FaixaDoSetor';
 import { useSouResponsavel } from '@/hooks/useSouResponsavel';
 import { useAvisosDaEquipe } from '@/hooks/useAvisosDaEquipe';
@@ -60,7 +60,7 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
   const { isAuthenticated: temSessao, signOut, user } = useAuth();
   // Conta de candidato (Trabalhe Conosco) vê o app como visitante: sem menu da equipe.
   const isAuthenticated = temSessao && !ehContaRestrita(user);
-  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh, soEducacao, temCalendarioAnual, loading: carregandoPapel } = useUserRole();
+  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh, soEducacao, temCalendarioAnual, temSemanario, loading: carregandoPapel } = useUserRole();
   // A bolinha em "Vagas": novos + respostas não lidas (passo 5, 20/10/2026).
   const avisosDeVagas = useAvisosDaEquipe(isRh || souResponsavel, location.pathname);
   const { eligible: betaEligible, rawEnabled: betaOn, toggleBeta } = useBetaPreference();
@@ -90,13 +90,16 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
     return () => document.body.classList.remove('ui-v2');
   }, [isCleanView]);
 
-  const itensVisiveis = setoresVisiveis({ isAuthenticated, soEducacao, canAccessJournal, isRh, souResponsavel, isMarketing, isAdmin, isManager, canViewAuditoria });
+  const itensVisiveis = setoresVisiveis({ isAuthenticated, soEducacao, canAccessJournal, temSemanario, isRh, souResponsavel, isMarketing, isAdmin, isManager, canViewAuditoria });
   // O setor aberto: Social e Marketing têm várias rotas; os outros, a própria.
   const estaNaArea = (to: string) =>
     ROTAS_DO_SETOR[to] ? setorDoCaminho(location.pathname) === to : location.pathname.startsWith(to);
   // O Calendário Anual, na faixa do Social: o marketing e quem o marketing
   // liberou na lista de acesso (a gestão social).
   const temCalendario = isMarketing || temCalendarioAnual;
+  const pode = { temCalendario, canAccessJournal: !!canAccessJournal, temSemanario: !!temSemanario };
+  // A Educação leva a professora ao Semanário, e não ao Jornal (17/11/2026).
+  const destino = (to: string) => destinoDoSetor(to, pode);
   // Com um setor só (a gestora do Social, por exemplo), não há o que trocar:
   // sem doca embaixo; as páginas ficam na faixa de cima.
   const comDocaVisivel = mostraMoldura && comDoca && itensVisiveis.length > 1;
@@ -113,7 +116,7 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
     return (
       <Link
         key={item.to}
-        to={`${item.to}${location.search}`}
+        to={`${destino(item.to)}${location.search}`}
         onClick={aoClicar}
         aria-current={active ? 'page' : undefined}
         className={cn(
@@ -241,7 +244,7 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
   // A gestão da Educação não vê o Social (16/11/2026): os Eventos da equipe
   // levam ao Jornal. A raiz é a página inicial dela, com os jornais (17/11);
   // as Programações (`/eventos`) seguem públicas.
-  if (isAuthenticated && !carregandoPapel && soEducacao && location.pathname === ROTAS.eventos) return <Navigate to={ROTAS.jornal} replace />;
+  if (isAuthenticated && !carregandoPapel && soEducacao && location.pathname === ROTAS.eventos) return <Navigate to={destino(ROTAS.jornal)} replace />;
 
   return (
     <UiV2>
@@ -284,7 +287,7 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
             da Educação nos Eventos) não vê a página nem por um instante antes de ir. */}
         {isAuthenticated && carregandoPapel ? null : (
           <>
-            {mostraMoldura && isAuthenticated && <FaixaDoSetor temCalendario={temCalendario} cor={to => COR_DA_AREA[to]} compacta={comDoca} />}
+            {mostraMoldura && isAuthenticated && <FaixaDoSetor pode={pode} cor={to => COR_DA_AREA[to]} compacta={comDoca} />}
             {children ?? <Outlet />}
           </>
         )}
@@ -314,7 +317,7 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
                       return (
                         <Link
                           key={item.to}
-                          to={`${item.to}${location.search}`}
+                          to={`${destino(item.to)}${location.search}`}
                           tabIndex={isMaisOpen ? 0 : -1}
                           onClick={() => setIsMaisOpen(false)}
                           aria-current={ativo ? 'page' : undefined}
@@ -339,7 +342,7 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
             return (
               <Link
                 key={item.to}
-                to={`${item.to}${location.search}`}
+                to={`${destino(item.to)}${location.search}`}
                 aria-current={ativo ? 'page' : undefined}
                 className={classeDoItem(ativo)}
               >

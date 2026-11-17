@@ -41,6 +41,7 @@ export const ROTAS = {
   calendario: '/social/calendario',
   jornal: '/educacao/jornal',
   jornaisDasUnidades: '/educacao/jornais-das-unidades',
+  semanario: '/educacao/semanario',
   marketing: '/marketing',
   mercado: '/marketing/mercado-solidario',
   painel: '/painel',
@@ -111,6 +112,8 @@ export interface QuemVe {
   isAuthenticated: boolean;
   soEducacao?: boolean;
   canAccessJournal?: boolean;
+  /** Professora, orientadora pedagógica ou marketing (17/11/2026). */
+  temSemanario?: boolean;
   isRh?: boolean;
   /** Responsável por algum processo de vaga (passo 3, 19/10/2026). */
   souResponsavel?: boolean;
@@ -130,9 +133,9 @@ export function setoresVisiveis(q: QuemVe): NavItem[] {
     if (item.hidden) return false;
     // O Social é de todos, menos de quem vê só a Educação (16/11/2026).
     if (item.setorSocial) return !q.soEducacao;
-    // Antes do `marketingOnly`: o Jornal tem regra própria, e a gestão da
-    // Educação entra nele sem entrar nas outras páginas da comunicação.
-    if (item.journalOnly) return !!q.canAccessJournal;
+    // Antes do `marketingOnly`: a Educação tem regra própria. A gestão entra
+    // pelo Jornal; a professora e a orientadora, pelo Semanário (17/11/2026).
+    if (item.journalOnly) return !!(q.canAccessJournal || q.temSemanario);
     // RH, ou quem é responsável por algum processo (passo 3, 19/10/2026).
     if (item.rhOnly) return !!(q.isRh || q.souResponsavel);
     if (item.marketingOnly) return !!q.isMarketing;
@@ -155,6 +158,39 @@ export interface PaginaDoSetor {
   aberta: (caminho: string) => boolean;
   /** Só aparece para quem tem o Calendário Anual (marketing ou gestora liberada). */
   soComCalendario?: boolean;
+  /** Só para quem entra no Jornal (a comunicação e a gestão da Educação). */
+  soComJornal?: boolean;
+  /** Só para quem entra no Semanário (professora, orientadora, marketing). */
+  soComSemanario?: boolean;
+}
+
+/** O que a pessoa pode abrir na faixa (vem de `useUserRole`). */
+export interface PodeAbrir {
+  temCalendario: boolean;
+  canAccessJournal: boolean;
+  temSemanario: boolean;
+}
+
+/** As páginas de um setor que a pessoa vê, na ordem da faixa. */
+export function paginasVisiveis(setor: string, pode: PodeAbrir): PaginaDoSetor[] {
+  return (PAGINAS_DOS_SETORES[setor] ?? []).filter(p =>
+    (!p.soComCalendario || pode.temCalendario) &&
+    (!p.soComJornal || pode.canAccessJournal) &&
+    (!p.soComSemanario || pode.temSemanario));
+}
+
+/**
+ * Para onde o setor leva na barra: a primeira página dele que a pessoa vê. A
+ * professora entra na Educação pelo Semanário, não pelo Jornal (17/11/2026).
+ */
+export function destinoDoSetor(to: string, pode: PodeAbrir): string {
+  // Só muda quando a página de entrada do setor é uma das da faixa e a
+  // pessoa não a vê (a professora e o Jornal). O Marketing entra pela
+  // Auditoria, que não está na faixa, e fica como sempre.
+  const entradaNaFaixa = (PAGINAS_DOS_SETORES[to] ?? []).some(p => p.to === to);
+  const paginas = paginasVisiveis(to, pode);
+  if (!entradaNaFaixa || paginas.some(p => p.to === to)) return to;
+  return paginas[0]?.to ?? to;
 }
 
 /** O feed "Jornais das unidades", na Educação (16/11/2026). */
@@ -172,8 +208,10 @@ export const PAGINAS_DOS_SETORES: Record<string, PaginaDoSetor[]> = {
   ],
   // O editor da unidade e o feed dos finalizados de todas (16/11/2026).
   [ROTAS.jornal]: [
-    { rotulo: 'Jornal Institucional', to: ROTAS.jornal, aberta: (c) => c === ROTAS.jornal },
-    { rotulo: 'Jornais das unidades', to: ROTAS.jornaisDasUnidades, aberta: (c) => c === ROTAS.jornaisDasUnidades },
+    { rotulo: 'Jornal Institucional', to: ROTAS.jornal, aberta: (c) => c === ROTAS.jornal, soComJornal: true },
+    { rotulo: 'Jornais das unidades', to: ROTAS.jornaisDasUnidades, aberta: (c) => c === ROTAS.jornaisDasUnidades, soComJornal: true },
+    // O planejamento da semana das professoras (17/11/2026).
+    { rotulo: 'Semanário', to: ROTAS.semanario, aberta: (c) => c === ROTAS.semanario || c.startsWith(`${ROTAS.semanario}/`), soComSemanario: true },
   ],
   [ROTAS.marketing]: [
     { rotulo: 'Mercado Solidário', to: ROTAS.mercado, aberta: (c) => c === ROTAS.mercado },
