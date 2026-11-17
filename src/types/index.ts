@@ -11,6 +11,8 @@ export type BondType =
   | 'nota_fiscal'
   | 'gestao_social'
   | 'educador'
+  | 'orientacao_pedagogica'
+  | 'professora'
   | 'parceiro'
   | 'usuario_comum';
 
@@ -270,6 +272,8 @@ export const BOND_LABELS: Record<BondType, string> = {
   nota_fiscal: 'Nota Fiscal',
   gestao_social: 'Gestão Social',
   educador: 'Educador',
+  orientacao_pedagogica: 'Orientação pedagógica',
+  professora: 'Professora',
   parceiro: 'Parceiro',
   usuario_comum: 'Usuário Comum',
 };
@@ -277,6 +281,8 @@ export const BOND_LABELS: Record<BondType, string> = {
 export const BOND_GROUPS: { label: string; options: BondType[] }[] = [
   { label: 'Interno — Administrativo (Setor)', options: ['rh', 'financeiro', 'marketing', 'nota_fiscal'] },
   { label: 'Interno — Social (Unidade)', options: ['gestao_social', 'educador'] },
+  // O Semanário (17/11/2026): quem preenche e quem dá a devolutiva, por CEI.
+  { label: 'Interno — Educação (CEI)', options: ['orientacao_pedagogica', 'professora'] },
   { label: 'Externo', options: ['parceiro', 'usuario_comum'] },
 ];
 
@@ -285,7 +291,8 @@ export const BOND_GROUPS: { label: string; options: BondType[] }[] = [
 //   'fixed-admin' -> unidade sempre 'Administração' (travada)
 //   'choose'      -> unidade escolhida livremente
 //   'none'        -> nenhuma unidade (travada, valor vazio)
-export type UnitMode = 'fixed-admin' | 'choose' | 'none';
+//   'educacao'    -> uma unidade da Educação (os CEIs e o GOE), 17/11/2026
+export type UnitMode = 'fixed-admin' | 'choose' | 'none' | 'educacao';
 
 export const BOND_RULES: Record<BondType, { permission_level: PermissionLevel; unitMode: UnitMode }> = {
   // Interno — Administrativo
@@ -296,6 +303,10 @@ export const BOND_RULES: Record<BondType, { permission_level: PermissionLevel; u
   // Interno — Social
   gestao_social: { permission_level: 'gestor_unidade', unitMode: 'choose' },
   educador: { permission_level: 'usuario_padrao', unitMode: 'choose' },
+  // Interno — Educação (o Semanário, 17/11/2026). Usuário padrão de propósito:
+  // nenhuma das duas é gestão do CEI nem entra no Jornal; o que elas veem vem do vínculo.
+  orientacao_pedagogica: { permission_level: 'usuario_padrao', unitMode: 'educacao' },
+  professora: { permission_level: 'usuario_padrao', unitMode: 'educacao' },
   // Externo
   parceiro: { permission_level: 'usuario_padrao', unitMode: 'none' },
   usuario_comum: { permission_level: 'usuario_padrao', unitMode: 'none' },
