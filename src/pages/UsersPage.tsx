@@ -35,6 +35,10 @@ const EMBED_PAGES = [
   { name: 'Visão Geral', path: '/' },
 ];
 
+/** O que a pessoa pediu: o papel, ou "Professora" no pedido do Semanário (17/11/2026). */
+const rotuloDoPedido = (req: { requested_role: string; requested_bond?: string | null }) =>
+  req.requested_bond === 'professora' ? 'Professora (Semanário)' : ROLE_LABELS[req.requested_role] || req.requested_role;
+
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Administrador',
   criador: 'Criador e Editor',
@@ -562,7 +566,11 @@ export default function UsersPage() {
     let level: any = 'visualizador';
     let unit: any = 'Administração';
     
-    if (req.requested_role === 'admin') {
+    if (req.requested_bond === 'professora') {
+      // Semanário (17/11/2026): a função lê vínculo, nível e CEI do próprio pedido.
+      level = 'usuario_padrao';
+      unit = req.requested_unit;
+    } else if (req.requested_role === 'admin') {
       level = 'admin_geral';
       unit = 'Administração';
     } else if (req.requested_role === 'criador' || req.requested_role === 'editor') {
@@ -613,8 +621,10 @@ export default function UsersPage() {
 
   const handleReject = async (req: any) => {
     setProcessingId(req.id);
-    await rejectRequest(req.id);
-    toast({ title: 'Rejeitado', description: `Solicitação de ${req.name} foi rejeitada.`, variant: 'destructive' });
+    const recusado = await rejectRequest(req.id);
+    toast(recusado
+      ? { title: 'Rejeitado', description: `Solicitação de ${req.name} foi rejeitada.`, variant: 'destructive' }
+      : { title: 'Já resolvido', description: `A solicitação de ${req.name} já tinha sido resolvida por outra pessoa.` });
     setProcessingId(null);
   };
 
@@ -1013,7 +1023,7 @@ export default function UsersPage() {
                             <p className="truncate text-[13px] text-[hsl(var(--fraco,0_0%_45%))]">{req.email}</p>
                           </div>
                           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] md:contents">
-                            <span className="text-foreground">{ROLE_LABELS[req.requested_role] || req.requested_role}</span>
+                            <span className="text-foreground">{rotuloDoPedido(req)}</span>
                             {/* A unidade pedida fica à vista: é ela que decide qual
                                 jornal a pessoa vai enxergar, e quem aprova precisa
                                 conferir antes — não depois. */}
@@ -1835,7 +1845,7 @@ export default function UsersPage() {
                 </AlertDescription>
               </Alert>
               <p className="text-sm">
-                Aprovar <strong className="text-foreground">{showApprovalConfirm.req.name}</strong> como <strong>{ROLE_LABELS[showApprovalConfirm.req.requested_role] || showApprovalConfirm.req.requested_role}</strong>?
+                Aprovar <strong className="text-foreground">{showApprovalConfirm.req.name}</strong> como <strong>{rotuloDoPedido(showApprovalConfirm.req)}</strong>?
               </p>
             </div>
           )}

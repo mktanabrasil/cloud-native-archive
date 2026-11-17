@@ -12,7 +12,7 @@ import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
   AlertDialogDescription, AlertDialogFooter, AlertDialogAction,
 } from '@/components/ui/alert-dialog';
-import { NEWS_UNIT_GROUPS } from '@/lib/news/units';
+import { JORNAL_UNIT_GROUPS, NEWS_UNIT_GROUPS } from '@/lib/news/units';
 import { cn } from '@/lib/utils';
 import { marcarPedidoEnviado, pedidoFoiEnviado } from '@/lib/pedidoEnviado';
 import { consumirAvisoDeLogin } from '@/lib/sessao';
@@ -65,13 +65,18 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
   const [popup, setPopup] = useState<{ title: string; message: string; type: 'error' | 'success' } | null>(null);
 
   /** Níveis que pertencem a uma unidade — os únicos que pedem a escolha. */
-  const PEDE_UNIDADE = ['criador', 'editor'];
+  const PEDE_UNIDADE = ['criador', 'editor', 'professora'];
   const precisaDeUnidade = PEDE_UNIDADE.includes(requestedRole);
+  // A professora (Semanário, 17/11/2026) só escolhe entre os CEIs e o GOE.
+  const ehProfessora = requestedRole === 'professora';
+  const gruposDeUnidade = ehProfessora ? JORNAL_UNIT_GROUPS : NEWS_UNIT_GROUPS;
 
-  // Quem deixa de pertencer a uma unidade não carrega a escolha anterior.
+  // Quem deixa de pertencer a uma unidade (ou passa a Professora com uma unidade
+  // fora da Educação) não carrega a escolha anterior.
   useEffect(() => {
-    if (!precisaDeUnidade && requestedUnit) setRequestedUnit('');
-  }, [precisaDeUnidade, requestedUnit]);
+    const valida = gruposDeUnidade.some(g => g.units.some(u => u.profileUnit === requestedUnit));
+    if (requestedUnit && (!precisaDeUnidade || !valida)) setRequestedUnit('');
+  }, [precisaDeUnidade, requestedUnit, gruposDeUnidade]);
 
   /**
    * Nível de permissão correspondente ao que foi pedido.
@@ -140,11 +145,14 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
     // terminava na porta de entrada em vez da tela de espera.
     marcarPedidoEnviado(true);
 
+    // A professora pede como visualizadora, com o vínculo à parte: o banco só
+    // conhece os papéis antigos, e o vínculo é lido dos metadados (PR 7).
     const { error } = await signUp(email, password, {
       name,
-      requested_role: requestedRole,
+      requested_role: ehProfessora ? 'viewer' : requestedRole,
       requested_permission_level: NIVEL_DO_PEDIDO[requestedRole] ?? 'visualizador',
       requested_unit: requestedUnit,
+      ...(ehProfessora ? { requested_bond: 'professora' } : {}),
     });
 
     if (error) {
@@ -254,18 +262,19 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
                     <SelectItem value="criador">Gestão</SelectItem>
                     <SelectItem value="editor">Editor (Apenas Edição)</SelectItem>
                     <SelectItem value="viewer">Visualizador</SelectItem>
+                    <SelectItem value="professora">Professora (Educação)</SelectItem>
                   </SelectContent>
                 </Select>
                 {precisaDeUnidade && (
                   <div className="mt-4">
-                    <Label>Selecione sua unidade</Label>
+                    <Label>{ehProfessora ? 'Selecione o seu CEI' : 'Selecione sua unidade'}</Label>
                     {/* O catálogo do Jornal, e não a lista de quatro herdada do
                         calendário: é `profiles.unit` que precisa casar com ele
                         para a pessoa cair na unidade certa. */}
                     <Select value={requestedUnit} onValueChange={setRequestedUnit}>
-                      <SelectTrigger><SelectValue placeholder="Escolha sua unidade" /></SelectTrigger>
+                      <SelectTrigger aria-label={ehProfessora ? 'CEI' : 'Unidade'}><SelectValue placeholder={ehProfessora ? 'Escolha o seu CEI' : 'Escolha sua unidade'} /></SelectTrigger>
                       <SelectContent>
-                        {NEWS_UNIT_GROUPS.map((grupo) => (
+                        {gruposDeUnidade.map((grupo) => (
                           <SelectGroup key={grupo.label}>
                             <SelectLabel>{grupo.label}</SelectLabel>
                             {grupo.units.map((unidade) => (
@@ -279,7 +288,11 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
                     </Select>
                   </div>
                 )}
-                <p className="text-xs text-muted-foreground mt-1">O acesso será concedido após aprovação de um administrador.</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {ehProfessora
+                    ? 'A orientadora pedagógica do seu CEI (ou o marketing) aprova. Aprovada, você entra no Semanário.'
+                    : 'O acesso será concedido após aprovação de um administrador.'}
+                </p>
               </div>
             )}
             <Button type="submit" className={cn("w-full gap-2", stagger && "ana-enter-item")} style={item(3).style} disabled={loading}>

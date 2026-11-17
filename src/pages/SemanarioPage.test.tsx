@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import type { Semanario } from '@/lib/semanario/regras';
 
@@ -17,6 +17,9 @@ const estado = vi.hoisted(() => ({
   devolutivas: [] as string[],
   larga: false,
   avisos: [] as string[],
+  pedidos: [] as { id: string; user_id: string; name: string; email: string; requested_unit: string; requested_at: string }[],
+  aprovados: [] as string[],
+  recusados: [] as string[],
   aviso: { enviado: true } as { enviado: boolean; motivo?: string } | 'erro',
 }));
 
@@ -50,6 +53,9 @@ vi.mock('@/lib/semanario/api', () => ({
   }),
   desfazerEnvio: vi.fn(async (id: string) => { const l = estado.linhas.find(x => x.id === id)!; l.status = 'preenchimento'; return { ...l }; }),
   apagar: vi.fn(async () => {}),
+  lerPedidosDeProfessora: async () => estado.pedidos,
+  aprovarPedidoDeProfessora: vi.fn(async (p: { id: string }) => { estado.aprovados.push(p.id); return { avisoEnviado: true }; }),
+  recusarPedidoDeProfessora: vi.fn(async (id: string) => { estado.recusados.push(id); return true; }),
   avisarPorEmail: vi.fn(async (id: string, tipo: string) => {
     estado.avisos.push(`${tipo}:${id}`);
     if (estado.aviso === 'erro') throw new Error('Edge Function returned a non-2xx status code');
@@ -99,6 +105,9 @@ beforeEach(() => {
   estado.devolutivas = [];
   estado.larga = false;
   estado.avisos = [];
+  estado.pedidos = [];
+  estado.aprovados = [];
+  estado.recusados = [];
   estado.aviso = { enviado: true };
 });
 afterEach(() => { vi.useRealTimers(); });
@@ -440,5 +449,48 @@ describe('os avisos por e-mail', () => {
     fireEvent.click(await screen.findByRole('button', { name: /^Apagar$/ }));
     await waitFor(() => expect(estado.devolutivas).toEqual(['Muito bom!', '']));
     expect(estado.avisos).toEqual(['devolutiva:s1']);
+  });
+});
+
+describe('os pedidos de acesso das professoras (PR 7)', () => {
+  const pedido = (id: string, name: string) => ({ id, user_id: 'u-' + id, name, email: id + '@educa.org', requested_unit: 'Anísio', requested_at: '2026-11-17T12:00:00Z' });
+  const comoOrientadora = () => {
+    estado.papel = { ...estado.papel, isProfessora: false, isOrientadora: true, unit: 'Anísio' };
+    estado.auth = { ...estado.auth, user: { id: 'ori-1', user_metadata: {} } };
+  };
+
+  it('a orientadora vê os pedidos do CEI e aprova', async () => {
+    comoOrientadora();
+    estado.pedidos = [pedido('p1', 'Carla Dias'), pedido('p2', 'Paula Lima')];
+    abrir();
+    expect(await screen.findByText('2 professoras pediram acesso')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Aprovar Carla Dias' }));
+    await waitFor(() => expect(estado.aprovados).toEqual(['p1']));
+    expect(await screen.findByText('1 professora pediu acesso')).toBeInTheDocument();
+    expect(screen.queryByText('Carla Dias')).not.toBeInTheDocument();
+  });
+
+  it('recusar pede confirmação', async () => {
+    comoOrientadora();
+    estado.pedidos = [pedido('p1', 'Carla Dias')];
+    abrir();
+    fireEvent.click(await screen.findByRole('button', { name: /Recusar/ }));
+    expect(estado.recusados).toEqual([]);
+    fireEvent.click(await screen.findByRole('button', { name: /^Recusar$/ }));
+    await waitFor(() => expect(estado.recusados).toEqual(['p1']));
+    await waitFor(() => expect(screen.queryByText('1 professora pediu acesso')).not.toBeInTheDocument());
+  });
+
+  it('sem pedidos, nada aparece; o marketing não vê os pedidos aqui', async () => {
+    comoOrientadora();
+    abrir();
+    expect(await screen.findByText(/Nenhum semanário desta semana/)).toBeInTheDocument();
+    expect(screen.queryByText(/pediu acesso|pediram acesso/)).not.toBeInTheDocument();
+    cleanup();
+    estado.pedidos = [pedido('p1', 'Carla Dias')];
+    estado.papel = { ...estado.papel, isOrientadora: false, isMarketing: true, unit: 'Administração' };
+    abrir();
+    expect(await screen.findByText(/Nenhum semanário desta semana/)).toBeInTheDocument();
+    expect(screen.queryByText(/pediu acesso/)).not.toBeInTheDocument();
   });
 });
