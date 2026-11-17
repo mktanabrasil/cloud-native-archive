@@ -27,7 +27,7 @@ const tabs = [
 ];
 
 export default function EventsHubPage() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, loading: carregandoSessao } = useAuth();
   const { isAdmin, canCreate } = useUserRole();
   const { isGate, leaving, entering } = useEntryGateTransition();
   const [novoAberto, setNovoAberto] = useState(false);
@@ -72,7 +72,9 @@ export default function EventsHubPage() {
   // Em /social/eventos, sem sessão, volta para a porta (16/11/2026).
   if (!isAuthenticated) {
     if (isGate) return <HomePage />;
-    if (location.pathname !== '/' && !limpa) return <Navigate to="/" replace />;
+    // Só depois de a sessão chegar (17/11/2026): enquanto ela carrega, quem está
+    // logado também parece sem sessão, e o F5 em /social/eventos ia para a raiz.
+    if (location.pathname !== '/' && !limpa) return carregandoSessao ? null : <Navigate to="/" replace />;
     return <PublicEventsPage />;
   }
 
