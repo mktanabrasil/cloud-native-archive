@@ -88,3 +88,18 @@ export async function apagar(id: string): Promise<void> {
   falhou(error);
   if (!data?.length) throw new Error('Só dá para apagar um semanário seu ainda em preenchimento.');
 }
+
+/** O que a função de avisos respondeu (ver supabase/functions/semanario-aviso). */
+export interface ResultadoDoAviso { enviado: boolean; motivo?: string }
+
+/**
+ * Pede o e-mail do envio (para a orientadora) ou da devolutiva (para a
+ * professora), logo depois de gravar. A função confere quem pede, lê os
+ * destinatários e avisa uma vez só; falhar aqui não desfaz nada no semanário.
+ */
+export async function avisarPorEmail(id: string, tipo: 'envio' | 'devolutiva'): Promise<ResultadoDoAviso> {
+  const { data, error } = await supabase.functions.invoke('semanario-aviso', { body: { semanario_id: id, tipo } });
+  if (error) throw error;
+  const r = (data ?? {}) as { enviado?: boolean; motivo?: string };
+  return r.enviado ? { enviado: true } : { enviado: false, motivo: r.motivo ?? 'desconhecido' };
+}

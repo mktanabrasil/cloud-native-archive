@@ -16,6 +16,8 @@ const estado = vi.hoisted(() => ({
   cheios: [] as string[],
   devolutivas: [] as string[],
   larga: false,
+  avisos: [] as string[],
+  aviso: { enviado: true } as { enviado: boolean; motivo?: string } | 'erro',
 }));
 
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => estado.auth }));
@@ -48,6 +50,11 @@ vi.mock('@/lib/semanario/api', () => ({
   }),
   desfazerEnvio: vi.fn(async (id: string) => { const l = estado.linhas.find(x => x.id === id)!; l.status = 'preenchimento'; return { ...l }; }),
   apagar: vi.fn(async () => {}),
+  avisarPorEmail: vi.fn(async (id: string, tipo: string) => {
+    estado.avisos.push(`${tipo}:${id}`);
+    if (estado.aviso === 'erro') throw new Error('Edge Function returned a non-2xx status code');
+    return estado.aviso;
+  }),
   darDevolutiva: vi.fn(async (id: string, texto: string) => {
     estado.devolutivas.push(texto);
     const l = estado.linhas.find(x => x.id === id)!;
@@ -91,6 +98,8 @@ beforeEach(() => {
   estado.cheios = [];
   estado.devolutivas = [];
   estado.larga = false;
+  estado.avisos = [];
+  estado.aviso = { enviado: true };
 });
 afterEach(() => { vi.useRealTimers(); });
 /** O relógio inteiro falso (o do beforeEach só finge a data), para o salvamento automático. */
@@ -382,5 +391,54 @@ describe('a devolutiva da orientadora', () => {
     fireEvent.click(screen.getByRole('button', { name: /Enviar devolutiva/ }));
     await waitFor(() => expect(toast.info).toHaveBeenCalledWith('A professora desfez o envio', expect.anything()));
     expect(await screen.findByText(/O seu rascunho está guardado/)).toBeInTheDocument();
+  });
+});
+
+describe('os avisos por e-mail', () => {
+  const completo = () => linha({ dias: { seg: dia, ter: dia, qua: dia, qui: dia, sex: dia }, formas_registro: 'Fotos', materiais: 'Tinta', avaliacao: '' });
+  const enviarPelaFicha = async () => {
+    abrir('/educacao/semanario/s1');
+    fireEvent.click(await screen.findByRole('button', { name: /^Enviar/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Enviar$/ }));
+    await waitFor(() => expect(estado.enviados).toEqual(['s1']));
+  };
+
+  it('enviar pede o e-mail para a orientadora', async () => {
+    estado.linhas = [completo()];
+    await enviarPelaFicha();
+    await waitFor(() => expect(estado.avisos).toEqual(['envio:s1']));
+  });
+
+  it('sem orientadora no CEI: avisa a professora, sem erro', async () => {
+    const { toast } = await import('sonner');
+    estado.linhas = [completo()];
+    estado.aviso = { enviado: false, motivo: 'sem orientadora' };
+    await enviarPelaFicha();
+    await waitFor(() => expect(toast.info).toHaveBeenCalledWith('O CEI ainda não tem orientadora no app', expect.anything()));
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it('e-mail que não sai não desfaz o envio', async () => {
+    const { toast } = await import('sonner');
+    estado.linhas = [completo()];
+    estado.aviso = 'erro';
+    await enviarPelaFicha();
+    await waitFor(() => expect(toast.info).toHaveBeenCalledWith('O e-mail para a orientadora não saiu', expect.anything()));
+    expect(estado.linhas[0].status).toBe('enviado');
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it('a devolutiva pede o e-mail para a professora; apagar não', async () => {
+    estado.papel = { ...estado.papel, isProfessora: false, isOrientadora: true, unit: 'Anísio' };
+    estado.auth = { ...estado.auth, user: { id: 'ori-1', user_metadata: {} } };
+    estado.linhas = [linha({ status: 'enviado', enviado_em: '2026-11-17T19:20:00Z' })];
+    abrir('/educacao/semanario/s1');
+    fireEvent.change(await screen.findByLabelText('Devolutiva'), { target: { value: 'Muito bom!' } });
+    fireEvent.click(screen.getByRole('button', { name: /Enviar devolutiva/ }));
+    await waitFor(() => expect(estado.avisos).toEqual(['devolutiva:s1']));
+    fireEvent.click(await screen.findByRole('button', { name: /Apagar a devolutiva/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Apagar$/ }));
+    await waitFor(() => expect(estado.devolutivas).toEqual(['Muito bom!', '']));
+    expect(estado.avisos).toEqual(['devolutiva:s1']);
   });
 });
