@@ -2,6 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ROTAS } from '@/config/navigation';
 import { useIsCleanView } from '@/hooks/useIsEntryGate';
+import { useUserRole } from '@/hooks/useUserRole';
 import { destinoDaContaRestrita } from '@/lib/contasRestritas';
 import { retornoDoGoogle } from '@/lib/events/conexaoGoogle';
 import EventsHubPage from '@/pages/EventsHubPage';
@@ -19,6 +20,7 @@ const PARAMETROS_DOS_EVENTOS = ['tela', 'slug', 'aba', 'unidade', 'como'];
  */
 export default function RaizPage() {
   const { isAuthenticated, user } = useAuth();
+  const { soSemanario, loading: carregandoPapel } = useUserRole();
   const limpa = useIsCleanView();
   const { search, hash } = useLocation();
   const voltaDoGoogle = !!retornoDoGoogle(search) || !!new URLSearchParams(search).get('state')?.startsWith('drive:');
@@ -28,5 +30,8 @@ export default function RaizPage() {
   // e-mails de evento, `?slug=`, os filtros da programação) seguem para eles.
   const busca = new URLSearchParams(search);
   if (PARAMETROS_DOS_EVENTOS.some(p => busca.has(p))) return <Navigate to={{ pathname: ROTAS.eventos, search, hash }} replace />;
+  // A professora e a orientadora veem só o Semanário: é a página inicial delas.
+  if (carregandoPapel) return null;
+  if (soSemanario) return <Navigate to={ROTAS.semanario} replace />;
   return <InicioPage />;
 }

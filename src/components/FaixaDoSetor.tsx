@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { PAGINAS_DOS_SETORES, navItems, setorDoCaminho, type NavItem } from '@/config/navigation';
+import { navItems, paginasVisiveis, setorDoCaminho, type NavItem, type PodeAbrir } from '@/config/navigation';
 import { useFaixaDoSetorEscondida } from '@/hooks/useFaixaDoSetor';
 
 /**
@@ -11,9 +11,9 @@ import { useFaixaDoSetorEscondida } from '@/hooks/useFaixaDoSetor';
  * pessoa: Vagas e Painel já trazem as abas dentro da página. Some enquanto
  * uma ferramenta de tela cheia (o editor do Jornal) está aberta.
  */
-export function FaixaDoSetor({ temCalendario, cor, compacta = false }: {
-  /** Mostra o Calendário Anual (marketing ou gestora liberada na lista). */
-  temCalendario: boolean;
+export function FaixaDoSetor({ pode, cor, compacta = false }: {
+  /** O que a pessoa abre: o Calendário Anual, o Jornal, o Semanário. */
+  pode: PodeAbrir;
   /** A cor de cada setor, a mesma da barra. */
   cor: (to: string) => string | undefined;
   /** No celular: sem o nome do setor, e as páginas rolam para o lado. */
@@ -32,7 +32,7 @@ export function FaixaDoSetor({ temCalendario, cor, compacta = false }: {
   const escondida = useFaixaDoSetorEscondida();
   const setor = setorDoCaminho(location.pathname);
   if (!setor || escondida) return null;
-  const paginas = (PAGINAS_DOS_SETORES[setor] ?? []).filter(p => !p.soComCalendario || temCalendario);
+  const paginas = paginasVisiveis(setor, pode);
   if (paginas.length < 2) return null;
   const item = navItems.find(i => i.to === setor) as NavItem | undefined;
   const Icone = item?.icon;

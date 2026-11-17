@@ -165,6 +165,15 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
     imagemAlt: 'O app da ANA Brasil',
   },
   {
+    // O Semanário (17/11/2026): o link vai às professoras dos CEIs.
+    arquivo: 'semanario.html',
+    regra: 'RewriteRule ^educacao/semanario(/[^/]+)?/?$ /semanario.html [L]',
+    titulo: 'Semanário · ANA Brasil',
+    descricao: 'O planejamento da semana das professoras dos CEIs, no modelo da Orientação Pedagógica.',
+    imagem: '/og-app.jpg',
+    imagemAlt: 'O app da ANA Brasil',
+  },
+  {
     // As páginas da equipe: pedem login e têm um cartão só.
     arquivo: 'app.html',
     regra: 'RewriteRule ^(login|redefinir-senha|auth/confirm|social(/eventos)?|painel|marketing(/[^/]+)?|visao-geral|usuarios|auditoria|design-manual|admin-toolbox|email-preview|pizza-da-alegria/(painel(/dashboard)?|retirada)|voluntariado/natalfeliz26/presenca)/?$ /app.html [L]',

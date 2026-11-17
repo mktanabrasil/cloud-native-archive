@@ -6,8 +6,9 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
  * `app.anabrasil.org` (17/11/2026): a página inicial para quem está logado;
  * o resto do que a raiz já fazia fica com o hub dos Eventos.
  */
-const estado = vi.hoisted(() => ({ auth: { isAuthenticated: true, user: { id: 'e1', user_metadata: {} } as unknown }, limpa: false }));
+const estado = vi.hoisted(() => ({ auth: { isAuthenticated: true, user: { id: 'e1', user_metadata: {} } as unknown }, limpa: false, papel: { soSemanario: false, loading: false } }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => estado.auth }));
+vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => estado.papel }));
 vi.mock('@/hooks/useIsEntryGate', () => ({ useIsCleanView: () => estado.limpa }));
 vi.mock('@/pages/EventsHubPage', () => ({ default: () => <p>hub dos eventos</p> }));
 vi.mock('@/pages/InicioPage', () => ({ default: () => <p>página inicial</p> }));
@@ -31,9 +32,22 @@ const abrir = (url = '/') =>
 afterEach(() => {
   estado.auth = { isAuthenticated: true, user: { id: 'e1', user_metadata: {} } };
   estado.limpa = false;
+  estado.papel = { soSemanario: false, loading: false };
 });
 
 describe('a raiz', () => {
+  it('a professora e a orientadora vão direto ao Semanário (17/11/2026)', () => {
+    estado.papel = { soSemanario: true, loading: false };
+    abrir();
+    expect(screen.getByTestId('endereco')).toHaveTextContent('/educacao/semanario');
+  });
+
+  it('enquanto o papel carrega, a raiz espera', () => {
+    estado.papel = { soSemanario: false, loading: true };
+    abrir();
+    expect(screen.queryByText('página inicial')).not.toBeInTheDocument();
+  });
+
   it('quem está logado vê a página inicial', () => {
     abrir();
     expect(screen.getByText('página inicial')).toBeInTheDocument();
