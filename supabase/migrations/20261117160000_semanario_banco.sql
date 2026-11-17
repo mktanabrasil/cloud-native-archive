@@ -58,14 +58,14 @@ $$;
 
 -- A pessoa logada é professora ativa? (desativada no Painel, deixa de mexer nos dela)
 CREATE OR REPLACE FUNCTION public.semanario_sou_professora_ativa()
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public' AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.profiles p
     WHERE p.user_id = auth.uid()
       AND p.is_active IS NOT FALSE
       AND p.bond_type = 'professora'
   );
-$;
+$$;
 
 REVOKE ALL ON FUNCTION public.semanario_sou_professora_ativa() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.semanario_sou_professora_ativa() TO authenticated;
