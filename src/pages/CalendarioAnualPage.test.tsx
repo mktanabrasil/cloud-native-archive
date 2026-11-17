@@ -135,7 +135,7 @@ describe('os textos do projeto (13/11/2026)', () => {
     expect(await screen.findByRole('heading', { name: 'Textos do projeto · 2027' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Página 2 do PDF' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Página 10 do PDF' })).toBeInTheDocument();
-    expect((screen.getByLabelText('SERVIÇO DE CONVIVÊNCIA E FORTALECIMENTO DE VÍNCULOS - SCFV') as HTMLTextAreaElement).value).toMatch(/^Trata-se de um serviço/);
+    expect((screen.getByLabelText('Texto: SERVIÇO DE CONVIVÊNCIA E FORTALECIMENTO DE VÍNCULOS - SCFV') as HTMLTextAreaElement).value).toMatch(/^Trata-se de um serviço/);
     expect(screen.getByRole('button', { name: 'Tudo salvo' })).toBeDisabled();
   });
 
@@ -144,16 +144,38 @@ describe('os textos do projeto (13/11/2026)', () => {
     const { salvarAno } = await import('@/lib/calendario/api');
     vi.mocked(salvarAno).mockImplementation(async (_ano, c) => ({ ...(await (await import('@/lib/calendario/api')).lerAno(2027)), ...c }) as never);
     abrir('/calendario?parte=textos');
-    const campo = await screen.findByLabelText('METODOLOGIA');
+    const campo = await screen.findByLabelText('Texto: METODOLOGIA');
     fireEvent.change(campo, { target: { value: 'Texto novo da metodologia.' } });
     expect(screen.getByText('Editado')).toBeInTheDocument();
-    const avaliacao = screen.getByLabelText('AVALIAÇÃO');
+    const avaliacao = screen.getByLabelText('Texto: AVALIAÇÃO');
     const original = (avaliacao as HTMLTextAreaElement).value;
     fireEvent.change(avaliacao, { target: { value: original + ' Mais.' } });
     fireEvent.change(avaliacao, { target: { value: original } });
     fireEvent.click(screen.getByRole('button', { name: 'Salvar os textos' }));
     await waitFor(() => expect(salvarAno).toHaveBeenCalledWith(2027, { textos: { metodologia: 'Texto novo da metodologia.' } }));
     expect(await screen.findByRole('button', { name: 'Tudo salvo' })).toBeDisabled();
+  });
+
+  // Os títulos também se editam (17/11/2026): vêm preenchidos e só o que mudou é gravado.
+  it('o título vem preenchido, edita e é gravado ao lado do texto; voltar ao de 2026 desfaz os dois', async () => {
+    coordenadora();
+    const { salvarAno } = await import('@/lib/calendario/api');
+    vi.mocked(salvarAno).mockClear();
+    vi.mocked(salvarAno).mockImplementation(async (_ano, c) => ({ ...(await (await import('@/lib/calendario/api')).lerAno(2027)), ...c }) as never);
+    abrir('/calendario?parte=textos');
+    await screen.findByLabelText('Texto: JUSTIFICATIVA');
+    const titulos = screen.getAllByRole('textbox', { name: 'Título da seção' }) as HTMLInputElement[];
+    expect(titulos[0].value).toBe('SERVIÇO DE CONVIVÊNCIA E FORTALECIMENTO DE VÍNCULOS - SCFV');
+    const justificativa = titulos.find((t) => t.value === 'JUSTIFICATIVA')!;
+    fireEvent.change(justificativa, { target: { value: 'POR QUE ESTE PROJETO' } });
+    expect(screen.getByText('Editado')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar os textos' }));
+    await waitFor(() => expect(salvarAno).toHaveBeenCalledWith(2027, { textos: { 'titulo:justificativa': 'POR QUE ESTE PROJETO' } }));
+
+    fireEvent.click(await screen.findByRole('button', { name: /voltar ao texto de 2026/i }));
+    expect(screen.getByLabelText('Texto: JUSTIFICATIVA')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar os textos' }));
+    await waitFor(() => expect(salvarAno).toHaveBeenLastCalledWith(2027, { textos: {} }));
   });
 });
 
@@ -189,12 +211,12 @@ describe('unidade nova nos textos (13/11/2026)', () => {
     vi.mocked(salvarAno).mockImplementation(async (_ano, c) => ({ ...(await (await import('@/lib/calendario/api')).lerAno(2027)), ...c }) as never);
     abrir('/calendario?parte=textos');
     fireEvent.click(await screen.findByRole('button', { name: 'Acrescentar unidade (ANA IV)' }));
-    expect(screen.getByLabelText('ANA IV')).toHaveValue('');
+    expect(screen.getByLabelText('Texto: ANA IV')).toHaveValue('');
     expect(screen.getByRole('button', { name: 'Acrescentar unidade (ANA V)' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Acrescentar unidade (ANA V)' }));
     fireEvent.click(screen.getByRole('button', { name: 'Tirar a ANA V' }));
-    expect(screen.queryByLabelText('ANA V')).not.toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('ANA IV'), { target: { value: 'A unidade nova.' } });
+    expect(screen.queryByLabelText('Texto: ANA V')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Texto: ANA IV'), { target: { value: 'A unidade nova.' } });
     fireEvent.click(screen.getByRole('button', { name: 'Salvar os textos' }));
     await waitFor(() => expect(salvarAno).toHaveBeenCalledWith(2027, { textos: { 'ana-4': 'A unidade nova.' } }));
   });

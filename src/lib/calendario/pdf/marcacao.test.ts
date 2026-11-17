@@ -51,3 +51,20 @@ describe('unidades novas (13/11/2026)', () => {
     expect(secoesDoAno(textos).find(s => s.id === 'ana-5')).toMatchObject({ titulo: 'ANA V', compacto: true, novaPagina: false });
   });
 });
+
+describe('títulos editáveis (17/11/2026)', () => {
+  it('o escrito vale; vazio ou ausente volta ao de 2026', async () => {
+    const { SECOES_DO_TEXTO, chaveDoTitulo, tituloDaSecao } = await import('./textosBase');
+    const justificativa = SECOES_DO_TEXTO.find(s => s.id === 'justificativa')!;
+    expect(chaveDoTitulo('justificativa')).toBe('titulo:justificativa');
+    expect(tituloDaSecao({ 'titulo:justificativa': 'POR QUE ESTE PROJETO' }, justificativa)).toBe('POR QUE ESTE PROJETO');
+    expect(tituloDaSecao({ 'titulo:justificativa': '   ' }, justificativa)).toBe('JUSTIFICATIVA');
+    expect(tituloDaSecao({}, justificativa)).toBe('JUSTIFICATIVA');
+    expect(tituloDaSecao(null, justificativa)).toBe('JUSTIFICATIVA');
+  });
+
+  it('o título de uma unidade nova não cria outra unidade', async () => {
+    const { unidadesNovas } = await import('./textosBase');
+    expect(unidadesNovas({ 'ana-4': 'Texto', 'titulo:ana-4': 'ANA IV - Jardim Novo', 'titulo:ana-5': 'sobra' })).toEqual([4]);
+  });
+});
