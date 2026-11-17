@@ -260,6 +260,19 @@ export function corpoDaSecao(textos: Record<string, string> | null | undefined, 
   return SECOES_DO_TEXTO.find(s => s.id === id)?.corpo ?? '';
 }
 
+/**
+ * Os títulos também se editam (17/11/2026): o escrito fica nos `textos`, ao
+ * lado do corpo, com a chave `titulo:<id>`. Só é gravado o que mudou; vazio
+ * ou igual ao de 2026 volta a seguir a base.
+ */
+export const chaveDoTitulo = (id: string) => `titulo:${id}`;
+
+/** O título de uma seção: o que as coordenadoras escreveram, ou o de 2026 (ou "ANA IV" na unidade nova). */
+export function tituloDaSecao(textos: Record<string, string> | null | undefined, secao: Pick<SecaoDoTexto, 'id' | 'titulo'>): string {
+  const escrito = textos?.[chaveDoTitulo(secao.id)];
+  return typeof escrito === 'string' && escrito.trim() ? escrito : secao.titulo;
+}
+
 /* ---------- unidades novas (13/11/2026) ---------- */
 // Em 2027 o Social pode ganhar unidades. Cada uma é acrescentada por um botão
 // e vira a próxima na ordem (ANA IV, ANA V…), depois da ANA III e antes da

@@ -5,7 +5,7 @@ import {
 } from '../regras';
 import { montarCelula, type EstiloDaLetra } from './grade';
 import { blocosDe, quebrarEmLinhas, trocarMarcas } from './marcacao';
-import { corpoDaSecao, secoesDoAno } from './textosBase';
+import { corpoDaSecao, secoesDoAno, tituloDaSecao } from './textosBase';
 
 /**
  * O PDF do Calendário Anual (13/11/2026), no formato do de 2026: A4 deitado,
@@ -233,7 +233,7 @@ export function montarPdf(
 
   for (const s of secoesDoAno(ano.textos)) {
     if (s.novaPagina || paginasDeTexto === 0) abrirPaginaDeTexto();
-    titulo(marcas(s.titulo), s.nivel, s.compacto);
+    titulo(marcas(tituloDaSecao(ano.textos, s)), s.nivel, s.compacto);
     corpo(corpoDaSecao(ano.textos, s.id));
     if (s.id === 'avaliacao') tabelaDosPercursos();
   }
