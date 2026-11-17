@@ -14,6 +14,7 @@ import { CaixaDaDevolutiva, Selo, Vidro, quando } from './pecas';
 import { Devolutiva } from './Devolutiva';
 import { FolhaAoLado, useFolhaDoSemanario } from './PreviaDoSemanario';
 import { PedidosDeProfessoras } from './PedidosDeProfessoras';
+import { useTutorialDoSemanario } from './TutorialDoSemanario';
 
 /** Primeiro o que espera devolutiva, depois o que está em preenchimento, por fim os respondidos. */
 const ORDEM: Record<Semanario['status'], number> = { enviado: 0, preenchimento: 1, com_devolutiva: 2 };
@@ -86,6 +87,8 @@ export function ListaDaUnidade({ titulo, marketing, podeDevolver = () => false, 
     catch { if (pedida.current === s) setEstado('erro'); }
   }, []);
   useEffect(() => { void carregar(semana); }, [carregar, semana]);
+  // O tutorial é da orientadora (o marketing só lê).
+  const tut = useTutorialDoSemanario(pedidos ? 'semanario-orientadora' : null, estado === 'pronto');
 
   const ordenada = useMemo(() => ordenarParaRevisar(lista), [lista]);
   const aguardando = lista.filter(s => s.status === 'enviado').length;
@@ -102,7 +105,7 @@ export function ListaDaUnidade({ titulo, marketing, podeDevolver = () => false, 
     <main className={cn('mx-auto w-full px-4 pb-16 lg:px-6', telaLarga ? 'max-w-7xl' : 'max-w-5xl')}>
       <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-display text-[30px] font-bold tracking-tight">{titulo}</h1>
+          <div className="flex flex-wrap items-center gap-x-3"><h1 className="font-display text-[30px] font-bold tracking-tight">{titulo}</h1>{tut.botao}</div>
           <p className="mt-1 text-[14.5px] text-muted-foreground">
             Semana de {periodoPorExtenso(semana)} · envio até {diaComSemana(prazoDeEnvio(semana))} · devolutiva até {diaComSemana(prazoDaDevolutiva(semana))}
           </p>
@@ -110,7 +113,7 @@ export function ListaDaUnidade({ titulo, marketing, podeDevolver = () => false, 
             <p className="mt-1 text-[13px] font-semibold text-[hsl(var(--info))]">{aguardando === 1 ? '1 semanário aguardando devolutiva' : `${aguardando} semanários aguardando devolutiva`}</p>
           )}
         </div>
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Semana">
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Semana" data-tutorial="sem-semanas">
           {semanas.map(s => (
             <button key={s} type="button" aria-pressed={s === semana} onClick={() => setSemana(s)}
               className={cn('rounded-full border px-3 py-1.5 text-[13px]', s === semana
@@ -136,7 +139,7 @@ export function ListaDaUnidade({ titulo, marketing, podeDevolver = () => false, 
       )}
       {estado === 'pronto' && lista.length > 0 && (
         <div className={cn('mt-5', telaLarga && 'grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] items-start gap-5')}>
-        <Vidro className="px-4 py-1">
+        <Vidro className="px-4 py-1" data-tutorial="sem-lista">
           <ul className="divide-y divide-black/[.07] dark:divide-white/[.08]">
             {ordenada.map(s => {
               const sit = situacao(s, hoje);
@@ -168,12 +171,13 @@ export function ListaDaUnidade({ titulo, marketing, podeDevolver = () => false, 
           </ul>
         </Vidro>
         {telaLarga && escolhido && (
-          <div className="sticky top-24">
+          <div className="sticky top-24" data-tutorial="sem-painel">
             <PainelDoSemanario key={escolhido.id} s={escolhido} marketing={marketing} podeDevolver={podeDevolver(escolhido)} onSalvo={atualizar} />
           </div>
         )}
         </div>
       )}
+      {tut.tutorial}
     </main>
   );
 }

@@ -63,7 +63,7 @@ export function PedidosDeProfessoras() {
   };
 
   return (
-    <Vidro className="mt-5 px-4 py-3">
+    <Vidro className="mt-5 px-4 py-3" data-tutorial="sem-pedidos">
       <h2 className="flex items-center gap-2 text-[14px] font-semibold">
         <UserPlus className="h-4 w-4 text-[hsl(var(--info))]" aria-hidden />
         {pedidos.length === 1 ? '1 professora pediu acesso' : `${pedidos.length} professoras pediram acesso`}

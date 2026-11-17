@@ -3,9 +3,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { PercursoId } from '@/lib/journal/tutorial';
 import type { RoteiroDoCalendario } from '@/lib/calendario/tutorial';
+import type { RoteiroDoSemanario } from '@/lib/semanario/tutorial';
 
-/** Os roteiros com "já vi" guardado: os do Jornal e os do Calendário Anual (13/11/2026). */
-type Roteiro = PercursoId | RoteiroDoCalendario;
+/** Os roteiros com "já vi" guardado: os do Jornal, do Calendário Anual (13/11/2026) e do Semanário (17/11/2026). */
+type Roteiro = PercursoId | RoteiroDoCalendario | RoteiroDoSemanario;
 
 /**
  * Quais tutoriais a pessoa já viu — por conta, em qualquer computador.

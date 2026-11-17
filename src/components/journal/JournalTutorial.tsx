@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { PERCURSOS, type PassoTutorial, type PercursoId } from '@/lib/journal/tutorial';
@@ -25,6 +25,8 @@ interface Props {
 const FOLGA = 8;
 /** Espaço que o cartão precisa para não encostar na borda da janela. */
 const MARGEM = 12;
+/** A barra fixa do topo do app: o alvo rolado para a vista fica abaixo dela. */
+const TOPO_LIVRE = 96;
 
 interface Caixa {
   top: number;
@@ -73,6 +75,25 @@ export function JournalTutorial({ percurso, passos: passosDeFora, rotulo, aberto
     medir();
   }, [medir]);
 
+  // O alvo fora da tela (17/11/2026, Semanário): rola até ele a cada passo.
+  // Sem isto, um alvo mais abaixo deixava o cartão abaixo da borda da tela, e
+  // no celular ele simplesmente não aparecia. O alvo alto (uma lista inteira)
+  // fica com o começo à vista, abaixo da barra do topo; a rolagem dispara o
+  // `medir` pelo ouvinte de scroll.
+  useEffect(() => {
+    if (!aberto || !passo) return;
+    const alvo = document.querySelector<HTMLElement>(`[data-tutorial="${passo.alvo}"]`);
+    if (!alvo) return;
+    const r = alvo.getBoundingClientRect();
+    if (r.width < 4 || r.height < 4) return;
+    if (r.top >= TOPO_LIVRE && r.bottom <= window.innerHeight - MARGEM) return;
+    const alto = r.height > (window.innerHeight - TOPO_LIVRE) * 0.6;
+    const antes = alvo.style.scrollMarginTop;
+    alvo.style.scrollMarginTop = `${TOPO_LIVRE}px`;
+    alvo.scrollIntoView?.({ block: alto ? 'start' : 'center', behavior: 'smooth' });
+    alvo.style.scrollMarginTop = antes;
+  }, [aberto, passo]);
+
   useEffect(() => {
     if (!aberto) return;
     window.addEventListener('resize', medir);
@@ -106,15 +127,28 @@ export function JournalTutorial({ percurso, passos: passosDeFora, rotulo, aberto
     return () => window.removeEventListener('keydown', teclado);
   }, [aberto, encerrar, seguir]);
 
+  // A altura real do cartão (no celular, um texto comprido passa de 200 px).
+  const cartaoRef = useRef<HTMLDivElement>(null);
+  const [alturaDoCartao, setAlturaDoCartao] = useState(200);
+  useLayoutEffect(() => {
+    const h = cartaoRef.current?.offsetHeight;
+    if (h && Math.abs(h - alturaDoCartao) > 2) setAlturaDoCartao(h);
+  }, [alturaDoCartao, indice, aberto]);
+
   if (!aberto || !passo) return null;
 
-  /* Posição do cartão: abaixo do alvo, ou acima se não couber. */
+  /* Posição do cartão: abaixo do alvo; se não couber, acima; se o alvo for
+     alto demais para os dois (uma lista inteira), no pé da tela, por cima do
+     fim dele, para o começo continuar à vista. Nunca fora da tela. */
   const LARGURA_CARTAO = 320;
   let estiloCartao: React.CSSProperties;
 
   if (caixa) {
-    const abaixo = caixa.top + caixa.height + FOLGA + 190 < window.innerHeight;
-    const topo = abaixo ? caixa.top + caixa.height + FOLGA + 6 : Math.max(MARGEM, caixa.top - 196);
+    const debaixo = caixa.top + caixa.height + FOLGA + 6;
+    const emCima = caixa.top - FOLGA - 6 - alturaDoCartao;
+    const topo = debaixo + alturaDoCartao <= window.innerHeight - MARGEM ? debaixo
+      : emCima >= MARGEM ? emCima
+      : Math.max(MARGEM, window.innerHeight - alturaDoCartao - MARGEM);
     const esquerda = Math.min(
       Math.max(MARGEM, caixa.left),
       Math.max(MARGEM, window.innerWidth - LARGURA_CARTAO - MARGEM),
@@ -158,6 +192,7 @@ export function JournalTutorial({ percurso, passos: passosDeFora, rotulo, aberto
       )}
 
       <div
+        ref={cartaoRef}
         className="absolute w-[min(320px,calc(100vw-24px))] rounded-[20px] border border-black/5 bg-card p-4 shadow-2xl dark:border-white/5"
         style={estiloCartao}
       >
