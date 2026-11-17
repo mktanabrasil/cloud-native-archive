@@ -210,7 +210,24 @@ export function useUserRole() {
    * nenhum para ver, e cairia numa lista vazia sem entender o porquê.
    */
   const canAccessJournal = isMarketing || isGestaoDaEducacao;
-  /** Só a Educação no menu: a gestão da Educação não vê o Social (16/11/2026). */
+
+  /**
+   * O Semanário (17/11/2026): a professora preenche e a orientadora
+   * pedagógica dá a devolutiva, cada uma no CEI (ou no GOE) do perfil. O papel
+   * vem do vínculo, com o nível de usuário padrão: nenhuma das duas é gestão
+   * do CEI nem entra no Jornal. Sem unidade da Educação, o vínculo não vale.
+   */
+  const unidadeDaEducacao = isActive && ehUnidadeDoJornal(newsUnitForProfileUnit(unit)?.id);
+  const isProfessora = bondType === 'professora' && unidadeDaEducacao;
+  const isOrientadora = bondType === 'orientacao_pedagogica' && unidadeDaEducacao;
+  /** Quem entra no Semanário: quem preenche, quem orienta e o marketing (só leitura). */
+  const temSemanario = isMarketing || isProfessora || isOrientadora;
+
+  /**
+   * Só a Educação no menu: a gestão da Educação não vê o Social (16/11/2026).
+   * A professora e a orientadora entram aqui junto com a página do Semanário
+   * (PR 3): antes dela, tirar o Social as deixaria sem setor nenhum.
+   */
   const soEducacao = isGestaoDaEducacao && !isMarketing;
 
   /**
@@ -247,6 +264,9 @@ export function useUserRole() {
     isRh,
     isUnitManager,
     isGestaoDaEducacao,
+    isProfessora,
+    isOrientadora,
+    temSemanario,
     canAccessJournal,
     soEducacao,
     isGestaoDoSocial,

@@ -222,3 +222,54 @@ describe('o setor da gestão', () => {
     expect(papel.soEducacao).toBe(false);
   });
 });
+
+/** O Semanário (17/11/2026): professora e orientadora pedagógica, pelo vínculo e pela unidade. */
+describe('os papéis do Semanário', () => {
+  const carregar = async () => {
+    const { result } = renderHook(() => useUserRole());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    return result.current;
+  };
+  const comVinculo = (vinculo: string, unidade: string) => {
+    espiao.papel = null;
+    espiao.nivel = 'usuario_padrao';
+    espiao.vinculo = vinculo;
+    espiao.unidade = unidade;
+  };
+
+  it('a professora de um CEI entra no Semanário, sem o Jornal (o só a Educação vem com a página, no PR 3)', async () => {
+    comVinculo('professora', 'Anísio');
+    const papel = await carregar();
+    expect(papel.isProfessora).toBe(true);
+    expect(papel.isOrientadora).toBe(false);
+    expect(papel.temSemanario).toBe(true);
+    expect(papel.soEducacao).toBe(false);
+    expect(papel.canAccessJournal).toBe(false);
+    expect(papel.temCalendarioAnual).toBe(false);
+  });
+
+  it('a orientadora pedagógica do GOE também', async () => {
+    comVinculo('orientacao_pedagogica', 'GOE');
+    const papel = await carregar();
+    expect(papel.isOrientadora).toBe(true);
+    expect(papel.temSemanario).toBe(true);
+    expect(papel.soEducacao).toBe(false);
+    expect(papel.canAccessJournal).toBe(false);
+  });
+
+  it('com unidade do Social, o vínculo da Educação não vale', async () => {
+    comVinculo('professora', 'Santana');
+    const papel = await carregar();
+    expect(papel.isProfessora).toBe(false);
+    expect(papel.temSemanario).toBe(false);
+    expect(papel.soEducacao).toBe(false);
+  });
+
+  it('o marketing vê o Semanário (só leitura vem no PR da tela)', async () => {
+    comVinculo('marketing', 'Administração');
+    const papel = await carregar();
+    expect(papel.temSemanario).toBe(true);
+    expect(papel.isProfessora).toBe(false);
+    expect(papel.soEducacao).toBe(false);
+  });
+});

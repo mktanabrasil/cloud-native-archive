@@ -9,6 +9,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useDbUsers } from '@/hooks/useDbUsers';
 import { useViewConfigs } from '@/hooks/useViewConfigs';
 import { AppUser, Unit, UNITS, UNIT_BG_COLORS, PERMISSION_LEVELS, BOND_LABELS, BOND_GROUPS, BOND_RULES, BondType, PARTNER_CATEGORIES, PartnerCategory } from '@/types';
+import { UNIDADES_DA_EDUCACAO, unidadesDoPainel } from '@/lib/painel/unidades';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -53,10 +54,17 @@ function deriveFromBond(bond: BondType | '' | null | undefined, currentUnit: str
   let unit = currentUnit;
   if (rule.unitMode === 'fixed-admin') unit = 'Administração';
   else if (rule.unitMode === 'none') unit = '';
-  else if (rule.unitMode === 'choose' && (!currentUnit || currentUnit === 'Administração')) unit = 'DIC';
+  // Vindo de um CEI (o vínculo da Educação), a unidade também volta para uma do Social.
+  else if (rule.unitMode === 'choose' && (!currentUnit || currentUnit === 'Administração' || !UNITS.includes(currentUnit as Unit))) unit = 'DIC';
+  // A Educação (17/11/2026): fica a unidade se já for um CEI ou o GOE; senão, em branco para escolher.
+  else if (rule.unitMode === 'educacao' && !UNIDADES_DA_EDUCACAO.some(u => u.valor === currentUnit)) unit = '';
   return { permission_level: rule.permission_level, unit, unitMode: rule.unitMode };
 }
 
+/** Vínculo da Educação (o Semanário) sem um CEI ou o GOE escolhido: não salva (17/11/2026). */
+function faltaUnidadeDaEducacao(bond: string | null | undefined, unit: string | null | undefined): boolean {
+  return !!bond && BOND_RULES[bond as BondType]?.unitMode === 'educacao' && !UNIDADES_DA_EDUCACAO.some(u => u.valor === unit);
+}
 
 export default function UsersPage() {
   const [urlSearchParams] = useSearchParams();
@@ -130,6 +138,10 @@ export default function UsersPage() {
   const handlePreRegister = async () => {
     if (!preRegisterForm.name || !preRegisterForm.email || !preRegisterForm.password) {
       toast({ title: 'Campos obrigatórios', description: 'Preencha nome, e-mail e senha.', variant: 'destructive' });
+      return;
+    }
+    if (faltaUnidadeDaEducacao(preRegisterForm.bond_type, preRegisterForm.unit)) {
+      toast({ title: 'Escolha o CEI ou o GOE', description: 'Professora e orientação pedagógica precisam da unidade da Educação.', variant: 'destructive' });
       return;
     }
     if (preRegisterForm.password.length < 6) {
@@ -459,6 +471,10 @@ export default function UsersPage() {
   };
 
   const handleSave = async () => {
+    if (editForm && faltaUnidadeDaEducacao(editForm.bond_type, editForm.unit)) {
+      toast({ title: 'Escolha o CEI ou o GOE', description: 'Professora e orientação pedagógica precisam da unidade da Educação.', variant: 'destructive' });
+      return;
+    }
     if (editForm && selectedUser) {
       setProcessingId(selectedUser.id);
       
@@ -1686,13 +1702,7 @@ export default function UsersPage() {
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {UNITS.filter(u => {
-                        const mode = editForm.bond_type ? BOND_RULES[editForm.bond_type as BondType]?.unitMode : undefined;
-                        if (mode === 'fixed-admin') return u === 'Administração';
-                        if (mode === 'choose') return u !== 'Administração';
-                        if (editForm.permission_level === 'gestor_unidade') return u !== 'Administração';
-                        return true;
-                      }).map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                      {unidadesDoPainel(editForm.bond_type ? BOND_RULES[editForm.bond_type as BondType]?.unitMode : undefined, editForm.permission_level).map(u => <SelectItem key={u.valor} value={u.valor}>{u.rotulo}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 )}
@@ -1983,13 +1993,7 @@ export default function UsersPage() {
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {UNITS.filter(u => {
-                        const mode = preRegisterForm.bond_type ? BOND_RULES[preRegisterForm.bond_type as BondType]?.unitMode : undefined;
-                        if (mode === 'fixed-admin') return u === 'Administração';
-                        if (mode === 'choose') return u !== 'Administração';
-                        if (preRegisterForm.permission_level === 'gestor_unidade') return u !== 'Administração';
-                        return true;
-                      }).map(u => <SelectItem key={u} value={u}>{u}</SelectItem>)}
+                      {unidadesDoPainel(preRegisterForm.bond_type ? BOND_RULES[preRegisterForm.bond_type as BondType]?.unitMode : undefined, preRegisterForm.permission_level).map(u => <SelectItem key={u.valor} value={u.valor}>{u.rotulo}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 )}
