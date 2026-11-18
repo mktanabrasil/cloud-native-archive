@@ -184,6 +184,8 @@ export function useUserRole() {
   const isVoluntariado = bondType === 'voluntariado' && isActive;
   // O banco (`is_marketing_user`) exige o perfil ativo; o admin sempre entra.
   const temVoluntariado = (isMarketing && (isAdmin || isActive)) || isVoluntariado;
+  /** O Financeiro (18/11/2026, PR 6): o vínculo financeiro ou o marketing. Espelha `pode_ver_pizza`. */
+  const temFinanceiro = (isMarketing && (isAdmin || isActive)) || (bondType === 'financeiro' && isActive);
 
   const isUnitManager = permissionLevel === 'gestor_unidade' && isActive && !!unit;
   /**
@@ -273,6 +275,7 @@ export function useUserRole() {
     isRh,
     isVoluntariado,
     temVoluntariado,
+    temFinanceiro,
     isUnitManager,
     isGestaoDaEducacao,
     isProfessora,

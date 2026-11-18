@@ -15,6 +15,8 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import UsersPage from "./pages/UsersPage";
 import AdministracaoRhPage from "./pages/AdministracaoRhPage";
 import AdministracaoVoluntariadoPage from "./pages/AdministracaoVoluntariadoPage";
+import AdministracaoFinanceiroPage from "./pages/AdministracaoFinanceiroPage";
+import AdministracaoApoiadoresPage from "./pages/AdministracaoApoiadoresPage";
 import LoginPage from "./pages/LoginPage";
 import PublicEventsPage from "./pages/PublicEventsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -233,6 +235,16 @@ const App = () => (
                   {/* Administração › Voluntariado (18/11/2026): os voluntários dos eventos. */}
                   <Route path="/administracao/voluntariado" element={
                     <ProtectedRoute><AdministracaoVoluntariadoPage /></ProtectedRoute>
+                  } />
+                  {/* Administração › Financeiro, Padrinhos e Parceiros (18/11/2026, PR 6). */}
+                  <Route path="/administracao/financeiro" element={
+                    <ProtectedRoute><AdministracaoFinanceiroPage /></ProtectedRoute>
+                  } />
+                  <Route path="/administracao/padrinhos" element={
+                    <ProtectedRoute><AdministracaoApoiadoresPage lado="padrinhos" /></ProtectedRoute>
+                  } />
+                  <Route path="/administracao/parceiros" element={
+                    <ProtectedRoute><AdministracaoApoiadoresPage lado="parceiros" /></ProtectedRoute>
                   } />
                   <Route path="/painel" element={
                     <ProtectedRoute><ComMargem><UsersPage /></ComMargem></ProtectedRoute>

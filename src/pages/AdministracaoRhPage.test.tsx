@@ -6,9 +6,10 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
  * Administração › RH (18/11/2026): a gestão das vagas que até aqui ficava em
  * /vagas. As abas são as de sempre; quem não é RH nem responsável volta ao portal.
  */
-const espiao = vi.hoisted(() => ({ rh: false, admin: false, carregando: false, responsavel: false, respostaChegou: true }));
+const espiao = vi.hoisted(() => ({ rh: false, admin: false, carregando: false, responsavel: false, respostaChegou: true, voluntariado: false, financeiro: false, apoiadores: false }));
 
-vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ isRh: espiao.rh, isAdmin: espiao.admin, loading: espiao.carregando }) }));
+vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ isRh: espiao.rh, isAdmin: espiao.admin, loading: espiao.carregando, temVoluntariado: espiao.voluntariado, temFinanceiro: espiao.financeiro }) }));
+vi.mock('@/hooks/useApoiadores', () => ({ useApoiadores: () => ({ vejo: espiao.apoiadores, carregado: true }) }));
 vi.mock('@/hooks/useSouResponsavel', () => ({
   useResponsavel: () => ({ sou: espiao.responsavel, carregado: espiao.respostaChegou }),
   useSouResponsavel: () => espiao.responsavel,
@@ -32,12 +33,14 @@ const abrir = (url = '/administracao/rh') => render(
     <Routes>
       <Route path="/administracao/rh" element={<><AdministracaoRhPage /><Onde /></>} />
       <Route path="/vagas" element={<p>o portal</p>} />
+      <Route path="/administracao/:pagina" element={<Onde />} />
     </Routes>
   </MemoryRouter>,
 );
 
 beforeEach(() => {
   espiao.rh = false; espiao.admin = false; espiao.carregando = false; espiao.responsavel = false; espiao.respostaChegou = true;
+  espiao.voluntariado = false; espiao.financeiro = false; espiao.apoiadores = false;
 });
 
 describe('Administração › RH', () => {
@@ -98,6 +101,23 @@ describe('Administração › RH', () => {
     unmount();
 
     espiao.respostaChegou = true;
+    abrir();
+    expect(screen.getByText('o portal')).toBeInTheDocument();
+  });
+});
+
+describe('quem não é do RH entra pela primeira página da Administração que vê (PR 6)', () => {
+  it('o financeiro vai ao Financeiro', () => {
+    espiao.financeiro = true;
+    abrir();
+    expect(screen.getByTestId('onde')).toHaveTextContent('/administracao/financeiro');
+  });
+  it('o responsável liberado vai a Padrinhos', () => {
+    espiao.apoiadores = true;
+    abrir();
+    expect(screen.getByTestId('onde')).toHaveTextContent('/administracao/padrinhos');
+  });
+  it('sem nada, volta ao portal', () => {
     abrir();
     expect(screen.getByText('o portal')).toBeInTheDocument();
   });

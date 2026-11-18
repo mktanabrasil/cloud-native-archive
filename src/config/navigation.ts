@@ -50,6 +50,10 @@ export const ROTAS = {
   rh: '/administracao/rh',
   /** Administração › Voluntariado (18/11/2026): os voluntários dos eventos e quem já foi confirmado. */
   voluntariado: '/administracao/voluntariado',
+  /** Administração › Financeiro, Padrinhos e Parceiros (18/11/2026, PR 6). */
+  financeiro: '/administracao/financeiro',
+  padrinhos: '/administracao/padrinhos',
+  parceiros: '/administracao/parceiros',
 } as const;
 
 /** As abas do Marketing, cada uma no seu endereço: `/marketing/pizza`. */
@@ -125,6 +129,10 @@ export interface QuemVe {
   souResponsavel?: boolean;
   /** Voluntariado dos eventos: o vínculo ou o marketing (18/11/2026). */
   temVoluntariado?: boolean;
+  /** Financeiro: o vínculo ou o marketing (18/11/2026). */
+  temFinanceiro?: boolean;
+  /** Padrinhos e Parceiros: financeiro, marketing e quem a administração liberou. */
+  temApoiadores?: boolean;
   isMarketing?: boolean;
   isAdmin?: boolean;
   isManager?: boolean;
@@ -146,7 +154,7 @@ export function setoresVisiveis(q: QuemVe): NavItem[] {
     if (item.journalOnly) return !!(q.canAccessJournal || q.temSemanario);
     // RH, ou quem é responsável por algum processo (passo 3, 19/10/2026).
     // A Administração (18/11/2026): o RH (e quem é responsável por processo) e o Voluntariado.
-    if (item.rhOnly) return !!(q.isRh || q.souResponsavel || q.temVoluntariado);
+    if (item.rhOnly) return !!(q.isRh || q.souResponsavel || q.temVoluntariado || q.temFinanceiro || q.temApoiadores);
     if (item.marketingOnly) return !!q.isMarketing;
     if (item.adminOnly) return !!q.isAdmin;
     if (item.managerOnly) return !!(q.isAdmin || q.isManager);
@@ -175,6 +183,10 @@ export interface PaginaDoSetor {
   soComRh?: boolean;
   /** Só para quem cuida do voluntariado dos eventos (o vínculo e o marketing). */
   soComVoluntariado?: boolean;
+  /** Só para o financeiro (e o marketing). */
+  soComFinanceiro?: boolean;
+  /** Só para quem vê Padrinhos e Parceiros. */
+  soComApoiadores?: boolean;
 }
 
 /** O que a pessoa pode abrir na faixa (vem de `useUserRole`). */
@@ -185,6 +197,8 @@ export interface PodeAbrir {
   /** RH ou responsável por processo (18/11/2026). */
   temRh: boolean;
   temVoluntariado: boolean;
+  temFinanceiro?: boolean;
+  temApoiadores?: boolean;
 }
 
 /** As páginas de um setor que a pessoa vê, na ordem da faixa. */
@@ -194,7 +208,9 @@ export function paginasVisiveis(setor: string, pode: PodeAbrir): PaginaDoSetor[]
     (!p.soComJornal || pode.canAccessJournal) &&
     (!p.soComSemanario || pode.temSemanario) &&
     (!p.soComRh || pode.temRh) &&
-    (!p.soComVoluntariado || pode.temVoluntariado));
+    (!p.soComVoluntariado || pode.temVoluntariado) &&
+    (!p.soComFinanceiro || !!pode.temFinanceiro) &&
+    (!p.soComApoiadores || !!pode.temApoiadores));
 }
 
 /**
@@ -231,12 +247,17 @@ export const PAGINAS_DOS_SETORES: Record<string, PaginaDoSetor[]> = {
     // O planejamento da semana das professoras (17/11/2026).
     { rotulo: 'Semanário', to: ROTAS.semanario, aberta: (c) => c === ROTAS.semanario || c.startsWith(`${ROTAS.semanario}/`), soComSemanario: true },
   ],
-  // Administração (18/11/2026): RH e Voluntariado; Financeiro, Padrinhos e
-  // Parceiros entram nos próximos PRs. Quem só tem o Voluntariado entra por ele.
+  // Administração (18/11/2026): RH, Voluntariado, Financeiro, Padrinhos e
+  // Parceiros, cada página pelo acesso. Quem não é do RH entra pela primeira que vê.
   [ROTAS.rh]: [
     { rotulo: 'RH', to: ROTAS.rh, aberta: (c) => c === ROTAS.rh, soComRh: true },
     // Os voluntários dos eventos (18/11/2026). O do Natal Feliz continua no Marketing.
     { rotulo: 'Voluntariado', to: ROTAS.voluntariado, aberta: (c) => c === ROTAS.voluntariado, soComVoluntariado: true },
+    // PR 6 (18/11/2026): o Financeiro começa com a Pizza da Alegria; Padrinhos e
+    // Parceiros, com o que as unidades citam nos eventos.
+    { rotulo: 'Financeiro', to: ROTAS.financeiro, aberta: (c) => c === ROTAS.financeiro, soComFinanceiro: true },
+    { rotulo: 'Padrinhos', to: ROTAS.padrinhos, aberta: (c) => c === ROTAS.padrinhos, soComApoiadores: true },
+    { rotulo: 'Parceiros', to: ROTAS.parceiros, aberta: (c) => c === ROTAS.parceiros, soComApoiadores: true },
   ],
   [ROTAS.marketing]: [
     { rotulo: 'Mercado Solidário', to: ROTAS.mercado, aberta: (c) => c === ROTAS.mercado },

@@ -66,3 +66,24 @@ describe('Administração › Voluntariado (18/11/2026, PR 4)', () => {
     expect(setorDoCaminho(ROTAS.voluntariado)).toBe(ROTAS.rh);
   });
 });
+
+describe('Administração › Financeiro, Padrinhos e Parceiros (18/11/2026, PR 6)', () => {
+  const nada = { temCalendario: false, canAccessJournal: false, temSemanario: false, temRh: false, temVoluntariado: false };
+  it('o financeiro vê a Administração e entra pelo Financeiro; vê também Padrinhos e Parceiros', () => {
+    expect(setoresVisiveis({ isAuthenticated: true, temFinanceiro: true }).map(i => i.label)).toContain('Administração');
+    const fin = { ...nada, temFinanceiro: true, temApoiadores: true };
+    expect(paginasVisiveis(ROTAS.rh, fin).map(p => p.rotulo)).toEqual(['Financeiro', 'Padrinhos', 'Parceiros']);
+    expect(destinoDoSetor(ROTAS.rh, fin)).toBe(ROTAS.financeiro);
+  });
+  it('o responsável liberado pelo e-mail vê só Padrinhos e Parceiros', () => {
+    expect(setoresVisiveis({ isAuthenticated: true, temApoiadores: true }).map(i => i.label)).toContain('Administração');
+    const resp = { ...nada, temApoiadores: true };
+    expect(paginasVisiveis(ROTAS.rh, resp).map(p => p.rotulo)).toEqual(['Padrinhos', 'Parceiros']);
+    expect(destinoDoSetor(ROTAS.rh, resp)).toBe(ROTAS.padrinhos);
+  });
+  it('o marketing vê as cinco, na ordem', () => {
+    const mkt = { temCalendario: true, canAccessJournal: true, temSemanario: true, temRh: true, temVoluntariado: true, temFinanceiro: true, temApoiadores: true };
+    expect(paginasVisiveis(ROTAS.rh, mkt).map(p => p.rotulo)).toEqual(['RH', 'Voluntariado', 'Financeiro', 'Padrinhos', 'Parceiros']);
+    expect(setorDoCaminho(ROTAS.parceiros)).toBe(ROTAS.rh);
+  });
+});

@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useApoiadores } from '@/hooks/useApoiadores';
 import { useSouResponsavel } from '@/hooks/useSouResponsavel';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
@@ -69,6 +70,7 @@ export default function InicioPage() {
   const { isAuthenticated } = useAuth();
   const papel = useUserRole();
   const souResponsavel = useSouResponsavel();
+  const { vejo: temApoiadores } = useApoiadores();
   const { loading: carregandoEventos } = useApp();
   const daEquipe = useFilteredEvents(false, false);
   const daVitrine = useFilteredEvents(true, false);
@@ -79,9 +81,9 @@ export default function InicioPage() {
   const campo = useRef<HTMLInputElement>(null);
   const idDaLista = useId();
 
-  const { isMarketing, canAccessJournal, soEducacao, temSemanario, isRh, temVoluntariado, temCalendarioAnual, isAdmin, isManager, canViewAuditoria, userName } = papel;
-  const setores = setoresVisiveis({ isAuthenticated, soEducacao, canAccessJournal, temSemanario, isRh, souResponsavel, temVoluntariado, isMarketing, isAdmin, isManager, canViewAuditoria });
-  const quem = { soEducacao: !!soEducacao, canAccessJournal: !!canAccessJournal, temSemanario: !!temSemanario, temCalendario: !!(isMarketing || temCalendarioAnual), veVagas: !!(isRh || souResponsavel), temVoluntariado: !!temVoluntariado, isMarketing: !!isMarketing };
+  const { isMarketing, canAccessJournal, soEducacao, temSemanario, isRh, temVoluntariado, temFinanceiro, temCalendarioAnual, isAdmin, isManager, canViewAuditoria, userName } = papel;
+  const setores = setoresVisiveis({ isAuthenticated, soEducacao, canAccessJournal, temSemanario, isRh, souResponsavel, temVoluntariado, temFinanceiro, temApoiadores, isMarketing, isAdmin, isManager, canViewAuditoria });
+  const quem = { soEducacao: !!soEducacao, canAccessJournal: !!canAccessJournal, temSemanario: !!temSemanario, temCalendario: !!(isMarketing || temCalendarioAnual), veVagas: !!(isRh || souResponsavel), temVoluntariado: !!temVoluntariado, temFinanceiro: !!temFinanceiro, temApoiadores, isMarketing: !!isMarketing };
 
   // Os eventos que a pessoa já vê na programação: os da equipe e os da vitrine, sem repetir.
   const eventos = useMemo(() => {
@@ -131,7 +133,7 @@ export default function InicioPage() {
     return [...paginas, ...evs, ...jns];
     // `quem` é recalculado a cada quadro; as partes dele estão aqui.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [termo, eventos, jornais, agora, soEducacao, canAccessJournal, temSemanario, isMarketing, temCalendarioAnual, isRh, souResponsavel, temVoluntariado]);
+  }, [termo, eventos, jornais, agora, soEducacao, canAccessJournal, temSemanario, isMarketing, temCalendarioAnual, isRh, souResponsavel, temVoluntariado, temFinanceiro, temApoiadores]);
 
   useEffect(() => { setEscolhido(0); }, [termo]);
 

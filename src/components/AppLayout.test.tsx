@@ -32,6 +32,7 @@ vi.mock('@/hooks/useIsEmbedded', () => ({ useIsEmbedded: () => false }));
 vi.mock('@/hooks/useIsEntryGate', () => ({ useEntryGateTransition: () => ({ isGate: false, entering: false }) }));
 vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => estado.celular }));
 vi.mock('@/hooks/useSouResponsavel', () => ({ useSouResponsavel: () => estado.responsavel }));
+vi.mock('@/hooks/useApoiadores', () => ({ useApoiadores: () => ({ vejo: false, carregado: true }) }));
 vi.mock('@/hooks/useAvisosDaEquipe', () => ({ useAvisosDaEquipe: () => estado.avisos }));
 vi.mock('@/components/ImpersonationBanner', () => ({ default: () => null }));
 // O menu da foto aberto de vez: o Radix aberto trava o jsdom com a página inteira em volta.
