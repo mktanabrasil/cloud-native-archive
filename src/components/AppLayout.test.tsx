@@ -5,6 +5,8 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 const estado = vi.hoisted(() => ({
   papel: {} as Record<string, unknown>,
   celular: true,
+  avisos: 0,
+  responsavel: false,
 }));
 const MARKETING = {
   isAdmin: true, isManager: true, userName: 'Comunicação', unit: 'Administração', canViewAuditoria: true,
@@ -29,8 +31,8 @@ vi.mock('@/hooks/useBetaPreference', () => ({ useBetaPreference: () => ({ eligib
 vi.mock('@/hooks/useIsEmbedded', () => ({ useIsEmbedded: () => false }));
 vi.mock('@/hooks/useIsEntryGate', () => ({ useEntryGateTransition: () => ({ isGate: false, entering: false }) }));
 vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => estado.celular }));
-vi.mock('@/hooks/useSouResponsavel', () => ({ useSouResponsavel: () => false }));
-vi.mock('@/hooks/useAvisosDaEquipe', () => ({ useAvisosDaEquipe: () => 0 }));
+vi.mock('@/hooks/useSouResponsavel', () => ({ useSouResponsavel: () => estado.responsavel }));
+vi.mock('@/hooks/useAvisosDaEquipe', () => ({ useAvisosDaEquipe: () => estado.avisos }));
 vi.mock('@/components/ImpersonationBanner', () => ({ default: () => null }));
 // O menu da foto aberto de vez: o Radix aberto trava o jsdom com a página inteira em volta.
 vi.mock('@/components/ui/dropdown-menu', () => {
@@ -84,7 +86,7 @@ beforeEach(() => {
 describe('a doca do celular, por setores', () => {
   it('o marketing vê os cinco setores, sem "Mais"', () => {
     abrir('/social/eventos');
-    expect(nomes(doca())).toEqual(['Social', 'Educação', 'Vagas', 'Marketing', 'Painel']);
+    expect(nomes(doca())).toEqual(['Social', 'Educação', 'Administração', 'Marketing', 'Painel']);
     expect(within(doca()).queryByRole('button', { name: /Mais/ })).not.toBeInTheDocument();
   });
 
@@ -270,5 +272,28 @@ describe('o menu da foto', () => {
   it('o marketing continua vendo "Painel"', () => {
     abrir('/social/eventos');
     expect(within(menu()).getByRole('link', { name: 'Painel' })).toHaveAttribute('href', '/painel');
+  });
+});
+
+describe('o setor Administração (18/11/2026)', () => {
+  beforeEach(() => { estado.avisos = 0; estado.responsavel = false; });
+
+  it('leva ao RH e carrega o selo de avisos das vagas', () => {
+    estado.papel = MARKETING;
+    estado.celular = true;
+    estado.avisos = 3;
+    abrir('/social/eventos');
+    const adm = within(screen.getByRole('navigation', { name: 'Navegação' })).getByRole('link', { name: /Administração/ });
+    expect(adm).toHaveAttribute('href', '/administracao/rh');
+    expect(adm).toHaveTextContent('Administração');
+    expect(within(adm).getByLabelText('3 para ver')).toBeInTheDocument();
+  });
+
+  it('o responsável por um processo, sem ser RH, também vê a Administração', () => {
+    estado.papel = GESTORA_DO_SOCIAL;
+    estado.celular = true;
+    estado.responsavel = true;
+    abrir('/social/eventos');
+    expect(within(screen.getByRole('navigation', { name: 'Navegação' })).getByRole('link', { name: /Administração/ })).toHaveAttribute('href', '/administracao/rh');
   });
 });

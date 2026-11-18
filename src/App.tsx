@@ -13,6 +13,7 @@ import AppLayout from "@/components/AppLayout";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 import UsersPage from "./pages/UsersPage";
+import AdministracaoRhPage from "./pages/AdministracaoRhPage";
 import LoginPage from "./pages/LoginPage";
 import PublicEventsPage from "./pages/PublicEventsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -224,6 +225,10 @@ const App = () => (
                   {/* Aberta a quem está logado: cada pessoa se vê aqui. Quem
                       gerencia os outros é a comunicação, e isso a própria tela
                       decide — ver `podeGerirTodos` em UsersPage. */}
+                  {/* Administração › RH (18/11/2026): a gestão das vagas, que era o setor Vagas em /vagas. */}
+                  <Route path="/administracao/rh" element={
+                    <ProtectedRoute><AdministracaoRhPage /></ProtectedRoute>
+                  } />
                   <Route path="/painel" element={
                     <ProtectedRoute><ComMargem><UsersPage /></ComMargem></ProtectedRoute>
                   } />

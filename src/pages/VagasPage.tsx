@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { Accessibility, GraduationCap, LayoutGrid, List, Search, X, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -8,14 +8,8 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/contexts/AuthContext';
 import { escolheuVerSemEntrar, lembrarVerSemEntrar } from '@/lib/vagas/conta';
 import EntrarCandidatoPage from './EntrarCandidatoPage';
-import { PainelDoRh } from '@/components/vagas/PainelDoRh';
-import { ProcessosDoRh } from '@/components/vagas/ProcessosDoRh';
-import { MeusProcessos } from '@/components/vagas/MeusProcessos';
-import { useSouResponsavel } from '@/hooks/useSouResponsavel';
-import { GestaoDeVagas } from '@/components/vagas/GestaoDeVagas';
-import { RelatoriosDoRh } from '@/components/vagas/RelatoriosDoRh';
-import { AuditoriaDasVagas } from '@/components/vagas/AuditoriaDasVagas';
-import { ModelosDeEmail } from '@/components/vagas/ModelosDeEmail';
+import { useResponsavel } from '@/hooks/useSouResponsavel';
+import { ROTAS } from '@/config/navigation';
 import { CartaoDaVaga, COR_DA_AREA, ICONE_DA_AREA, MolduraDasVagas, PontoDaArea, comumDasVagas } from '@/components/vagas/PecasDasVagas';
 import { guardarVista, separarProgramas, vistaGuardada, type Vista } from '@/lib/vagas/vitrine';
 import { listarVagasPublicadas } from '@/lib/vagas/api';
@@ -29,46 +23,23 @@ import { contagemPorArea, enderecoDoFiltro, filtrarVagas, filtroDoEndereco, vaga
  * filtro vai para o endereço (?area=educacao&so=pcd&q=professor), para dar
  * para mandar a busca pronta e para o site do GOE abrir já em Educação.
  * "Candidatar-se" fica na página da vaga e, nesta fase, abre o Forms dela.
+ *
+ * A gestão do RH saiu daqui em 18/11/2026: ela mora em Administração › RH
+ * (`ROTAS.rh`), dentro do app. Esta página é só o portal.
  */
 export default function VagasPage() {
-  const { isRh, isAdmin } = useUserRole();
-  const souResponsavel = useSouResponsavel();
+  const { isRh, loading: carregandoPapel } = useUserRole();
+  const { sou: souResponsavel, carregado } = useResponsavel();
   const { isAuthenticated, loading } = useAuth();
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
   const [semEntrar, setSemEntrar] = useState(escolheuVerSemEntrar);
-  // Para o RH, /vagas puro abre o Painel (decisão de 19/10/2026); o portal fica em ?tela=portal.
-  // Quem é responsável por um processo, sem ser RH, abre em "Meus processos" (passo 3, 19/10/2026).
+  // O RH e quem é responsável por um processo trabalham em Administração › RH
+  // (18/11/2026). /vagas puro, ou com o ?tela= de antes, leva para lá; o
+  // portal continua aberto em ?tela=portal e em qualquer link com filtro.
   const pedida = params.get('tela');
   const portalPedido = pedida === 'portal' || (params.toString() !== '' && !pedida);
-  type Tela = 'painel' | 'processos' | 'gestao' | 'relatorios' | 'emails' | 'auditoria' | 'portal' | 'meus';
-  // Relatórios: só o RH; Auditoria: só administradores (passo 6, 20/10/2026).
-  const tela: Tela = isRh
-    ? (pedida === 'gestao' ? 'gestao' : pedida === 'processos' ? 'processos' : pedida === 'relatorios' ? 'relatorios' : pedida === 'emails' ? 'emails' : pedida === 'auditoria' && isAdmin ? 'auditoria' : portalPedido ? 'portal' : 'painel')
-    : souResponsavel ? (portalPedido ? 'portal' : 'meus') : 'portal';
-  const gestao = tela === 'gestao';
-  useTituloDaAba(tela === 'emails' ? 'Modelos de e-mail · ANA Brasil' : tela === 'relatorios' ? 'Relatórios · ANA Brasil' : tela === 'auditoria' ? 'Auditoria das vagas · ANA Brasil' : tela === 'gestao' ? 'Gestão de vagas · ANA Brasil' : tela === 'painel' ? 'Painel do RH · ANA Brasil' : tela === 'processos' ? 'Processos · ANA Brasil' : tela === 'meus' ? 'Meus processos · ANA Brasil' : 'Trabalhe Conosco · ANA Brasil');
-  // RH e admin veem quatro abas; o responsável, as dele; o público só a vitrine.
-  const opcoes: ReadonlyArray<readonly [string, Tela]> = isRh
-    ? [['Painel', 'painel'], ['Processos', 'processos'], ['Gestão', 'gestao'], ['Relatórios', 'relatorios'], ['Modelos de e-mail', 'emails'], ...(isAdmin ? [['Auditoria', 'auditoria'] as const] : []), ['Portal', 'portal']]
-    : souResponsavel ? [['Meus processos', 'meus'], ['Portal', 'portal']] : [];
-  const telaPadrao: Tela = isRh ? 'painel' : 'meus';
-  const abas = opcoes.length ? (
-    <nav aria-label="Vagas: abas" className="mt-4">
-      <div className="mx-auto flex max-w-6xl gap-5 overflow-x-auto border-b border-border px-4 sm:px-6">
-        {opcoes.map(([rotulo, t]) => (
-          <button
-            key={rotulo}
-            type="button"
-            aria-current={tela === t ? 'page' : undefined}
-            onClick={() => setParams(t === telaPadrao ? new URLSearchParams() : new URLSearchParams(`tela=${t}`), { replace: true })}
-            className={`-mb-px shrink-0 whitespace-nowrap border-b-2 py-2.5 text-sm ${tela === t ? 'border-[#81e2cf] font-semibold text-foreground' : 'border-transparent font-medium text-muted-foreground hover:text-foreground'}`}
-          >
-            {rotulo}
-          </button>
-        ))}
-      </div>
-    </nav>
-  ) : null;
+  const daEquipe = isRh || souResponsavel;
+  useTituloDaAba('Trabalhe Conosco · ANA Brasil');
   // A porta (28/09/2026): /vagas puro, sem conta e sem ter escolhido olhar,
   // abre o login. Link com busca ou filtro (?area=educacao) e link de vaga
   // abrem direto: quem mandou o link quer que a pessoa veja aquilo.
@@ -82,10 +53,16 @@ export default function VagasPage() {
   if (porta) {
     return <EntrarCandidatoPage comoPorta aoVerVagas={() => { lembrarVerSemEntrar(); setSemEntrar(true); }} />;
   }
-  return <MolduraDasVagas abas={abas}>{gestao ? <GestaoDeVagas /> : tela === 'relatorios' ? <RelatoriosDoRh /> : tela === 'emails' ? <ModelosDeEmail /> : tela === 'auditoria' ? <AuditoriaDasVagas /> : tela === 'painel' ? <PainelDoRh /> : tela === 'processos' ? <ProcessosDoRh /> : tela === 'meus' ? <MeusProcessos /> : <Vitrine />}</MolduraDasVagas>;
+  if (!portalPedido && isAuthenticated) {
+    // Espera saber o papel antes de decidir: senão o RH veria o portal por um instante.
+    if (carregandoPapel || (!isRh && !carregado)) return null;
+    if (daEquipe) return <Navigate to={`${ROTAS.rh}${pedida ? `?tela=${pedida}` : ''}`} replace />;
+  }
+  return <MolduraDasVagas><Vitrine naEquipe={isAuthenticated && daEquipe} /></MolduraDasVagas>;
 }
 
-function Vitrine() {
+/** `naEquipe`: RH ou responsável olhando o portal; o endereço guarda ?tela=portal para ele não ser levado ao RH. */
+function Vitrine({ naEquipe = false }: { naEquipe?: boolean }) {
   const [params, setParams] = useSearchParams();
   const filtro = useMemo(() => filtroDoEndereco(params), [params]);
   const [vagas, setVagas] = useState<Vaga[] | null>(null);
@@ -106,7 +83,8 @@ function Vitrine() {
   }, [tentativa]);
 
   // Quem é RH está em ?tela=portal: filtrar não pode jogá-lo de volta no Painel.
-  const manterTela = (p: URLSearchParams) => { if (params.get('tela') === 'portal') p.set('tela', 'portal'); return p; };
+  // Quem é da equipe está no portal de propósito: filtrar (ou limpar o filtro) não pode levá-lo ao RH.
+  const manterTela = (p: URLSearchParams) => { if (naEquipe || params.get('tela') === 'portal') p.set('tela', 'portal'); return p; };
   const mudar = (f: Partial<FiltroDaVitrine>) => setParams(manterTela(enderecoDoFiltro({ ...filtro, ...f })), { replace: true });
   const lista = useMemo(() => (vagas ? filtrarVagas(vagas, filtro) : []), [vagas, filtro]);
   // Jovem Aprendiz e PcD vão no fim, separados (28/09/2026).

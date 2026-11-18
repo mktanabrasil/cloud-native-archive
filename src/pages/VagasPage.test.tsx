@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import type { Vaga } from '@/lib/vagas/modelo';
 
-const espiao = vi.hoisted(() => ({ vagas: [] as Vaga[], falha: false, rh: false, admin: false, usuario: null as null | { email: string; user_metadata: Record<string, unknown> } }));
+const espiao = vi.hoisted(() => ({ vagas: [] as Vaga[], falha: false, rh: false, admin: false, responsavel: false, respostaChegou: true, carregandoPapel: false, usuario: null as null | { email: string; user_metadata: Record<string, unknown> } }));
 
-vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ isRh: espiao.rh, isAdmin: espiao.admin }) }));
+vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => ({ isRh: espiao.rh, isAdmin: espiao.admin, loading: espiao.carregandoPapel }) }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: espiao.usuario, isAuthenticated: espiao.usuario !== null, loading: false, signOut: vi.fn() }) }));
+vi.mock('@/hooks/useSouResponsavel', () => ({
+  useResponsavel: () => ({ sou: espiao.responsavel, carregado: espiao.respostaChegou }),
+  useSouResponsavel: () => espiao.responsavel,
+}));
 vi.mock('@/components/vagas/GestaoDeVagas', () => ({ GestaoDeVagas: () => <p>painel da gestão</p> }));
 vi.mock('@/components/vagas/PainelDoRh', () => ({ PainelDoRh: () => <p>painel do rh</p> }));
 vi.mock('@/components/vagas/RelatoriosDoRh', () => ({ RelatoriosDoRh: () => <p>relatórios do rh</p> }));
@@ -28,11 +32,18 @@ const { default: VagaPage } = await import('./VagaPage');
 
 const vaga = (o: Record<string, unknown>) => paraVaga({ status: 'publicada', cidade: 'Campinas/SP', carga_horaria: '40h', ...o, id: String(o.slug) });
 
+/** Onde o RH foi parar: o caminho e o ?tela= de Administração › RH. */
+function OndeEstou() {
+  const l = useLocation();
+  return <p data-testid="rh">{l.pathname}{l.search}</p>;
+}
+
 const abrir = (url: string) => render(
   <MemoryRouter initialEntries={[url]}>
     <Routes>
       <Route path="/vagas" element={<VagasPage />} />
       <Route path="/vagas/:slug" element={<VagaPage />} />
+      <Route path="/administracao/rh" element={<OndeEstou />} />
     </Routes>
   </MemoryRouter>,
 );
@@ -43,6 +54,9 @@ beforeEach(() => {
   espiao.falha = false;
   espiao.rh = false;
   espiao.admin = false;
+  espiao.responsavel = false;
+  espiao.respostaChegou = true;
+  espiao.carregandoPapel = false;
   espiao.usuario = null;
   espiao.vagas = [
     vaga({ slug: 'educador-social-de-musica', titulo: 'Educador Social de Música', area: 'social', requisitos: ['Ensino Médio completo'], diferenciais: ['Formação em música'], beneficios: ['Vale-transporte'], link_externo: 'https://forms.gle/abc' }),
@@ -99,37 +113,78 @@ describe('portal /vagas', () => {
   });
 });
 
-describe('abas do RH', () => {
-  it('o público não vê aba; o RH vê Portal e Gestão, e ?tela=gestao abre a gestão', async () => {
-    const { unmount } = abrir('/vagas?tela=gestao');
-    expect(await screen.findByText(/3 vagas abertas/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Gestão' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /Voltar ao app/ })).not.toBeInTheDocument();
-    unmount();
+describe('o RH saiu de /vagas (18/11/2026)', () => {
+  const rh = () => { espiao.rh = true; espiao.usuario = { email: 'rh@anabrasil.org', user_metadata: { name: 'RH' } }; };
 
-    espiao.rh = true;
-    espiao.usuario = { email: 'rh@anabrasil.org', user_metadata: { name: 'RH' } };
+  it('o público vê só o portal, mesmo com o ?tela= de antes', async () => {
     abrir('/vagas?tela=gestao');
-    expect(screen.getByText('painel da gestão')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Voltar ao app/ })).toHaveAttribute('href', '/');
-    fireEvent.click(screen.getByRole('button', { name: 'Portal' }));
     expect(await screen.findByText(/3 vagas abertas/)).toBeInTheDocument();
+    expect(screen.queryByText('painel da gestão')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('rh')).not.toBeInTheDocument();
   });
 
-  it('Relatórios é do RH; Auditoria só aparece para administrador (20/10/2026)', async () => {
-    espiao.rh = true;
-    espiao.usuario = { email: 'rh@anabrasil.org', user_metadata: { name: 'RH' } };
-    const { unmount } = abrir('/vagas?tela=auditoria');
-    expect(screen.getByText('painel do rh')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Auditoria' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Relatórios' }));
-    expect(await screen.findByText('relatórios do rh')).toBeInTheDocument();
+  it('o RH que abre /vagas vai para Administração › RH, com a aba que pediu', () => {
+    rh();
+    const { unmount } = abrir('/vagas');
+    expect(screen.getByTestId('rh')).toHaveTextContent('/administracao/rh');
+    unmount();
+    abrir('/vagas?tela=gestao');
+    expect(screen.getByTestId('rh')).toHaveTextContent('/administracao/rh?tela=gestao');
+  });
+
+  it('o responsável por um processo também vai para lá', () => {
+    espiao.responsavel = true;
+    espiao.usuario = { email: 'coordenacao@anabrasil.org', user_metadata: { name: 'Coordenação' } };
+    abrir('/vagas');
+    expect(screen.getByTestId('rh')).toHaveTextContent('/administracao/rh');
+  });
+
+  it('o RH ainda vê o portal em ?tela=portal e com filtro, com o "Voltar ao app"', async () => {
+    rh();
+    const { unmount } = abrir('/vagas?tela=portal');
+    expect(await screen.findByText(/3 vagas abertas/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Voltar ao app/ })).toHaveAttribute('href', '/');
+    unmount();
+    abrir('/vagas?area=educacao');
+    expect(await screen.findByRole('link', { name: /Professor de Educação Infantil/ })).toBeInTheDocument();
+    expect(screen.queryByTestId('rh')).not.toBeInTheDocument();
+  });
+
+  it('da equipe e ainda sem saber o papel: nem portal nem RH, até a resposta', () => {
+    espiao.usuario = { email: 'coordenacao@anabrasil.org', user_metadata: { name: 'Coordenação' } };
+    espiao.carregandoPapel = true;
+    const { unmount } = abrir('/vagas');
+    expect(screen.queryByText(/3 vagas abertas/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('rh')).not.toBeInTheDocument();
     unmount();
 
-    espiao.admin = true;
-    abrir('/vagas?tela=auditoria');
-    expect(screen.getByText('auditoria das vagas')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Auditoria' })).toHaveAttribute('aria-current', 'page');
+    espiao.carregandoPapel = false;
+    espiao.respostaChegou = false;
+    const outro = abrir('/vagas');
+    expect(screen.queryByText(/3 vagas abertas/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('rh')).not.toBeInTheDocument();
+    outro.unmount();
+
+    espiao.respostaChegou = true;
+    espiao.responsavel = true;
+    abrir('/vagas');
+    expect(screen.getByTestId('rh')).toHaveTextContent('/administracao/rh');
+  });
+
+  it('o RH que limpa o filtro no portal continua no portal', async () => {
+    rh();
+    abrir('/vagas?area=educacao');
+    await screen.findByRole('link', { name: /Professor de Educação Infantil/ });
+    const filtros = screen.getByRole('region', { name: 'Vagas abertas' });
+    fireEvent.click(within(filtros).getByRole('button', { name: /Todas/ }));
+    expect(await screen.findByRole('link', { name: /Educador Social de Música/ })).toBeInTheDocument();
+    expect(screen.queryByTestId('rh')).not.toBeInTheDocument();
+  });
+
+  it('o candidato logado vê o portal', async () => {
+    espiao.usuario = { email: 'leo@exemplo.com', user_metadata: { conta: 'candidato', name: 'Leonardo Silva' } };
+    abrir('/vagas');
+    expect(await screen.findByText(/3 vagas abertas/)).toBeInTheDocument();
   });
 });
 
@@ -268,15 +323,15 @@ describe('grade ou lista, e os programas no fim (28/09/2026)', () => {
   });
 });
 
-describe('abas do RH (19/10/2026)', () => {
-  it('RH abre no Painel; Portal fica em ?tela=portal e não volta ao Painel ao filtrar', async () => {
+describe('o portal do RH não volta ao painel ao filtrar (19/10/2026)', () => {
+  it('em ?tela=portal, filtrar mantém o portal', async () => {
     espiao.rh = true;
     espiao.usuario = { email: 'rh@anabrasil.org', user_metadata: { name: 'RH' } };
-    abrir('/vagas');
-    expect(screen.getByText('painel do rh')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Portal' }));
-    expect(screen.queryByText('painel do rh')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Gestão' }));
-    expect(screen.getByText('painel da gestão')).toBeInTheDocument();
+    abrir('/vagas?tela=portal');
+    await screen.findByText(/3 vagas abertas/);
+    const filtros = screen.getByRole('region', { name: 'Vagas abertas' });
+    fireEvent.click(within(filtros).getByRole('button', { name: 'Educação' }));
+    await waitFor(() => expect(screen.queryByRole('link', { name: /Educador Social/ })).not.toBeInTheDocument());
+    expect(screen.queryByTestId('rh')).not.toBeInTheDocument();
   });
 });
