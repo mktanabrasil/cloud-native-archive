@@ -10,18 +10,19 @@ import { GestaoDeVagas } from '@/components/vagas/GestaoDeVagas';
 import { RelatoriosDoRh } from '@/components/vagas/RelatoriosDoRh';
 import { AuditoriaDasVagas } from '@/components/vagas/AuditoriaDasVagas';
 import { ModelosDeEmail } from '@/components/vagas/ModelosDeEmail';
+import { EquipeNosEventos } from '@/components/rh/EquipeNosEventos';
 
-export type TelaDoRh = 'painel' | 'processos' | 'gestao' | 'relatorios' | 'emails' | 'auditoria' | 'meus';
+export type TelaDoRh = 'painel' | 'eventos' | 'funcionarios' | 'processos' | 'gestao' | 'relatorios' | 'emails' | 'auditoria' | 'meus';
 
 const TITULO: Record<TelaDoRh, string> = {
-  painel: 'Painel do RH', processos: 'Processos', gestao: 'Gestão de vagas', relatorios: 'Relatórios',
+  painel: 'Painel do RH', eventos: 'A equipe nos eventos', funcionarios: 'Por funcionário', processos: 'Processos', gestao: 'Gestão de vagas', relatorios: 'Relatórios',
   emails: 'Modelos de e-mail', auditoria: 'Auditoria das vagas', meus: 'Meus processos',
 };
 
 /** A tela pedida no endereço (`?tela=`), dentro do que esta pessoa pode abrir. */
 export function telaDoRh(pedida: string | null, p: { isRh: boolean; isAdmin: boolean }): TelaDoRh {
   if (!p.isRh) return 'meus';
-  if (pedida === 'processos' || pedida === 'gestao' || pedida === 'relatorios' || pedida === 'emails') return pedida;
+  if (pedida === 'eventos' || pedida === 'funcionarios' || pedida === 'processos' || pedida === 'gestao' || pedida === 'relatorios' || pedida === 'emails') return pedida;
   if (pedida === 'auditoria' && p.isAdmin) return 'auditoria';
   return 'painel';
 }
@@ -35,7 +36,7 @@ export function telaDoRh(pedida: string | null, p: { isRh: boolean; isAdmin: boo
  * e-mails deles). Quem é do RH e abre /vagas cai aqui, e o portal fica no
  * link "Ver o portal".
  *
- * RH e admin: Painel, Processos, Gestão, Relatórios, Modelos de e-mail e,
+ * RH e admin: Painel, Eventos e Por funcionário (a equipe nos eventos, 18/11/2026, PR 3), Processos, Gestão, Relatórios, Modelos de e-mail e,
  * só admin, Auditoria. Responsável por um processo, sem ser RH: Meus
  * processos. Os outros voltam ao portal.
  */
@@ -52,7 +53,7 @@ export default function AdministracaoRhPage() {
   if (!isRh && !souResponsavel) return <Navigate to="/vagas" replace />;
 
   const opcoes: ReadonlyArray<readonly [string, TelaDoRh]> = isRh
-    ? [['Painel', 'painel'], ['Processos', 'processos'], ['Gestão', 'gestao'], ['Relatórios', 'relatorios'], ['Modelos de e-mail', 'emails'], ...(isAdmin ? [['Auditoria', 'auditoria'] as const] : [])]
+    ? [['Painel', 'painel'], ['Eventos', 'eventos'], ['Por funcionário', 'funcionarios'], ['Processos', 'processos'], ['Gestão', 'gestao'], ['Relatórios', 'relatorios'], ['Modelos de e-mail', 'emails'], ...(isAdmin ? [['Auditoria', 'auditoria'] as const] : [])]
     : [['Meus processos', 'meus']];
   const telaPadrao: TelaDoRh = isRh ? 'painel' : 'meus';
 
@@ -77,7 +78,7 @@ export default function AdministracaoRhPage() {
           </Link>
         </div>
       </nav>
-      {tela === 'gestao' ? <GestaoDeVagas /> : tela === 'relatorios' ? <RelatoriosDoRh /> : tela === 'emails' ? <ModelosDeEmail />
+      {tela === 'eventos' || tela === 'funcionarios' ? <EquipeNosEventos vista={tela} /> : tela === 'gestao' ? <GestaoDeVagas /> : tela === 'relatorios' ? <RelatoriosDoRh /> : tela === 'emails' ? <ModelosDeEmail />
         : tela === 'auditoria' ? <AuditoriaDasVagas /> : tela === 'processos' ? <ProcessosDoRh /> : tela === 'meus' ? <MeusProcessos /> : <PainelDoRh />}
     </div>
   );
