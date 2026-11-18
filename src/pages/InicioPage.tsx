@@ -79,9 +79,9 @@ export default function InicioPage() {
   const campo = useRef<HTMLInputElement>(null);
   const idDaLista = useId();
 
-  const { isMarketing, canAccessJournal, soEducacao, temSemanario, isRh, temCalendarioAnual, isAdmin, isManager, canViewAuditoria, userName } = papel;
-  const setores = setoresVisiveis({ isAuthenticated, soEducacao, canAccessJournal, temSemanario, isRh, souResponsavel, isMarketing, isAdmin, isManager, canViewAuditoria });
-  const quem = { soEducacao: !!soEducacao, canAccessJournal: !!canAccessJournal, temSemanario: !!temSemanario, temCalendario: !!(isMarketing || temCalendarioAnual), veVagas: !!(isRh || souResponsavel), isMarketing: !!isMarketing };
+  const { isMarketing, canAccessJournal, soEducacao, temSemanario, isRh, temVoluntariado, temCalendarioAnual, isAdmin, isManager, canViewAuditoria, userName } = papel;
+  const setores = setoresVisiveis({ isAuthenticated, soEducacao, canAccessJournal, temSemanario, isRh, souResponsavel, temVoluntariado, isMarketing, isAdmin, isManager, canViewAuditoria });
+  const quem = { soEducacao: !!soEducacao, canAccessJournal: !!canAccessJournal, temSemanario: !!temSemanario, temCalendario: !!(isMarketing || temCalendarioAnual), veVagas: !!(isRh || souResponsavel), temVoluntariado: !!temVoluntariado, isMarketing: !!isMarketing };
 
   // Os eventos que a pessoa já vê na programação: os da equipe e os da vitrine, sem repetir.
   const eventos = useMemo(() => {
@@ -131,7 +131,7 @@ export default function InicioPage() {
     return [...paginas, ...evs, ...jns];
     // `quem` é recalculado a cada quadro; as partes dele estão aqui.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [termo, eventos, jornais, agora, soEducacao, canAccessJournal, temSemanario, isMarketing, temCalendarioAnual, isRh, souResponsavel]);
+  }, [termo, eventos, jornais, agora, soEducacao, canAccessJournal, temSemanario, isMarketing, temCalendarioAnual, isRh, souResponsavel, temVoluntariado]);
 
   useEffect(() => { setEscolhido(0); }, [termo]);
 

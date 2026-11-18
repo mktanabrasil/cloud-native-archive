@@ -180,6 +180,10 @@ export function useUserRole() {
    * vínculo "rh" ativo. É quem vê a aba Gestão em /vagas.
    */
   const isRh = isAdmin || (bondType === 'rh' && isActive);
+  /** Quem cuida do voluntariado dos eventos (18/11/2026): o vínculo, ou o marketing. Espelha `eh_do_voluntariado`. */
+  const isVoluntariado = bondType === 'voluntariado' && isActive;
+  // O banco (`is_marketing_user`) exige o perfil ativo; o admin sempre entra.
+  const temVoluntariado = (isMarketing && (isAdmin || isActive)) || isVoluntariado;
 
   const isUnitManager = permissionLevel === 'gestor_unidade' && isActive && !!unit;
   /**
@@ -267,6 +271,8 @@ export function useUserRole() {
     isMarketing,
     isEquipeDeMarketing,
     isRh,
+    isVoluntariado,
+    temVoluntariado,
     isUnitManager,
     isGestaoDaEducacao,
     isProfessora,
