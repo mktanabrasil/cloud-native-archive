@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Lock, Mail, Plus, RefreshCw, Rocket, Trash2 } from 'lucide-react';
+import { Lock, Mail, Plus, RefreshCw, Rocket, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,12 +8,14 @@ import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { CAIXAS_FIXAS_EM_TEXTO, type PerfilParaAviso } from '@/lib/events/avisos';
 import {
-  CONFIG_PADRAO, type ConfigDeAvisos, ROTULO_DO_ESTADO, ROTULO_DO_MOTIVO, emailValido, listaDeDestinatarios, normalizarEmail, quemEntraNoLancamento, resumoDaLista,
+  CONFIG_PADRAO, EQUIPE_PADRAO, type ConfigDaEquipe, type ConfigDeAvisos, ROTULO_DO_ESTADO, ROTULO_DO_MOTIVO, type SetorDaEquipe, emailValido, listaDeDestinatarios, normalizarEmail,
+  quemEntraNoLancamento, resumoDaLista, sugestoesDaEquipe,
 } from '@/lib/events/avisosConfig';
 import { toast } from 'sonner';
 import { AVISO_DE_SESSAO_EXPIRADA, tratarNaoAutorizado } from '@/lib/sessao';
 
-interface Resposta { config: ConfigDeAvisos; origem: 'painel' | 'variavel'; perfis: PerfilParaAviso[]; error?: string }
+/** `equipe`: ausente = função anterior ao PR 5; `null` = não deu para ler as listas agora. */
+interface Resposta { config: ConfigDeAvisos; origem: 'painel' | 'variavel'; perfis: PerfilParaAviso[]; equipe?: ConfigDaEquipe | null; error?: string }
 
 const chamar = async (body: Record<string, unknown>): Promise<Resposta> => {
   const { data, error } = await supabase.functions.invoke('eventos-aviso', { body });
@@ -49,11 +51,17 @@ export function ConfigDosAvisos() {
   const [salvando, setSalvando] = useState(false);
   const [novo, setNovo] = useState('');
   const [confirmarLancamento, setConfirmarLancamento] = useState(false);
+  const [equipe, setEquipe] = useState<ConfigDaEquipe>(EQUIPE_PADRAO);
+  // A função publicada antes do PR 5 não devolve as listas: a parte 3 avisa em vez de salvar no vazio.
+  const [temEquipe, setTemEquipe] = useState(false);
+  const [erroDaEquipe, setErroDaEquipe] = useState(false);
+  const [novoDaEquipe, setNovoDaEquipe] = useState<Record<SetorDaEquipe, string>>({ rh: '', voluntariado: '' });
 
   const ler = useCallback(async () => {
     try {
       const r = await chamar({ config: true });
       setConfig(r.config); setOrigem(r.origem); setPerfis(r.perfis); setErro(null); setCarregado(true);
+      setTemEquipe(r.equipe !== undefined); setErroDaEquipe(r.equipe === null); setEquipe(r.equipe ?? EQUIPE_PADRAO);
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
   }, []);
   useEffect(() => { void ler(); }, [ler]);
@@ -71,6 +79,28 @@ export function ConfigDosAvisos() {
       toast.error('Não consegui salvar', { description: e instanceof Error ? e.message : String(e) });
     } finally { setSalvando(false); }
   };
+
+  /** Salva as duas listas da equipe do dia (RH e Voluntariado). */
+  const salvarEquipe = async (nova: ConfigDaEquipe, mensagem: string) => {
+    setSalvando(true);
+    try {
+      const r = await chamar({ salvar_config_equipe: { rh: nova.rh, voluntariado: nova.voluntariado } });
+      setPerfis(r.perfis);
+      if (r.equipe) { setEquipe(r.equipe); setTemEquipe(true); setErroDaEquipe(false); }
+      toast.success(mensagem);
+    } catch (e) {
+      toast.error('Não consegui salvar', { description: e instanceof Error ? e.message : String(e) });
+    } finally { setSalvando(false); }
+  };
+  const adicionarNaEquipe = (setor: SetorDaEquipe, bruto: string) => {
+    const email = normalizarEmail(bruto);
+    if (!emailValido(email)) { toast.error('Digite um e-mail válido.'); return; }
+    if (equipe[setor].includes(email)) { toast.error('Esse e-mail já está nesta lista.'); return; }
+    setNovoDaEquipe(n => ({ ...n, [setor]: '' }));
+    void salvarEquipe({ ...equipe, [setor]: [...equipe[setor], email] }, `${email} passa a receber a equipe do dia (${setor === 'rh' ? 'RH' : 'Voluntariado'}).`);
+  };
+  const tirarDaEquipe = (setor: SetorDaEquipe, email: string) =>
+    void salvarEquipe({ ...equipe, [setor]: equipe[setor].filter(e => e !== email) }, `${email} saiu da lista do ${setor === 'rh' ? 'RH' : 'Voluntariado'}.`);
 
   const alternar = (ligar: boolean) => {
     if (ligar) { void salvar({ ...config, pre_lancamento: true }, 'Modo pré-lançamento ligado: só as caixas fixas recebem.'); return; }
@@ -162,6 +192,57 @@ export function ConfigDosAvisos() {
             <Button type="submit" variant="outline" className="h-9 gap-1.5 text-xs" disabled={!carregado || salvando || !novo.trim()}>{salvando ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Adicionar</Button>
           </form>
           <p className="text-xs text-muted-foreground">A lista nasce da regra que já existe: caixas fixas, gestão ativa por unidade e quem cria eventos. Aqui você só acrescenta e-mails avulsos e marca quem não entra. Quem for cadastrado ou desativado em Usuários aparece aqui sozinho.</p>
+        </section>
+
+        {/* 3. A equipe do dia (18/11/2026, PR 5) */}
+        <section className="space-y-2" data-testid="avisos-da-equipe-do-dia">
+          <h3 className="text-sm font-semibold">3. RH e Voluntariado <span className="font-normal text-muted-foreground">· a equipe do dia</span></h3>
+          <p className="max-w-[70ch] text-xs text-muted-foreground">
+            Recebem os nomes de quem vai trabalhar (RH) ou ajudar como voluntário (Voluntariado) em cada evento, quando ele é confirmado, e de novo se a lista mudar. É um e-mail a mais: quem também está na lista acima continua recebendo os avisos gerais (cancelamento, nova data).
+          </p>
+          {carregado && erroDaEquipe ? (
+            <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-foreground">Não consegui ler as listas do RH e do Voluntariado agora. <button className="underline" onClick={() => void ler()}>Tentar de novo</button></p>
+          ) : carregado && !temEquipe ? (
+            <p className="rounded-xl border border-warning/30 bg-warning/5 p-3 text-xs text-foreground">A função de avisos publicada ainda não conhece estas listas. Republique a função <b>eventos-aviso</b> e recarregue a página.</p>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {(['rh', 'voluntariado'] as const).map(setor => {
+                const nome = setor === 'rh' ? 'RH' : 'Voluntariado';
+                const sugestoes = sugestoesDaEquipe(perfis, equipe, setor);
+                return (
+                  <div key={setor} className="space-y-2 rounded-xl border border-border p-3" data-testid={`lista-equipe-${setor}`}>
+                    <p className="text-xs font-semibold">{nome} <span className="font-normal text-muted-foreground">· {setor === 'rh' ? 'funcionários escalados' : 'voluntários, com o WhatsApp'}</span></p>
+                    {equipe[setor].length === 0
+                      ? <p className="text-xs text-muted-foreground">Ninguém ainda: enquanto a lista estiver vazia, os e-mails do {nome} não são enviados.</p>
+                      : (
+                        <ul className="flex flex-wrap gap-1.5" aria-label={`Quem recebe: ${nome}`}>
+                          {equipe[setor].map(e => (
+                            <li key={e} className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 py-0.5 pl-2.5 pr-1 text-xs">
+                              {e}
+                              <button type="button" className="rounded-full p-0.5 text-muted-foreground hover:text-destructive disabled:opacity-50" disabled={salvando} aria-label={`Tirar ${e} da lista do ${nome}`} onClick={() => tirarDaEquipe(setor, e)}><X className="h-3 w-3" /></button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    <form className="flex gap-2" onSubmit={ev => { ev.preventDefault(); adicionarNaEquipe(setor, novoDaEquipe[setor]); }}>
+                      <Input aria-label={`E-mail para a lista do ${nome}`} value={novoDaEquipe[setor]} onChange={ev => setNovoDaEquipe(n => ({ ...n, [setor]: ev.target.value }))} placeholder="nome@anabrasil.org" className="h-8 min-w-0 flex-1 text-xs" disabled={!carregado || salvando} />
+                      <Button type="submit" variant="outline" className="h-8 gap-1 text-xs" disabled={!carregado || salvando || !novoDaEquipe[setor].trim()}><Plus className="h-3.5 w-3.5" /> Adicionar</Button>
+                    </form>
+                    {sugestoes.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                        Com o vínculo {nome}:
+                        {sugestoes.map(p => (
+                          <button key={p.email} type="button" className="rounded-full border border-dashed border-border px-2 py-0.5 text-foreground hover:bg-muted disabled:opacity-50" disabled={salvando} onClick={() => adicionarNaEquipe(setor, p.email)}>
+                            + {p.nome ? `${p.nome} · ` : ''}{p.email}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         {config.atualizado_em && <p className="text-[11px] text-muted-foreground">Última alteração: {config.atualizado_por} em {quando(config.atualizado_em)}.</p>}

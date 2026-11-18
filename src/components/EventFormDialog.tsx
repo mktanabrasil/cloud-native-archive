@@ -49,6 +49,7 @@ import { toast } from 'sonner';
 import { ListaDeVoluntarios, NomesDosFuncionarios } from '@/components/events/EquipeDoDia';
 import { FUNCIONARIOS, VOLUNTARIOS, equipeDiferente, equipeParaGravar, erroDaEquipe, nomesJaUsados } from '@/lib/events/equipe';
 import { trocarEquipeDoEvento } from '@/lib/events/equipeApi';
+import { processarAvisosPendentes } from '@/hooks/useAvisosDoEvento';
 import { format as formatarData } from 'date-fns';
 import { rotuloDoStatus } from '@/lib/events/status';
 import { rotuloDoTipo } from '@/lib/events/tipo';
@@ -338,6 +339,8 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     try {
       const { equipe_funcionarios, equipe_voluntarios } = equipeParaGravar(event.support_team, form.equipe_funcionarios, form.equipe_voluntarios);
       await trocarEquipeDoEvento(event.id, equipe_funcionarios, equipe_voluntarios);
+      // O banco enfileirou o "Equipe alterada" (RH e Voluntariado): manda já.
+      void processarAvisosPendentes();
       // Salvo: o rascunho do aparelho não volta a ser oferecido.
       apagarRascunho(chaveDoRascunhoAtual);
       setSelectedEvent(null);

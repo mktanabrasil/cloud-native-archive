@@ -20,6 +20,34 @@ export interface ConfigDeAvisos {
 
 export const CONFIG_PADRAO: ConfigDeAvisos = { pre_lancamento: true, extras: [], excluidos: [] };
 
+/**
+ * Quem recebe os e-mails da equipe do dia (18/11/2026, PR 5): uma lista para o
+ * RH (funcionários escalados) e uma para o Voluntariado (voluntários). Guardada
+ * em system_configs ('avisos_equipe'). Espelho de `ConfigDaEquipe` em
+ * supabase/functions/eventos-aviso/fila.ts.
+ */
+export interface ConfigDaEquipe { rh: string[]; voluntariado: string[]; atualizado_por?: string | null; atualizado_em?: string | null }
+export const EQUIPE_PADRAO: ConfigDaEquipe = { rh: [], voluntariado: [] };
+export type SetorDaEquipe = 'rh' | 'voluntariado';
+
+/**
+ * As sugestões de cada lista: quem tem o vínculo (rh / voluntariado), ativo,
+ * com e-mail, que ainda não está nela.
+ */
+export function sugestoesDaEquipe(perfis: PerfilParaAviso[], equipe: ConfigDaEquipe, setor: SetorDaEquipe): { email: string; nome: string | null }[] {
+  const ja = new Set(equipe[setor].map(normalizarEmail));
+  const vistos = new Set<string>();
+  const saida: { email: string; nome: string | null }[] = [];
+  for (const p of perfis) {
+    if (!p.email || p.is_active === false || p.bond_type !== setor) continue;
+    const email = normalizarEmail(p.email);
+    if (ja.has(email) || vistos.has(email)) continue;
+    vistos.add(email);
+    saida.push({ email, nome: p.name });
+  }
+  return saida;
+}
+
 export const emailValido = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
 export const normalizarEmail = (e: string) => e.trim().toLowerCase();
 
