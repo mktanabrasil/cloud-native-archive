@@ -14,6 +14,7 @@ import { ROTULO_DA_COBERTURA, estadoDaCobertura } from '@/lib/events/cobertura';
 import { ResumoDeItens } from './events/ResumoDeItens';
 import { ResumoDoPedidoDeArte } from './events/ResumoDoPedidoDeArte';
 import { AvisosDoEvento } from './events/AvisosDoEvento';
+import { formatarWhatsapp } from '@/lib/events/equipe';
 import { SituacaoDoEvento } from './events/SituacaoDoEvento';
 
 /** Esboço V2: a unidade é um ponto de cor ao lado do nome, não mais um selo. */
@@ -146,6 +147,10 @@ export default function EventDetailPanel({ event, open, onOpenChange, onEdit, on
               <div className="grid grid-cols-1 gap-3">
                 {event.target_audience && <DetailRow label="Para quem" value={event.target_audience} />}
                 {event.support_team && <DetailRow label="Quem ajuda no dia" value={event.support_team} />}
+                {(event.equipe_funcionarios ?? []).length > 0 && <DetailRow label="Funcionários" value={event.equipe_funcionarios!.join(', ')} />}
+                {(event.equipe_voluntarios ?? []).length > 0 && (
+                  <DetailRow label="Voluntários" value={event.equipe_voluntarios!.map(v => `${v.nome} · ${formatarWhatsapp(v.whatsapp)}`).join(', ')} />
+                )}
                 {/* Por item, com detalhe, quando o evento tem a lista (desde
                     08/09/2026); a string antiga é o fallback. */}
                 {event.food_items && event.food_items.length > 0 ? (

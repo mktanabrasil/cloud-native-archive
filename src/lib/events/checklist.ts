@@ -5,6 +5,7 @@ import { estadoDaCobertura } from './cobertura';
 import { itensDoResumo } from './itens';
 import { alimentoEmTexto, limparAlimentos, paraProvidenciar, providenciar, textoDoFornecedor } from './alimentos';
 import { lerPedidoDeArte } from './arte';
+import { formatarWhatsapp } from './equipe';
 import { pistaDoEstoque } from './itens';
 
 /**
@@ -105,7 +106,17 @@ export function montarChecklist(e: Partial<AppEvent>): Checklist {
 
   // Público e equipe
   if (e.target_audience && e.target_audience !== 'Os funcionários') antes.push('Avisar as famílias do dia e do horário');
-  if (e.support_team) antes.push(`Confirmar quem ajuda no dia: ${minuscula(e.support_team)}`);
+  // Com os nomes (18/11/2026), o checklist diz quem; sem eles (eventos de antes), o texto de sempre.
+  const funcionarios = e.equipe_funcionarios ?? [];
+  const voluntarios = e.equipe_voluntarios ?? [];
+  if (funcionarios.length) antes.push(`Confirmar a equipe do dia: ${funcionarios.join(', ')}`);
+  if (voluntarios.length) antes.push(`Confirmar os voluntários: ${voluntarios.map(v => `${v.nome} (${formatarWhatsapp(v.whatsapp)})`).join(', ')}`);
+  if (e.support_team && !funcionarios.length && !voluntarios.length) antes.push(`Confirmar quem ajuda no dia: ${minuscula(e.support_team)}`);
+  else if (e.support_team) {
+    // Com nomes, a "Outra equipe" (texto livre) continua no checklist.
+    const outras = e.support_team.split(', ').map(v => v.trim()).filter(v => v && v !== 'Funcionários' && v !== 'Voluntários');
+    if (outras.length) antes.push(`Confirmar quem ajuda no dia: ${minuscula(outras.join(', '))}`);
+  }
   if (e.target_audience && /atendidos|comunidade/i.test(e.target_audience)) noDia.push('Lista de presença');
 
   depois.push('Registrar no relatório da unidade');

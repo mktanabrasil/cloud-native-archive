@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { tintaNaCorDaUnidade } from '@/lib/events/grupo';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,6 +46,9 @@ import { unidadesNoFormulario } from '@/lib/events/unidadesNoFormulario';
 import { estadoDaCobertura } from '@/lib/events/cobertura';
 import { errosDasListas, limparListas } from '@/lib/events/listas';
 import { toast } from 'sonner';
+import { ListaDeVoluntarios, NomesDosFuncionarios } from '@/components/events/EquipeDoDia';
+import { FUNCIONARIOS, VOLUNTARIOS, equipeDiferente, equipeParaGravar, erroDaEquipe, nomesJaUsados } from '@/lib/events/equipe';
+import { trocarEquipeDoEvento } from '@/lib/events/equipeApi';
 import { format as formatarData } from 'date-fns';
 import { rotuloDoStatus } from '@/lib/events/status';
 import { rotuloDoTipo } from '@/lib/events/tipo';
@@ -203,7 +206,9 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
   // no canto inferior direito — antes ficavam por cima dos campos.
   const [rodapeDaFolha, setRodapeDaFolha] = useState<HTMLDivElement | null>(null);
   const noRodape = (conteudo: ReactNode) => (rodapeDaFolha ? createPortal(conteudo, rodapeDaFolha) : conteudo);
-  const { addEvent, updateEvent, detectConflicts, setSelectedEvent, events } = useApp();
+  const { addEvent, updateEvent, detectConflicts, setSelectedEvent, events, refetchEvents } = useApp();
+  /** Os nomes que a equipe já usou em outros eventos, para sugerir (18/11/2026). */
+  const sugestoesDeNomes = useMemo(() => nomesJaUsados(events), [events]);
   const { userName, unit, isAdmin, isMarketing, permissionLevel, delegatedUnits } = useUserRole();
   const { user } = useAuth();
   const [form, setForm] = useState<Partial<AppEvent>>(emptyEvent());
@@ -317,6 +322,32 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
    */
   const travadoParaEla = enviaParaAprovacao && isEditing && !!event?.status && !statusDaGestora.includes(event.status);
   const statusDisponiveis: EventStatus[] = enviaParaAprovacao ? statusDaGestora : EVENT_STATUSES;
+  /**
+   * Confirmado, a unidade ainda troca SÓ a equipe do dia (decisão de
+   * 18/11/2026), pela função `trocar_equipe_do_evento` do banco. O resto do
+   * formulário continua travado.
+   */
+  const podeTrocarAEquipe = travadoParaEla && event?.status === 'confirmado';
+  // Compara o que de fato vai ser gravado (pela marcação salva, que no confirmado não muda).
+  const equipeMudou = !!event && equipeDiferente(event, { ...form, support_team: event.support_team });
+  const salvarAEquipe = async () => {
+    if (!event) return;
+    const falta = erroDaEquipe(event.support_team, form.equipe_funcionarios, form.equipe_voluntarios);
+    if (falta) { setErrors(prev => ({ ...prev, support_team: falta })); return; }
+    setSalvando(true);
+    try {
+      const { equipe_funcionarios, equipe_voluntarios } = equipeParaGravar(event.support_team, form.equipe_funcionarios, form.equipe_voluntarios);
+      await trocarEquipeDoEvento(event.id, equipe_funcionarios, equipe_voluntarios);
+      // Salvo: o rascunho do aparelho não volta a ser oferecido.
+      apagarRascunho(chaveDoRascunhoAtual);
+      setSelectedEvent(null);
+      await refetchEvents?.();
+      toast.success('Equipe atualizada', { description: `A equipe de “${tituloEmTexto(event.title)}” foi salva. O resto do evento continua como a administração confirmou.` });
+      onOpenChange(false);
+    } catch (e) {
+      toast.error('Não foi possível salvar a equipe', { description: e instanceof Error ? e.message : String(e) });
+    } finally { setSalvando(false); }
+  };
   const acaoDoBotao = isEditing ? 'salvar as alterações' : enviaParaAprovacao ? 'enviar o evento' : 'criar o evento';
   /** A gestora, editando um evento que ainda aguarda: pode cancelar o próprio pedido. */
   const podeCancelarOPedido = enviaParaAprovacao && isEditing && event?.status === 'pendente' && form.status !== 'cancelado';
@@ -574,6 +605,13 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
     // Novos campos obrigatórios
     if (!form.target_audience?.trim()) errs.target_audience = 'Marque para quem é o evento';
     if (!form.support_team?.trim()) errs.support_team = 'Marque quem vai ajudar no dia';
+    // Os nomes são obrigatórios (decisão de 18/11/2026): o RH e o Voluntariado precisam saber quem.
+    // Evento de antes (sem nomes) não trava a aprovação nem outra edição: só cobra
+    // os nomes de evento novo, ou quando a equipe marcada ou as listas mudaram.
+    else if (!event || equipeDiferente(event, form)) {
+      const faltaNaEquipe = erroDaEquipe(form.support_team, form.equipe_funcionarios, form.equipe_voluntarios);
+      if (faltaNaEquipe) errs.support_team = faltaNaEquipe;
+    }
     if (!form.food_logistics?.trim()) errs.food_logistics = 'Marque se vai ter comida (ou “Nenhum”)';
     if (!form.equipment_needed?.trim()) errs.equipment_needed = 'Marque os equipamentos (ou “Nenhum”)';
 
@@ -719,6 +757,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
       // Aparado só aqui: durante a digitação o espaço final precisa ficar.
       target_audience: normalizarOpcoes(form.target_audience),
       support_team: normalizarOpcoes(form.support_team),
+      ...equipeParaGravar(form.support_team, form.equipe_funcionarios, form.equipe_voluntarios),
       food_logistics: normalizarOpcoes(form.food_logistics),
       // A lista por item é a fonte; a string acima é derivada dela para as
       // telas e a validação antigas. `limparItens` apara e limita a 300.
@@ -975,6 +1014,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                     <p className="text-xs text-foreground">
                       <strong>{event?.status === 'concluido' ? 'Já concluído.' : 'Já confirmado pela administração geral.'}</strong> Para
                       alterar, peça à administração — ela pode devolver o evento para pendente.
+                      {podeTrocarAEquipe && <> Os nomes da equipe do dia ainda podem mudar: troque os nomes em <strong>Quem vai ajudar no dia?</strong> e toque em <strong>Salvar a equipe</strong>.</>}
                     </p>
                   </div>
                 )}
@@ -1580,6 +1620,17 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                       outroAberto={!!outroAberto.apoio}
                       onOutroAberto={a => setOutroAberto(prev => ({ ...prev, apoio: a }))}
                       erro={errors.support_team}
+                      travado={podeTrocarAEquipe}
+                      /* Os nomes da equipe do dia (18/11/2026): funcionários para o RH,
+                         voluntários com WhatsApp para o Voluntariado. */
+                      subformulario={chave =>
+                        chave === FUNCIONARIOS ? (
+                          <NomesDosFuncionarios id="apoio-funcionarios" nomes={form.equipe_funcionarios ?? []} sugestoes={sugestoesDeNomes}
+                            onNomes={nomes => setForm(prev => ({ ...prev, equipe_funcionarios: nomes }))} />
+                        ) : chave === VOLUNTARIOS ? (
+                          <ListaDeVoluntarios id="apoio-voluntarios" voluntarios={form.equipe_voluntarios ?? []}
+                            onVoluntarios={lista => setForm(prev => ({ ...prev, equipe_voluntarios: lista }))} />
+                        ) : null}
                     />
 
                     <div>
@@ -2260,7 +2311,12 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                 <Button variant="outline" onClick={() => pedirParaFechar(false)}>{enviaParaAprovacao && isEditing ? 'Fechar' : 'Cancelar'}</Button>
                 {/* A contagem no botão é o que responde "por que não salvou?"
                     sem obrigar a pessoa a caçar campo pela tela. */}
-                <Button onClick={() => handleSubmit()} disabled={salvando || travadoParaEla} className="h-auto min-h-10 whitespace-normal text-center max-sm:flex-1" data-testid="botao-enviar">
+                {podeTrocarAEquipe && (
+                  <Button onClick={() => void salvarAEquipe()} disabled={salvando || !equipeMudou} className="max-sm:flex-1" data-testid="botao-salvar-equipe">
+                    {salvando ? 'Salvando…' : 'Salvar a equipe'}
+                  </Button>
+                )}
+                {!podeTrocarAEquipe && <Button onClick={() => handleSubmit()} disabled={salvando || travadoParaEla} className="h-auto min-h-10 whitespace-normal text-center max-sm:flex-1" data-testid="botao-enviar">
                   {salvando
                     ? 'Salvando…'
                     : isEditing
@@ -2269,7 +2325,7 @@ export default function EventFormDialog({ open, onOpenChange, event, revisao = f
                         ? 'Enviar para aprovação'
                         : 'Criar evento'}
                   {pendencias > 0 && ` (${pendencias} ${pendencias === 1 ? 'pendência' : 'pendências'})`}
-                </Button>
+                </Button>}
                 </div>
               </DialogFooter>
             )}

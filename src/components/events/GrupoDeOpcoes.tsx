@@ -82,6 +82,12 @@ export interface GrupoDeOpcoesProps {
    * do item e o nome dele. Quando existe, `detalhes` não é usado.
    */
   subformulario?: (chave: string, rotulo: string) => ReactNode;
+  /**
+   * Os interruptores e o "Outro" não mudam; o sub-formulário de cada item
+   * ligado continua aberto (18/11/2026: no evento confirmado, a unidade
+   * troca só os nomes da equipe, não o que está marcado).
+   */
+  travado?: boolean;
 }
 
 const separar = (valor: string): string[] =>
@@ -115,6 +121,7 @@ export function GrupoDeOpcoes({
   detalhes,
   pistas,
   subformulario,
+  travado = false,
 }: GrupoDeOpcoesProps) {
   /** O item que acabou de ser ligado: a caixa dele abre em foco. */
   const [recemLigado, setRecemLigado] = useState<string | null>(null);
@@ -204,6 +211,7 @@ export function GrupoDeOpcoes({
           <Switch
             id={`${id}-${opcao}`}
             checked={ligada}
+            disabled={travado}
             onCheckedChange={() => alternar(opcao)}
           />
           <Label htmlFor={`${id}-${opcao}`} className="text-sm cursor-pointer flex-1 font-medium">
@@ -268,7 +276,7 @@ export function GrupoDeOpcoes({
 
         <div className="space-y-2 p-3 rounded-xl border border-border bg-card">
           <div className="flex items-center gap-3">
-            <Switch id={`${id}-outro`} checked={mostraOutro} onCheckedChange={alternarOutro} />
+            <Switch id={`${id}-outro`} checked={mostraOutro} disabled={travado} onCheckedChange={alternarOutro} />
             <Label htmlFor={`${id}-outro`} className="text-sm cursor-pointer flex-1 font-medium">
               {rotuloOutro}
             </Label>
@@ -277,6 +285,7 @@ export function GrupoDeOpcoes({
             <>
               <Input
                 className="h-9 mt-2"
+                disabled={travado}
                 value={texto}
                 onChange={(e) => onChange(montar(escolhidos, e.target.value))}
                 placeholder={pistaOutro}

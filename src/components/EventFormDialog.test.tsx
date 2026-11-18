@@ -15,6 +15,8 @@ const espiao = vi.hoisted(() => ({
   papel: { userName: 'Quem preenche', unit: 'DIC', isAdmin: false, isMarketing: false },
   addEvent: vi.fn(),
   updateEvent: vi.fn(),
+  trocarEquipe: vi.fn(),
+  refetch: vi.fn(),
 }));
 
 vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => espiao.papel }));
@@ -25,9 +27,11 @@ vi.mock('@/contexts/AppContext', () => ({
     updateEvent: espiao.updateEvent,
     detectConflicts: () => [],
     setSelectedEvent: vi.fn(),
-    events: [] as AppEvent[],
+    events: [{ equipe_funcionarios: ['Bruna Lima'] }] as AppEvent[],
+    refetchEvents: espiao.refetch,
   }),
 }));
+vi.mock('@/lib/events/equipeApi', () => ({ trocarEquipeDoEvento: espiao.trocarEquipe }));
 
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: { id: 'u1' } }) }));
 
@@ -86,6 +90,9 @@ beforeEach(() => {
   espiao.addEvent.mockResolvedValue(undefined);
   espiao.updateEvent.mockClear();
   espiao.updateEvent.mockResolvedValue(undefined);
+  espiao.trocarEquipe.mockReset();
+  espiao.trocarEquipe.mockResolvedValue({});
+  espiao.refetch.mockReset();
   fechou.mockClear();
 });
 
@@ -117,6 +124,7 @@ const eventoGravado = (): AppEvent => ({
   attachments: [],
   target_audience: 'Os atendidos',
   support_team: 'Funcionários',
+  equipe_funcionarios: ['Marina Costa'],
   food_logistics: 'Nenhum',
   equipment_needed: 'Nenhum',
 });
@@ -150,6 +158,15 @@ function preencher() {
   for (const nome of ['Os atendidos', 'Funcionários', 'Lanche', 'Som']) {
     fireEvent.click(screen.getByRole("switch", { name: nome }));
   }
+  // Funcionários pede o nome de quem trabalha (18/11/2026).
+  adicionarFuncionario('Marina Costa');
+}
+
+/** Escreve um nome na lista de funcionários e toca em Adicionar. */
+function adicionarFuncionario(nome: string) {
+  const apoio = document.getElementById('campo-apoio') as HTMLElement;
+  fireEvent.change(within(apoio).getByLabelText('Nome do funcionário'), { target: { value: nome } });
+  fireEvent.click(within(apoio).getByRole('button', { name: 'Adicionar' }));
 }
 
 describe('publicar no site', () => {
@@ -355,7 +372,9 @@ describe('a gestora envia para aprovação', () => {
     render(<EventFormDialog open onOpenChange={fechou} event={evento} />);
 
     expect(screen.getByText(/já confirmado pela administração geral/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /salvar alterações/i })).toBeDisabled();
+    // Desde 18/11/2026 só a equipe do dia muda no confirmado: o botão é outro, e nasce desativado.
+    expect(screen.queryByRole('button', { name: /salvar alterações/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /salvar a equipe/i })).toBeDisabled();
   });
 
   it('mostra a observação quando a administração devolveu', () => {
@@ -1684,5 +1703,114 @@ describe('varredura de lançamento (13/11/2026)', () => {
 
     fireEvent.change(datas[1], { target: { value: '2027-10-10T18:00' } });
     expect(screen.queryByTestId('aviso-datas')).not.toBeInTheDocument();
+  });
+});
+
+describe('a equipe do dia (18/11/2026)', () => {
+  const apoio = () => document.getElementById('campo-apoio') as HTMLElement;
+  const enviar = () => fireEvent.click(screen.getByTestId('botao-enviar'));
+
+  it('Funcionários pede os nomes: sem nenhum, o envio para; com nome, ele vai gravado', async () => {
+    abrir();
+    preencher();
+    fireEvent.click(within(apoio()).getByRole('button', { name: 'Tirar Marina Costa' }));
+    enviar();
+    expect(await within(apoio()).findByText(/Escreva o nome de quem da equipe vai trabalhar/)).toBeInTheDocument();
+    expect(espiao.addEvent).not.toHaveBeenCalled();
+
+    adicionarFuncionario('  Marina   Costa ');
+    adicionarFuncionario('Rafael Souza');
+    enviar();
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
+    expect(espiao.addEvent.mock.calls[0][0]).toMatchObject({ support_team: 'Funcionários', equipe_funcionarios: ['Marina Costa', 'Rafael Souza'], equipe_voluntarios: [] });
+  });
+
+  it('sugere os nomes já usados em outros eventos', () => {
+    abrir();
+    fireEvent.click(screen.getByRole('switch', { name: 'Funcionários' }));
+    expect(document.querySelector('datalist option[value="Bruna Lima"]')).not.toBeNull();
+  });
+
+  it('Voluntários pede nome e WhatsApp; WhatsApp sem DDD não passa; vai só com os números', async () => {
+    abrir();
+    preencher();
+    fireEvent.click(screen.getByRole('switch', { name: 'Voluntários' }));
+    fireEvent.change(screen.getByLabelText('Nome do voluntário 1'), { target: { value: 'Carla Mendes' } });
+    fireEvent.change(screen.getByLabelText('WhatsApp do voluntário 1'), { target: { value: '99812-4410' } });
+    enviar();
+    expect(await within(apoio()).findByText(/Confira o WhatsApp dos voluntários/)).toBeInTheDocument();
+    expect(espiao.addEvent).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('WhatsApp do voluntário 1'), { target: { value: '(19) 99812-4410' } });
+    enviar();
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
+    expect(espiao.addEvent.mock.calls[0][0].equipe_voluntarios).toEqual([{ nome: 'Carla Mendes', whatsapp: '19998124410' }]);
+  });
+
+  it('desligar Funcionários não grava a lista', async () => {
+    abrir();
+    preencher();
+    fireEvent.click(screen.getByRole('switch', { name: 'Voluntários' }));
+    fireEvent.change(screen.getByLabelText('Nome do voluntário 1'), { target: { value: 'Pedro Alves' } });
+    fireEvent.change(screen.getByLabelText('WhatsApp do voluntário 1'), { target: { value: '19988770213' } });
+    fireEvent.click(screen.getByRole('switch', { name: 'Funcionários' }));
+    enviar();
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
+    expect(espiao.addEvent.mock.calls[0][0]).toMatchObject({ support_team: 'Voluntários', equipe_funcionarios: [] });
+  });
+
+  it('confirmado: a gestora troca só a equipe, pelo "Salvar a equipe"', async () => {
+    render(<EventFormDialog open onOpenChange={fechou} event={eventoGravado()} />);
+    expect(screen.getByText(/Os nomes da equipe do dia ainda podem mudar/)).toBeInTheDocument();
+    expect(screen.queryByTestId('botao-enviar')).not.toBeInTheDocument();
+    const salvar = screen.getByTestId('botao-salvar-equipe');
+    expect(salvar).toBeDisabled();
+    adicionarFuncionario('Rafael Souza');
+    expect(salvar).toBeEnabled();
+    fireEvent.click(salvar);
+    await waitFor(() => expect(espiao.trocarEquipe).toHaveBeenCalledWith('ev-1', ['Marina Costa', 'Rafael Souza'], []));
+    expect(espiao.updateEvent).not.toHaveBeenCalled();
+    await waitFor(() => expect(fechou).toHaveBeenCalledWith(false));
+    expect(espiao.refetch).toHaveBeenCalled();
+  });
+
+  it('confirmado: sem nenhum nome, não salva a equipe', async () => {
+    render(<EventFormDialog open onOpenChange={fechou} event={eventoGravado()} />);
+    fireEvent.click(within(apoio()).getByRole('button', { name: 'Tirar Marina Costa' }));
+    fireEvent.click(screen.getByTestId('botao-salvar-equipe'));
+    expect(await within(apoio()).findByText(/Escreva o nome de quem da equipe vai trabalhar/)).toBeInTheDocument();
+    expect(espiao.trocarEquipe).not.toHaveBeenCalled();
+  });
+
+  it('confirmado: o que está marcado não muda; só os nomes', () => {
+    render(<EventFormDialog open onOpenChange={fechou} event={eventoGravado()} />);
+    expect(screen.getByRole('switch', { name: 'Voluntários' })).toBeDisabled();
+    expect(screen.getByRole('switch', { name: 'Funcionários' })).toBeDisabled();
+    expect(within(apoio()).getByLabelText('Nome do funcionário')).toBeEnabled();
+  });
+
+  it('nome escrito e não adicionado entra ao sair do campo (não some ao enviar)', async () => {
+    abrir();
+    preencher();
+    const campo = within(apoio()).getByLabelText('Nome do funcionário');
+    fireEvent.change(campo, { target: { value: 'Bruno Dias' } });
+    fireEvent.blur(campo);
+    enviar();
+    await waitFor(() => expect(espiao.addEvent).toHaveBeenCalled());
+    expect(espiao.addEvent.mock.calls[0][0].equipe_funcionarios).toEqual(['Marina Costa', 'Bruno Dias']);
+  });
+
+  it('evento de antes, com Funcionários e sem nomes: a administração salva sem ser travada', async () => {
+    espiao.papel = { ...espiao.papel, isAdmin: true, isMarketing: true };
+    render(<EventFormDialog open onOpenChange={fechou} event={{ ...eventoGravado(), equipe_funcionarios: [] }} />);
+    fireEvent.click(screen.getByTestId('botao-enviar'));
+    await waitFor(() => expect(espiao.updateEvent).toHaveBeenCalled());
+  });
+
+  it('a comunicação, no confirmado, salva o evento inteiro como sempre', async () => {
+    espiao.papel = { ...espiao.papel, isAdmin: true, isMarketing: true };
+    render(<EventFormDialog open onOpenChange={fechou} event={eventoGravado()} />);
+    expect(screen.queryByTestId('botao-salvar-equipe')).not.toBeInTheDocument();
+    expect(screen.getByTestId('botao-enviar')).toBeInTheDocument();
   });
 });
