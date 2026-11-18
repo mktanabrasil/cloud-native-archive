@@ -23,6 +23,7 @@ import { ClipboardList } from 'lucide-react';
 import { tituloEmTexto } from '@/lib/events/titulo';
 import { anoQuandoPreciso, textoDaData, textoDoHorario } from '@/lib/events/periodo';
 import { jaAconteceu } from '@/lib/events/proximosEPassados';
+import { formatarWhatsapp } from '@/lib/events/equipe';
 import { textoDoWhatsApp } from '@/lib/events/compartilhar';
 
 interface Props {
@@ -219,6 +220,14 @@ export function EventDetailDialog({ open, onOpenChange, event, comoVisitante = f
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {event.target_audience && <Campo rotulo="Para quem">{event.target_audience}</Campo>}
                 {event.support_team && <Campo rotulo="Quem ajuda no dia">{event.support_team}</Campo>}
+                {(event.equipe_funcionarios ?? []).length > 0 && (
+                  <Campo rotulo={`Funcionários · ${event.equipe_funcionarios!.length}`}>{event.equipe_funcionarios!.join(', ')}</Campo>
+                )}
+                {(event.equipe_voluntarios ?? []).length > 0 && (
+                  <Campo rotulo={`Voluntários · ${event.equipe_voluntarios!.length}`}>
+                    <ul className="space-y-0.5">{event.equipe_voluntarios!.map(v => <li key={v.whatsapp + v.nome}>{v.nome} · <span className="tabular-nums">{formatarWhatsapp(v.whatsapp)}</span></li>)}</ul>
+                  </Campo>
+                )}
                 {event.food_items && event.food_items.length > 0 ? (
                   <div className="col-span-1 md:col-span-2"><ResumoDeItens titulo="Alimentação" itens={event.food_items} copiar /></div>
                 ) : event.food_logistics && (

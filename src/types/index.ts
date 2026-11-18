@@ -56,6 +56,12 @@ export interface MarketingItem {
 export type Fornecedor = 'ANA' | 'Unidade' | 'Parceiro' | 'Doação';
 
 /** Uma linha da tabelinha de uma refeição (22/09/2026). */
+/** Um voluntário indicado no evento (18/11/2026): o WhatsApp vai só com dígitos, com DDD. */
+export interface VoluntarioDoEvento {
+  nome: string;
+  whatsapp: string;
+}
+
 export interface Alimento {
   nome: string;
   quantidade: string;
@@ -139,6 +145,10 @@ export interface AppEvent {
   google_event_link?: string | null;
   target_audience?: string;
   support_team?: string;
+  /** Os nomes de quem da equipe trabalha no evento (18/11/2026), para o RH. */
+  equipe_funcionarios?: string[];
+  /** Os voluntários indicados, com WhatsApp (18/11/2026), para o Voluntariado. */
+  equipe_voluntarios?: VoluntarioDoEvento[];
   /** Derivado de `food_items`: "Almoço, Lanche, Café dos voluntários". */
   food_logistics?: string;
   /** Cada item de alimentação com o seu detalhe. Fonte da verdade desde 08/09/2026. */
