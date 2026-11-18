@@ -44,7 +44,7 @@
   RewriteRule ^(educacao(/jornal|/jornais-das-unidades)?|jornal-institucional|jornais-das-unidades)/?$ /jornal.html [L]
   RewriteRule ^(social/)?calendario/?$ /calendario.html [L]
   RewriteRule ^educacao/semanario(/[^/]+)?/?$ /semanario.html [L]
-  RewriteRule ^(login|redefinir-senha|auth/confirm|social(/eventos)?|painel|marketing(/[^/]+)?|administracao(/(rh|voluntariado))?|visao-geral|usuarios|auditoria|design-manual|admin-toolbox|email-preview|pizza-da-alegria/(painel(/dashboard)?|retirada)|voluntariado/natalfeliz26/presenca)/?$ /app.html [L]
+  RewriteRule ^(login|redefinir-senha|auth/confirm|social(/eventos)?|painel|marketing(/[^/]+)?|administracao(/(rh|voluntariado|financeiro|padrinhos|parceiros))?|visao-geral|usuarios|auditoria|design-manual|admin-toolbox|email-preview|pizza-da-alegria/(painel(/dashboard)?|retirada)|voluntariado/natalfeliz26/presenca)/?$ /app.html [L]
 
   # Todo o resto entrega o index.html, e o React resolve a rota.
   RewriteRule . /index.html [L]

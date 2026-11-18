@@ -176,7 +176,7 @@ export const CARTOES_DE_LINK: CartaoDeLink[] = [
   {
     // As páginas da equipe: pedem login e têm um cartão só.
     arquivo: 'app.html',
-    regra: 'RewriteRule ^(login|redefinir-senha|auth/confirm|social(/eventos)?|painel|marketing(/[^/]+)?|administracao(/(rh|voluntariado))?|visao-geral|usuarios|auditoria|design-manual|admin-toolbox|email-preview|pizza-da-alegria/(painel(/dashboard)?|retirada)|voluntariado/natalfeliz26/presenca)/?$ /app.html [L]',
+    regra: 'RewriteRule ^(login|redefinir-senha|auth/confirm|social(/eventos)?|painel|marketing(/[^/]+)?|administracao(/(rh|voluntariado|financeiro|padrinhos|parceiros))?|visao-geral|usuarios|auditoria|design-manual|admin-toolbox|email-preview|pizza-da-alegria/(painel(/dashboard)?|retirada)|voluntariado/natalfeliz26/presenca)/?$ /app.html [L]',
     titulo: 'ANA Brasil · Área da equipe',
     descricao: 'O app da ANA Brasil: eventos, jornal e comunicação das unidades. Entre com a sua conta.',
     imagem: '/og-app.jpg',
