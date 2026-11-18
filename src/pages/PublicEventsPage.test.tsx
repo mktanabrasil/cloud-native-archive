@@ -19,7 +19,11 @@ const espiao = vi.hoisted(() => ({
   carregando: false,
   erro: false,
   recarregar: vi.fn(),
+  papel: {} as Record<string, unknown>,
 }));
+
+/** O papel de sempre destes testes: a comunicação, que mexe em tudo. */
+const COMUNICACAO = { isAdmin: true, canEdit: true, isMarketing: true, viewRestrictions: null, permissionLevel: 'admin_geral' };
 
 vi.mock('@/contexts/AppContext', () => ({
   useApp: () => ({
@@ -38,7 +42,7 @@ vi.mock('@/contexts/AuthContext', () => ({
 }));
 
 vi.mock('@/hooks/useUserRole', () => ({
-  useUserRole: () => ({ isAdmin: true, canEdit: true, viewRestrictions: null, permissionLevel: 'admin_geral' }),
+  useUserRole: () => espiao.papel,
 }));
 
 vi.mock('@/hooks/useViewConfigs', () => ({
@@ -133,6 +137,7 @@ const noCard = (titulo: string) => screen.queryAllByRole('heading', { level: 3, 
 beforeEach(() => {
   espiao.eventos = [ativo, naLixeira];
   espiao.autenticado = true;
+  espiao.papel = COMUNICACAO;
   espiao.editar.mockClear();
   vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date(2026, 8, 8, 15) });
 });
@@ -203,6 +208,45 @@ describe('modo equipe', () => {
 
     expect(screen.getByTestId('detalhe')).toHaveTextContent('Festa da Primavera');
     expect(espiao.editar).not.toHaveBeenCalled();
+  });
+});
+
+describe('a gestão de unidade edita só o que é dela (18/11/2026)', () => {
+  const gestoraDaDic = { isAdmin: false, canEdit: true, isMarketing: false, unit: 'DIC', delegatedUnits: [], viewRestrictions: null, permissionLevel: 'gestor_unidade' };
+  // Confirmado e público: a versão de antes (a do site) só mostra esses; o lápis abre o confirmado travado.
+  const daDic = evento({ id: 'dic-1', title: 'Oficina de Pães', unit: 'DIC' });
+  const deNilopolis = evento({ id: 'nil-1', title: 'Bazar Solidário', unit: 'Nilópolis' });
+
+  beforeEach(() => {
+    espiao.papel = gestoraDaDic;
+    espiao.eventos = [daDic, deNilopolis];
+  });
+
+  for (const [versao, abrir] of [['de antes', montar], ['V2', montarV2]] as const) {
+    it(`o lápis aparece só no evento da unidade dela (${versao})`, () => {
+      abrir();
+
+      const lapis = screen.getAllByRole('button', { name: /editar evento/i });
+      expect(lapis).toHaveLength(1);
+      fireEvent.click(lapis[0]);
+      expect(espiao.editar).toHaveBeenCalledWith(expect.objectContaining({ id: 'dic-1' }));
+    });
+
+    it(`o detalhe de outra unidade abre sem editar; o dela, com (${versao})`, () => {
+      const { unmount } = abrir('/eventos?slug=nil-1');
+      expect(screen.getByTestId('detalhe').dataset.editar).toBe('nao');
+      unmount();
+
+      abrir('/eventos?slug=dic-1');
+      expect(screen.getByTestId('detalhe').dataset.editar).toBe('sim');
+    });
+  }
+
+  it('com unidade delegada, edita também a delegada', () => {
+    espiao.papel = { ...gestoraDaDic, delegatedUnits: ['Nilópolis'] };
+    montarV2();
+
+    expect(screen.getAllByRole('button', { name: /editar evento/i })).toHaveLength(2);
   });
 });
 

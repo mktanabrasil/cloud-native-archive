@@ -5,6 +5,7 @@ import { useIsEmbedded } from '@/hooks/useIsEmbedded';
 import { useEquipe } from '@/hooks/useEquipe';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useUserRole } from '@/hooks/useUserRole';
+import { podeMexerNoEvento } from '@/lib/events/podeMexer';
 import { useApp } from '@/contexts/AppContext';
 import { AppEvent, UNIT_BG_COLORS, type Unit } from '@/types';
 import { rotuloDoTipo } from '@/lib/events/tipo';
@@ -66,7 +67,13 @@ export default function PublicEventsPage() {
   /** Mouse em cima ou foco dentro do carrossel: ele para de girar. */
   const [carrosselPausado, setCarrosselPausado] = useState(false);
   const reduzMovimento = useReduzMovimento();
-  const { isAdmin, canEdit } = useUserRole();
+  const { isAdmin, canEdit, isMarketing, unit, delegatedUnits } = useUserRole();
+  /**
+   * O lápis e o "Editar evento" só onde o banco deixaria salvar (18/11/2026),
+   * como no calendário e na Visão Geral. Antes, a gestão de uma unidade via o
+   * lápis nos eventos das outras, abria o formulário e o banco recusava.
+   */
+  const podeEditar = (e: AppEvent) => podeMexerNoEvento(e, { canEdit, isMarketing, unit, delegatedUnits }).editar;
   const { updateEvent, setSelectedEvent, selectedEvent, loading, erroAoCarregar, refetchEvents } = useApp();
   // A aba do navegador dizia "ANA Brasil" em toda a aplicação: duas abas com
   // eventos diferentes eram indistinguíveis. Com o detalhe aberto, é o evento.
@@ -739,7 +746,7 @@ export default function PublicEventsPage() {
                       desliga o banner. */}
                   {equipe && (canEdit || isAdmin) && (
                     <div className="absolute top-3 right-3 flex gap-2.5">
-                      {canEdit && (
+                      {podeEditar(event) && (
                         <button
                           type="button"
                           onClick={(e) => {
@@ -851,7 +858,7 @@ export default function PublicEventsPage() {
         onOpenChange={(open) => !open && closeDetail()}
         event={selectedEventForDetail}
         comoVisitante={!equipe}
-        onEditar={equipe && canEdit ? editar : undefined}
+        onEditar={equipe && selectedEventForDetail && podeEditar(selectedEventForDetail) ? editar : undefined}
         onAlternarBanner={equipe && isAdmin ? handleToggleBanner : undefined}
       />
 
