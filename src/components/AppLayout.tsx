@@ -105,7 +105,7 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
   const comDocaVisivel = mostraMoldura && comDoca && itensVisiveis.length > 1;
 
   const contagemDeVagas = (to: string) =>
-    to === '/vagas' && avisosDeVagas > 0 ? (
+    to === ROTAS.rh && avisosDeVagas > 0 ? (
       <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#f37964] px-1 text-[10.5px] font-bold text-[#1F2322]" aria-label={`${avisosDeVagas} para ver`}>
         {avisosDeVagas > 99 ? '99+' : avisosDeVagas}
       </span>
@@ -192,9 +192,9 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
   // Marketing na doca, quem é do RH vê Vagas; o Mercado, menos usado, vai para
   // o "Mais". E a área em que a pessoa está nunca fica escondida no "Mais".
   const prioridade = (to: string) => {
-    const base = [ROTAS.eventos, ROTAS.jornal, '/vagas', ROTAS.marketing, ROTAS.painel].indexOf(to);
+    const base = ([ROTAS.eventos, ROTAS.jornal, ROTAS.rh, ROTAS.marketing, ROTAS.painel] as string[]).indexOf(to);
     if (to === ROTAS.marketing && isMarketing) return -2;
-    if (to === '/vagas' && (isRh || souResponsavel)) return -1;
+    if (to === ROTAS.rh && (isRh || souResponsavel)) return -1;
     return base < 0 ? 99 : base;
   };
   const ordenados = itensVisiveis.length > 5
@@ -326,7 +326,7 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
                         >
                           <IconeDaDoca Icone={iconeDoItem(item)} cor={COR_DA_AREA[item.to]} ativo={ativo} grande />
                           <span className="max-w-full px-0.5">{item.label}</span>
-                          {item.to === '/vagas' && avisosDeVagas > 0 && <span className="absolute right-3 top-2.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#f37964] px-1 text-[10.5px] font-bold text-[#1F2322]">{avisosDeVagas > 99 ? '99+' : avisosDeVagas}</span>}
+                          {item.to === ROTAS.rh && avisosDeVagas > 0 && <span className="absolute right-3 top-2.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#f37964] px-1 text-[10.5px] font-bold text-[#1F2322]">{avisosDeVagas > 99 ? '99+' : avisosDeVagas}</span>}
                         </Link>
                       );
                     })}
@@ -347,7 +347,7 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
                 className={classeDoItem(ativo)}
               >
                 {itemDaDoca(item.label, ativo, item)}
-                {item.to === '/vagas' && avisosDeVagas > 0 && <span className="absolute right-[22%] top-0 h-2 w-2 rounded-full bg-[#f37964]" aria-label={`${avisosDeVagas} para ver`} />}
+                {item.to === ROTAS.rh && avisosDeVagas > 0 && <span className="absolute right-[22%] top-0 h-2 w-2 rounded-full bg-[#f37964]" aria-label={`${avisosDeVagas} para ver`} />}
               </Link>
             );
           })}

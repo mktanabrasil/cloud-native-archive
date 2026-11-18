@@ -23,7 +23,7 @@ import ImpersonationBanner from '@/components/ImpersonationBanner';
 import TestModeBanner, { TestModeTrigger } from '@/components/TestModeBanner';
 import logoImg from '@/assets/logo.png';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { navItems } from '@/config/navigation';
+import { navItems, ROTAS } from '@/config/navigation';
 import { useSouResponsavel } from '@/hooks/useSouResponsavel';
 import { useAvisosDaEquipe } from '@/hooks/useAvisosDaEquipe';
 import { ehContaRestrita } from '@/lib/contasRestritas';
@@ -113,7 +113,7 @@ export default function AppLayout() {
           >
             <item.icon className={cn("h-4 w-4 shrink-0", !onClick && "hidden xl:block")} />
             <span>{item.label}</span>
-            {item.to === '/vagas' && avisosDeVagas > 0 && (
+            {item.to === ROTAS.rh && avisosDeVagas > 0 && (
               <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#F26B4F] px-1 text-[10.5px] font-bold text-white" aria-label={`${avisosDeVagas} para ver`}>{avisosDeVagas > 99 ? '99+' : avisosDeVagas}</span>
             )}
           </Link>

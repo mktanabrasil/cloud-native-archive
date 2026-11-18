@@ -34,7 +34,7 @@ export const PAGINAS_DA_BUSCA: PaginaDaBusca[] = [
   { titulo: 'Jornal Institucional', detalhe: 'Educação · os jornais da unidade', para: ROTAS.jornal, setor: ROTAS.jornal, acesso: 'jornal', palavras: 'jornal informativo edicao esboco' },
   { titulo: 'Jornais das unidades', detalhe: 'Educação · os finalizados, para ler e baixar', para: ROTAS.jornaisDasUnidades, setor: ROTAS.jornal, acesso: 'jornal', palavras: 'jornais finalizados feed pdf' },
   { titulo: 'Semanário', detalhe: 'Educação · o planejamento da semana', para: ROTAS.semanario, setor: ROTAS.jornal, acesso: 'semanario', palavras: 'semanario planejamento semana professora orientadora devolutiva' },
-  { titulo: 'Vagas', detalhe: 'Vagas · processos e candidaturas', para: '/vagas', setor: '/vagas', acesso: 'vagas', palavras: 'vagas trabalhe conosco candidatos candidaturas processos rh' },
+  { titulo: 'RH · Vagas', detalhe: 'Administração · processos e candidaturas', para: ROTAS.rh, setor: ROTAS.rh, acesso: 'vagas', palavras: 'vagas trabalhe conosco candidatos candidaturas processos rh administracao' },
   { titulo: 'Mercado Solidário', detalhe: 'Marketing', para: ROTAS.mercado, setor: ROTAS.marketing, acesso: 'marketing', palavras: 'mercado solidario doacoes cestas' },
   { titulo: 'Pizza da Alegria', detalhe: 'Marketing · pedidos, ranking e retirada', para: rotaDoMarketing('pizza'), setor: ROTAS.marketing, acesso: 'marketing', palavras: 'pizza pedidos ranking retirada' },
   { titulo: 'Voluntariado', detalhe: 'Marketing · inscrições do Natal Feliz', para: rotaDoMarketing('voluntariado'), setor: ROTAS.marketing, acesso: 'marketing', palavras: 'voluntariado voluntarios inscricoes natal feliz' },

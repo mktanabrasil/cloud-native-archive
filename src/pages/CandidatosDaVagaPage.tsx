@@ -17,6 +17,7 @@ import {
 } from '@/lib/vagas/rh';
 import { respostasNaoLidas } from '@/lib/vagas/mensagens';
 import { registrarAcesso } from '@/lib/vagas/auditoria';
+import { ROTAS } from '@/config/navigation';
 
 /**
  * /vagas/:slug/candidatos — os candidatos de uma vaga, para o RH (PR 9,
@@ -126,7 +127,7 @@ export default function CandidatosDaVagaPage() {
   return (
     <MolduraDasVagas>
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6 sm:px-6">
-        <Link to={isRh ? "/vagas?tela=processos" : "/vagas"} className="flex min-h-[32px] items-center gap-1 self-start text-sm font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> {isRh ? "Processos" : "Meus processos"}</Link>
+        <Link to={isRh ? `${ROTAS.rh}?tela=processos` : ROTAS.rh} className="flex min-h-[32px] items-center gap-1 self-start text-sm font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> {isRh ? "Processos" : "Meus processos"}</Link>
         {vaga === null ? (
           <p className="text-muted-foreground">Vaga não encontrada.</p>
         ) : (

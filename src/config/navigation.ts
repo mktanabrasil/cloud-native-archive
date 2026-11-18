@@ -1,4 +1,4 @@
-import { Briefcase, Users, Megaphone, HeartHandshake, GraduationCap, type LucideIcon } from 'lucide-react';
+import { Building2, Users, Megaphone, HeartHandshake, GraduationCap, type LucideIcon } from 'lucide-react';
 
 export interface NavItem {
   to: string;
@@ -18,8 +18,9 @@ export interface NavItem {
    */
   journalOnly?: boolean;
   /**
-   * Só RH e admin (vagas, 25/09/2026): o atalho para /vagas, onde eles veem
-   * as abas Portal e Gestão. O candidato chega pelo endereço, sem menu.
+   * O setor Administração (18/11/2026): por enquanto só o RH (com a gestão
+   * das vagas) e quem é responsável por algum processo. Até então era o setor
+   * "Vagas", que levava a /vagas. O candidato chega ao portal pelo endereço.
    */
   rhOnly?: boolean;
   /**
@@ -45,6 +46,8 @@ export const ROTAS = {
   marketing: '/marketing',
   mercado: '/marketing/mercado-solidario',
   painel: '/painel',
+  /** Administração › RH (18/11/2026): a gestão das vagas, que era o setor "Vagas" em /vagas. */
+  rh: '/administracao/rh',
 } as const;
 
 /** As abas do Marketing, cada uma no seu endereço: `/marketing/pizza`. */
@@ -74,11 +77,12 @@ export const REDIRECIONAMENTOS: Record<string, string> = {
   '/design-manual': rotaDoMarketing('design-manual'),
   '/portal-transparencia': rotaDoMarketing('transparencia'),
   '/admin-toolbox': rotaDoMarketing('widgets'),
+  '/administracao': ROTAS.rh,
 };
 
 /**
- * O menu de cima são os SETORES (16/11/2026): Social, Educação, Vagas,
- * Marketing e Painel. Cada setor abre na sua primeira página, e as outras
+ * O menu de cima são os SETORES (16/11/2026): Social, Educação, Administração
+ * (era "Vagas" até 18/11/2026), Marketing e Painel. Cada setor abre na sua primeira página, e as outras
  * páginas dele ficam na faixa logo abaixo da barra (`FaixaDoSetor`).
  *
  * - Social: Eventos e Calendário Anual. A gestão da Educação não o vê.
@@ -93,7 +97,7 @@ export const REDIRECIONAMENTOS: Record<string, string> = {
 export const navItems: NavItem[] = [
   { to: ROTAS.eventos, label: 'Social', icon: HeartHandshake, setorSocial: true },
   { to: ROTAS.jornal, label: 'Educação', icon: GraduationCap, requireAuth: true, journalOnly: true },
-  { to: '/vagas', label: 'Vagas', icon: Briefcase, requireAuth: true, rhOnly: true },
+  { to: ROTAS.rh, label: 'Administração', icon: Building2, requireAuth: true, rhOnly: true },
   { to: ROTAS.marketing, label: 'Marketing', icon: Megaphone, requireAuth: true, marketingOnly: true },
   { to: ROTAS.painel, label: 'Painel', icon: Users, requireAuth: true, marketingOnly: true },
 ];
@@ -102,7 +106,7 @@ export const navItems: NavItem[] = [
 export const COR_DO_SETOR: Record<string, string> = {
   [ROTAS.eventos]: '#01adff',
   [ROTAS.jornal]: '#f37964',
-  '/vagas': '#81e2cf',
+  [ROTAS.rh]: '#81e2cf',
   [ROTAS.marketing]: '#fbce00',
   [ROTAS.painel]: '#8A938F',
 };
@@ -213,6 +217,11 @@ export const PAGINAS_DOS_SETORES: Record<string, PaginaDoSetor[]> = {
     // O planejamento da semana das professoras (17/11/2026).
     { rotulo: 'Semanário', to: ROTAS.semanario, aberta: (c) => c === ROTAS.semanario || c.startsWith(`${ROTAS.semanario}/`), soComSemanario: true },
   ],
+  // Administração (18/11/2026): por enquanto só o RH; Voluntariado, Financeiro,
+  // Padrinhos e Parceiros entram nos próximos PRs (com uma página só, a faixa não aparece).
+  [ROTAS.rh]: [
+    { rotulo: 'RH', to: ROTAS.rh, aberta: (c) => c === ROTAS.rh },
+  ],
   [ROTAS.marketing]: [
     { rotulo: 'Mercado Solidário', to: ROTAS.mercado, aberta: (c) => c === ROTAS.mercado },
     { rotulo: 'Pizza da Alegria', to: rotaDoMarketing('pizza'), aberta: abaAberta('pizza', '/pizza-da-alegria/painel') },
@@ -229,6 +238,7 @@ export const PAGINAS_DOS_SETORES: Record<string, PaginaDoSetor[]> = {
 export const ROTAS_DO_SETOR: Record<string, string[]> = {
   [ROTAS.eventos]: ['/social', '/eventos'],
   [ROTAS.jornal]: ['/educacao'],
+  [ROTAS.rh]: ['/administracao'],
   [ROTAS.marketing]: [ROTAS.marketing, '/pizza-da-alegria/painel'],
 };
 

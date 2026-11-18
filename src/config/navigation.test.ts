@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { ROTAS, destinoDoSetor, navItems, paginasVisiveis, setoresVisiveis } from './navigation';
+import { REDIRECIONAMENTOS, ROTAS, destinoDoSetor, navItems, paginasVisiveis, setorDoCaminho, setoresVisiveis } from './navigation';
 
 describe('menu de cima', () => {
-  it('o atalho de Vagas existe e é só de RH e admin (25/09/2026)', () => {
-    const vagas = navItems.find(i => i.to === '/vagas');
-    expect(vagas).toMatchObject({ label: 'Vagas', requireAuth: true, rhOnly: true });
-    expect(vagas?.hidden).toBeFalsy();
+  it('a Administração (era "Vagas") é só de RH, admin e responsável, e abre no RH (18/11/2026)', () => {
+    const adm = navItems.find(i => i.label === 'Administração');
+    expect(adm).toMatchObject({ to: ROTAS.rh, requireAuth: true, rhOnly: true });
+    expect(adm?.hidden).toBeFalsy();
+    expect(navItems.some(i => i.label === 'Vagas' || i.to === '/vagas')).toBe(false);
+    expect(setoresVisiveis({ isAuthenticated: true }).map(i => i.label)).not.toContain('Administração');
+    expect(setoresVisiveis({ isAuthenticated: true, isRh: true }).map(i => i.label)).toContain('Administração');
+    expect(setoresVisiveis({ isAuthenticated: true, souResponsavel: true }).map(i => i.label)).toContain('Administração');
+    expect(setorDoCaminho(ROTAS.rh)).toBe(ROTAS.rh);
+    expect(REDIRECIONAMENTOS['/administracao']).toBe(ROTAS.rh);
   });
 });
 

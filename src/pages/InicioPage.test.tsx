@@ -91,7 +91,7 @@ describe('a página inicial', () => {
 
   it('o marketing vê os cinco setores e os três próximos eventos, do mais perto ao mais longe', () => {
     abrir();
-    expect(within(screen.getByRole('navigation', { name: 'Setores' })).getAllByRole('link').map((l) => l.textContent)).toEqual(['Social', 'Educação', 'Vagas', 'Marketing', 'Painel']);
+    expect(within(screen.getByRole('navigation', { name: 'Setores' })).getAllByRole('link').map((l) => l.textContent)).toEqual(['Social', 'Educação', 'Administração', 'Marketing', 'Painel']);
     const lista = screen.getByRole('heading', { name: 'Próximos eventos' }).parentElement!;
     expect(within(lista).getAllByRole('listitem').map((li) => li.querySelector('.min-w-0 b')?.textContent)).toEqual(['Karatê no Santana', 'Reunião com as famílias', 'Natal Feliz 2026']);
     expect(within(lista).getByRole('link', { name: /Karatê no Santana/ })).toHaveAttribute('href', '/social/eventos?slug=karate-no-santana');
