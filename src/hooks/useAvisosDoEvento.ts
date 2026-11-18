@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { AvisoDeEvento } from '@/lib/events/avisos';
+import { ehAvisoDaEquipe, type AvisoDeEvento } from '@/lib/events/avisos';
 
 /**
  * Os avisos por e-mail de um evento, para o painel de detalhe.
@@ -22,7 +22,7 @@ export function useAvisosDoEvento(eventId: string | null | undefined) {
       .select('id, event_id, tipo, status, destinatarios, erro, tentativas, criado_em, enviado_em, agenda_status, agenda_erro, agenda_em, agenda_link')
       .eq('event_id', eventId)
       .order('criado_em', { ascending: false })
-      .limit(5);
+      .limit(40);
     if (!error && data) setAvisos(data as AvisoDeEvento[]);
     setCarregando(false);
   }, [eventId]);
@@ -39,7 +39,15 @@ export function useAvisosDoEvento(eventId: string | null | undefined) {
     }
   }, [carregar]);
 
-  return { avisos, ultimo: avisos[0] ?? null, carregando, reenviando, reenviar, recarregar: carregar };
+  // Os avisos da equipe do dia (RH e Voluntariado, 18/11/2026) correm à parte:
+  // o "último" continua sendo o aviso do evento, que a agenda também usa.
+  const doEvento = avisos.filter(a => !ehAvisoDaEquipe(a.tipo));
+  // O mais recente de cada setor que não foi ignorado: um "a lista não mudou"
+  // depois de uma falha não esconde a falha (nem o Reenviar).
+  const daEquipe = (['equipe_rh', 'equipe_voluntariado'] as const)
+    .map(t => avisos.find(a => a.tipo === t && a.status !== 'ignorado'))
+    .filter((a): a is AvisoDeEvento => !!a);
+  return { avisos, ultimo: doEvento[0] ?? null, daEquipe, carregando, reenviando, reenviar, recarregar: carregar };
 }
 
 /**

@@ -50,3 +50,36 @@ describe('AvisosDoEvento', () => {
     await waitFor(() => expect(container).toBeEmptyDOMElement());
   });
 });
+
+describe('AvisosDoEvento: a equipe do dia (18/11/2026)', () => {
+  it('o aviso da equipe não toma o lugar do aviso do evento; aparece numa linha própria', async () => {
+    espiao.avisos = [
+      { id: 'q1', event_id: 'e1', tipo: 'equipe_rh', status: 'enviado', destinatarios: ['rh@ana.org'], erro: null, tentativas: 1, criado_em: '2026-11-18T19:12:00Z', enviado_em: '2026-11-18T19:13:00Z' },
+      { id: 'q2', event_id: 'e1', tipo: 'equipe_voluntariado', status: 'falhou', destinatarios: [], erro: 'SMTP caiu', tentativas: 1, criado_em: '2026-11-18T19:12:00Z', enviado_em: null },
+      { id: 'a1', event_id: 'e1', tipo: 'confirmado', status: 'enviado', destinatarios: ['mkt@anabrasil.org'], erro: null, tentativas: 1, criado_em: '2026-11-18T19:11:00Z', enviado_em: '2026-11-18T19:12:00Z' },
+    ];
+    render(<AvisosDoEvento eventId="e1" />);
+    expect(await screen.findByTestId('aviso-do-evento')).toHaveTextContent('Evento confirmado · mkt@anabrasil.org');
+    const equipe = screen.getByTestId('avisos-da-equipe');
+    expect(equipe).toHaveTextContent('Equipe do dia enviada ao RH');
+    expect(equipe).toHaveTextContent('Falhou o e-mail da equipe para o Voluntariado');
+    fireEvent.click(screen.getByRole('button', { name: /Reenviar/ }));
+    await waitFor(() => expect(espiao.invocacoes).toContainEqual(['eventos-aviso', { body: { aviso_id: 'q2' } }]));
+  });
+
+  it('um "a lista não mudou" depois de uma falha não esconde a falha nem o Reenviar', async () => {
+    espiao.avisos = [
+      { id: 'q9', event_id: 'e1', tipo: 'equipe_rh', status: 'ignorado', destinatarios: [], erro: 'a lista não mudou', tentativas: 1, criado_em: '2026-11-18T20:00:00Z', enviado_em: null },
+      { id: 'q8', event_id: 'e1', tipo: 'equipe_rh', status: 'falhou', destinatarios: [], erro: 'SMTP caiu', tentativas: 1, criado_em: '2026-11-18T19:00:00Z', enviado_em: null },
+    ];
+    render(<AvisosDoEvento eventId="e1" />);
+    expect(await screen.findByTestId('avisos-da-equipe')).toHaveTextContent('Falhou o e-mail da equipe para o RH');
+  });
+
+  it('o aviso da equipe ignorado (lista vazia no Painel) não aparece', async () => {
+    espiao.avisos = [{ id: 'q1', event_id: 'e1', tipo: 'equipe_rh', status: 'ignorado', destinatarios: [], erro: 'a lista do RH no Painel está vazia', tentativas: 1, criado_em: '2026-11-18T19:12:00Z', enviado_em: null }];
+    render(<AvisosDoEvento eventId="e1" />);
+    await waitFor(() => expect(screen.queryByTestId('avisos-da-equipe')).toBeNull());
+    expect(screen.queryByTestId('aviso-do-evento')).toBeNull();
+  });
+});

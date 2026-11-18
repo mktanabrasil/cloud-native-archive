@@ -9,17 +9,21 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 const espiao = vi.hoisted(() => ({
   config: { pre_lancamento: true, extras: [] as string[], excluidos: [] as string[] },
   salvos: [] as unknown[],
+  equipe: undefined as undefined | null | { rh: string[]; voluntariado: string[] },
+  salvosEquipe: [] as unknown[],
 }));
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     functions: {
       invoke: (_n: string, opts: { body: Record<string, unknown> }) => {
+        if (opts.body.salvar_config_equipe) { espiao.salvosEquipe.push(opts.body.salvar_config_equipe); espiao.equipe = { ...(opts.body.salvar_config_equipe as { rh: string[]; voluntariado: string[] }) }; }
         if (opts.body.salvar_config) { espiao.salvos.push(opts.body.salvar_config); espiao.config = { ...(opts.body.salvar_config as typeof espiao.config) }; }
         return Promise.resolve({ data: { config: { ...espiao.config, atualizado_por: 'mkt@anabrasil.org', atualizado_em: '2026-09-16T12:00:00Z' }, origem: 'painel', perfis: [
           { email: 'dic@anabrasil.org', name: 'Juliana', unit: 'DIC', is_active: true, permission_level: 'gestor_unidade' },
           { email: 'alyson-viana@hotmail.com', name: 'Alyson', unit: 'Administração', is_active: true, permission_level: 'criador' },
-        ] }, error: null });
+          { email: 'rosa@anabrasil.org', name: 'Rosa', unit: 'Administração', is_active: true, permission_level: 'usuario_padrao', bond_type: 'rh' },
+        ], ...(espiao.equipe !== undefined ? { equipe: espiao.equipe } : {}) }, error: null });
       },
     },
   },
@@ -27,7 +31,7 @@ vi.mock('@/integrations/supabase/client', () => ({
 
 const { ConfigDosAvisos } = await import('./ConfigDosAvisos');
 
-beforeEach(() => { espiao.config = { pre_lancamento: true, extras: [], excluidos: [] }; espiao.salvos = []; });
+beforeEach(() => { espiao.config = { pre_lancamento: true, extras: [], excluidos: [] }; espiao.salvos = []; espiao.equipe = undefined; espiao.salvosEquipe = []; });
 
 describe('ConfigDosAvisos', () => {
   it('lista fixas recebendo e gestão/criadores esperando o lançamento', async () => {
@@ -67,5 +71,43 @@ describe('ConfigDosAvisos', () => {
     fireEvent.click(screen.getByRole('button', { name: /Adicionar/ }));
     await waitFor(() => expect(espiao.salvos[1]).toMatchObject({ extras: ['diretoria@anabrasil.org'] }));
     expect(await screen.findByText('diretoria@anabrasil.org')).toBeInTheDocument();
+  });
+});
+
+describe('ConfigDosAvisos: RH e Voluntariado (18/11/2026)', () => {
+  it('função antiga, sem as listas: avisa para republicar em vez de salvar no vazio', async () => {
+    render(<ConfigDosAvisos />);
+    expect(await screen.findByText(/ainda não conhece estas listas/)).toBeInTheDocument();
+    expect(screen.queryByTestId('lista-equipe-rh')).toBeNull();
+  });
+
+  it('não deu para ler as listas: avisa e não deixa salvar por cima', async () => {
+    espiao.equipe = null;
+    render(<ConfigDosAvisos />);
+    expect(await screen.findByText(/Não consegui ler as listas do RH e do Voluntariado/)).toBeInTheDocument();
+    expect(screen.queryByTestId('lista-equipe-rh')).toBeNull();
+  });
+
+  it('as duas listas; a sugestão pelo vínculo adiciona; o x tira', async () => {
+    espiao.equipe = { rh: [], voluntariado: ['vol@anabrasil.org'] };
+    render(<ConfigDosAvisos />);
+    const rh = await screen.findByTestId('lista-equipe-rh');
+    expect(rh).toHaveTextContent('Ninguém ainda');
+    fireEvent.click(screen.getByRole('button', { name: '+ Rosa · rosa@anabrasil.org' }));
+    await waitFor(() => expect(espiao.salvosEquipe).toEqual([{ rh: ['rosa@anabrasil.org'], voluntariado: ['vol@anabrasil.org'] }]));
+    fireEvent.click(await screen.findByRole('button', { name: 'Tirar vol@anabrasil.org da lista do Voluntariado' }));
+    await waitFor(() => expect(espiao.salvosEquipe.at(-1)).toEqual({ rh: ['rosa@anabrasil.org'], voluntariado: [] }));
+  });
+
+  it('digitar um e-mail adiciona; e-mail inválido não salva', async () => {
+    espiao.equipe = { rh: [], voluntariado: [] };
+    render(<ConfigDosAvisos />);
+    const campo = await screen.findByLabelText('E-mail para a lista do Voluntariado');
+    fireEvent.change(campo, { target: { value: 'nao-e-email' } });
+    fireEvent.submit(campo.closest('form')!);
+    expect(espiao.salvosEquipe).toEqual([]);
+    fireEvent.change(campo, { target: { value: ' Voluntariado@AnaBrasil.org ' } });
+    fireEvent.submit(campo.closest('form')!);
+    await waitFor(() => expect(espiao.salvosEquipe).toEqual([{ rh: [], voluntariado: ['voluntariado@anabrasil.org'] }]));
   });
 });

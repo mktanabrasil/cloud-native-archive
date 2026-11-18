@@ -135,3 +135,75 @@ export function destinatariosDaDevolucao(evento: { created_by?: string | null },
   const email = normEmail(p.email!);
   return excluidos.has(email) ? [] : [email];
 }
+
+// ---------- A equipe do dia (18/11/2026, setor Administração, PR 5) ----------
+
+/**
+ * Quem recebe os e-mails da equipe do dia: duas listas no Painel, guardadas em
+ * system_configs ('avisos_equipe'). Espelho de src/lib/events/avisosConfig.ts.
+ */
+export interface ConfigDaEquipe { rh: string[]; voluntariado: string[]; atualizado_por?: string | null; atualizado_em?: string | null }
+export const CHAVE_DA_CONFIG_DA_EQUIPE = 'avisos_equipe';
+export const emailValido = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
+
+/** As listas a partir da linha lida (sem linha: as duas vazias). E-mails em minúsculas, válidos, sem repetir. */
+export function configDaEquipeDaLeitura(linha: { value?: unknown } | null | undefined): ConfigDaEquipe {
+  const v = (linha?.value ?? {}) as Record<string, unknown>;
+  const lista = (xs: unknown) => Array.isArray(xs) ? Array.from(new Set(xs.map(x => normEmail(String(x))).filter(emailValido))) : [];
+  return { rh: lista(v.rh), voluntariado: lista(v.voluntariado), atualizado_por: (v.atualizado_por as string | null | undefined) ?? null, atualizado_em: (v.atualizado_em as string | null | undefined) ?? null };
+}
+
+export type TipoDaEquipe = 'equipe_rh' | 'equipe_voluntariado';
+export const ehAvisoDaEquipe = (tipo: string): tipo is TipoDaEquipe => tipo === 'equipe_rh' || tipo === 'equipe_voluntariado';
+
+/**
+ * Quem recebe o aviso da equipe: a lista do Painel daquele setor. No
+ * pré-lançamento, ninguém (como a devolução).
+ */
+export function destinatariosDaEquipe(tipo: TipoDaEquipe, equipe: ConfigDaEquipe, config: ConfigDeAvisos): string[] {
+  if (config.pre_lancamento) return [];
+  return [...(tipo === 'equipe_rh' ? equipe.rh : equipe.voluntariado)];
+}
+
+/** O nome para comparar: sem acento, sem maiúscula, sem espaço sobrando (o mesmo do app e do banco). */
+export const nomeChave = (nome: string) =>
+  String(nome ?? '').replace(/\s+/g, ' ').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+/** Só os dígitos do WhatsApp, sem o 55 do país. */
+export function digitos(texto: string): string {
+  const d = String(texto ?? '').replace(/\D/g, '');
+  return (d.length === 12 || d.length === 13) && d.startsWith('55') ? d.slice(2) : d;
+}
+export interface Voluntario { nome: string; whatsapp: string }
+export const chaveDoVoluntario = (v: Voluntario) => `${digitos(v.whatsapp)}|${nomeChave(v.nome)}`;
+
+export interface Mudanca<T> { atual: T[]; entraram: T[]; sairam: T[] }
+
+/** Funcionários: quem entrou e quem saiu, pelo nome (sem acento nem maiúscula). */
+export function mudancaDosFuncionarios(antes: unknown, agora: unknown): Mudanca<string> {
+  const lista = (x: unknown) => (Array.isArray(x) ? x.map(String).map(s => s.trim()).filter(Boolean) : []);
+  const a = lista(antes), n = lista(agora);
+  const ka = new Set(a.map(nomeChave)), kn = new Set(n.map(nomeChave));
+  return { atual: n, entraram: n.filter(x => !ka.has(nomeChave(x))), sairam: a.filter(x => !kn.has(nomeChave(x))) };
+}
+
+/** Voluntários: quem entrou e quem saiu, pelo nome e pelo WhatsApp. */
+export function mudancaDosVoluntarios(antes: unknown, agora: unknown): Mudanca<Voluntario> {
+  const lista = (x: unknown): Voluntario[] => (Array.isArray(x) ? x : [])
+    .filter((v): v is Voluntario => !!v && typeof v === 'object' && typeof (v as Voluntario).nome === 'string')
+    .map(v => ({ nome: v.nome.trim(), whatsapp: digitos(v.whatsapp) }));
+  const a = lista(antes), n = lista(agora);
+  const ka = new Set(a.map(chaveDoVoluntario)), kn = new Set(n.map(chaveDoVoluntario));
+  return { atual: n, entraram: n.filter(x => !ka.has(chaveDoVoluntario(x))), sairam: a.filter(x => !kn.has(chaveDoVoluntario(x))) };
+}
+
+/**
+ * O aviso de "Equipe alterada" em que ninguém entrou nem saiu (a unidade só
+ * mudou a ordem, ou a grafia de um nome) não sai: é ignorado com o motivo.
+ */
+export function equipeSemMudanca(tipo: TipoDaEquipe, antes: Record<string, unknown> | null, agora: Record<string, unknown>): boolean {
+  if (!antes) return false;
+  const m = tipo === 'equipe_rh'
+    ? mudancaDosFuncionarios(antes.equipe_funcionarios, agora.equipe_funcionarios)
+    : mudancaDosVoluntarios(antes.equipe_voluntarios, agora.equipe_voluntarios);
+  return m.entraram.length === 0 && m.sairam.length === 0;
+}

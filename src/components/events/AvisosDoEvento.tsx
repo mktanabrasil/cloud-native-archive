@@ -2,7 +2,7 @@ import { format } from 'date-fns';
 import { Mail, AlertTriangle, Clock, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAvisosDoEvento } from '@/hooks/useAvisosDoEvento';
-import { ROTULO_DO_TIPO, textoDeEnviado } from '@/lib/events/avisos';
+import { ROTULO_DO_TIPO, textoDeEnviado, type AvisoDeEvento } from '@/lib/events/avisos';
 import type { AppEvent } from '@/types';
 import { AgendaDoEvento } from './AgendaDoEvento';
 
@@ -19,15 +19,45 @@ import { AgendaDoEvento } from './AgendaDoEvento';
  * aparece como e-mail, mas conta para a agenda.
  */
 export function AvisosDoEvento({ eventId, event }: { eventId: string; event?: AppEvent }) {
-  const { ultimo, reenviando, reenviar } = useAvisosDoEvento(eventId);
+  const { ultimo, daEquipe, reenviando, reenviar } = useAvisosDoEvento(eventId);
   const agenda = event ? <AgendaDoEvento event={event} ultimo={ultimo} reenviando={reenviando} reenviar={reenviar} /> : null;
-  if (!ultimo || ultimo.status === 'ignorado') return agenda;
+  const equipe = daEquipe.filter(a => a.status !== 'ignorado');
+  const blocoDaEquipe = equipe.length > 0 ? <AvisosDaEquipe avisos={equipe} reenviando={reenviando} reenviar={reenviar} /> : null;
+  if (!ultimo || ultimo.status === 'ignorado') return <>{blocoDaEquipe}{agenda}</>;
 
   return (
     <>
       <BlocoDoEmail ultimo={ultimo} reenviando={reenviando} reenviar={reenviar} />
+      {blocoDaEquipe}
       {agenda}
     </>
+  );
+}
+
+/**
+ * Os e-mails da equipe do dia (RH e Voluntariado, 18/11/2026): uma linha por
+ * setor, com o último envio; falhou ou aguardando, com o botão.
+ */
+function AvisosDaEquipe({ avisos, reenviando, reenviar }: { avisos: AvisoDeEvento[]; reenviando: boolean; reenviar: (id: string) => void }) {
+  return (
+    <ul className="space-y-1 rounded-xl border border-border bg-muted/40 p-3" data-testid="avisos-da-equipe" aria-label="E-mails da equipe do dia">
+      {avisos.map(a => {
+        const quando = format(new Date(a.enviado_em || a.criado_em), "dd/MM 'às' HH:mm");
+        const setor = a.tipo === 'equipe_rh' ? 'RH' : 'Voluntariado';
+        return (
+          <li key={a.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
+            {a.status === 'enviado' && <><Mail className="h-3.5 w-3.5 text-success" /><span className="font-semibold text-foreground">Equipe do dia enviada ao {setor}</span><span className="text-muted-foreground">· {quando} · {a.destinatarios.join(' · ')}</span></>}
+            {a.status === 'falhou' && <><AlertTriangle className="h-3.5 w-3.5 text-destructive" /><span className="font-semibold text-foreground">Falhou o e-mail da equipe para o {setor}</span><span className="break-words text-muted-foreground">· {a.erro || 'sem detalhe'}</span></>}
+            {a.status === 'pendente' && <><Clock className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-muted-foreground">E-mail da equipe para o {setor} aguardando envio · {quando}</span></>}
+            {a.status !== 'enviado' && (
+              <Button size="sm" variant="ghost" className="ml-auto h-7 gap-1.5 text-[11px]" disabled={reenviando} onClick={() => reenviar(a.id)}>
+                <RefreshCw className={`h-3 w-3 ${reenviando ? 'animate-spin' : ''}`} /> {a.status === 'falhou' ? 'Reenviar' : 'Enviar agora'}
+              </Button>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

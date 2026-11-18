@@ -11,7 +11,9 @@ import type { AppEvent } from '@/types';
 
 /** "atualizado" = título/descrição/visibilidade/unidade de um confirmado mudou: só agenda, sem e-mail. */
 /** "devolvido" (13/11/2026): o e-mail para quem enviou, quando a administração devolve. */
-export type TipoDeAviso = 'confirmado' | 'cancelado' | 'alterado' | 'atualizado' | 'devolvido';
+/** "equipe_rh" / "equipe_voluntariado" (18/11/2026): a equipe do dia para o RH e o Voluntariado, ao confirmar e quando a lista muda. */
+export type TipoDeAviso = 'confirmado' | 'cancelado' | 'alterado' | 'atualizado' | 'devolvido' | 'equipe_rh' | 'equipe_voluntariado';
+export const ehAvisoDaEquipe = (tipo: TipoDeAviso) => tipo === 'equipe_rh' || tipo === 'equipe_voluntariado';
 export type StatusDoAviso = 'pendente' | 'enviado' | 'falhou' | 'ignorado';
 
 export interface AvisoDeEvento {
@@ -57,6 +59,8 @@ export interface PerfilParaAviso {
   unit: string | null;
   is_active: boolean | null;
   permission_level: string | null;
+  /** O vínculo (18/11/2026): o Painel sugere quem é do RH e do Voluntariado. */
+  bond_type?: string | null;
 }
 
 /**
@@ -120,6 +124,8 @@ export const ROTULO_DO_TIPO: Record<TipoDeAviso, string> = {
   alterado: 'Data alterada',
   atualizado: 'Detalhes atualizados',
   devolvido: 'Devolução',
+  equipe_rh: 'Equipe do dia · RH',
+  equipe_voluntariado: 'Voluntários do dia · Voluntariado',
 };
 
 /** "Aviso enviado a 7 endereços" / "a 1 endereço". */
