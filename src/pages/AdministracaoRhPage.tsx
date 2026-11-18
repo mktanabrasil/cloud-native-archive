@@ -11,6 +11,7 @@ import { RelatoriosDoRh } from '@/components/vagas/RelatoriosDoRh';
 import { AuditoriaDasVagas } from '@/components/vagas/AuditoriaDasVagas';
 import { ModelosDeEmail } from '@/components/vagas/ModelosDeEmail';
 import { EquipeNosEventos } from '@/components/rh/EquipeNosEventos';
+import { ROTAS } from '@/config/navigation';
 
 export type TelaDoRh = 'painel' | 'eventos' | 'funcionarios' | 'processos' | 'gestao' | 'relatorios' | 'emails' | 'auditoria' | 'meus';
 
@@ -41,7 +42,7 @@ export function telaDoRh(pedida: string | null, p: { isRh: boolean; isAdmin: boo
  * processos. Os outros voltam ao portal.
  */
 export default function AdministracaoRhPage() {
-  const { isRh, isAdmin, loading } = useUserRole();
+  const { isRh, isAdmin, temVoluntariado, loading } = useUserRole();
   const { sou: souResponsavel, carregado } = useResponsavel();
   const [params, setParams] = useSearchParams();
   const tela = telaDoRh(params.get('tela'), { isRh, isAdmin });
@@ -50,7 +51,8 @@ export default function AdministracaoRhPage() {
   if (loading) return null;
   // Sem ser RH, espera saber se é responsável antes de mandar ao portal.
   if (!isRh && !carregado) return null;
-  if (!isRh && !souResponsavel) return <Navigate to="/vagas" replace />;
+  // Quem só cuida do Voluntariado entra na Administração por ele (18/11/2026).
+  if (!isRh && !souResponsavel) return <Navigate to={temVoluntariado ? ROTAS.voluntariado : '/vagas'} replace />;
 
   const opcoes: ReadonlyArray<readonly [string, TelaDoRh]> = isRh
     ? [['Painel', 'painel'], ['Eventos', 'eventos'], ['Por funcionário', 'funcionarios'], ['Processos', 'processos'], ['Gestão', 'gestao'], ['Relatórios', 'relatorios'], ['Modelos de e-mail', 'emails'], ...(isAdmin ? [['Auditoria', 'auditoria'] as const] : [])]

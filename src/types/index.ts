@@ -9,6 +9,7 @@ export type BondType =
   | 'financeiro'
   | 'marketing'
   | 'nota_fiscal'
+  | 'voluntariado'
   | 'gestao_social'
   | 'educador'
   | 'orientacao_pedagogica'
@@ -280,6 +281,7 @@ export const BOND_LABELS: Record<BondType, string> = {
   financeiro: 'Financeiro',
   marketing: 'Marketing',
   nota_fiscal: 'Nota Fiscal',
+  voluntariado: 'Voluntariado',
   gestao_social: 'Gestão Social',
   educador: 'Educador',
   orientacao_pedagogica: 'Orientação pedagógica',
@@ -289,7 +291,7 @@ export const BOND_LABELS: Record<BondType, string> = {
 };
 
 export const BOND_GROUPS: { label: string; options: BondType[] }[] = [
-  { label: 'Interno — Administrativo (Setor)', options: ['rh', 'financeiro', 'marketing', 'nota_fiscal'] },
+  { label: 'Interno — Administrativo (Setor)', options: ['rh', 'financeiro', 'marketing', 'nota_fiscal', 'voluntariado'] },
   { label: 'Interno — Social (Unidade)', options: ['gestao_social', 'educador'] },
   // O Semanário (17/11/2026): quem preenche e quem dá a devolutiva, por CEI.
   { label: 'Interno — Educação (CEI)', options: ['orientacao_pedagogica', 'professora'] },
@@ -310,6 +312,9 @@ export const BOND_RULES: Record<BondType, { permission_level: PermissionLevel; u
   financeiro: { permission_level: 'gestor_unidade', unitMode: 'fixed-admin' },
   marketing: { permission_level: 'gestor_unidade', unitMode: 'fixed-admin' },
   nota_fiscal: { permission_level: 'gestor_unidade', unitMode: 'fixed-admin' },
+  // O Voluntariado dos eventos (18/11/2026): usuário padrão, na Administração;
+  // o que vê vem do vínculo (Administração › Voluntariado).
+  voluntariado: { permission_level: 'usuario_padrao', unitMode: 'fixed-admin' },
   // Interno — Social
   gestao_social: { permission_level: 'gestor_unidade', unitMode: 'choose' },
   educador: { permission_level: 'usuario_padrao', unitMode: 'choose' },

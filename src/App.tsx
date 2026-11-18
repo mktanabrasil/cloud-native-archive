@@ -14,6 +14,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 
 import UsersPage from "./pages/UsersPage";
 import AdministracaoRhPage from "./pages/AdministracaoRhPage";
+import AdministracaoVoluntariadoPage from "./pages/AdministracaoVoluntariadoPage";
 import LoginPage from "./pages/LoginPage";
 import PublicEventsPage from "./pages/PublicEventsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -228,6 +229,10 @@ const App = () => (
                   {/* Administração › RH (18/11/2026): a gestão das vagas, que era o setor Vagas em /vagas. */}
                   <Route path="/administracao/rh" element={
                     <ProtectedRoute><AdministracaoRhPage /></ProtectedRoute>
+                  } />
+                  {/* Administração › Voluntariado (18/11/2026): os voluntários dos eventos. */}
+                  <Route path="/administracao/voluntariado" element={
+                    <ProtectedRoute><AdministracaoVoluntariadoPage /></ProtectedRoute>
                   } />
                   <Route path="/painel" element={
                     <ProtectedRoute><ComMargem><UsersPage /></ComMargem></ProtectedRoute>

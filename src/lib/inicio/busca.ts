@@ -12,7 +12,7 @@ import { ROTAS, rotaDoMarketing } from '@/config/navigation';
 export const normalizar = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 /** O que cada página exige para aparecer na busca. */
-export type Acesso = 'todos' | 'social' | 'calendario' | 'jornal' | 'semanario' | 'vagas' | 'marketing' | 'perfil';
+export type Acesso = 'todos' | 'social' | 'calendario' | 'jornal' | 'semanario' | 'vagas' | 'voluntariado' | 'marketing' | 'perfil';
 
 export interface PaginaDaBusca {
   titulo: string;
@@ -34,6 +34,7 @@ export const PAGINAS_DA_BUSCA: PaginaDaBusca[] = [
   { titulo: 'Jornal Institucional', detalhe: 'Educação · os jornais da unidade', para: ROTAS.jornal, setor: ROTAS.jornal, acesso: 'jornal', palavras: 'jornal informativo edicao esboco' },
   { titulo: 'Jornais das unidades', detalhe: 'Educação · os finalizados, para ler e baixar', para: ROTAS.jornaisDasUnidades, setor: ROTAS.jornal, acesso: 'jornal', palavras: 'jornais finalizados feed pdf' },
   { titulo: 'Semanário', detalhe: 'Educação · o planejamento da semana', para: ROTAS.semanario, setor: ROTAS.jornal, acesso: 'semanario', palavras: 'semanario planejamento semana professora orientadora devolutiva' },
+  { titulo: 'Voluntariado dos eventos', detalhe: 'Administração · os voluntários indicados e quem já foi confirmado', para: ROTAS.voluntariado, setor: ROTAS.rh, acesso: 'voluntariado', palavras: 'voluntariado voluntarios confirmados whatsapp administracao' },
   { titulo: 'RH · Vagas', detalhe: 'Administração · processos e candidaturas', para: ROTAS.rh, setor: ROTAS.rh, acesso: 'vagas', palavras: 'vagas trabalhe conosco candidatos candidaturas processos rh administracao' },
   { titulo: 'Mercado Solidário', detalhe: 'Marketing', para: ROTAS.mercado, setor: ROTAS.marketing, acesso: 'marketing', palavras: 'mercado solidario doacoes cestas' },
   { titulo: 'Pizza da Alegria', detalhe: 'Marketing · pedidos, ranking e retirada', para: rotaDoMarketing('pizza'), setor: ROTAS.marketing, acesso: 'marketing', palavras: 'pizza pedidos ranking retirada' },
@@ -55,6 +56,7 @@ export interface QuemBusca {
   temSemanario?: boolean;
   temCalendario: boolean;
   veVagas: boolean;
+  temVoluntariado?: boolean;
   isMarketing: boolean;
 }
 
@@ -66,6 +68,7 @@ export function podeVer(acesso: Acesso, q: QuemBusca): boolean {
     case 'jornal': return q.canAccessJournal;
     case 'semanario': return !!q.temSemanario;
     case 'vagas': return q.veVagas;
+    case 'voluntariado': return !!q.temVoluntariado;
     case 'marketing': return q.isMarketing;
     // O marketing chega ao próprio perfil pelo "Painel".
     case 'perfil': return !q.isMarketing;

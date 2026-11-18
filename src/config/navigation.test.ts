@@ -16,9 +16,9 @@ describe('menu de cima', () => {
 });
 
 describe('a Educação e o Semanário (17/11/2026)', () => {
-  const professora = { temCalendario: false, canAccessJournal: false, temSemanario: true };
-  const gestao = { temCalendario: false, canAccessJournal: true, temSemanario: false };
-  const marketing = { temCalendario: true, canAccessJournal: true, temSemanario: true };
+  const professora = { temCalendario: false, canAccessJournal: false, temSemanario: true, temRh: false, temVoluntariado: false };
+  const gestao = { temCalendario: false, canAccessJournal: true, temSemanario: false, temRh: false, temVoluntariado: false };
+  const marketing = { temCalendario: true, canAccessJournal: true, temSemanario: true, temRh: true, temVoluntariado: true };
 
   it('a professora vê o setor Educação, sem o Social, e ele leva ao Semanário', () => {
     const setores = setoresVisiveis({ isAuthenticated: true, soEducacao: true, temSemanario: true }).map(i => i.label);
@@ -43,5 +43,26 @@ describe('a Educação e o Semanário (17/11/2026)', () => {
     const semanario = paginasVisiveis(ROTAS.jornal, marketing).find(p => p.rotulo === 'Semanário')!;
     expect(semanario.aberta('/educacao/semanario/abc')).toBe(true);
     expect(semanario.aberta('/educacao/jornal')).toBe(false);
+  });
+});
+
+describe('Administração › Voluntariado (18/11/2026, PR 4)', () => {
+  const nada = { temCalendario: false, canAccessJournal: false, temSemanario: false };
+  it('o vínculo Voluntariado vê a Administração e entra direto no Voluntariado', () => {
+    expect(setoresVisiveis({ isAuthenticated: true, temVoluntariado: true }).map(i => i.label)).toContain('Administração');
+    const so = { ...nada, temRh: false, temVoluntariado: true };
+    expect(paginasVisiveis(ROTAS.rh, so).map(p => p.rotulo)).toEqual(['Voluntariado']);
+    expect(destinoDoSetor(ROTAS.rh, so)).toBe(ROTAS.voluntariado);
+  });
+  it('o RH não vê o Voluntariado; quem tem os dois vê as duas páginas e entra pelo RH', () => {
+    const rh = { ...nada, temRh: true, temVoluntariado: false };
+    expect(paginasVisiveis(ROTAS.rh, rh).map(p => p.rotulo)).toEqual(['RH']);
+    expect(destinoDoSetor(ROTAS.rh, rh)).toBe(ROTAS.rh);
+    const ambos = { ...nada, temRh: true, temVoluntariado: true };
+    expect(paginasVisiveis(ROTAS.rh, ambos).map(p => p.rotulo)).toEqual(['RH', 'Voluntariado']);
+    expect(destinoDoSetor(ROTAS.rh, ambos)).toBe(ROTAS.rh);
+  });
+  it('a página conta como do setor Administração', () => {
+    expect(setorDoCaminho(ROTAS.voluntariado)).toBe(ROTAS.rh);
   });
 });

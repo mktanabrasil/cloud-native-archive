@@ -60,7 +60,7 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
   const { isAuthenticated: temSessao, signOut, user } = useAuth();
   // Conta de candidato (Trabalhe Conosco) vê o app como visitante: sem menu da equipe.
   const isAuthenticated = temSessao && !ehContaRestrita(user);
-  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh, soEducacao, temCalendarioAnual, temSemanario, loading: carregandoPapel } = useUserRole();
+  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh, soEducacao, temCalendarioAnual, temSemanario, loading: carregandoPapel, temVoluntariado } = useUserRole();
   // A bolinha em "Vagas": novos + respostas não lidas (passo 5, 20/10/2026).
   const avisosDeVagas = useAvisosDaEquipe(isRh || souResponsavel, location.pathname);
   const { eligible: betaEligible, rawEnabled: betaOn, toggleBeta } = useBetaPreference();
@@ -90,14 +90,14 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
     return () => document.body.classList.remove('ui-v2');
   }, [isCleanView]);
 
-  const itensVisiveis = setoresVisiveis({ isAuthenticated, soEducacao, canAccessJournal, temSemanario, isRh, souResponsavel, isMarketing, isAdmin, isManager, canViewAuditoria });
+  const itensVisiveis = setoresVisiveis({ isAuthenticated, soEducacao, canAccessJournal, temSemanario, isRh, souResponsavel, temVoluntariado, isMarketing, isAdmin, isManager, canViewAuditoria });
   // O setor aberto: Social e Marketing têm várias rotas; os outros, a própria.
   const estaNaArea = (to: string) =>
     ROTAS_DO_SETOR[to] ? setorDoCaminho(location.pathname) === to : location.pathname.startsWith(to);
   // O Calendário Anual, na faixa do Social: o marketing e quem o marketing
   // liberou na lista de acesso (a gestão social).
   const temCalendario = isMarketing || temCalendarioAnual;
-  const pode = { temCalendario, canAccessJournal: !!canAccessJournal, temSemanario: !!temSemanario };
+  const pode = { temCalendario, canAccessJournal: !!canAccessJournal, temSemanario: !!temSemanario, temRh: !!(isRh || souResponsavel), temVoluntariado: !!temVoluntariado };
   // A Educação leva a professora ao Semanário, e não ao Jornal (17/11/2026).
   const destino = (to: string) => destinoDoSetor(to, pode);
   // Com um setor só (a gestora do Social, por exemplo), não há o que trocar:

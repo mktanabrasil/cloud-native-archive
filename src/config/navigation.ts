@@ -48,6 +48,8 @@ export const ROTAS = {
   painel: '/painel',
   /** Administração › RH (18/11/2026): a gestão das vagas, que era o setor "Vagas" em /vagas. */
   rh: '/administracao/rh',
+  /** Administração › Voluntariado (18/11/2026): os voluntários dos eventos e quem já foi confirmado. */
+  voluntariado: '/administracao/voluntariado',
 } as const;
 
 /** As abas do Marketing, cada uma no seu endereço: `/marketing/pizza`. */
@@ -121,6 +123,8 @@ export interface QuemVe {
   isRh?: boolean;
   /** Responsável por algum processo de vaga (passo 3, 19/10/2026). */
   souResponsavel?: boolean;
+  /** Voluntariado dos eventos: o vínculo ou o marketing (18/11/2026). */
+  temVoluntariado?: boolean;
   isMarketing?: boolean;
   isAdmin?: boolean;
   isManager?: boolean;
@@ -141,7 +145,8 @@ export function setoresVisiveis(q: QuemVe): NavItem[] {
     // pelo Jornal; a professora e a orientadora, pelo Semanário (17/11/2026).
     if (item.journalOnly) return !!(q.canAccessJournal || q.temSemanario);
     // RH, ou quem é responsável por algum processo (passo 3, 19/10/2026).
-    if (item.rhOnly) return !!(q.isRh || q.souResponsavel);
+    // A Administração (18/11/2026): o RH (e quem é responsável por processo) e o Voluntariado.
+    if (item.rhOnly) return !!(q.isRh || q.souResponsavel || q.temVoluntariado);
     if (item.marketingOnly) return !!q.isMarketing;
     if (item.adminOnly) return !!q.isAdmin;
     if (item.managerOnly) return !!(q.isAdmin || q.isManager);
@@ -166,6 +171,10 @@ export interface PaginaDoSetor {
   soComJornal?: boolean;
   /** Só para quem entra no Semanário (professora, orientadora, marketing). */
   soComSemanario?: boolean;
+  /** Só para o RH (e quem é responsável por algum processo). */
+  soComRh?: boolean;
+  /** Só para quem cuida do voluntariado dos eventos (o vínculo e o marketing). */
+  soComVoluntariado?: boolean;
 }
 
 /** O que a pessoa pode abrir na faixa (vem de `useUserRole`). */
@@ -173,6 +182,9 @@ export interface PodeAbrir {
   temCalendario: boolean;
   canAccessJournal: boolean;
   temSemanario: boolean;
+  /** RH ou responsável por processo (18/11/2026). */
+  temRh: boolean;
+  temVoluntariado: boolean;
 }
 
 /** As páginas de um setor que a pessoa vê, na ordem da faixa. */
@@ -180,7 +192,9 @@ export function paginasVisiveis(setor: string, pode: PodeAbrir): PaginaDoSetor[]
   return (PAGINAS_DOS_SETORES[setor] ?? []).filter(p =>
     (!p.soComCalendario || pode.temCalendario) &&
     (!p.soComJornal || pode.canAccessJournal) &&
-    (!p.soComSemanario || pode.temSemanario));
+    (!p.soComSemanario || pode.temSemanario) &&
+    (!p.soComRh || pode.temRh) &&
+    (!p.soComVoluntariado || pode.temVoluntariado));
 }
 
 /**
@@ -217,10 +231,12 @@ export const PAGINAS_DOS_SETORES: Record<string, PaginaDoSetor[]> = {
     // O planejamento da semana das professoras (17/11/2026).
     { rotulo: 'Semanário', to: ROTAS.semanario, aberta: (c) => c === ROTAS.semanario || c.startsWith(`${ROTAS.semanario}/`), soComSemanario: true },
   ],
-  // Administração (18/11/2026): por enquanto só o RH; Voluntariado, Financeiro,
-  // Padrinhos e Parceiros entram nos próximos PRs (com uma página só, a faixa não aparece).
+  // Administração (18/11/2026): RH e Voluntariado; Financeiro, Padrinhos e
+  // Parceiros entram nos próximos PRs. Quem só tem o Voluntariado entra por ele.
   [ROTAS.rh]: [
-    { rotulo: 'RH', to: ROTAS.rh, aberta: (c) => c === ROTAS.rh },
+    { rotulo: 'RH', to: ROTAS.rh, aberta: (c) => c === ROTAS.rh, soComRh: true },
+    // Os voluntários dos eventos (18/11/2026). O do Natal Feliz continua no Marketing.
+    { rotulo: 'Voluntariado', to: ROTAS.voluntariado, aberta: (c) => c === ROTAS.voluntariado, soComVoluntariado: true },
   ],
   [ROTAS.marketing]: [
     { rotulo: 'Mercado Solidário', to: ROTAS.mercado, aberta: (c) => c === ROTAS.mercado },
