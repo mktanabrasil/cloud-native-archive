@@ -5,6 +5,7 @@ import { useIsEmbedded } from '@/hooks/useIsEmbedded';
 import { useEquipe } from '@/hooks/useEquipe';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useUserRole } from '@/hooks/useUserRole';
+import { podeMexerNoEvento } from '@/lib/events/podeMexer';
 import { useApp } from '@/contexts/AppContext';
 import { AppEvent, UNIT_BG_COLORS, type Unit } from '@/types';
 import { rotuloDoTipo } from '@/lib/events/tipo';
@@ -77,7 +78,13 @@ function ProgramacaoV2() {
   /** Mouse em cima ou foco dentro do carrossel: ele para de girar. */
   const [carrosselPausado, setCarrosselPausado] = useState(false);
   const reduzMovimento = useReduzMovimento();
-  const { isAdmin, canEdit } = useUserRole();
+  const { isAdmin, canEdit, isMarketing, unit, delegatedUnits } = useUserRole();
+  /**
+   * O lápis e o "Editar evento" só onde o banco deixaria salvar (18/11/2026),
+   * como no calendário e na Visão Geral. Antes, a gestão de uma unidade via o
+   * lápis nos eventos das outras, abria o formulário e o banco recusava.
+   */
+  const podeEditar = (e: AppEvent) => podeMexerNoEvento(e, { canEdit, isMarketing, unit, delegatedUnits }).editar;
   const { updateEvent, setSelectedEvent, selectedEvent, loading, erroAoCarregar, refetchEvents } = useApp();
   // A aba do navegador dizia "ANA Brasil" em toda a aplicação: duas abas com
   // eventos diferentes eram indistinguíveis. Com o detalhe aberto, é o evento.
@@ -792,7 +799,7 @@ function ProgramacaoV2() {
                       abre o detalhe, como para o visitante); o olho liga e
                       desliga o banner. */}
                   <div className="col-start-2 flex gap-1.5 sm:col-start-auto">
-                    {equipe && canEdit && (
+                    {equipe && podeEditar(event) && (
                       <button
                         type="button"
                         onClick={(e) => {
@@ -857,7 +864,7 @@ function ProgramacaoV2() {
         onOpenChange={(open) => !open && closeDetail()}
         event={selectedEventForDetail}
         comoVisitante={!equipe}
-        onEditar={equipe && canEdit ? editar : undefined}
+        onEditar={equipe && selectedEventForDetail && podeEditar(selectedEventForDetail) ? editar : undefined}
         onAlternarBanner={equipe && isAdmin ? handleToggleBanner : undefined}
       />
 
