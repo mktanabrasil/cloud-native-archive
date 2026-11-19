@@ -24,6 +24,9 @@ export interface AnoDoCalendario {
   aprovado_em: string | null;
   aprovado_por: string | null;
   pdf_url: string | null;
+  /** A versão impressa (19/11/2026): a primeira aprovação, guardada à parte pelo banco. */
+  pdf_impresso_url?: string | null;
+  impresso_em?: string | null;
   atualizado_em: string;
   atualizado_por: string | null;
   /** "tema", "percurso:3", "texto:scfv", "revisado:2", "capa" → quem mexeu por último. */
@@ -40,6 +43,8 @@ export interface ItemDoCalendario {
   destaque: boolean;
   oculto: boolean;
   fonte: string | null;
+  /** O e-mail de quem acrescentou (o banco grava). */
+  criado_por?: string | null;
   /** Autoria (13/11/2026): quem acrescentou e quem mexeu por último; o banco é quem grava. */
   criado_por_nome?: string | null;
   criado_em?: string;
@@ -113,6 +118,88 @@ export function andamento(ano: AnoDoCalendario) {
 
 /** Pode mexer: só em preenchimento (o marketing mexe sempre, mas isso o banco decide). */
 export const aberto = (ano: Pick<AnoDoCalendario, 'status'>) => ano.status === 'preenchimento';
+
+/* ---------- o fichário digital (19/11/2026) ---------- */
+
+/**
+ * Depois de aprovado e impresso, o calendário vira um fichário: a gestão
+ * segue mexendo só no mês a mês; tema, percursos, textos e "revisado" ficam
+ * fechados. O banco confere de novo (migração 20261120090000).
+ */
+export const noFichario = (ano: Pick<AnoDoCalendario, 'status' | 'impresso_em'>) => ano.status === 'aprovado' && !!ano.impresso_em;
+
+/** As atividades do mês a mês: em preenchimento e no fichário (o marketing sempre). */
+export const itensAbertos = (ano: Pick<AnoDoCalendario, 'status' | 'impresso_em'>) => aberto(ano) || noFichario(ano);
+
+/** A grafia da unidade nas atividades a partir da unidade do perfil ("dic" → "DIC"); null se não for do Social. */
+export function unidadeDoCalendario(unidadeDoPerfil: string | null | undefined): string | null {
+  const u = (unidadeDoPerfil ?? '').trim().toLowerCase();
+  return UNIDADES_DO_CALENDARIO.find(x => x.toLowerCase() === u) ?? null;
+}
+
+/**
+ * "As suas" no fichário (decisão de 19/11/2026): a gestão apaga a atividade
+ * que ela acrescentou ou a que é só da unidade dela. As de todas ou de mais de
+ * uma unidade, criadas por outra pessoa, só quem criou ou o marketing.
+ */
+export function atividadeEhMinha(i: Pick<ItemDoCalendario, 'tipo' | 'criado_por' | 'unidades'>, quem: { email: string | null | undefined; unidade: string | null }): boolean {
+  if (i.tipo !== 'atividade') return false;
+  if (i.criado_por && quem.email && i.criado_por.toLowerCase() === quem.email.toLowerCase()) return true;
+  return i.unidades.length === 1 && !!quem.unidade && i.unidades[0] === quem.unidade;
+}
+
+/** Entrou depois da impressão: o contorno coral no mês a mês. */
+export const entrouDepoisDaImpressao = (i: Pick<ItemDoCalendario, 'criado_em'>, ano: Pick<AnoDoCalendario, 'impresso_em'>) =>
+  !!ano.impresso_em && !!i.criado_em && Date.parse(i.criado_em) > Date.parse(ano.impresso_em);
+
+/** Uma mudança no mês a mês depois da impressão (tabela calendario_alteracoes). */
+export interface AlteracaoDoCalendario {
+  id: string;
+  ano: number;
+  mes: number;
+  dia: string;
+  acao: 'entrou' | 'saiu' | 'mudou';
+  /** O tipo da atividade, ou 'tema' (o tema do mês mudou depois de reaberto). */
+  tipo: TipoDoItem | 'tema';
+  texto: string;
+  unidades: string[];
+  item_id: string | null;
+  quem: string | null;
+  em: string;
+}
+
+/**
+ * As mudanças por mês (1 a 12), na ordem em que aconteceram. O que se desfez
+ * dentro do mesmo mês (entrou e saiu, ou escondeu e mostrou de novo, sem
+ * "mudou" no meio) não conta: a folha impressa continua valendo.
+ */
+export function mudancasPorMes(alteracoes: AlteracaoDoCalendario[]): Record<number, AlteracaoDoCalendario[]> {
+  const r: Record<number, AlteracaoDoCalendario[]> = {};
+  for (const a of [...alteracoes].sort((x, y) => Date.parse(x.em) - Date.parse(y.em))) (r[a.mes] ??= []).push(a);
+  for (const mes of Object.keys(r).map(Number)) {
+    const porItem = new Map<string, AlteracaoDoCalendario[]>();
+    for (const a of r[mes]) if (a.item_id) porItem.set(a.item_id, [...(porItem.get(a.item_id) ?? []), a]);
+    const desfeitos = new Set<string>();
+    for (const [id, l] of porItem) {
+      const ida = l[0].acao, volta = l[l.length - 1].acao;
+      if (l.length > 1 && !l.some(x => x.acao === 'mudou') && ((ida === 'entrou' && volta === 'saiu') || (ida === 'saiu' && volta === 'entrou'))) desfeitos.add(id);
+    }
+    r[mes] = r[mes].filter(a => !a.item_id || !desfeitos.has(a.item_id));
+    if (!r[mes].length) delete r[mes];
+  }
+  return r;
+}
+
+/** "12/03 · Passeio ao Sesc · Nilópolis" (a data relevante e o feriado dizem o que são). */
+export function textoDaMudanca(a: Pick<AlteracaoDoCalendario, 'dia' | 'texto' | 'tipo' | 'unidades'>): string {
+  if (a.tipo === 'tema') return `Tema do mês: ${a.texto}`;
+  const [, m, d] = a.dia.split('-');
+  const quem = a.tipo === 'atividade' ? rotuloDasUnidades(a.unidades) : a.tipo === 'feriado' ? 'feriado' : 'data relevante';
+  return `${d}/${m} · ${a.texto} · ${quem}`;
+}
+
+/** "entrou", "saiu" ou "mudou", com o sinal da lista. */
+export const SINAL_DA_MUDANCA: Record<AlteracaoDoCalendario['acao'], string> = { entrou: '+', saiu: '−', mudou: '~' };
 
 /** "14/11", no horário de Brasília. */
 export const diaEMes = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' });
