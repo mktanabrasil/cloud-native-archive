@@ -50,7 +50,7 @@ export function CartaoDasFolhasExtras({ ano, itens, folhas, podeCriar, podeMexer
   const [baixando, setBaixando] = useState<string | null>(null);
   const baixar = async (f: FolhaExtra) => { setBaixando(f.id); await baixarFolhaExtra(ano, itens, f); setBaixando(null); };
   return (
-    <section className="glass-2 rounded-[22px] p-5 sm:col-span-2" data-testid="folhas-extras">
+    <section className="glass-2 rounded-[22px] p-5 sm:col-span-2" data-testid="folhas-extras" data-tutorial="cal-folhas">
       <div className="flex items-start justify-between gap-3">
         <span className="grid h-10 w-10 place-items-center rounded-[12px] bg-primary/60"><FilePlus2 className="h-5 w-5" /></span>
         {folhas.length > 0 && <span className="inline-flex items-center rounded-full bg-[hsl(201_80%_93%)] px-2.5 py-0.5 text-[11.5px] font-semibold text-[hsl(var(--info))] dark:bg-[hsl(201_40%_18%)]">{folhas.length} {folhas.length === 1 ? 'folha extra' : 'folhas extras'}</span>}

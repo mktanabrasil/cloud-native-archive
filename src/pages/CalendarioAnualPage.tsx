@@ -3,7 +3,7 @@ import { Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, HelpCircle, LogOut } from 'lucide-react';
 import { JournalTutorial } from '@/components/journal/JournalTutorial';
 import { useTutoriaisVistos } from '@/hooks/useTutoriaisVistos';
-import { ROTEIROS_DO_CALENDARIO, type RoteiroDoCalendario } from '@/lib/calendario/tutorial';
+import { ROTEIROS_DO_CALENDARIO, roteiroDoCalendario, type RoteiroDoCalendario } from '@/lib/calendario/tutorial';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -110,7 +110,8 @@ function Preenchimento({ nome, marketing, email, unidade }: { nome: string; mark
   const [baixar, setBaixar] = useState<{ mes: number | null } | null>(null);
   // O tutorial (13/11/2026): abre sozinho na primeira vez de cada roteiro.
   const tutoriais = useTutoriaisVistos();
-  const roteiro: RoteiroDoCalendario | null = parte === 'inicio' ? 'calendario-inicio' : parte === 'mes' ? 'calendario-mes' : null;
+  // No fichário (aprovado e impresso), os roteiros do fichário.
+  const roteiro: RoteiroDoCalendario | null = roteiroDoCalendario(parte, !!ano && noFichario(ano));
   const [tutorialAberto, setTutorialAberto] = useState(false);
   useEffect(() => {
     if (estado === 'pronto' && roteiro && tutoriais.carregado && !tutoriais.jaViu(roteiro)) setTutorialAberto(true);
@@ -194,7 +195,7 @@ function Preenchimento({ nome, marketing, email, unidade }: { nome: string; mark
       {fichario && <BaixarDoFichario ano={ano} itens={itens} extras={extras} alteracoes={alteracoes} marketing={marketing} unidade={unidade} mesInicial={baixar?.mes} aberto={!!baixar} onFechar={() => setBaixar(null)} />}
       <PreviaDoPdf ano={ano} itens={itens} extras={extras} soAFolha={previaDaFolha} podeBaixar={marketing} aberta={previaAberta} onFechar={() => { setPreviaAberta(false); setPreviaDaFolha(null); }} />
       {roteiro && (
-        <JournalTutorial percurso={roteiro} passos={ROTEIROS_DO_CALENDARIO[roteiro].filter(p => !(fichario && p.alvo === 'cal-revisado'))} rotulo="Tutorial do Calendário Anual"
+        <JournalTutorial percurso={roteiro} passos={ROTEIROS_DO_CALENDARIO[roteiro]} rotulo="Tutorial do Calendário Anual"
           aberto={tutorialAberto} onFechar={() => setTutorialAberto(false)} onVisto={() => tutoriais.marcarVisto(roteiro)} />
       )}
     </>
