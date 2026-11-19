@@ -43,12 +43,14 @@ function AvisosDaEquipe({ avisos, reenviando, reenviar }: { avisos: AvisoDeEvent
     <ul className="space-y-1 rounded-xl border border-border bg-muted/40 p-3" data-testid="avisos-da-equipe" aria-label="E-mails da equipe do dia">
       {avisos.map(a => {
         const quando = format(new Date(a.enviado_em || a.criado_em), "dd/MM 'às' HH:mm");
-        const setor = a.tipo === 'equipe_rh' ? 'RH' : 'Voluntariado';
+        const setor = a.tipo === 'equipe_rh' ? 'RH' : a.tipo === 'financeiro' ? 'Financeiro' : 'Voluntariado';
+        // O Financeiro recebe as compras do evento, não a equipe (19/11/2026).
+        const oQue = a.tipo === 'financeiro' ? { enviado: 'Compras enviadas ao', falhou: 'Falhou o e-mail das compras para o', pendente: 'E-mail das compras para o' } : { enviado: 'Equipe do dia enviada ao', falhou: 'Falhou o e-mail da equipe para o', pendente: 'E-mail da equipe para o' };
         return (
           <li key={a.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
-            {a.status === 'enviado' && <><Mail className="h-3.5 w-3.5 text-success" /><span className="font-semibold text-foreground">Equipe do dia enviada ao {setor}</span><span className="text-muted-foreground">· {quando} · {a.destinatarios.join(' · ')}</span></>}
-            {a.status === 'falhou' && <><AlertTriangle className="h-3.5 w-3.5 text-destructive" /><span className="font-semibold text-foreground">Falhou o e-mail da equipe para o {setor}</span><span className="break-words text-muted-foreground">· {a.erro || 'sem detalhe'}</span></>}
-            {a.status === 'pendente' && <><Clock className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-muted-foreground">E-mail da equipe para o {setor} aguardando envio · {quando}</span></>}
+            {a.status === 'enviado' && <><Mail className="h-3.5 w-3.5 text-success" /><span className="font-semibold text-foreground">{oQue.enviado} {setor}</span><span className="text-muted-foreground">· {quando} · {a.destinatarios.join(' · ')}</span></>}
+            {a.status === 'falhou' && <><AlertTriangle className="h-3.5 w-3.5 text-destructive" /><span className="font-semibold text-foreground">{oQue.falhou} {setor}</span><span className="break-words text-muted-foreground">· {a.erro || 'sem detalhe'}</span></>}
+            {a.status === 'pendente' && <><Clock className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-muted-foreground">{oQue.pendente} {setor} aguardando envio · {quando}</span></>}
             {a.status !== 'enviado' && (
               <Button size="sm" variant="ghost" className="ml-auto h-7 gap-1.5 text-[11px]" disabled={reenviando} onClick={() => reenviar(a.id)}>
                 <RefreshCw className={`h-3 w-3 ${reenviando ? 'animate-spin' : ''}`} /> {a.status === 'falhou' ? 'Reenviar' : 'Enviar agora'}

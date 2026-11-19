@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { CAIXAS_FIXAS_EM_TEXTO, type PerfilParaAviso } from '@/lib/events/avisos';
 import {
-  CONFIG_PADRAO, EQUIPE_PADRAO, type ConfigDaEquipe, type ConfigDeAvisos, ROTULO_DO_ESTADO, ROTULO_DO_MOTIVO, type SetorDaEquipe, emailValido, listaDeDestinatarios, normalizarEmail,
+  CONFIG_PADRAO, EQUIPE_PADRAO, NOME_DO_SETOR, type ConfigDaEquipe, type ConfigDeAvisos, ROTULO_DO_ESTADO, ROTULO_DO_MOTIVO, type SetorDaEquipe, emailValido, listaDeDestinatarios, normalizarEmail,
   quemEntraNoLancamento, resumoDaLista, sugestoesDaEquipe,
 } from '@/lib/events/avisosConfig';
 import { toast } from 'sonner';
@@ -55,13 +55,20 @@ export function ConfigDosAvisos() {
   // A função publicada antes do PR 5 não devolve as listas: a parte 3 avisa em vez de salvar no vazio.
   const [temEquipe, setTemEquipe] = useState(false);
   const [erroDaEquipe, setErroDaEquipe] = useState(false);
-  const [novoDaEquipe, setNovoDaEquipe] = useState<Record<SetorDaEquipe, string>>({ rh: '', voluntariado: '' });
+  // A função publicada antes do PR 2 do Financeiro devolve as listas sem a do Financeiro.
+  const [temFinanceiro, setTemFinanceiro] = useState(false);
+  const [novoDaEquipe, setNovoDaEquipe] = useState<Record<SetorDaEquipe, string>>({ rh: '', voluntariado: '', financeiro: '' });
+  const receberEquipe = (e: ConfigDaEquipe | null | undefined) => {
+    setTemEquipe(e !== undefined); setErroDaEquipe(e === null);
+    setTemFinanceiro(!!e && Array.isArray((e as Partial<ConfigDaEquipe>).financeiro));
+    setEquipe(e ? { ...e, financeiro: Array.isArray(e.financeiro) ? e.financeiro : [] } : EQUIPE_PADRAO);
+  };
 
   const ler = useCallback(async () => {
     try {
       const r = await chamar({ config: true });
       setConfig(r.config); setOrigem(r.origem); setPerfis(r.perfis); setErro(null); setCarregado(true);
-      setTemEquipe(r.equipe !== undefined); setErroDaEquipe(r.equipe === null); setEquipe(r.equipe ?? EQUIPE_PADRAO);
+      receberEquipe(r.equipe);
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); }
   }, []);
   useEffect(() => { void ler(); }, [ler]);
@@ -80,13 +87,13 @@ export function ConfigDosAvisos() {
     } finally { setSalvando(false); }
   };
 
-  /** Salva as duas listas da equipe do dia (RH e Voluntariado). */
+  /** Salva as listas da equipe do dia (RH e Voluntariado) e do Financeiro. A do Financeiro só vai se a função já a conhece. */
   const salvarEquipe = async (nova: ConfigDaEquipe, mensagem: string) => {
     setSalvando(true);
     try {
-      const r = await chamar({ salvar_config_equipe: { rh: nova.rh, voluntariado: nova.voluntariado } });
+      const r = await chamar({ salvar_config_equipe: { rh: nova.rh, voluntariado: nova.voluntariado, ...(temFinanceiro ? { financeiro: nova.financeiro } : {}) } });
       setPerfis(r.perfis);
-      if (r.equipe) { setEquipe(r.equipe); setTemEquipe(true); setErroDaEquipe(false); }
+      if (r.equipe) receberEquipe(r.equipe);
       toast.success(mensagem);
     } catch (e) {
       toast.error('Não consegui salvar', { description: e instanceof Error ? e.message : String(e) });
@@ -97,10 +104,10 @@ export function ConfigDosAvisos() {
     if (!emailValido(email)) { toast.error('Digite um e-mail válido.'); return; }
     if (equipe[setor].includes(email)) { toast.error('Esse e-mail já está nesta lista.'); return; }
     setNovoDaEquipe(n => ({ ...n, [setor]: '' }));
-    void salvarEquipe({ ...equipe, [setor]: [...equipe[setor], email] }, `${email} passa a receber a equipe do dia (${setor === 'rh' ? 'RH' : 'Voluntariado'}).`);
+    void salvarEquipe({ ...equipe, [setor]: [...equipe[setor], email] }, setor === 'financeiro' ? `${email} passa a receber as compras dos eventos (Financeiro).` : `${email} passa a receber a equipe do dia (${NOME_DO_SETOR[setor]}).`);
   };
   const tirarDaEquipe = (setor: SetorDaEquipe, email: string) =>
-    void salvarEquipe({ ...equipe, [setor]: equipe[setor].filter(e => e !== email) }, `${email} saiu da lista do ${setor === 'rh' ? 'RH' : 'Voluntariado'}.`);
+    void salvarEquipe({ ...equipe, [setor]: equipe[setor].filter(e => e !== email) }, `${email} saiu da lista do ${NOME_DO_SETOR[setor]}.`);
 
   const alternar = (ligar: boolean) => {
     if (ligar) { void salvar({ ...config, pre_lancamento: true }, 'Modo pré-lançamento ligado: só as caixas fixas recebem.'); return; }
@@ -196,22 +203,28 @@ export function ConfigDosAvisos() {
 
         {/* 3. A equipe do dia (18/11/2026, PR 5) */}
         <section className="space-y-2" data-testid="avisos-da-equipe-do-dia">
-          <h3 className="text-sm font-semibold">3. RH e Voluntariado <span className="font-normal text-muted-foreground">· a equipe do dia</span></h3>
+          <h3 className="text-sm font-semibold">3. RH, Voluntariado e Financeiro <span className="font-normal text-muted-foreground">· a equipe do dia e as compras</span></h3>
           <p className="max-w-[70ch] text-xs text-muted-foreground">
-            Recebem os nomes de quem vai trabalhar (RH) ou ajudar como voluntário (Voluntariado) em cada evento, quando ele é confirmado, e de novo se a lista mudar. É um e-mail a mais: quem também está na lista acima continua recebendo os avisos gerais (cancelamento, nova data).
+            Quando um evento é confirmado, e de novo se mudar: o RH recebe quem vai trabalhar, o Voluntariado recebe os voluntários e o Financeiro recebe o que a ANA compra (comida que a ANA fornece e transporte de fora). Se o evento for cancelado, cada lista recebe também o mesmo e-mail de cancelamento que todos recebem. Quem também está na lista acima continua recebendo os avisos gerais.
           </p>
           {carregado && erroDaEquipe ? (
-            <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-foreground">Não consegui ler as listas do RH e do Voluntariado agora. <button className="underline" onClick={() => void ler()}>Tentar de novo</button></p>
+            <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-foreground">Não consegui ler as listas do RH, do Voluntariado e do Financeiro agora. <button className="underline" onClick={() => void ler()}>Tentar de novo</button></p>
           ) : carregado && !temEquipe ? (
             <p className="rounded-xl border border-warning/30 bg-warning/5 p-3 text-xs text-foreground">A função de avisos publicada ainda não conhece estas listas. Republique a função <b>eventos-aviso</b> e recarregue a página.</p>
           ) : (
-            <div className="grid gap-3 md:grid-cols-2">
-              {(['rh', 'voluntariado'] as const).map(setor => {
-                const nome = setor === 'rh' ? 'RH' : 'Voluntariado';
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {(['rh', 'voluntariado', 'financeiro'] as const).map(setor => {
+                const nome = NOME_DO_SETOR[setor];
                 const sugestoes = sugestoesDaEquipe(perfis, equipe, setor);
+                if (setor === 'financeiro' && !temFinanceiro) return (
+                  <div key={setor} className="rounded-xl border border-warning/30 bg-warning/5 p-3 text-xs text-foreground" data-testid="lista-equipe-financeiro-sem-funcao">
+                    <p className="font-semibold">Financeiro <span className="font-normal text-muted-foreground">· compras dos eventos</span></p>
+                    <p className="mt-1">A função de avisos publicada ainda não conhece esta lista. Republique a função <b>eventos-aviso</b> e recarregue a página.</p>
+                  </div>
+                );
                 return (
                   <div key={setor} className="space-y-2 rounded-xl border border-border p-3" data-testid={`lista-equipe-${setor}`}>
-                    <p className="text-xs font-semibold">{nome} <span className="font-normal text-muted-foreground">· {setor === 'rh' ? 'funcionários escalados' : 'voluntários, com o WhatsApp'}</span></p>
+                    <p className="text-xs font-semibold">{nome} <span className="font-normal text-muted-foreground">· {setor === 'rh' ? 'funcionários escalados' : setor === 'financeiro' ? 'compras dos eventos' : 'voluntários, com o WhatsApp'}</span></p>
                     {equipe[setor].length === 0
                       ? <p className="text-xs text-muted-foreground">Ninguém ainda: enquanto a lista estiver vazia, os e-mails do {nome} não são enviados.</p>
                       : (

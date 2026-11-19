@@ -26,9 +26,11 @@ export const CONFIG_PADRAO: ConfigDeAvisos = { pre_lancamento: true, extras: [],
  * em system_configs ('avisos_equipe'). Espelho de `ConfigDaEquipe` em
  * supabase/functions/eventos-aviso/fila.ts.
  */
-export interface ConfigDaEquipe { rh: string[]; voluntariado: string[]; atualizado_por?: string | null; atualizado_em?: string | null }
-export const EQUIPE_PADRAO: ConfigDaEquipe = { rh: [], voluntariado: [] };
-export type SetorDaEquipe = 'rh' | 'voluntariado';
+export interface ConfigDaEquipe { rh: string[]; voluntariado: string[]; financeiro: string[]; atualizado_por?: string | null; atualizado_em?: string | null }
+export const EQUIPE_PADRAO: ConfigDaEquipe = { rh: [], voluntariado: [], financeiro: [] };
+/** "financeiro" (19/11/2026): quem recebe as compras de cada evento. */
+export type SetorDaEquipe = 'rh' | 'voluntariado' | 'financeiro';
+export const NOME_DO_SETOR: Record<SetorDaEquipe, string> = { rh: 'RH', voluntariado: 'Voluntariado', financeiro: 'Financeiro' };
 
 /**
  * As sugestões de cada lista: quem tem o vínculo (rh / voluntariado), ativo,
