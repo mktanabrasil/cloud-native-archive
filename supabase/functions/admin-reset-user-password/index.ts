@@ -67,6 +67,12 @@ Deno.serve(async (req) => {
       });
     }
 
+    // O cadeado das senhas (19/11/2026): a conta trancada só aceita troca
+    // liberada pelo servidor. Sem o SQL do cadeado a função não existe, e a
+    // troca segue como sempre.
+    const { error: liberarErr } = await adminClient.rpc('liberar_troca_de_senha', { _user_id: userId });
+    if (liberarErr) console.warn('[cadeado] não liberei a troca (sem o SQL do cadeado?):', liberarErr.message);
+
     const { error: updateErr } = await adminClient.auth.admin.updateUserById(userId, {
       password: newPassword,
       email_confirm: true,
