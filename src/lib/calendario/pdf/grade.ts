@@ -7,7 +7,12 @@ import { UNIDADES_DO_CALENDARIO, type ItemDoCalendario } from '../regras';
  * - feriado em coral e negrito, com "FERIADO" uma linha abaixo;
  * - data relevante em traço fino;
  * - atividade em preto, negrito quando está em destaque;
- * - tudo em maiúsculas; a unidade vai entre parênteses quando não são todas.
+ * - tudo em maiúsculas.
+ *
+ * A unidade (19/11/2026, fichário): as unidades imprimem em preto e branco,
+ * então a cor não diz de quem é a atividade. Cada atividade começa com a
+ * sigla: "DIC · REUNIÃO", "NIL · PASSEIO", "SAN · HORTA", "TODAS · ACAMPAMENTO";
+ * de mais de uma unidade, "DIC+SAN · FORMAÇÃO". A legenda vai no pé da folha.
  *
  * A letra é de 10 pt, como em 2026; quando não cabe, diminui até 6,5 pt; se nem assim couber, as últimas
  * linhas saem e a célula fica marcada como cheia, para a prévia avisar.
@@ -21,10 +26,16 @@ export const CORAL = '#f37964';
 export const PRETO = '#000000';
 const TAMANHOS = [10, 9.5, 9, 8.5, 8, 7.5, 7, 6.5];
 
-export function sufixoDasUnidades(unidades: string[]): string {
+/** A sigla de cada unidade na folha impressa. */
+export const SIGLA_DA_UNIDADE: Record<string, string> = { DIC: 'DIC', Nilópolis: 'NIL', Santana: 'SAN' };
+/** A legenda do pé da folha do mês. */
+export const LEGENDA_DAS_SIGLAS = 'DIC · NIL = Nilópolis · SAN = Santana · TODAS = as três unidades';
+
+/** "DIC · ", "DIC+SAN · " ou "TODAS · " (nenhuma marcada, ou as três). */
+export function prefixoDasUnidades(unidades: string[]): string {
   const so = UNIDADES_DO_CALENDARIO.filter(u => unidades.includes(u));
-  if (so.length === 0 || so.length === UNIDADES_DO_CALENDARIO.length) return '';
-  return ` (${so.join(' e ')})`;
+  if (so.length === 0 || so.length === UNIDADES_DO_CALENDARIO.length) return 'TODAS · ';
+  return `${so.map(u => SIGLA_DA_UNIDADE[u]).join('+')} · `;
 }
 
 const maiusculas = (t: string) => t.toLocaleUpperCase('pt-BR');
@@ -34,7 +45,7 @@ interface Bloco { texto: string; estilo: EstiloDaLetra; cor: string; feriado: bo
 function blocosDoDia(dia: number, itens: ItemDoCalendario[]): Bloco[] {
   if (!itens.length) return [{ texto: String(dia), estilo: 'light', cor: PRETO, feriado: false }];
   return itens.map((i, n) => {
-    const texto = (n === 0 ? `${dia} - ` : '') + maiusculas(i.texto.trim() + sufixoDasUnidades(i.unidades));
+    const texto = (n === 0 ? `${dia} - ` : '') + maiusculas((i.tipo === 'atividade' ? prefixoDasUnidades(i.unidades) : '') + i.texto.trim());
     if (i.tipo === 'feriado') return { texto, estilo: 'bold' as const, cor: CORAL, feriado: true };
     if (i.tipo === 'data') return { texto, estilo: 'light' as const, cor: PRETO, feriado: false };
     return { texto, estilo: i.destaque ? 'bold' as const : 'normal' as const, cor: PRETO, feriado: false };

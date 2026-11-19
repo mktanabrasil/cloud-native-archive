@@ -190,6 +190,17 @@ export function mudancasPorMes(alteracoes: AlteracaoDoCalendario[]): Record<numb
   return r;
 }
 
+/**
+ * Os meses cuja folha mudou desde a impressão para uma unidade (null = geral).
+ * Feriado, data relevante e tema do mês valem para todas; a atividade, para as
+ * unidades dela (sem nenhuma marcada = todas).
+ */
+export function mesesQueMudaram(alteracoes: AlteracaoDoCalendario[], unidade: string | null): number[] {
+  const porMes = mudancasPorMes(alteracoes);
+  return Object.keys(porMes).map(Number).filter(m => porMes[m].some(a =>
+    !unidade || a.tipo !== 'atividade' || a.unidades.length === 0 || a.unidades.includes(unidade))).sort((x, y) => x - y);
+}
+
 /** "12/03 · Passeio ao Sesc · Nilópolis" (a data relevante e o feriado dizem o que são). */
 export function textoDaMudanca(a: Pick<AlteracaoDoCalendario, 'dia' | 'texto' | 'tipo' | 'unidades'>): string {
   if (a.tipo === 'tema') return `Tema do mês: ${a.texto}`;

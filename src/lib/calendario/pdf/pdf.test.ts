@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { jsPDF } from 'jspdf';
-import { montarCelula, sufixoDasUnidades, CORAL } from './grade';
-import { linhasDoTema, montarPdf, type Imagem, type RecursosDoPdf } from './gerar';
+import { montarCelula, prefixoDasUnidades, CORAL } from './grade';
+import { itensDaFolha, linhasDoTema, montarPdf, type Imagem, type RecursosDoPdf } from './gerar';
 import type { AnoDoCalendario, ItemDoCalendario } from '../regras';
 
 describe('a célula do dia', () => {
@@ -21,11 +21,15 @@ describe('a célula do dia', () => {
     expect(c.linhas.every(l => l.cor === CORAL && l.estilo === 'bold')).toBe(true);
   });
 
-  it('atividade de uma unidade leva a unidade; o segundo item não repete o número', () => {
-    expect(sufixoDasUnidades(['Santana'])).toBe(' (Santana)');
-    expect(sufixoDasUnidades(['DIC', 'Nilópolis', 'Santana'])).toBe('');
+  it('atividade começa com a sigla da unidade (impressão sem cor); o segundo item não repete o número', () => {
+    expect(prefixoDasUnidades(['Santana'])).toBe('SAN · ');
+    expect(prefixoDasUnidades(['DIC', 'Santana'])).toBe('DIC+SAN · ');
+    expect(prefixoDasUnidades(['DIC', 'Nilópolis', 'Santana'])).toBe('TODAS · ');
+    expect(prefixoDasUnidades([])).toBe('TODAS · ');
     const c = montarCelula(19, [item({ tipo: 'data', texto: 'Dia X' }), item({ tipo: 'atividade', texto: 'Festa', unidades: ['DIC'], destaque: false })], 300, 60, medir);
-    expect(c.linhas.map(l => [l.texto, l.estilo])).toEqual([['19 - DIA X', 'light'], ['FESTA (DIC)', 'normal']]);
+    expect(c.linhas.map(l => [l.texto, l.estilo])).toEqual([['19 - DIA X', 'light'], ['DIC · FESTA', 'normal']]);
+    const nil = montarCelula(12, [item({ tipo: 'atividade', texto: 'Passeio', unidades: ['Nilópolis'] })], 300, 60, medir);
+    expect(nil.linhas[0].texto).toBe('12 - NIL · PASSEIO');
   });
 
   it('texto grande diminui a letra; o que não cabe nem assim marca a célula como cheia', () => {
@@ -64,6 +68,22 @@ describe('o PDF inteiro', () => {
     const r = montarPdf(jsPDF, ano(), [], recursos);
     expect(r.paginasDeTexto).toBe(9);
     expect(r.paginas).toBe(1 + 9 + 36 + 12);
+  });
+
+  it('só as folhas pedidas, para o fichário: a grade de dois meses, ou com as anotações', () => {
+    expect(montarPdf(jsPDF, ano(), [], recursos, { partes: { capa: false, textos: false, meses: [6, 3], anotacoes: false, fim: false } }).paginas).toBe(2);
+    expect(montarPdf(jsPDF, ano(), [], recursos, { partes: { capa: false, textos: false, meses: [3], anotacoes: true, fim: false } }).paginas).toBe(3);
+    expect(montarPdf(jsPDF, ano(), [], recursos, { partes: { meses: [] } }).paginas).toBe(1 + 9 + 12);
+  });
+
+  it('a folha de uma unidade: as atividades dela e as de todas; feriados e datas ficam', () => {
+    const at = (texto: string, unidades: string[], tipo: ItemDoCalendario['tipo'] = 'atividade'): ItemDoCalendario => ({ id: texto, ano: 2027, dia: '2027-03-10', texto, tipo, unidades, destaque: true, oculto: false, fonte: null });
+    const lista = [at('Reunião', ['DIC']), at('Passeio', ['Nilópolis']), at('Acampamento', []), at('Formação', ['DIC', 'Santana']), at('Dia da Escola', [], 'data'), at('Escondida', [], 'data')];
+    lista[5].oculto = true;
+    expect(itensDaFolha(lista, 2027, 'DIC').map(i => i.texto)).toEqual(['Reunião', 'Acampamento', 'Formação', 'Dia da Escola']);
+    expect(itensDaFolha(lista, 2027, null).map(i => i.texto)).toEqual(['Reunião', 'Passeio', 'Acampamento', 'Formação', 'Dia da Escola']);
+    const r = montarPdf(jsPDF, ano(), lista, recursos, { partes: { capa: false, textos: false, meses: [3], anotacoes: false, fim: false }, unidade: 'DIC', atualizadaEm: '2027-03-03T12:00:00Z' });
+    expect(r.paginas).toBe(1);
   });
 
   it('texto que não cabe continua na página seguinte, sem cortar nada', () => {
