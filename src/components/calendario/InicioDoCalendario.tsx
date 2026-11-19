@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import { salvarAno } from '@/lib/calendario/api';
 import { MESES, andamento, autoriaDe, diaEMes, mudancasPorMes, noFichario, type AlteracaoDoCalendario, type AnoDoCalendario } from '@/lib/calendario/regras';
 import { SituacaoDoPdf } from './SituacaoDoPdf';
+import { CartaoDasFolhasExtras } from './FolhasExtras';
+import type { FolhaExtra, ItemDoCalendario } from '@/lib/calendario/regras';
 
-export type Parte = 'inicio' | 'percursos' | 'mes' | 'textos' | 'revisao';
+export type Parte = 'inicio' | 'percursos' | 'mes' | 'textos' | 'revisao' | 'extra';
 
 const PASSOS = ['Preenchimento pelas coordenadoras', 'Revisão do marketing', 'Aprovado · PDF liberado'];
 /** Depois de aprovado e impresso (19/11/2026): o 4º passo é o fichário digital. */
@@ -27,7 +29,9 @@ function Selo({ children, tom }: { children: React.ReactNode; tom: 'ok' | 'falta
  * está o processo e as partes a preencher. O PDF, a revisão e a aprovação
  * chegam no próximo passo; aqui eles já aparecem, travados.
  */
-export function InicioDoCalendario({ ano, editavel, marketing, alteracoes = [], onAno, abrir, onPrevia, onBaixar }: { ano: AnoDoCalendario; editavel: boolean; marketing: boolean; alteracoes?: AlteracaoDoCalendario[]; onAno: (a: AnoDoCalendario) => void; abrir: (p: Parte, mes?: number) => void; onPrevia?: () => void; onBaixar?: () => void }) {
+export function InicioDoCalendario({ ano, editavel, marketing, alteracoes = [], onAno, abrir, onPrevia, onBaixar, folhas }: { ano: AnoDoCalendario; editavel: boolean; marketing: boolean; alteracoes?: AlteracaoDoCalendario[]; onAno: (a: AnoDoCalendario) => void; abrir: (p: Parte, mes?: number, folha?: string) => void; onPrevia?: () => void; onBaixar?: () => void;
+  /** As folhas extras (19/11/2026): o cartão aparece no fichário (e sempre para o marketing). */
+  folhas?: { lista: FolhaExtra[]; itens: ItemDoCalendario[]; podeCriar: boolean; podeMexer: (f: FolhaExtra) => boolean } }) {
   const fichario = noFichario(ano);
   const mudancas = mudancasPorMes(alteracoes);
   const mesesQueMudaram = Object.keys(mudancas).map(Number).sort((x, y) => x - y);
@@ -126,6 +130,7 @@ export function InicioDoCalendario({ ano, editavel, marketing, alteracoes = [], 
             {fichario && !editavel && <Fechado />}
             <Button variant="outline" className="mt-4" onClick={() => abrir('textos')}>Abrir</Button>
           </section>
+          {folhas && <CartaoDasFolhasExtras ano={ano} itens={folhas.itens} folhas={folhas.lista} podeCriar={folhas.podeCriar} podeMexer={folhas.podeMexer} onAbrir={id => abrir('extra', undefined, id)} />}
         </div>
         <aside className="space-y-4">
           <SituacaoDoPdf ano={ano} marketing={marketing} editavel={editavel} onAno={onAno} onPrevia={onPrevia} onRevisao={() => abrir('revisao')} onBaixar={onBaixar} />

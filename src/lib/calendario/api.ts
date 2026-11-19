@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import type { AlteracaoDoCalendario, AnoDoCalendario, ItemDoCalendario, Percurso } from './regras';
+import type { AlteracaoDoCalendario, AnoDoCalendario, FolhaExtra, ItemDoCalendario, Percurso } from './regras';
 
 /**
  * O Calendário Anual no banco (14/11/2026). As tabelas são novas e ainda não
@@ -46,6 +46,36 @@ export async function lerAlteracoes(ano: number): Promise<AlteracaoDoCalendario[
   const { data, error } = await db.from('calendario_alteracoes').select('*').eq('ano', ano).order('em');
   if (error) return [];
   return (data as AlteracaoDoCalendario[]) ?? [];
+}
+
+/* ---------- as folhas extras (19/11/2026; SQL 20261120100000) ---------- */
+
+/** Sem o SQL das folhas extras a tabela não existe: devolve vazio em vez de quebrar a tela. */
+export async function lerFolhasExtras(ano: number): Promise<FolhaExtra[]> {
+  const { data, error } = await db.from('calendario_folhas_extras').select('*').eq('ano', ano).order('criado_em');
+  if (error) return [];
+  return (data as FolhaExtra[]) ?? [];
+}
+
+type CamposDaFolha = Pick<FolhaExtra, 'titulo' | 'depois_do_mes' | 'unidades' | 'texto' | 'pauta'>;
+
+export async function criarFolhaExtra(ano: number, campos: CamposDaFolha): Promise<FolhaExtra> {
+  const { data, error } = await db.from('calendario_folhas_extras').insert({ ano, ...campos }).select('*').single();
+  falhou(error);
+  return data as FolhaExtra;
+}
+
+export async function salvarFolhaExtra(id: string, campos: CamposDaFolha): Promise<FolhaExtra> {
+  const { data, error } = await db.from('calendario_folhas_extras').update(campos).eq('id', id).select('*').maybeSingle();
+  falhou(error);
+  if (!data) throw Object.assign(new Error('Só quem criou a folha (ou o marketing) pode mudá-la.'), { code: '42501' });
+  return data as FolhaExtra;
+}
+
+export async function apagarFolhaExtra(id: string): Promise<void> {
+  const { data, error } = await db.from('calendario_folhas_extras').delete().eq('id', id).select('id');
+  falhou(error);
+  if (!data?.length) throw Object.assign(new Error('Só quem criou a folha (ou o marketing) pode apagá-la.'), { code: '42501' });
 }
 
 export async function salvarAno(ano: number, campos: Partial<Pick<AnoDoCalendario, 'tema' | 'percursos' | 'meses_revisados' | 'textos'>>): Promise<AnoDoCalendario> {

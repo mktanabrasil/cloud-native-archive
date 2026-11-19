@@ -3,7 +3,7 @@ import { AlertTriangle, Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { linkDoArquivo } from '@/lib/calendario/api';
-import type { AnoDoCalendario, ItemDoCalendario } from '@/lib/calendario/regras';
+import type { AnoDoCalendario, FolhaExtra, ItemDoCalendario } from '@/lib/calendario/regras';
 
 /**
  * A prévia do PDF (13/11/2026): monta o PDF com o que está preenchido agora e
@@ -61,9 +61,13 @@ function Pagina({ doc, numero }: { doc: DocumentoPdf; numero: number }) {
   );
 }
 
-export function PreviaDoPdf({ ano, itens, podeBaixar, aberta, onFechar }: {
+export function PreviaDoPdf({ ano, itens, extras = [], soAFolha = null, podeBaixar, aberta, onFechar }: {
   ano: AnoDoCalendario;
   itens: ItemDoCalendario[];
+  /** As folhas extras (19/11/2026), cada uma no lugar dela. */
+  extras?: FolhaExtra[];
+  /** Só esta folha extra (a prévia do editor). */
+  soAFolha?: FolhaExtra | null;
   podeBaixar: boolean;
   aberta: boolean;
   onFechar: () => void;
@@ -78,8 +82,10 @@ export function PreviaDoPdf({ ano, itens, podeBaixar, aberta, onFechar }: {
       const [{ gerarPdfDoCalendario }, pdfjs] = await Promise.all([import('@/lib/calendario/pdf/gerar'), import('pdfjs-dist')]);
       pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
       // A foto da capa está no balde privado: entra por um link temporário.
-      const capaUrl = ano.capa_url ? await linkDoArquivo(ano.capa_url).catch(() => null) : null;
-      const r = await gerarPdfDoCalendario(ano, itens, { previa: true, capaUrl });
+      const capaUrl = !soAFolha && ano.capa_url ? await linkDoArquivo(ano.capa_url).catch(() => null) : null;
+      const r = soAFolha
+        ? await gerarPdfDoCalendario(ano, itens, { previa: true, partes: { capa: false, textos: false, meses: [], anotacoes: false, fim: false }, extras: [soAFolha] })
+        : await gerarPdfDoCalendario(ano, itens, { previa: true, capaUrl, extras });
       const doc = await pdfjs.getDocument({ data: new Uint8Array(await r.blob.arrayBuffer()) }).promise;
       if (vivo) setEstado({ fase: 'pronta', blob: r.blob, doc: doc as unknown as DocumentoPdf, cheias: r.celulasCheias });
     })().catch((e: Error) => { if (vivo) setEstado({ fase: 'erro', mensagem: e?.message || 'Não deu para montar a prévia.' }); });
@@ -92,7 +98,7 @@ export function PreviaDoPdf({ ano, itens, podeBaixar, aberta, onFechar }: {
     if (estado.fase !== 'pronta') return;
     const url = URL.createObjectURL(estado.blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `Calendário Anual ${ano.ano} - prévia.pdf`;
+    a.href = url; a.download = soAFolha ? `Calendário Anual ${ano.ano} - folha extra - ${(soAFolha.titulo || 'sem título').replace(/[\\/:*?"<>|]/g, '-')} - prévia.pdf` : `Calendário Anual ${ano.ano} - prévia.pdf`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   };
@@ -101,7 +107,7 @@ export function PreviaDoPdf({ ano, itens, podeBaixar, aberta, onFechar }: {
     <Dialog open={aberta} onOpenChange={o => { if (!o) onFechar(); }}>
       <DialogContent className="flex h-[92vh] max-w-5xl flex-col gap-0 p-0">
         <DialogHeader className="border-b border-black/10 px-5 py-4 text-left dark:border-white/10">
-          <DialogTitle>Prévia do PDF · {ano.ano}</DialogTitle>
+          <DialogTitle>{soAFolha ? `Prévia da folha extra · ${soAFolha.titulo}` : `Prévia do PDF · ${ano.ano}`}</DialogTitle>
           <DialogDescription>
             {estado.fase === 'pronta' ? `${estado.doc.numPages} páginas, montadas com o que está preenchido agora. ` : 'Montando com o que está preenchido agora. '}
             O PDF final é o que o marketing aprova.

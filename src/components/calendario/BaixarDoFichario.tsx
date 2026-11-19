@@ -5,16 +5,19 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { linkDoArquivo } from '@/lib/calendario/api';
 import {
-  MESES, UNIDADES_DO_CALENDARIO, aUnidade, daUnidade, mesesQueMudaram, type AlteracaoDoCalendario, type AnoDoCalendario, type ItemDoCalendario,
+  MESES, UNIDADES_DO_CALENDARIO, aUnidade, daUnidade, folhaDaUnidade, folhaMudouDepoisDaImpressao, folhasNaOrdem, lugarDaFolha, mesesQueMudaram,
+  type AlteracaoDoCalendario, type AnoDoCalendario, type FolhaExtra, type ItemDoCalendario,
 } from '@/lib/calendario/regras';
 
 type DeQuem = 'geral' | string;
 type OQue = 'mudaram' | 'inteiro';
 
 /** "Calendário Anual 2027 · DIC · Março.pdf" */
-export function nomeDoArquivo(ano: number, deQuem: DeQuem, oQue: OQue, meses: number[]): string {
+export function nomeDoArquivo(ano: number, deQuem: DeQuem, oQue: OQue, meses: number[], extras = 0): string {
   const quem = deQuem === 'geral' ? 'Geral' : deQuem;
-  const oque = oQue === 'inteiro' ? 'inteiro' : meses.length === 1 ? MESES[meses[0] - 1] : `${meses.length} meses`;
+  const dosMeses = meses.length === 0 ? '' : meses.length === 1 ? MESES[meses[0] - 1] : `${meses.length} meses`;
+  const dasExtras = extras === 0 ? '' : `${extras} ${extras === 1 ? 'folha extra' : 'folhas extras'}`;
+  const oque = oQue === 'inteiro' ? 'inteiro' : [dosMeses, dasExtras].filter(Boolean).join(' + ');
   return `Calendário Anual ${ano} · ${quem} · ${oque}.pdf`;
 }
 
@@ -44,9 +47,11 @@ export const folhasDosMeses = (meses: number[], anotacoes: boolean) => meses.len
  * marca de prévia, em preto e branco legível (a sigla da unidade em cada
  * atividade) e com a data no pé, para trocar a folha certa no fichário.
  */
-export function BaixarDoFichario({ ano, itens, alteracoes, marketing, unidade, mesInicial, aberto, onFechar }: {
+export function BaixarDoFichario({ ano, itens, extras = [], alteracoes, marketing, unidade, mesInicial, aberto, onFechar }: {
   ano: AnoDoCalendario;
   itens: ItemDoCalendario[];
+  /** As folhas extras (19/11/2026): as que mudaram desde a impressão vêm marcadas. */
+  extras?: FolhaExtra[];
   alteracoes: AlteracaoDoCalendario[];
   marketing: boolean;
   /** A unidade da gestão que está baixando (null para o marketing). */
@@ -75,12 +80,19 @@ export function BaixarDoFichario({ ano, itens, alteracoes, marketing, unidade, m
   const chaveAgora = `${aberto}|${deQuem}|${mesInicial ?? ''}`;
   if (chave !== chaveAgora) { setChave(chaveAgora); setEscolhidos(mesInicial ? [mesInicial] : null); }
   const meses = (escolhidos ?? mudaram).slice().sort((a, b) => a - b);
+  // As folhas extras desta unidade (ou todas, no geral); as que mudaram desde a impressão vêm marcadas.
+  const folhasDaVez = folhasNaOrdem(extras.filter(f => folhaDaUnidade(f, deQuem === 'geral' ? null : deQuem)));
+  const [folhasEscolhidas, setFolhasEscolhidas] = useState<string[] | null>(null);
+  const [chaveDasFolhas, setChaveDasFolhas] = useState('');
+  if (chaveDasFolhas !== chaveAgora) { setChaveDasFolhas(chaveAgora); setFolhasEscolhidas(mesInicial ? [] : null); }
+  const folhas = folhasEscolhidas ?? folhasDaVez.filter(f => folhaMudouDepoisDaImpressao(f, ano)).map(f => f.id);
+  const alternarFolha = (id: string) => setFolhasEscolhidas(folhas.includes(id) ? folhas.filter(x => x !== id) : [...folhas, id]);
 
   const alternar = (m: number) => setEscolhidos(meses.includes(m) ? meses.filter(x => x !== m) : [...meses, m]);
   const rotulo = (q: DeQuem) => (q === 'geral' ? 'Geral · as três unidades' : `Só ${daUnidade(q)}`);
 
   const baixar = async () => {
-    if (oQue === 'mudaram' && meses.length === 0) return;
+    if (oQue === 'mudaram' && meses.length === 0 && folhas.length === 0) return;
     setGerando(true);
     try {
       const inteiro = oQue === 'inteiro';
@@ -89,10 +101,11 @@ export function BaixarDoFichario({ ano, itens, alteracoes, marketing, unidade, m
         inteiro && ano.capa_url ? linkDoArquivo(ano.capa_url).catch(() => null) : Promise.resolve(null),
       ]);
       const partes = inteiro ? undefined : { capa: false, textos: false, meses, anotacoes, fim: false };
-      const r = await gerarPdfDoCalendario(ano, itens, { capaUrl, previa: false, partes, unidade: deQuem === 'geral' ? null : deQuem, atualizadaEm: new Date().toISOString() });
+      const extrasDaVez = inteiro ? folhasDaVez : folhasDaVez.filter(f => folhas.includes(f.id));
+      const r = await gerarPdfDoCalendario(ano, itens, { capaUrl, previa: false, partes, unidade: deQuem === 'geral' ? null : deQuem, atualizadaEm: new Date().toISOString(), extras: extrasDaVez });
       const url = URL.createObjectURL(r.blob);
       const a = document.createElement('a');
-      a.href = url; a.download = nomeDoArquivo(ano.ano, deQuem, oQue, meses);
+      a.href = url; a.download = nomeDoArquivo(ano.ano, deQuem, oQue, inteiro ? [] : meses, inteiro ? 0 : extrasDaVez.length);
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
       toast.success(inteiro ? 'Calendário baixado' : `${r.paginas} ${r.paginas === 1 ? 'folha baixada' : 'folhas baixadas'}`);
@@ -103,7 +116,13 @@ export function BaixarDoFichario({ ano, itens, alteracoes, marketing, unidade, m
     finally { setGerando(false); }
   };
 
-  const folhas = oQue === 'inteiro' ? null : folhasDosMeses(meses, anotacoes);
+  // As folhas dos meses são contadas certinho; a folha extra de texto longo pode continuar na seguinte.
+  const folhasDeMeses = oQue === 'inteiro' ? null : folhasDosMeses(meses, anotacoes);
+  const totalDeFolhas = folhasDeMeses === null ? null : folhasDeMeses + folhas.length;
+  const resumo = totalDeFolhas === null ? 'O calendário inteiro'
+    : totalDeFolhas === 0 ? 'Escolham ao menos um mês ou uma folha'
+    : [folhasDeMeses ? `${folhasDeMeses} ${folhasDeMeses === 1 ? 'folha' : 'folhas'} · ${meses.map(m => MESES[m - 1]).join(', ')}` : '',
+       folhas.length ? `${folhas.length} ${folhas.length === 1 ? 'folha extra' : 'folhas extras'}` : ''].filter(Boolean).join(' + ');
   return (
     <Dialog open={aberto} onOpenChange={o => { if (!o && !gerando) onFechar(); }}>
       <DialogContent className="max-h-[90svh] max-w-[640px] overflow-y-auto">
@@ -137,6 +156,23 @@ export function BaixarDoFichario({ ano, itens, alteracoes, marketing, unidade, m
                     );
                   })}
                 </div>
+                {folhasDaVez.length > 0 && (
+                  <div data-testid="folhas-para-baixar">
+                    <p className="text-[12px] font-semibold">Folhas extras</p>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {folhasDaVez.map(f => {
+                        const marcada = folhas.includes(f.id); const mudou = folhaMudouDepoisDaImpressao(f, ano);
+                        return (
+                          <button key={f.id} type="button" role="checkbox" aria-checked={marcada} aria-label={`${f.titulo}${mudou ? ' (mudou)' : ''}`} onClick={() => alternarFolha(f.id)}
+                            className={`flex items-center gap-1.5 rounded-[10px] border px-2 py-1.5 text-left text-[12px] ${mudou ? 'border-[#e8a596] bg-[#fde3dd] font-semibold text-[#a53a26] dark:border-[#7a3a2c] dark:bg-[#5a2a20] dark:text-[#ffc9bd]' : 'border-black/10 bg-card dark:border-white/10'}`}>
+                            <span className={`grid h-3.5 w-3.5 shrink-0 place-items-center rounded-[4px] border ${marcada ? 'border-foreground bg-foreground' : 'border-black/25 dark:border-white/30'}`}>{marcada && <Check className="h-2.5 w-2.5 text-background" />}</span>
+                            <span>{f.titulo}<span className="block text-[11px] font-normal opacity-80">{lugarDaFolha(f)}</span></span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 <div>
                   <p className="text-[12px] font-semibold">De cada mês</p>
                   <div className="mt-1 flex flex-wrap gap-1.5" role="radiogroup" aria-label="De cada mês">
@@ -153,9 +189,9 @@ export function BaixarDoFichario({ ano, itens, alteracoes, marketing, unidade, m
 
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
           <span className="text-[12.5px] text-muted-foreground" data-testid="resumo-do-download">
-            {folhas === null ? 'O calendário inteiro' : folhas === 0 ? 'Escolham ao menos um mês' : `${folhas} ${folhas === 1 ? 'folha' : 'folhas'} · ${meses.map(m => MESES[m - 1]).join(', ')}`}
+            {resumo}
           </span>
-          <Button className="gap-2" disabled={gerando || folhas === 0} onClick={() => void baixar()}>
+          <Button className="gap-2" disabled={gerando || totalDeFolhas === 0} onClick={() => void baixar()}>
             {gerando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />} {gerando ? 'Montando o PDF…' : 'Baixar para imprimir'}
           </Button>
         </div>

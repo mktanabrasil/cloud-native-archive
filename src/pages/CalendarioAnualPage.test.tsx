@@ -28,6 +28,8 @@ vi.mock('@/lib/calendario/api', () => ({
   ANO_DO_CALENDARIO: 2027,
   lerAno: async () => ({ ano: 2027, tema: '', percursos: [], textos: {}, meses_revisados: [], capa_url: null, status: 'preenchimento', observacao: null, enviado_em: null, enviado_por: null, aprovado_em: null, aprovado_por: null, pdf_url: null, atualizado_em: '', atualizado_por: null }),
   lerItens: async () => estado.itens,
+  lerAlteracoes: async () => [],
+  lerFolhasExtras: async () => [],
   salvarAno: vi.fn(),
   enviarAoMarketing: vi.fn(), devolverAsCoordenadoras: vi.fn(), aprovarComPdf: vi.fn(), trocarCapa: vi.fn(), linkDoArquivo: vi.fn(async () => 'https://x'),
 }));
