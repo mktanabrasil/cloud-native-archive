@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User, Session } from '@supabase/supabase-js';
-import { conferirSessao } from '@/lib/sessao';
+import { conferirContaAtiva, conferirSessao } from '@/lib/sessao';
 
 interface AuthContextType {
   user: User | null;
@@ -27,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (_event === 'SIGNED_IN' && session?.user) setTimeout(() => { void conferirContaAtiva(session.user.id); }, 0);
       setSession(session);
       // A mesma pessoa continua sendo o mesmo objeto. O Supabase avisa login e
       // renovação de token a cada volta de aba; se cada aviso trocasse o
@@ -44,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // respondem "não autorizado". Se morreu, o signOut local derruba `session`
       // pelo onAuthStateChange e o roteador leva ao login, com aviso.
       if (session) void conferirSessao();
+      if (session?.user) void conferirContaAtiva(session.user.id);
     });
 
     return () => subscription.unsubscribe();

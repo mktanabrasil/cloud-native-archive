@@ -704,6 +704,9 @@ export default function UsersPage() {
       // Não permitir entrar como si mesmo
       if (authUserId === currentUser?.id) return false;
 
+      // Conta desativada fica travada no login (19/11/2026): "entrar como" não tem como dar certo.
+      if (!user.is_active) return false;
+
       // Só administrador geral. A edge function `admin-impersonate-user` exige
       // isso desde 26/08 — mostrar o botão para mais gente só geraria erro.
       return isAdmin;

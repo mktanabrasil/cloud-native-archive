@@ -48,6 +48,26 @@ export function consumirAvisoDeLogin(): string | null {
  * true quando a sessão está viva, false quando a pessoa foi deslogada.
  * Erros de rede não derrubam ninguém: sem resposta, nada muda.
  */
+/** O aviso de quem tem a conta desativada (o mesmo do login com senha). */
+export const AVISO_DE_CONTA_DESATIVADA = 'Sua conta está desativada. Entre em contato com um administrador.';
+
+/**
+ * Conta desativada não fica no app (19/11/2026). O login com senha já barrava;
+ * quem entrava por um link de e-mail (recuperação, acesso) passava. Confere o
+ * perfil e, se estiver desativado, sai com o aviso. Sem perfil (candidato), segue.
+ */
+export async function conferirContaAtiva(userId: string): Promise<boolean> {
+  try {
+    const { data } = await supabase.from('profiles').select('is_active').eq('user_id', userId).maybeSingle();
+    if (data && (data as { is_active: boolean | null }).is_active === false) {
+      guardarAvisoDeLogin(AVISO_DE_CONTA_DESATIVADA);
+      await supabase.auth.signOut({ scope: 'local' });
+      return false;
+    }
+  } catch { /* sem resposta agora: não derruba ninguém por falha de rede */ }
+  return true;
+}
+
 export async function conferirSessao(): Promise<boolean> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return false;

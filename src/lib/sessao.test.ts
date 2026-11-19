@@ -4,10 +4,12 @@ const espiao = vi.hoisted(() => ({
   session: null as unknown,
   getUserError: null as unknown,
   signOuts: [] as unknown[],
+  perfil: null as null | { is_active: boolean | null },
 }));
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: espiao.perfil, error: null }) }) }) }),
     auth: {
       getSession: () => Promise.resolve({ data: { session: espiao.session } }),
       getUser: () => Promise.resolve({ data: { user: espiao.getUserError ? null : { id: 'u1' } }, error: espiao.getUserError }),
@@ -16,9 +18,9 @@ vi.mock('@/integrations/supabase/client', () => ({
   },
 }));
 
-const { AVISO_DE_SESSAO_EXPIRADA, conferirSessao, consumirAvisoDeLogin, sessaoMorta, tratarNaoAutorizado } = await import('./sessao');
+const { AVISO_DE_CONTA_DESATIVADA, AVISO_DE_SESSAO_EXPIRADA, conferirContaAtiva, conferirSessao, consumirAvisoDeLogin, sessaoMorta, tratarNaoAutorizado } = await import('./sessao');
 
-beforeEach(() => { espiao.session = { access_token: 'x' }; espiao.getUserError = null; espiao.signOuts = []; sessionStorage.clear(); });
+beforeEach(() => { espiao.session = { access_token: 'x' }; espiao.getUserError = null; espiao.signOuts = []; espiao.perfil = null; sessionStorage.clear(); });
 
 describe('sessaoMorta', () => {
   it('reconhece os sinais do servidor de login e ignora o resto', () => {
@@ -56,5 +58,21 @@ describe('conferirSessao', () => {
     expect(await tratarNaoAutorizado()).toBe(true);
     espiao.getUserError = null;
     expect(await tratarNaoAutorizado()).toBe(false);
+  });
+});
+
+describe('conferirContaAtiva (19/11/2026)', () => {
+  it('conta desativada sai, com o aviso no login, por qualquer caminho de entrada', async () => {
+    espiao.perfil = { is_active: false };
+    expect(await conferirContaAtiva('u1')).toBe(false);
+    expect(espiao.signOuts).toEqual([{ scope: 'local' }]);
+    expect(consumirAvisoDeLogin()).toBe(AVISO_DE_CONTA_DESATIVADA);
+  });
+  it('conta ativa, ou sem perfil (candidato), segue', async () => {
+    espiao.perfil = { is_active: true };
+    expect(await conferirContaAtiva('u1')).toBe(true);
+    espiao.perfil = null;
+    expect(await conferirContaAtiva('u1')).toBe(true);
+    expect(espiao.signOuts).toEqual([]);
   });
 });
