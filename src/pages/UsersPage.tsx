@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { PUBLIC_APP_ORIGIN } from '@/lib/utils';
 import { useSearchParams } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
@@ -23,6 +23,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Edit2, Copy, Check, RefreshCw, KeyRound, UserCog, Trash2, ChevronDown, History } from 'lucide-react';
 import { AgendaDoGoogle } from '@/components/events/AgendaDoGoogle';
 import { ConfigDosAvisos } from '@/components/events/ConfigDosAvisos';
+import { GerarSenhaDialog, type ContaParaGerar } from '@/components/senhas/GerarSenhaDialog';
+import { lerSenhasDoPainel, textoDaUltimaSenha, type SenhaNoPainel } from '@/lib/senhas/painel';
 import { useToast } from '@/hooks/use-toast';
 import BulkActionBar from '@/components/BulkActionBar';
 import PageHeader from '@/components/PageHeader';
@@ -68,6 +70,16 @@ function deriveFromBond(bond: BondType | '' | null | undefined, currentUnit: str
 /** Vínculo da Educação (o Semanário) sem um CEI ou o GOE escolhido: não salva (17/11/2026). */
 function faltaUnidadeDaEducacao(bond: string | null | undefined, unit: string | null | undefined): boolean {
   return !!bond && BOND_RULES[bond as BondType]?.unitMode === 'educacao' && !UNIDADES_DA_EDUCACAO.some(u => u.valor === unit);
+}
+
+/** A senha de cada conta (19/11/2026): gerada pelo Painel ou pelo e-mail, ainda não gerada, ou a pessoa troca. */
+function SituacaoDaSenha({ senha }: { senha: SenhaNoPainel | undefined }) {
+  if (!senha) return null;
+  if (!senha.da_equipe) return <span className="text-[11.5px] text-[hsl(var(--fraco,0_0%_45%))]">senha: a pessoa troca</span>;
+  const texto = textoDaUltimaSenha(senha);
+  return texto
+    ? <span className="text-[11.5px] text-[hsl(var(--fraco,0_0%_45%))]" title={texto}>🔒 senha {texto}</span>
+    : <span className="text-[11.5px] font-medium text-[hsl(var(--warning))]">senha ainda não gerada</span>;
 }
 
 export default function UsersPage() {
@@ -131,6 +143,13 @@ export default function UsersPage() {
 
   // Reset password dialog
   const [resetTarget, setResetTarget] = useState<{ id: string; name: string; email: string } | null>(null);
+  // Senhas geradas pelo Painel (19/11/2026, PR 2 das senhas): de cada conta, se
+  // é da equipe e a última senha gerada. `null` = sem o SQL do PR 2 (fica o de antes).
+  const [senhas, setSenhas] = useState<Map<string, SenhaNoPainel> | null>(null);
+  const [gerarAlvo, setGerarAlvo] = useState<ContaParaGerar | null>(null);
+  const recarregarSenhas = useCallback(() => { void lerSenhasDoPainel().then(setSenhas); }, []);
+  // Relê quando a lista de usuários muda (pré-cadastro, mudança de vínculo).
+  useEffect(() => { if (isAdmin || isMarketing) recarregarSenhas(); }, [isAdmin, isMarketing, recarregarSenhas, dbUsers]);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resetSubmitting, setResetSubmitting] = useState(false);
@@ -692,14 +711,33 @@ export default function UsersPage() {
     // própria unidade — nem o próprio perfil.
     const canEdit = podeGerirTodos;
 
+    // Conta da equipe: a senha é gerada pelo Painel (marketing e administração
+    // geral), no padrão FdGhJiuPn. Administração geral e marketing seguem com o
+    // "Redefinir senha" de antes (só o admin).
+    const senha = authUserId ? senhas?.get(authUserId) : undefined;
+    const podeGerar = !!authUserId && !!senha?.da_equipe && authUserId !== currentUser?.id && (isAdmin || isMarketing);
+    const podeRedefinir = isAdmin && !senha?.da_equipe;
+
     return (
       <div className="flex items-center gap-1">
         {(isAdmin || canEdit) && (
           <>
-            {isAdmin && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
+            {podeGerar && (
+              <Button
+                variant="ghost"
+                size="icon"
+                title={senha?.gerada_em ? 'Gerar nova senha' : 'Gerar senha'}
+                aria-label={`${senha?.gerada_em ? 'Gerar nova senha' : 'Gerar senha'} de ${user.name}`}
+                onClick={() => setGerarAlvo({ id: authUserId!, name: user.name, email: user.email, jaGerada: !!senha?.gerada_em })}
+                className="h-11 w-11 text-muted-foreground hover:text-foreground md:h-8 md:w-8"
+              >
+                <KeyRound className="h-4 w-4" />
+              </Button>
+            )}
+            {podeRedefinir && (
+              <Button
+                variant="ghost"
+                size="icon"
                 title={authUserId ? "Redefinir senha" : "Usuário sem conta no sistema"}
                 disabled={!authUserId}
                 onClick={() => { if (authUserId) { setResetTarget({ id: authUserId, name: user.name, email: user.email }); setNewPassword(''); setConfirmPassword(''); } }}
@@ -1124,9 +1162,12 @@ export default function UsersPage() {
                                   <span className="text-[hsl(var(--fraco,0_0%_45%))]"> · {BOND_LABELS[user.bond_type as BondType]}</span>
                                 )}
                               </span>
-                              <span className={`inline-flex items-center gap-1.5 font-semibold ${user.is_active ? 'text-success' : 'text-destructive'}`}>
-                                <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                                {user.is_active ? 'Ativo' : 'Inativo'}
+                              <span className="inline-flex flex-col">
+                                <span className={`inline-flex items-center gap-1.5 font-semibold ${user.is_active ? 'text-success' : 'text-destructive'}`}>
+                                  <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                                  {user.is_active ? 'Ativo' : 'Inativo'}
+                                </span>
+                                <SituacaoDaSenha senha={senhas?.get(dbUsers.find(d => d.email?.toLowerCase() === user.email.toLowerCase())?.user_id ?? user.id)} />
                               </span>
                             </div>
                             <div className="-ml-2.5 mt-1 md:ml-0 md:mt-0 md:justify-self-end">
@@ -1747,6 +1788,7 @@ export default function UsersPage() {
       </Dialog>
 
       {/* Reset password dialog */}
+      <GerarSenhaDialog conta={gerarAlvo} onFechar={() => setGerarAlvo(null)} onGerada={recarregarSenhas} />
       <Dialog open={!!resetTarget} onOpenChange={(v) => { if (!v) { setResetTarget(null); setNewPassword(''); setConfirmPassword(''); } }}>
         <DialogContent>
           <DialogHeader>
