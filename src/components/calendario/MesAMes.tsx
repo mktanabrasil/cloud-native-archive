@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Check, ChevronLeft, ChevronRight, Eye, EyeOff, Lock, Plus, Printer, X } from 'lucide-react';
+import { ArrowRight, CalendarCheck2, Check, ChevronLeft, ChevronRight, Eye, EyeOff, Lock, Plus, Printer, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { linkDoEvento } from '@/lib/inicio/busca';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +29,7 @@ function Pilula({ item, pequena = false, nova = false }: { item: ItemDoCalendari
           {(item.unidades.length ? item.unidades : [...UNIDADES_DO_CALENDARIO]).map(u => <span key={u} className={`h-1.5 w-1.5 rounded-full ${COR_DA_UNIDADE[u]}`} />)}
         </span>
       )}
+      {item.evento_id && <CalendarCheck2 className="mt-[1px] h-3 w-3 shrink-0" aria-label="do formulário de eventos" />}
       <span className="line-clamp-3">{item.tipo === 'feriado' ? `${item.texto} · feriado` : item.texto}</span>
     </span>
   );
@@ -46,13 +49,15 @@ interface Props {
   podeApagar?: (i: ItemDoCalendario) => boolean;
   /** Fichário: baixar a folha deste mês para imprimir. */
   onBaixar?: (mes: number) => void;
+  /** A atividade de um evento: quem a vê consegue abrir o evento (da sua unidade, do Grupo, ou o marketing). */
+  podeAbrirEvento?: (i: ItemDoCalendario) => boolean;
   mes: number;
   onMes: (m: number) => void;
   onAno: (a: AnoDoCalendario) => void;
   onItens: (i: ItemDoCalendario[]) => void;
 }
 
-export function MesAMes({ ano, itens, editavel, editavelDoMes = editavel, fichario = false, alteracoes = [], podeApagar = () => true, onBaixar, mes, onMes, onAno, onItens }: Props) {
+export function MesAMes({ ano, itens, editavel, editavelDoMes = editavel, fichario = false, alteracoes = [], podeApagar = () => true, onBaixar, podeAbrirEvento = () => true, mes, onMes, onAno, onItens }: Props) {
   const mudancas = useMemo(() => mudancasPorMes(alteracoes), [alteracoes]);
   const doMes = mudancas[mes] ?? [];
   const nova = (i: ItemDoCalendario) => fichario && entrouDepoisDaImpressao(i, ano);
@@ -168,13 +173,14 @@ export function MesAMes({ ano, itens, editavel, editavelDoMes = editavel, fichar
             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-black/10" /> Data relevante (dá para esconder do PDF)</span>
             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-primary/45" /> Atividade das unidades</span>
             {fichario && <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded ring-2 ring-[#f37964]" /> Entrou depois da impressão</span>}
+            {itens.some(i => i.evento_id) && <span className="flex items-center gap-1.5"><CalendarCheck2 className="h-3.5 w-3.5" /> Veio do formulário de eventos</span>}
           </div>
         </section>
 
         {/* O dia: no computador ao lado; no celular, numa janela. */}
         <aside className="hidden lg:block">
           <div data-tutorial="cal-dia">
-          {sel ? <PainelDoDia chave={sel} ano={ano} itens={itens} editavel={editavel} podeApagar={podeApagar} fichario={fichario} onItens={onItens} />
+          {sel ? <PainelDoDia chave={sel} ano={ano} itens={itens} editavel={editavel} podeApagar={podeApagar} podeAbrirEvento={podeAbrirEvento} fichario={fichario} onItens={onItens} />
             : <div className="glass-2 rounded-[22px] p-4 text-[13.5px] text-muted-foreground">Toque num dia para ver o que já tem e acrescentar uma atividade.</div>}
           </div>
           {fichario && <MudancasDoMes mes={mes} mudancas={doMes} onBaixar={onBaixar} />}
@@ -186,7 +192,7 @@ export function MesAMes({ ano, itens, editavel, editavelDoMes = editavel, fichar
       <Dialog open={diaNoCelular && !!sel} onOpenChange={o => { if (!o) setDiaNoCelular(false); }}>
         <DialogContent className="max-h-[90svh] overflow-y-auto">
           <DialogHeader className="sr-only"><DialogTitle>O dia</DialogTitle><DialogDescription>O que já tem neste dia e o que acrescentar.</DialogDescription></DialogHeader>
-          {sel && <PainelDoDia chave={sel} ano={ano} itens={itens} editavel={editavel} podeApagar={podeApagar} fichario={fichario} onItens={onItens} escolherDia />}
+          {sel && <PainelDoDia chave={sel} ano={ano} itens={itens} editavel={editavel} podeApagar={podeApagar} podeAbrirEvento={podeAbrirEvento} fichario={fichario} onItens={onItens} escolherDia />}
         </DialogContent>
       </Dialog>
     </div>
@@ -231,7 +237,7 @@ function MesRevisado({ revisado, editavel, mostrar = true, onAlternar, mes, onMe
   );
 }
 
-function PainelDoDia({ chave, ano, itens, editavel, podeApagar = () => true, fichario = false, onItens, escolherDia = false }: { chave: string; ano: AnoDoCalendario; itens: ItemDoCalendario[]; editavel: boolean; podeApagar?: (i: ItemDoCalendario) => boolean; fichario?: boolean; onItens: (i: ItemDoCalendario[]) => void; escolherDia?: boolean }) {
+function PainelDoDia({ chave, ano, itens, editavel, podeApagar = () => true, podeAbrirEvento = () => true, fichario = false, onItens, escolherDia = false }: { chave: string; ano: AnoDoCalendario; itens: ItemDoCalendario[]; editavel: boolean; podeApagar?: (i: ItemDoCalendario) => boolean; podeAbrirEvento?: (i: ItemDoCalendario) => boolean; fichario?: boolean; onItens: (i: ItemDoCalendario[]) => void; escolherDia?: boolean }) {
   const [dia, setDia] = useState(chave);
   if (!escolherDia && dia !== chave) setDia(chave);
   const [texto, setTexto] = useState('');
@@ -276,8 +282,14 @@ function PainelDoDia({ chave, ano, itens, editavel, podeApagar = () => true, fic
             <span className="min-w-0">
               <b className={`font-semibold ${i.oculto ? 'line-through' : ''}`}>{i.texto}</b>
               <span className="block text-[11.5px] text-muted-foreground">
-                {i.tipo === 'atividade' ? `Atividade · ${rotuloDasUnidades(i.unidades)}` : i.tipo === 'feriado' ? 'Feriado · da agenda' : `Data relevante${i.oculto ? ' · escondida do PDF' : ''}`}
+                {i.evento_id ? `Evento confirmado · ${rotuloDasUnidades(i.unidades)}` : i.tipo === 'atividade' ? `Atividade · ${rotuloDasUnidades(i.unidades)}` : i.tipo === 'feriado' ? 'Feriado · da agenda' : `Data relevante${i.oculto ? ' · escondida do PDF' : ''}`}
               </span>
+              {i.evento_id && (
+                <span className="mt-1.5 block rounded-[10px] bg-[hsl(var(--sel))]/[.08] px-2 py-1.5 text-[11.5px] leading-snug" data-testid="item-do-evento">
+                  Entrou sozinho: veio do formulário de eventos. Para mudar o nome ou a data, mude o evento; o fichário acompanha.
+                  {podeAbrirEvento(i) && <Link to={linkDoEvento({ id: i.evento_id, slug: null })} className="mt-1 flex items-center gap-1 font-semibold underline-offset-2 hover:underline">Abrir o evento <ArrowRight className="h-3 w-3" /></Link>}
+                </span>
+              )}
               {autoriaDoItem(i) && <span className="block text-[11.5px] text-muted-foreground" data-testid="autoria-do-item">{autoriaDoItem(i)}{fichario && entrouDepoisDaImpressao(i, ano) ? ' · depois da impressão' : ''}</span>}
             </span>
             {i.tipo === 'feriado' && <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-label="Feriado: não sai" />}

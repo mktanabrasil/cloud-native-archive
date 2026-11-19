@@ -45,6 +45,8 @@ export interface ItemDoCalendario {
   fonte: string | null;
   /** O e-mail de quem acrescentou (o banco grava). */
   criado_por?: string | null;
+  /** Veio de um evento confirmado do formulário (19/11/2026): o fichário acompanha o evento. */
+  evento_id?: string | null;
   /** Autoria (13/11/2026): quem acrescentou e quem mexeu por último; o banco é quem grava. */
   criado_por_nome?: string | null;
   criado_em?: string;
@@ -142,8 +144,9 @@ export function unidadeDoCalendario(unidadeDoPerfil: string | null | undefined):
  * que ela acrescentou ou a que é só da unidade dela. As de todas ou de mais de
  * uma unidade, criadas por outra pessoa, só quem criou ou o marketing.
  */
-export function atividadeEhMinha(i: Pick<ItemDoCalendario, 'tipo' | 'criado_por' | 'unidades'>, quem: { email: string | null | undefined; unidade: string | null }): boolean {
-  if (i.tipo !== 'atividade') return false;
+export function atividadeEhMinha(i: Pick<ItemDoCalendario, 'tipo' | 'criado_por' | 'unidades' | 'evento_id'>, quem: { email: string | null | undefined; unidade: string | null }): boolean {
+  // A que veio de um evento muda pelo evento, nunca no mês a mês.
+  if (i.tipo !== 'atividade' || i.evento_id) return false;
   if (i.criado_por && quem.email && i.criado_por.toLowerCase() === quem.email.toLowerCase()) return true;
   return i.unidades.length === 1 && !!quem.unidade && i.unidades[0] === quem.unidade;
 }

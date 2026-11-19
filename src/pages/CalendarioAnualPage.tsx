@@ -163,7 +163,8 @@ function Preenchimento({ nome, marketing, email, unidade }: { nome: string; mark
   const editavel = marketing || aberto(ano);
   const editavelItens = marketing || itensAbertos(ano);
   const fichario = noFichario(ano);
-  const podeApagar = (i: ItemDoCalendario) => marketing || (i.tipo === 'atividade' && (!fichario || atividadeEhMinha(i, { email, unidade })));
+  // A atividade que veio de um evento confirmado sai pelo evento (cancelar, lixeira), nunca aqui.
+  const podeApagar = (i: ItemDoCalendario) => !i.evento_id && (marketing || (i.tipo === 'atividade' && (!fichario || atividadeEhMinha(i, { email, unidade }))));
   // As folhas extras: a gestão cria no fichário; muda e apaga só as dela. O marketing, sempre.
   const podeCriarFolha = marketing || fichario;
   const podeMexerNaFolha = (f: FolhaExtra) => marketing || (fichario && folhaEhMinha(f, email));
@@ -179,7 +180,7 @@ function Preenchimento({ nome, marketing, email, unidade }: { nome: string; mark
       {voltar}
       {parte === 'percursos' && <PercursosDoAno ano={ano} editavel={editavel} onAno={setAno} />}
       {parte === 'textos' && <TextosDoProjeto ano={ano} editavel={editavel} onAno={setAno} />}
-      {parte === 'mes' && <MesAMes ano={ano} itens={itens} editavel={editavelItens} editavelDoMes={editavel} fichario={fichario} alteracoes={alteracoes} podeApagar={podeApagar} onBaixar={m => setBaixar({ mes: m })} mes={mes} onMes={m => abrir('mes', m)} onAno={setAno} onItens={mudarItens} />}
+      {parte === 'mes' && <MesAMes ano={ano} itens={itens} editavel={editavelItens} editavelDoMes={editavel} fichario={fichario} alteracoes={alteracoes} podeApagar={podeApagar} onBaixar={m => setBaixar({ mes: m })} podeAbrirEvento={i => marketing || i.unidades.length === 0 || (!!unidade && i.unidades.includes(unidade))} mes={mes} onMes={m => abrir('mes', m)} onAno={setAno} onItens={mudarItens} />}
       {parte === 'extra' && (folhaPedida === 'nova' ? podeCriarFolha : !!folhaAberta) && (
         <EditorDaFolhaExtra key={folhaPedida ?? ''} ano={ano} itens={itens} folha={folhaAberta} podeMexer={folhaAberta ? podeMexerNaFolha(folhaAberta) : podeCriarFolha} unidadePadrao={marketing ? null : unidade}
           onSalva={f => { setExtras(xs => [...xs.filter(x => x.id !== f.id), f]); if (!folhaAberta) abrir('extra', undefined, f.id); }}
