@@ -139,10 +139,11 @@ export function destinatariosDaDevolucao(evento: { created_by?: string | null },
 // ---------- A equipe do dia (18/11/2026, setor Administração, PR 5) ----------
 
 /**
- * Quem recebe os e-mails da equipe do dia: duas listas no Painel, guardadas em
- * system_configs ('avisos_equipe'). Espelho de src/lib/events/avisosConfig.ts.
+ * Quem recebe os e-mails da equipe do dia e do Financeiro: listas no Painel,
+ * guardadas em system_configs ('avisos_equipe'). Espelho de
+ * src/lib/events/avisosConfig.ts. A do Financeiro entrou em 19/11/2026.
  */
-export interface ConfigDaEquipe { rh: string[]; voluntariado: string[]; atualizado_por?: string | null; atualizado_em?: string | null }
+export interface ConfigDaEquipe { rh: string[]; voluntariado: string[]; financeiro: string[]; atualizado_por?: string | null; atualizado_em?: string | null }
 export const CHAVE_DA_CONFIG_DA_EQUIPE = 'avisos_equipe';
 export const emailValido = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
 
@@ -150,7 +151,7 @@ export const emailValido = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.tr
 export function configDaEquipeDaLeitura(linha: { value?: unknown } | null | undefined): ConfigDaEquipe {
   const v = (linha?.value ?? {}) as Record<string, unknown>;
   const lista = (xs: unknown) => Array.isArray(xs) ? Array.from(new Set(xs.map(x => normEmail(String(x))).filter(emailValido))) : [];
-  return { rh: lista(v.rh), voluntariado: lista(v.voluntariado), atualizado_por: (v.atualizado_por as string | null | undefined) ?? null, atualizado_em: (v.atualizado_em as string | null | undefined) ?? null };
+  return { rh: lista(v.rh), voluntariado: lista(v.voluntariado), financeiro: lista(v.financeiro), atualizado_por: (v.atualizado_por as string | null | undefined) ?? null, atualizado_em: (v.atualizado_em as string | null | undefined) ?? null };
 }
 
 export type TipoDaEquipe = 'equipe_rh' | 'equipe_voluntariado';
@@ -163,6 +164,44 @@ export const ehAvisoDaEquipe = (tipo: string): tipo is TipoDaEquipe => tipo === 
 export function destinatariosDaEquipe(tipo: TipoDaEquipe, equipe: ConfigDaEquipe, config: ConfigDeAvisos): string[] {
   if (config.pre_lancamento) return [];
   return [...(tipo === 'equipe_rh' ? equipe.rh : equipe.voluntariado)];
+}
+
+// ---------- O Financeiro (19/11/2026, PR 2 do Financeiro) ----------
+
+/** O aviso das compras de um evento: ao confirmar e quando o pedido muda. */
+export const ehAvisoDoFinanceiro = (tipo: string): tipo is 'financeiro' => tipo === 'financeiro';
+
+/** Quem recebe: a lista do Financeiro no Painel. No pré-lançamento, ninguém. */
+export function destinatariosDoFinanceiro(equipe: ConfigDaEquipe, config: ConfigDeAvisos): string[] {
+  if (config.pre_lancamento) return [];
+  return [...(equipe.financeiro ?? [])];
+}
+
+/**
+ * O cancelamento (19/11/2026, decisão dele: "caso cancele o evento, todos
+ * recebem o mesmo email"): o e-mail geral de "Evento cancelado" vai também
+ * para as listas do Painel dos setores que o evento envolvia: RH se tinha
+ * funcionários escalados, Voluntariado se tinha voluntários, Financeiro se
+ * tinha compras da ANA. No pré-lançamento, ninguém a mais.
+ */
+export function listasNoCancelamento(
+  envolvia: { funcionarios: boolean; voluntarios: boolean; compras: boolean }, equipe: ConfigDaEquipe | null, config: ConfigDeAvisos,
+): string[] {
+  if (!equipe || config.pre_lancamento) return [];
+  return [
+    ...(envolvia.funcionarios ? equipe.rh : []),
+    ...(envolvia.voluntarios ? equipe.voluntariado : []),
+    ...(envolvia.compras ? equipe.financeiro ?? [] : []),
+  ];
+}
+
+/**
+ * As listas a gravar a partir do que o Painel mandou. A lista que não veio
+ * fica como estava: o app de antes (sem a lista do Financeiro) não a apaga.
+ */
+export function listasParaGravar(pedido: { rh?: unknown; voluntariado?: unknown; financeiro?: unknown }, atual: ConfigDaEquipe): Pick<ConfigDaEquipe, 'rh' | 'voluntariado' | 'financeiro'> {
+  const limpa = (xs: unknown, antes: string[]) => Array.isArray(xs) ? Array.from(new Set(xs.map(x => normEmail(String(x))).filter(emailValido))) : antes;
+  return { rh: limpa(pedido.rh, atual.rh), voluntariado: limpa(pedido.voluntariado, atual.voluntariado), financeiro: limpa(pedido.financeiro, atual.financeiro) };
 }
 
 /** O nome para comparar: sem acento, sem maiúscula, sem espaço sobrando (o mesmo do app e do banco). */

@@ -28,8 +28,8 @@ const DO_SETOR = {
 const SELO_CONFIRMADO = { rotulo: 'Confirmado', bg: '#e4f4ec', fg: '#1e7a4a', borda: '#a9dcc0' };
 const SELO_ALTERADA = { rotulo: 'Equipe alterada', bg: '#fdf3d6', fg: '#8a5a00', borda: '#f1d98a' };
 
-const tituloEmTexto = (t: string) => String(t || '').replace(/<br\s*\/?>/gi, ' ').replace(/\s+/g, ' ').trim();
-const escape = (s: string) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
+export const tituloEmTexto = (t: string) => String(t || '').replace(/<br\s*\/?>/gi, ' ').replace(/\s+/g, ' ').trim();
+export const escape = (s: string) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
 const fmt = (iso: string, opts: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, ...opts }).format(new Date(iso));
 const dataCurta = (iso: string) => fmt(iso, { day: '2-digit', month: '2-digit' });
 const dataLonga = (iso: string) => fmt(iso, { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -97,7 +97,7 @@ export function previaDaEquipe(a: AvisoDaEquipe): string {
   return `${quem} · ${quandoDaEquipe(a.evento)} · ${a.evento.location || 'Unidade ' + a.evento.unit}`;
 }
 
-function capa(e: Evento, cor: string): string {
+export function capa(e: Evento, cor: string): string {
   const escura = cor === '#484848';
   const tinta = escura ? '#fefdfb' : '#191b1a';
   const banner = e.banner_url_desktop || e.banner_image_desktop || e.banner_url_mobile || e.banner_image_mobile;
@@ -115,7 +115,7 @@ function capa(e: Evento, cor: string): string {
   </div>`;
 }
 
-function blocoDeData(e: Evento): string {
+export function blocoDeData(e: Evento): string {
   const i = e.start_datetime;
   return `<td style="width:64px;vertical-align:top;padding-right:14px">
     <div style="border:1px solid #e6e1d9;border-radius:10px;text-align:center;overflow:hidden;background:#fefdfb">

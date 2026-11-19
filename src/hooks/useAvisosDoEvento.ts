@@ -39,12 +39,12 @@ export function useAvisosDoEvento(eventId: string | null | undefined) {
     }
   }, [carregar]);
 
-  // Os avisos da equipe do dia (RH e Voluntariado, 18/11/2026) correm à parte:
+  // Os avisos da equipe do dia (RH e Voluntariado, 18/11/2026) e do Financeiro (19/11) correm à parte:
   // o "último" continua sendo o aviso do evento, que a agenda também usa.
   const doEvento = avisos.filter(a => !ehAvisoDaEquipe(a.tipo));
   // O mais recente de cada setor que não foi ignorado: um "a lista não mudou"
   // depois de uma falha não esconde a falha (nem o Reenviar).
-  const daEquipe = (['equipe_rh', 'equipe_voluntariado'] as const)
+  const daEquipe = (['equipe_rh', 'equipe_voluntariado', 'financeiro'] as const)
     .map(t => avisos.find(a => a.tipo === t && a.status !== 'ignorado'))
     .filter((a): a is AvisoDeEvento => !!a);
   return { avisos, ultimo: doEvento[0] ?? null, daEquipe, carregando, reenviando, reenviar, recarregar: carregar };

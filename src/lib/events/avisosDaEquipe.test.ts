@@ -22,7 +22,7 @@ describe('as listas do Painel', () => {
     expect(configDaEquipeDaLeitura(null)).toMatchObject({ rh: [], voluntariado: [] });
   });
   it('cada aviso vai para a lista do seu setor; no pré-lançamento, para ninguém', () => {
-    const eq = { rh: ['rh@ana.org'], voluntariado: ['vol@ana.org'] };
+    const eq = { rh: ['rh@ana.org'], voluntariado: ['vol@ana.org'], financeiro: [] };
     expect(destinatariosDaEquipe('equipe_rh', eq, LANCADO)).toEqual(['rh@ana.org']);
     expect(destinatariosDaEquipe('equipe_voluntariado', eq, LANCADO)).toEqual(['vol@ana.org']);
     expect(destinatariosDaEquipe('equipe_rh', eq, { ...LANCADO, pre_lancamento: true })).toEqual([]);
@@ -97,9 +97,9 @@ describe('o Painel', () => {
     { email: 'off@ana.org', name: 'Inativa', unit: 'Administração', is_active: false, permission_level: 'gestor_unidade', bond_type: 'rh' },
   ];
   it('sugere quem tem o vínculo, ativo, que ainda não está na lista', () => {
-    expect(sugestoesDaEquipe(perfis, { rh: [], voluntariado: [] }, 'rh')).toEqual([{ email: 'rh@ana.org', nome: 'Rosa' }]);
-    expect(sugestoesDaEquipe(perfis, { rh: ['rh@ana.org'], voluntariado: [] }, 'rh')).toEqual([]);
-    expect(sugestoesDaEquipe(perfis, { rh: [], voluntariado: [] }, 'voluntariado')).toEqual([{ email: 'vol@ana.org', nome: 'Vera' }]);
+    expect(sugestoesDaEquipe(perfis, { rh: [], voluntariado: [], financeiro: [] }, 'rh')).toEqual([{ email: 'rh@ana.org', nome: 'Rosa' }]);
+    expect(sugestoesDaEquipe(perfis, { rh: ['rh@ana.org'], voluntariado: [], financeiro: [] }, 'rh')).toEqual([]);
+    expect(sugestoesDaEquipe(perfis, { rh: [], voluntariado: [], financeiro: [] }, 'voluntariado')).toEqual([{ email: 'vol@ana.org', nome: 'Vera' }]);
   });
   it('o avulso que também está numa lista da equipe segue recebendo o geral', () => {
     const linhas = listaDeDestinatarios([], { ...LANCADO, extras: ['rh@ana.org'] });

@@ -12,8 +12,10 @@ import type { AppEvent } from '@/types';
 /** "atualizado" = título/descrição/visibilidade/unidade de um confirmado mudou: só agenda, sem e-mail. */
 /** "devolvido" (13/11/2026): o e-mail para quem enviou, quando a administração devolve. */
 /** "equipe_rh" / "equipe_voluntariado" (18/11/2026): a equipe do dia para o RH e o Voluntariado, ao confirmar e quando a lista muda. */
-export type TipoDeAviso = 'confirmado' | 'cancelado' | 'alterado' | 'atualizado' | 'devolvido' | 'equipe_rh' | 'equipe_voluntariado';
-export const ehAvisoDaEquipe = (tipo: TipoDeAviso) => tipo === 'equipe_rh' || tipo === 'equipe_voluntariado';
+/** "financeiro" (19/11/2026): as compras do evento para o Financeiro, ao confirmar e quando o pedido muda. */
+export type TipoDeAviso = 'confirmado' | 'cancelado' | 'alterado' | 'atualizado' | 'devolvido' | 'equipe_rh' | 'equipe_voluntariado' | 'financeiro';
+/** Os avisos que correm à parte do aviso do evento (equipe do dia e Financeiro): não contam para a agenda. */
+export const ehAvisoDaEquipe = (tipo: TipoDeAviso) => tipo === 'equipe_rh' || tipo === 'equipe_voluntariado' || tipo === 'financeiro';
 export type StatusDoAviso = 'pendente' | 'enviado' | 'falhou' | 'ignorado';
 
 export interface AvisoDeEvento {
@@ -126,6 +128,7 @@ export const ROTULO_DO_TIPO: Record<TipoDeAviso, string> = {
   devolvido: 'Devolução',
   equipe_rh: 'Equipe do dia · RH',
   equipe_voluntariado: 'Voluntários do dia · Voluntariado',
+  financeiro: 'Compras do evento · Financeiro',
 };
 
 /** "Aviso enviado a 7 endereços" / "a 1 endereço". */

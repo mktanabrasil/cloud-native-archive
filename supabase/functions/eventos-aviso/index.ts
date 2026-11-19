@@ -7,10 +7,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import nodemailer from 'npm:nodemailer@6.9.16';
 import {
   CHAVE_DA_CONFIG_DA_EQUIPE, SEMPRE_RECEBEM, chaveDoVoluntario, configDaEquipeDaLeitura, configDaLeitura, destinatarios, destinatariosDaDevolucao, destinatariosDaEquipe,
-  ehAvisoDaEquipe, emailValido, equipeSemMudanca, normEmail, reservar, type ConfigDaEquipe, type ConfigDeAvisos, type Perfil,
+  destinatariosDoFinanceiro, ehAvisoDaEquipe, ehAvisoDoFinanceiro, emailValido, equipeSemMudanca, listasNoCancelamento, listasParaGravar, normEmail, reservar,
+  type ConfigDaEquipe, type ConfigDeAvisos, type Perfil,
 } from './fila.ts';
 // Os e-mails da equipe do dia, para o RH e o Voluntariado (18/11/2026, PR 5).
 import { assuntoDaEquipe, corpoDaEquipeHtml, corpoDaEquipeTexto } from './equipe.ts';
+// O e-mail do Financeiro: as compras do evento (19/11/2026, PR 2 do Financeiro).
+import { assuntoDoFinanceiro, corpoDoFinanceiroHtml, corpoDoFinanceiroTexto, itensDeCompra, pedidoSemMudanca } from './financeiro.ts';
 
 // Rede de segurança: nada que escape de uma biblioteca pode derrubar o worker.
 // O aviso fica na fila e o painel mostra "Reenviar".
@@ -67,7 +70,7 @@ async function lerConfig(admin: any): Promise<{ config: ConfigDeAvisos | null; o
 const FUSO = 'America/Sao_Paulo';
 
 type Evento = Record<string, any>;
-type TipoDeAviso = 'confirmado' | 'cancelado' | 'alterado' | 'atualizado' | 'devolvido' | 'equipe_rh' | 'equipe_voluntariado';
+type TipoDeAviso = 'confirmado' | 'cancelado' | 'alterado' | 'atualizado' | 'devolvido' | 'equipe_rh' | 'equipe_voluntariado' | 'financeiro';
 interface Aviso { id: string; event_id: string; tipo: TipoDeAviso; evento: Evento; antes: Evento | null; tentativas: number; status: string; agenda_status: string }
 
 // ---------- texto ----------
@@ -652,7 +655,7 @@ Deno.serve(async (req) => {
     oauth_url?: boolean; oauth_code?: string; state?: string; listar_agendas?: boolean;
     escolher_agenda?: { calendar_id: string; nome: string }; desconectar?: boolean;
     config?: boolean; salvar_config?: { pre_lancamento: boolean; extras: string[]; excluidos: string[] };
-    salvar_config_equipe?: { rh: string[]; voluntariado: string[] };
+    salvar_config_equipe?: { rh?: string[]; voluntariado?: string[]; financeiro?: string[] };
   } = {};
   try { corpo = await req.json(); } catch { /* sem corpo: processa os pendentes */ }
 
@@ -695,12 +698,15 @@ Deno.serve(async (req) => {
     // As listas do RH e do Voluntariado (18/11/2026, PR 5).
     if (corpo.salvar_config_equipe) {
       const s = corpo.salvar_config_equipe;
-      const limpa = (xs: unknown) => Array.isArray(xs) ? Array.from(new Set(xs.map(x => normEmail(String(x))).filter(emailValido))) : [];
-      const nova: ConfigDaEquipe = { rh: limpa(s.rh), voluntariado: limpa(s.voluntariado), atualizado_por: pedidoPor, atualizado_em: new Date().toISOString() };
+      // A lista que não veio fica como estava (o app de antes não conhece a do
+      // Financeiro). Sem conseguir ler as de agora, não grava por cima.
+      const faltaAlguma = !Array.isArray(s.rh) || !Array.isArray(s.voluntariado) || !Array.isArray(s.financeiro);
+      if (!equipe && faltaAlguma) return json({ error: 'Não consegui ler as listas de agora; nada foi gravado. Tente de novo em instantes.' }, 503);
+      const nova: ConfigDaEquipe = { ...listasParaGravar(s, equipe ?? { rh: [], voluntariado: [], financeiro: [] }), atualizado_por: pedidoPor, atualizado_em: new Date().toISOString() };
       const { error } = await admin.from('system_configs').upsert({ key: CHAVE_DA_CONFIG_DA_EQUIPE, value: nova, updated_at: nova.atualizado_em, updated_by: usuarioId }, { onConflict: 'key' });
       if (error) return json({ error: `não consegui gravar as listas da equipe: ${error.message}` }, 500);
       equipe = nova;
-      console.log(`[avisos] ${pedidoPor} salvou as listas da equipe: rh=${nova.rh.length}, voluntariado=${nova.voluntariado.length}`);
+      console.log(`[avisos] ${pedidoPor} salvou as listas da equipe: rh=${nova.rh.length}, voluntariado=${nova.voluntariado.length}, financeiro=${nova.financeiro.length}`);
     }
     const { data: perfis } = await admin.from('profiles').select('email, name, unit, is_active, permission_level, bond_type');
     // `equipe: null` = não consegui ler as listas agora: o Painel não deixa salvar por cima.
@@ -885,18 +891,28 @@ Deno.serve(async (req) => {
   const resultado: Record<string, string> = {};
   for (const a of fila) {
     const daEquipe = ehAvisoDaEquipe(a.tipo);
+    const doFinanceiro = ehAvisoDoFinanceiro(a.tipo);
     // Sem as listas da equipe nesta chamada, o aviso fica para a próxima.
-    if (daEquipe && !equipe) { resultado[a.id] = 'aguardando: não consegui ler as listas da equipe'; continue; }
+    if ((daEquipe || doFinanceiro) && !equipe) { resultado[a.id] = 'aguardando: não consegui ler as listas da equipe'; continue; }
     // Reserva (13/11/2026): se outra chamada já pegou este aviso, ele é dela.
     if (!(await reservar(admin, a))) { resultado[a.id] = 'em andamento em outra chamada'; continue; }
     const devolucao = a.tipo === 'devolvido';
-    const para = devolucao
+    const geral = devolucao
       ? destinatariosDaDevolucao(a.evento, (perfis as Perfil[]) || [], config)
       : daEquipe
         ? destinatariosDaEquipe(a.tipo as 'equipe_rh' | 'equipe_voluntariado', equipe!, config)
+        : doFinanceiro
+          ? destinatariosDoFinanceiro(equipe!, config)
         // Quem está nas listas da equipe continua no aviso geral: o e-mail da
         // equipe não cobre cancelamento nem mudança de data (revisão de 18/11).
         : destinatarios(a.evento, (perfis as Perfil[]) || [], config);
+    // Cancelado (19/11/2026): o mesmo e-mail também para as listas do RH, do
+    // Voluntariado e do Financeiro, quando o evento envolvia o setor.
+    const para = a.tipo !== 'cancelado' ? geral : Array.from(new Set([...geral, ...listasNoCancelamento({
+      funcionarios: Array.isArray(a.evento.equipe_funcionarios) && a.evento.equipe_funcionarios.length > 0,
+      voluntarios: Array.isArray(a.evento.equipe_voluntarios) && a.evento.equipe_voluntarios.length > 0,
+      compras: itensDeCompra(a.evento).length > 0,
+    }, equipe, config)]));
     // A equipe do dia (18/11/2026): "Equipe alterada" sem ninguém entrando ou
     // saindo (só a ordem ou a grafia mudou) não vira e-mail; lista vazia no
     // Painel, ou pré-lançamento, fica registrada como ignorada.
@@ -906,6 +922,20 @@ Deno.serve(async (req) => {
         : para.length > 0 ? null
         : config.pre_lancamento ? 'pré-lançamento: os avisos da equipe só saem depois de lançar'
         : tipo === 'equipe_rh' ? 'a lista do RH no Painel está vazia' : 'a lista do Voluntariado no Painel está vazia';
+      if (motivo) {
+        await admin.from('avisos_de_evento').update({ status: 'ignorado', erro: motivo }).eq('id', a.id);
+        resultado[a.id] = `ignorado: ${motivo}`;
+        continue;
+      }
+    }
+    // O Financeiro (19/11/2026): "Pedido alterado" sem item entrando, saindo
+    // ou mudando de quantidade (só a ordem ou o cardápio) não vira e-mail;
+    // lista vazia no Painel, ou pré-lançamento, fica registrada como ignorada.
+    if (doFinanceiro && (a.status === 'pendente' || forcado === a.id)) {
+      const motivo = pedidoSemMudanca(a.antes, a.evento) ? 'as compras não mudaram (só a ordem ou o cardápio)'
+        : para.length > 0 ? null
+        : config.pre_lancamento ? 'pré-lançamento: os avisos do Financeiro só saem depois de lançar'
+        : 'a lista do Financeiro no Painel está vazia';
       if (motivo) {
         await admin.from('avisos_de_evento').update({ status: 'ignorado', erro: motivo }).eq('id', a.id);
         resultado[a.id] = `ignorado: ${motivo}`;
@@ -953,6 +983,9 @@ Deno.serve(async (req) => {
           const aviso = { tipo: a.tipo as 'equipe_rh' | 'equipe_voluntariado', evento: a.evento, antes: a.antes };
           const conf = a.tipo === 'equipe_voluntariado' ? await lerConfirmados() : null;
           await transporte.sendMail({ from: remetente, to: para, subject: assuntoDaEquipe(aviso), text: corpoDaEquipeTexto(aviso, SITE, conf), html: corpoDaEquipeHtml(aviso, SITE, conf) });
+        } else if (doFinanceiro) {
+          const aviso = { evento: a.evento, antes: a.antes };
+          await transporte.sendMail({ from: remetente, to: para, subject: assuntoDoFinanceiro(aviso), text: corpoDoFinanceiroTexto(aviso, SITE), html: corpoDoFinanceiroHtml(aviso, SITE) });
         } else await transporte.sendMail({
           from: remetente,
           to: para,
