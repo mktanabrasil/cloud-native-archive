@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Check, ChevronLeft, ChevronRight, Eye, EyeOff, Lock, Plus, Printer, X } from 'lucide-react';
+import { ArrowRight, CalendarCheck2, Check, ChevronLeft, ChevronRight, Eye, EyeOff, Lock, Plus, Printer, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { linkDoEvento } from '@/lib/inicio/busca';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +29,7 @@ function Pilula({ item, pequena = false, nova = false }: { item: ItemDoCalendari
           {(item.unidades.length ? item.unidades : [...UNIDADES_DO_CALENDARIO]).map(u => <span key={u} className={`h-1.5 w-1.5 rounded-full ${COR_DA_UNIDADE[u]}`} />)}
         </span>
       )}
+      {item.evento_id && <CalendarCheck2 className="mt-[1px] h-3 w-3 shrink-0" aria-label="do formulário de eventos" />}
       <span className="line-clamp-3">{item.tipo === 'feriado' ? `${item.texto} · feriado` : item.texto}</span>
     </span>
   );
@@ -168,6 +171,7 @@ export function MesAMes({ ano, itens, editavel, editavelDoMes = editavel, fichar
             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-black/10" /> Data relevante (dá para esconder do PDF)</span>
             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-primary/45" /> Atividade das unidades</span>
             {fichario && <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded ring-2 ring-[#f37964]" /> Entrou depois da impressão</span>}
+            {itens.some(i => i.evento_id) && <span className="flex items-center gap-1.5"><CalendarCheck2 className="h-3.5 w-3.5" /> Veio do formulário de eventos</span>}
           </div>
         </section>
 
@@ -276,8 +280,14 @@ function PainelDoDia({ chave, ano, itens, editavel, podeApagar = () => true, fic
             <span className="min-w-0">
               <b className={`font-semibold ${i.oculto ? 'line-through' : ''}`}>{i.texto}</b>
               <span className="block text-[11.5px] text-muted-foreground">
-                {i.tipo === 'atividade' ? `Atividade · ${rotuloDasUnidades(i.unidades)}` : i.tipo === 'feriado' ? 'Feriado · da agenda' : `Data relevante${i.oculto ? ' · escondida do PDF' : ''}`}
+                {i.evento_id ? `Evento confirmado · ${rotuloDasUnidades(i.unidades)}` : i.tipo === 'atividade' ? `Atividade · ${rotuloDasUnidades(i.unidades)}` : i.tipo === 'feriado' ? 'Feriado · da agenda' : `Data relevante${i.oculto ? ' · escondida do PDF' : ''}`}
               </span>
+              {i.evento_id && (
+                <span className="mt-1.5 block rounded-[10px] bg-[hsl(var(--sel))]/[.08] px-2 py-1.5 text-[11.5px] leading-snug" data-testid="item-do-evento">
+                  Entrou sozinho: veio do formulário de eventos. Para mudar o nome ou a data, mude o evento; o fichário acompanha.
+                  <Link to={linkDoEvento({ id: i.evento_id, slug: null })} className="mt-1 flex items-center gap-1 font-semibold underline-offset-2 hover:underline">Abrir o evento <ArrowRight className="h-3 w-3" /></Link>
+                </span>
+              )}
               {autoriaDoItem(i) && <span className="block text-[11.5px] text-muted-foreground" data-testid="autoria-do-item">{autoriaDoItem(i)}{fichario && entrouDepoisDaImpressao(i, ano) ? ' · depois da impressão' : ''}</span>}
             </span>
             {i.tipo === 'feriado' && <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-label="Feriado: não sai" />}

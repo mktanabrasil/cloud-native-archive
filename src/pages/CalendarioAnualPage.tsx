@@ -163,7 +163,8 @@ function Preenchimento({ nome, marketing, email, unidade }: { nome: string; mark
   const editavel = marketing || aberto(ano);
   const editavelItens = marketing || itensAbertos(ano);
   const fichario = noFichario(ano);
-  const podeApagar = (i: ItemDoCalendario) => marketing || (i.tipo === 'atividade' && (!fichario || atividadeEhMinha(i, { email, unidade })));
+  // A atividade que veio de um evento confirmado sai pelo evento (cancelar, lixeira), nunca aqui.
+  const podeApagar = (i: ItemDoCalendario) => !i.evento_id && (marketing || (i.tipo === 'atividade' && (!fichario || atividadeEhMinha(i, { email, unidade }))));
   // As folhas extras: a gestão cria no fichário; muda e apaga só as dela. O marketing, sempre.
   const podeCriarFolha = marketing || fichario;
   const podeMexerNaFolha = (f: FolhaExtra) => marketing || (fichario && folhaEhMinha(f, email));

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import type { AlteracaoDoCalendario, AnoDoCalendario, ItemDoCalendario } from '@/lib/calendario/regras';
 import { atividadeEhMinha } from '@/lib/calendario/regras';
 
@@ -20,6 +21,7 @@ const itens = [
   it_({ id: 'dic', texto: 'Reunião DIC', unidades: ['DIC'], criado_por: 'mkt@x' }),
   it_({ id: 'nil', texto: 'Passeio Nil', unidades: ['Nilópolis'], criado_por: 'nil@x', criado_em: '2027-03-02T10:00:00Z' }),
   it_({ id: 'todas', texto: 'Acampamento', unidades: [], criado_por: 'nil@x' }),
+  it_({ id: 'evento', texto: 'Festa da Família', unidades: ['DIC'], criado_por: null, evento_id: 'e1', criado_em: '2027-03-04T10:00:00Z' }),
 ];
 const alteracoes: AlteracaoDoCalendario[] = [
   { id: 'a1', ano: 2027, mes: 3, dia: '2027-03-01', acao: 'entrou', tipo: 'atividade', texto: 'Passeio Nil', unidades: ['Nilópolis'], item_id: 'nil', quem: 'Gestão Nilópolis', em: '2027-03-02T10:00:00Z' },
@@ -28,7 +30,7 @@ const alteracoes: AlteracaoDoCalendario[] = [
 const podeApagar = (i: ItemDoCalendario) => atividadeEhMinha(i, { email: 'dic@x', unidade: 'DIC' });
 
 describe('o mês a mês no fichário', () => {
-  const abrir = () => render(<MesAMes ano={ano} itens={itens} editavel editavelDoMes={false} fichario alteracoes={alteracoes} podeApagar={podeApagar} mes={3} onMes={() => {}} onAno={() => {}} onItens={() => {}} />);
+  const abrir = () => render(<MemoryRouter><MesAMes ano={ano} itens={itens} editavel editavelDoMes={false} fichario alteracoes={alteracoes} podeApagar={podeApagar} mes={3} onMes={() => {}} onAno={() => {}} onItens={() => {}} /></MemoryRouter>);
   it('o tema do mês fica fechado e o "revisado" some; acrescentar continua', () => {
     abrir();
     expect(screen.getAllByTestId('tema-fechado')[0]).toHaveTextContent('Pequenas atitudes');
@@ -50,6 +52,17 @@ describe('o mês a mês no fichário', () => {
     expect(within(painel).getByRole('button', { name: 'Apagar Reunião DIC' })).toBeInTheDocument();
     expect(within(painel).queryByRole('button', { name: 'Apagar Passeio Nil' })).not.toBeInTheDocument();
     expect(within(painel).queryByRole('button', { name: 'Apagar Acampamento' })).not.toBeInTheDocument();
+  });
+});
+
+describe('os eventos confirmados no fichário', () => {
+  it('a do evento mostra de onde veio, leva ao evento e ninguém apaga no mês a mês (nem sendo da DIC)', () => {
+    render(<MemoryRouter><MesAMes ano={ano} itens={itens} editavel editavelDoMes={false} fichario alteracoes={alteracoes} podeApagar={i => !i.evento_id && podeApagar(i)} mes={3} onMes={() => {}} onAno={() => {}} onItens={() => {}} /></MemoryRouter>);
+    const painel = screen.getAllByTestId('painel-do-dia')[0];
+    expect(within(painel).getByTestId('item-do-evento')).toHaveTextContent('veio do formulário de eventos');
+    expect(within(painel).getByRole('link', { name: /abrir o evento/i })).toHaveAttribute('href', '/social/eventos?slug=e1');
+    expect(within(painel).queryByRole('button', { name: 'Apagar Festa da Família' })).not.toBeInTheDocument();
+    expect(atividadeEhMinha({ tipo: 'atividade', unidades: ['DIC'], criado_por: 'dic@x', evento_id: 'e1' }, { email: 'dic@x', unidade: 'DIC' })).toBe(false);
   });
 });
 
