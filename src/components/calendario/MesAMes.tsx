@@ -202,7 +202,7 @@ export function MesAMes({ ano, itens, editavel, editavelDoMes = editavel, fichar
 /** O que mudou neste mês depois da impressão (19/11/2026): é o que pede uma folha nova no fichário. */
 function MudancasDoMes({ mes, mudancas, onBaixar }: { mes: number; mudancas: AlteracaoDoCalendario[]; onBaixar?: (mes: number) => void }) {
   return (
-    <section className="glass-2 mt-3 rounded-[22px] p-4" data-testid="lista-de-mudancas">
+    <section className="glass-2 mt-3 rounded-[22px] p-4" data-testid="lista-de-mudancas" data-tutorial="cal-mudancas">
       <p className="text-[13px] font-semibold">O que mudou em {MESES[mes - 1].toLowerCase()} desde a impressão</p>
       {mudancas.length === 0 ? <p className="mt-1.5 text-[12.5px] text-muted-foreground">Nada: a folha impressa continua valendo.</p> : (
         <ul className="mt-2 space-y-1.5">
