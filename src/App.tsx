@@ -20,6 +20,7 @@ import AdministracaoApoiadoresPage from "./pages/AdministracaoApoiadoresPage";
 import LoginPage from "./pages/LoginPage";
 import PublicEventsPage from "./pages/PublicEventsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import SenhaNovaPage from "./pages/SenhaNovaPage";
 import AuthConfirmPage from "./pages/AuthConfirmPage";
 import JournalPage from "./pages/JournalPage";
 import JornaisDasUnidadesPage from "./pages/JornaisDasUnidadesPage";
@@ -164,6 +165,8 @@ const App = () => (
                 } />
                 <Route path="/auth/confirm" element={<AuthConfirmPage />} />
                 <Route path="/redefinir-senha" element={<ResetPasswordPage />} />
+                {/* "Gerar minha senha", pelo link do e-mail (19/11/2026, PR 3 das senhas). */}
+                <Route path="/senha-nova" element={<SenhaNovaPage />} />
                 <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
                 <Route path="/mercado-solidario-publico" element={<MercadoSolidarioPublicPage />} />
                 {/* Enquetes (23/09/2026): votar e acompanhar são públicos, fora

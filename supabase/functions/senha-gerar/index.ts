@@ -61,6 +61,11 @@ Deno.serve(async (req) => {
 
     const senha = gerarSenha();
 
+    // As sessões caem ANTES de liberar: quem está logado nesta conta não usa os
+    // 2 minutos da liberação para escolher a própria senha (revisão de 19/11).
+    const { error: erroSessoes } = await admin.rpc('encerrar_sessoes', { _user_id: userId });
+    if (erroSessoes) console.error('[senha-gerar] sessões:', erroSessoes.message);
+
     const { error: erroLiberar } = await admin.rpc('liberar_troca_de_senha', { _user_id: userId });
     if (erroLiberar) {
       console.error('[senha-gerar] liberar:', erroLiberar.message);
@@ -72,10 +77,6 @@ Deno.serve(async (req) => {
       console.error('[senha-gerar] troca:', erroTroca.message);
       return json({ error: 'Não consegui gravar a senha nova. A senha antiga continua valendo.' }, 500);
     }
-
-    // A senha antiga já não vale; agora quem estava logado sai.
-    const { error: erroSessoes } = await admin.rpc('encerrar_sessoes', { _user_id: userId });
-    if (erroSessoes) console.error('[senha-gerar] sessões:', erroSessoes.message);
 
     const nomeDoAutor = autor?.name || quem.user.email || 'Painel';
     await admin.from('senhas_geradas').insert({ user_id: userId, gerada_por: callerId, gerada_por_nome: nomeDoAutor, origem: 'painel' });
