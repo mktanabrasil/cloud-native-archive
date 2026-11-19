@@ -2,7 +2,7 @@
 -- (19/11/2026, PR 4 do fichário; decisões do mockup do mesmo dia).
 --
 -- Depois que o calendário do ano foi aprovado e impresso, cada evento do
--- formulário que fica CONFIRMADO entra no mês a mês, como atividade:
+-- formulário que fica CONFIRMADO (ou concluído) entra no mês a mês, como atividade:
 --   - das unidades DIC, Nilópolis e Santana (com a sigla delas) e do Grupo
 --     ANA Brasil (como TODAS); os da Administração ficam fora;
 --   - públicos e internos; só o nome (sem horário);
@@ -13,8 +13,11 @@
 -- mudou depois da impressão, como "Formulário de eventos".
 --
 -- No mês a mês ninguém da gestão mexe nessas atividades (só pelo evento).
--- Os eventos confirmados ANTES da impressão não entram sozinhos: eles já
--- estavam no calendário que as unidades preencheram.
+-- Os eventos confirmados ANTES da impressão não entram sozinhos (eles já
+-- estavam no calendário que as unidades preencheram), nem quando alguém salva
+-- o evento de novo: só entra o evento que VIRA confirmado depois da impressão
+-- (ou é criado já confirmado). O que já entrou uma vez continua acompanhando
+-- (sai na lixeira e volta se for restaurado).
 --
 -- Uma falha aqui nunca impede confirmar, mudar ou cancelar o evento: o erro
 -- vira um aviso no log do banco.
@@ -33,7 +36,11 @@ END $$;
 ALTER TABLE public.calendario_itens ADD COLUMN IF NOT EXISTS evento_id uuid;
 CREATE INDEX IF NOT EXISTS calendario_itens_evento_idx ON public.calendario_itens (evento_id) WHERE evento_id IS NOT NULL;
 
--- 2. A gestão não muda nem apaga a atividade que veio de um evento (o evento manda).
+-- 2. A gestão não grava, não muda nem apaga a atividade que veio de um evento (o evento manda).
+DROP POLICY IF EXISTS calendario_itens_criar ON public.calendario_itens;
+CREATE POLICY calendario_itens_criar ON public.calendario_itens FOR INSERT TO authenticated
+  WITH CHECK (public.pode_editar_itens_do_calendario(ano) AND (evento_id IS NULL OR public.is_marketing_user(auth.uid())));
+
 DROP POLICY IF EXISTS calendario_itens_editar ON public.calendario_itens;
 CREATE POLICY calendario_itens_editar ON public.calendario_itens FOR UPDATE TO authenticated
   USING (public.pode_editar_itens_do_calendario(ano)
@@ -49,8 +56,19 @@ CREATE POLICY calendario_itens_apagar ON public.calendario_itens FOR DELETE TO a
          AND (public.is_marketing_user(auth.uid())
               OR (evento_id IS NULL AND tipo = 'atividade' AND (public.status_do_calendario(ano) <> 'aprovado' OR public.atividade_e_minha(criado_por, unidades)))));
 
--- 3. Pôr o fichário igual ao evento.
-CREATE OR REPLACE FUNCTION public.calendario_sincronizar_evento(_id uuid, _apagado boolean DEFAULT false)
+-- 3. Os eventos que já entraram alguma vez no fichário (para voltar se saírem da lixeira).
+CREATE TABLE IF NOT EXISTS public.calendario_eventos_no_fichario (
+  evento_id uuid PRIMARY KEY,
+  entrou_em timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.calendario_eventos_no_fichario ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.calendario_eventos_no_fichario FROM anon, authenticated;
+GRANT ALL ON public.calendario_eventos_no_fichario TO service_role;
+
+-- 4. Pôr o fichário igual ao evento. _pode_criar: o evento acabou de virar
+-- confirmado (ou nasceu assim); sem isso, só acompanha o que já entrou.
+DROP FUNCTION IF EXISTS public.calendario_sincronizar_evento(uuid, boolean);
+CREATE OR REPLACE FUNCTION public.calendario_sincronizar_evento(_id uuid, _apagado boolean DEFAULT false, _pode_criar boolean DEFAULT false)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
 DECLARE
   e public.events;
@@ -66,7 +84,7 @@ DECLARE
 BEGIN
   BEGIN
     IF NOT _apagado THEN SELECT * INTO e FROM public.events WHERE id = _id; END IF;
-    entra := NOT _apagado AND e.id IS NOT NULL AND e.status = 'confirmado' AND e.deleted_at IS NULL
+    entra := NOT _apagado AND e.id IS NOT NULL AND e.status IN ('confirmado', 'concluido') AND e.deleted_at IS NULL
              AND e.unit IN ('DIC', 'Nilópolis', 'Santana', 'Grupo ANA Brasil') AND e.start_datetime IS NOT NULL;
     IF entra THEN
       titulo := left(btrim(regexp_replace(regexp_replace(coalesce(e.title, ''), '<br\s*/?>', ' ', 'gi'), '\s+', ' ', 'g')), 120);
@@ -100,10 +118,15 @@ BEGIN
       SELECT extract(year FROM d)::int, d, titulo, 'atividade', das_unidades, true, false, 'Formulário de eventos', _id
         FROM unnest(dias) d
        WHERE NOT EXISTS (SELECT 1 FROM public.calendario_itens i WHERE i.evento_id = _id AND i.dia = d)
+         AND (_pode_criar OR EXISTS (SELECT 1 FROM public.calendario_eventos_no_fichario v WHERE v.evento_id = _id))
       RETURNING id
     )
     SELECT array_agg(id) INTO mexidos FROM (SELECT id FROM fora UNION ALL SELECT id FROM mudou UNION ALL SELECT id FROM novos) x;
 
+    -- Entrou: fica anotado, para voltar se sair da lixeira.
+    IF EXISTS (SELECT 1 FROM public.calendario_itens i WHERE i.evento_id = _id) THEN
+      INSERT INTO public.calendario_eventos_no_fichario (evento_id) VALUES (_id) ON CONFLICT DO NOTHING;
+    END IF;
     -- No registro, quem mexeu foi o formulário de eventos.
     IF mexidos IS NOT NULL THEN
       UPDATE public.calendario_alteracoes SET quem = 'Formulário de eventos'
@@ -119,16 +142,18 @@ BEGIN
   END;
 END;
 $$;
-REVOKE ALL ON FUNCTION public.calendario_sincronizar_evento(uuid, boolean) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.calendario_sincronizar_evento(uuid, boolean, boolean) FROM PUBLIC, anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.events_no_fichario()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
 BEGIN
   IF TG_OP = 'DELETE' THEN
-    PERFORM public.calendario_sincronizar_evento(OLD.id, true);
+    PERFORM public.calendario_sincronizar_evento(OLD.id, true, false);
     RETURN OLD;
   END IF;
-  PERFORM public.calendario_sincronizar_evento(NEW.id, false);
+  -- Pode entrar no fichário: nasceu confirmado, ou virou confirmado agora.
+  PERFORM public.calendario_sincronizar_evento(NEW.id, false,
+    TG_OP = 'INSERT' OR OLD.status IS NULL OR OLD.status NOT IN ('confirmado', 'concluido'));
   RETURN NEW;
 END;
 $$;
@@ -141,5 +166,6 @@ CREATE TRIGGER events_no_fichario
 
 -- Conferência: a coluna nova, as regras e o gatilho.
 SELECT 'coluna evento_id' AS item, (SELECT count(*)::text FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'calendario_itens' AND column_name = 'evento_id') AS valor
-UNION ALL SELECT 'regras com evento_id', (SELECT count(*)::text FROM pg_policies WHERE schemaname = 'public' AND tablename = 'calendario_itens' AND qual LIKE '%evento_id%')
+UNION ALL SELECT 'regras com evento_id', (SELECT count(*)::text FROM pg_policies WHERE schemaname = 'public' AND tablename = 'calendario_itens' AND (qual LIKE '%evento_id%' OR with_check LIKE '%evento_id%'))
+UNION ALL SELECT 'tabela dos que entraram', (to_regclass('public.calendario_eventos_no_fichario') IS NOT NULL)::text
 UNION ALL SELECT 'gatilho', (SELECT tgname FROM pg_trigger WHERE tgname = 'events_no_fichario');

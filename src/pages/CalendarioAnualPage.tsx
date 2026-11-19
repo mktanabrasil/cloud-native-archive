@@ -180,7 +180,7 @@ function Preenchimento({ nome, marketing, email, unidade }: { nome: string; mark
       {voltar}
       {parte === 'percursos' && <PercursosDoAno ano={ano} editavel={editavel} onAno={setAno} />}
       {parte === 'textos' && <TextosDoProjeto ano={ano} editavel={editavel} onAno={setAno} />}
-      {parte === 'mes' && <MesAMes ano={ano} itens={itens} editavel={editavelItens} editavelDoMes={editavel} fichario={fichario} alteracoes={alteracoes} podeApagar={podeApagar} onBaixar={m => setBaixar({ mes: m })} mes={mes} onMes={m => abrir('mes', m)} onAno={setAno} onItens={mudarItens} />}
+      {parte === 'mes' && <MesAMes ano={ano} itens={itens} editavel={editavelItens} editavelDoMes={editavel} fichario={fichario} alteracoes={alteracoes} podeApagar={podeApagar} onBaixar={m => setBaixar({ mes: m })} podeAbrirEvento={i => marketing || i.unidades.length === 0 || (!!unidade && i.unidades.includes(unidade))} mes={mes} onMes={m => abrir('mes', m)} onAno={setAno} onItens={mudarItens} />}
       {parte === 'extra' && (folhaPedida === 'nova' ? podeCriarFolha : !!folhaAberta) && (
         <EditorDaFolhaExtra key={folhaPedida ?? ''} ano={ano} itens={itens} folha={folhaAberta} podeMexer={folhaAberta ? podeMexerNaFolha(folhaAberta) : podeCriarFolha} unidadePadrao={marketing ? null : unidade}
           onSalva={f => { setExtras(xs => [...xs.filter(x => x.id !== f.id), f]); if (!folhaAberta) abrir('extra', undefined, f.id); }}

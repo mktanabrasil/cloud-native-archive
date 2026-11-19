@@ -64,6 +64,12 @@ describe('os eventos confirmados no fichário', () => {
     expect(within(painel).queryByRole('button', { name: 'Apagar Festa da Família' })).not.toBeInTheDocument();
     expect(atividadeEhMinha({ tipo: 'atividade', unidades: ['DIC'], criado_por: 'dic@x', evento_id: 'e1' }, { email: 'dic@x', unidade: 'DIC' })).toBe(false);
   });
+  it('o evento de outra unidade não mostra o link (ela não enxerga o evento)', () => {
+    render(<MemoryRouter><MesAMes ano={ano} itens={itens} editavel editavelDoMes={false} fichario alteracoes={alteracoes} podeApagar={() => false} podeAbrirEvento={() => false} mes={3} onMes={() => {}} onAno={() => {}} onItens={() => {}} /></MemoryRouter>);
+    const painel = screen.getAllByTestId('painel-do-dia')[0];
+    expect(within(painel).getByTestId('item-do-evento')).toBeInTheDocument();
+    expect(within(painel).queryByRole('link', { name: /abrir o evento/i })).not.toBeInTheDocument();
+  });
 });
 
 describe('o início no fichário', () => {

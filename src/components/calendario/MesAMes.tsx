@@ -49,13 +49,15 @@ interface Props {
   podeApagar?: (i: ItemDoCalendario) => boolean;
   /** Fichário: baixar a folha deste mês para imprimir. */
   onBaixar?: (mes: number) => void;
+  /** A atividade de um evento: quem a vê consegue abrir o evento (da sua unidade, do Grupo, ou o marketing). */
+  podeAbrirEvento?: (i: ItemDoCalendario) => boolean;
   mes: number;
   onMes: (m: number) => void;
   onAno: (a: AnoDoCalendario) => void;
   onItens: (i: ItemDoCalendario[]) => void;
 }
 
-export function MesAMes({ ano, itens, editavel, editavelDoMes = editavel, fichario = false, alteracoes = [], podeApagar = () => true, onBaixar, mes, onMes, onAno, onItens }: Props) {
+export function MesAMes({ ano, itens, editavel, editavelDoMes = editavel, fichario = false, alteracoes = [], podeApagar = () => true, onBaixar, podeAbrirEvento = () => true, mes, onMes, onAno, onItens }: Props) {
   const mudancas = useMemo(() => mudancasPorMes(alteracoes), [alteracoes]);
   const doMes = mudancas[mes] ?? [];
   const nova = (i: ItemDoCalendario) => fichario && entrouDepoisDaImpressao(i, ano);
@@ -178,7 +180,7 @@ export function MesAMes({ ano, itens, editavel, editavelDoMes = editavel, fichar
         {/* O dia: no computador ao lado; no celular, numa janela. */}
         <aside className="hidden lg:block">
           <div data-tutorial="cal-dia">
-          {sel ? <PainelDoDia chave={sel} ano={ano} itens={itens} editavel={editavel} podeApagar={podeApagar} fichario={fichario} onItens={onItens} />
+          {sel ? <PainelDoDia chave={sel} ano={ano} itens={itens} editavel={editavel} podeApagar={podeApagar} podeAbrirEvento={podeAbrirEvento} fichario={fichario} onItens={onItens} />
             : <div className="glass-2 rounded-[22px] p-4 text-[13.5px] text-muted-foreground">Toque num dia para ver o que já tem e acrescentar uma atividade.</div>}
           </div>
           {fichario && <MudancasDoMes mes={mes} mudancas={doMes} onBaixar={onBaixar} />}
@@ -190,7 +192,7 @@ export function MesAMes({ ano, itens, editavel, editavelDoMes = editavel, fichar
       <Dialog open={diaNoCelular && !!sel} onOpenChange={o => { if (!o) setDiaNoCelular(false); }}>
         <DialogContent className="max-h-[90svh] overflow-y-auto">
           <DialogHeader className="sr-only"><DialogTitle>O dia</DialogTitle><DialogDescription>O que já tem neste dia e o que acrescentar.</DialogDescription></DialogHeader>
-          {sel && <PainelDoDia chave={sel} ano={ano} itens={itens} editavel={editavel} podeApagar={podeApagar} fichario={fichario} onItens={onItens} escolherDia />}
+          {sel && <PainelDoDia chave={sel} ano={ano} itens={itens} editavel={editavel} podeApagar={podeApagar} podeAbrirEvento={podeAbrirEvento} fichario={fichario} onItens={onItens} escolherDia />}
         </DialogContent>
       </Dialog>
     </div>
@@ -235,7 +237,7 @@ function MesRevisado({ revisado, editavel, mostrar = true, onAlternar, mes, onMe
   );
 }
 
-function PainelDoDia({ chave, ano, itens, editavel, podeApagar = () => true, fichario = false, onItens, escolherDia = false }: { chave: string; ano: AnoDoCalendario; itens: ItemDoCalendario[]; editavel: boolean; podeApagar?: (i: ItemDoCalendario) => boolean; fichario?: boolean; onItens: (i: ItemDoCalendario[]) => void; escolherDia?: boolean }) {
+function PainelDoDia({ chave, ano, itens, editavel, podeApagar = () => true, podeAbrirEvento = () => true, fichario = false, onItens, escolherDia = false }: { chave: string; ano: AnoDoCalendario; itens: ItemDoCalendario[]; editavel: boolean; podeApagar?: (i: ItemDoCalendario) => boolean; podeAbrirEvento?: (i: ItemDoCalendario) => boolean; fichario?: boolean; onItens: (i: ItemDoCalendario[]) => void; escolherDia?: boolean }) {
   const [dia, setDia] = useState(chave);
   if (!escolherDia && dia !== chave) setDia(chave);
   const [texto, setTexto] = useState('');
@@ -285,7 +287,7 @@ function PainelDoDia({ chave, ano, itens, editavel, podeApagar = () => true, fic
               {i.evento_id && (
                 <span className="mt-1.5 block rounded-[10px] bg-[hsl(var(--sel))]/[.08] px-2 py-1.5 text-[11.5px] leading-snug" data-testid="item-do-evento">
                   Entrou sozinho: veio do formulário de eventos. Para mudar o nome ou a data, mude o evento; o fichário acompanha.
-                  <Link to={linkDoEvento({ id: i.evento_id, slug: null })} className="mt-1 flex items-center gap-1 font-semibold underline-offset-2 hover:underline">Abrir o evento <ArrowRight className="h-3 w-3" /></Link>
+                  {podeAbrirEvento(i) && <Link to={linkDoEvento({ id: i.evento_id, slug: null })} className="mt-1 flex items-center gap-1 font-semibold underline-offset-2 hover:underline">Abrir o evento <ArrowRight className="h-3 w-3" /></Link>}
                 </span>
               )}
               {autoriaDoItem(i) && <span className="block text-[11.5px] text-muted-foreground" data-testid="autoria-do-item">{autoriaDoItem(i)}{fichario && entrouDepoisDaImpressao(i, ano) ? ' · depois da impressão' : ''}</span>}
