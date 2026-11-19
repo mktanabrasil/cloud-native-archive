@@ -59,7 +59,8 @@ describe('o envio ao marketing', () => {
   });
   it('fichário: reaprovado, a impressa continua sendo a primeira e a última aparece à parte', async () => {
     render(<SituacaoDoPdf ano={ano({ status: 'aprovado', aprovado_em: '2027-03-01T15:00:00Z', impresso_em: '2026-11-30T15:00:00Z', pdf_url: '2027/b.pdf', pdf_impresso_url: '2027/a.pdf' })} marketing={false} editavel={false} onAno={() => {}} />);
-    expect(screen.getByText(/Aprovado pelo marketing em 30\/11/)).toBeInTheDocument();
+    expect(screen.getByText(/Aprovado pelo marketing em 01\/03/)).toBeInTheDocument();
+    expect(screen.getByText(/A versão impressa é de 30\/11/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /baixar a versão impressa/i }));
     await waitFor(() => expect(api.linkDoArquivo).toHaveBeenCalledWith('2027/a.pdf', 'Calendário Anual 2027 (impresso).pdf'));
     fireEvent.click(screen.getByRole('button', { name: /última aprovação/i }));

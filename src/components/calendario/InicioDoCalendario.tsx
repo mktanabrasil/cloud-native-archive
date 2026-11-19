@@ -94,7 +94,7 @@ export function InicioDoCalendario({ ano, editavel, marketing, alteracoes = [], 
                 ? <span className="inline-flex items-center rounded-full bg-[#fde3dd] px-2.5 py-0.5 text-[11.5px] font-semibold text-[#a53a26] dark:bg-[#5a2a20] dark:text-[#ffc9bd]">{mesesQueMudaram.length} {mesesQueMudaram.length === 1 ? 'mês mudou' : 'meses mudaram'} desde a impressão</span>
                 : <Selo tom="ok"><Check className="h-3 w-3" /> Igual ao impresso</Selo>}</div>
             <h2 className="mt-3 text-[17px] font-semibold">3. Mês a mês · aberto o ano todo</h2>
-            <p className="mt-1 max-w-[70ch] text-[13.5px] leading-relaxed text-muted-foreground">Acrescentem e tirem atividades a qualquer momento. Cada mudança marca o mês, e é a folha dele que precisa sair de novo para o fichário.</p>
+            <p className="mt-1 max-w-[70ch] text-[13.5px] leading-relaxed text-muted-foreground">{marketing ? 'As unidades acrescentam e tiram atividades a qualquer momento.' : 'Acrescentem atividades a qualquer momento; cada gestão apaga só as suas (as que acrescentou ou as só da sua unidade).'} Cada mudança marca o mês, e é a folha dele que precisa sair de novo para o fichário.</p>
             <div className="mt-3 grid grid-cols-6 gap-1.5 sm:grid-cols-12">
               {MESES.map((m, i) => {
                 const n = mudancas[i + 1]?.length ?? 0;

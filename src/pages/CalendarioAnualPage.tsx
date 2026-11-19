@@ -170,7 +170,7 @@ function Preenchimento({ nome, marketing, email, unidade }: { nome: string; mark
       {(parte === 'inicio' || (parte === 'revisao' && !marketing)) && <InicioDoCalendario ano={ano} editavel={editavel} marketing={marketing} alteracoes={alteracoes} onAno={setAno} abrir={abrir} onPrevia={() => setPreviaAberta(true)} />}
       <PreviaDoPdf ano={ano} itens={itens} podeBaixar={marketing} aberta={previaAberta} onFechar={() => setPreviaAberta(false)} />
       {roteiro && (
-        <JournalTutorial percurso={roteiro} passos={ROTEIROS_DO_CALENDARIO[roteiro]} rotulo="Tutorial do Calendário Anual"
+        <JournalTutorial percurso={roteiro} passos={ROTEIROS_DO_CALENDARIO[roteiro].filter(p => !(fichario && p.alvo === 'cal-revisado'))} rotulo="Tutorial do Calendário Anual"
           aberto={tutorialAberto} onFechar={() => setTutorialAberto(false)} onVisto={() => tutoriais.marcarVisto(roteiro)} />
       )}
     </>

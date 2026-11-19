@@ -124,8 +124,9 @@ export async function aprovarComPdf(ano: AnoDoCalendario, pdf: Blob, quem: strin
   const caminho = `${ano.ano}/calendario-anual-${ano.ano}-${Date.now()}.pdf`;
   await guardarArquivo(caminho, pdf, 'application/pdf');
   const novo = await mudarAno(ano.ano, { status: 'aprovado', aprovado_em: new Date().toISOString(), aprovado_por: quem, pdf_url: caminho, observacao: null }, 'Só o marketing aprova o calendário.');
-  // A versão impressa (19/11/2026) nunca sai do balde: só o PDF de uma reaprovação anterior.
-  if (ano.pdf_url !== (novo.pdf_impresso_url ?? ano.pdf_impresso_url)) await jogarFora(ano.pdf_url, caminho).catch(() => {});
+  // A versão impressa (19/11/2026) nunca sai do balde: só o PDF de uma reaprovação
+  // anterior. Sem o SQL do fichário (coluna ausente), na dúvida não apaga nada.
+  if ('pdf_impresso_url' in novo && ano.pdf_url !== novo.pdf_impresso_url) await jogarFora(ano.pdf_url, caminho).catch(() => {});
   return novo;
 }
 

@@ -85,8 +85,11 @@ describe('autoria (13/11/2026)', () => {
 
 describe('o fichário digital (19/11/2026)', () => {
   it('aprovado vira fichário: só as atividades seguem abertas', () => {
-    expect(noFichario({ status: 'aprovado' })).toBe(true);
-    expect(itensAbertos({ status: 'aprovado' })).toBe(true);
+    expect(noFichario({ status: 'aprovado', impresso_em: '2026-11-30T15:00:00Z' })).toBe(true);
+    expect(itensAbertos({ status: 'aprovado', impresso_em: '2026-11-30T15:00:00Z' })).toBe(true);
+    // Sem o SQL do fichário (sem impresso_em): aprovado continua fechado, como antes.
+    expect(noFichario({ status: 'aprovado' })).toBe(false);
+    expect(itensAbertos({ status: 'aprovado', impresso_em: null })).toBe(false);
     expect(itensAbertos({ status: 'preenchimento' })).toBe(true);
     expect(itensAbertos({ status: 'revisao' })).toBe(false);
   });
@@ -119,5 +122,13 @@ describe('o fichário digital (19/11/2026)', () => {
     expect(textoDaMudanca(m({}))).toBe('12/03 · Passeio ao Sesc · Nilópolis');
     expect(textoDaMudanca(m({ unidades: [] }))).toBe('12/03 · Passeio ao Sesc · Todas as unidades');
     expect(textoDaMudanca(m({ tipo: 'data', texto: 'Dia da Escola', dia: '2027-03-15' }))).toBe('15/03 · Dia da Escola · data relevante');
+    expect(textoDaMudanca(m({ tipo: 'tema', texto: 'Gratidão', unidades: [] }))).toBe('Tema do mês: Gratidão');
+  });
+  it('incluir e apagar (ou esconder e mostrar) no mesmo mês não marca o mês', () => {
+    const m = (o: Partial<AlteracaoDoCalendario>): AlteracaoDoCalendario => ({ id: Math.random().toString(36), ano: 2027, mes: 3, dia: '2027-03-12', acao: 'entrou', tipo: 'atividade', texto: 'X', unidades: [], item_id: 'i1', quem: null, em: '2027-03-02T10:00:00Z', ...o });
+    expect(mudancasPorMes([m({}), m({ acao: 'saiu', em: '2027-03-02T10:05:00Z' })])[3]).toBeUndefined();
+    expect(mudancasPorMes([m({ item_id: 'd', tipo: 'data', acao: 'saiu' }), m({ item_id: 'd', tipo: 'data', acao: 'entrou', em: '2027-03-03T10:00:00Z' })])[3]).toBeUndefined();
+    expect(mudancasPorMes([m({}), m({ acao: 'saiu', em: '2027-03-02T10:05:00Z' }), m({ item_id: 'i2' })])[3]).toHaveLength(1);
+    expect(mudancasPorMes([m({ acao: 'saiu', item_id: 'velho' })])[3]).toHaveLength(1);
   });
 });

@@ -21,8 +21,9 @@
 -- verdade; não reescrevemos as guardas instaladas). As regras das atividades
 -- são trocadas inteiras.
 --
--- ORDEM: pode rodar antes ou depois do merge (o app novo funciona sem ele,
--- só sem o registro). Pode rodar de novo sem estragar nada.
+-- ORDEM: pode rodar antes ou depois do merge. Sem este SQL, o app novo se
+-- comporta como o antigo (aprovado = fechado para a gestão) e não apaga
+-- nenhum PDF guardado. Pode rodar de novo sem estragar nada.
 
 -- 1. A versão impressa ---------------------------------------------------------------
 
@@ -38,9 +39,10 @@ BEGIN
     NEW.pdf_impresso_url := OLD.pdf_impresso_url;
     NEW.impresso_em := OLD.impresso_em;
   END IF;
+  -- impresso_em pelo relógio do servidor (o mesmo de criado_em das atividades).
   IF NEW.status = 'aprovado' AND NEW.pdf_url IS NOT NULL AND NEW.pdf_impresso_url IS NULL THEN
     NEW.pdf_impresso_url := NEW.pdf_url;
-    NEW.impresso_em := COALESCE(NEW.aprovado_em, now());
+    NEW.impresso_em := now();
   END IF;
   RETURN NEW;
 END;
@@ -51,10 +53,11 @@ DROP TRIGGER IF EXISTS calendario_anual_impresso ON public.calendario_anual;
 CREATE TRIGGER calendario_anual_impresso BEFORE UPDATE ON public.calendario_anual
   FOR EACH ROW EXECUTE FUNCTION public.calendario_anual_impresso();
 
--- Um ano que já esteja aprovado quando este SQL rodar.
+-- Um ano que já tenha sido aprovado quando este SQL rodar, mesmo que reaberto
+-- depois (pdf_url só existe depois de uma aprovação): a aprovação de então é a impressa.
 UPDATE public.calendario_anual
    SET pdf_impresso_url = pdf_url, impresso_em = COALESCE(aprovado_em, now())
- WHERE status = 'aprovado' AND pdf_url IS NOT NULL AND pdf_impresso_url IS NULL;
+ WHERE pdf_url IS NOT NULL AND pdf_impresso_url IS NULL;
 
 -- 2. Quem pode mexer nas atividades ---------------------------------------------------
 
@@ -104,7 +107,10 @@ CREATE POLICY calendario_itens_editar ON public.calendario_itens FOR UPDATE TO a
   USING (public.pode_editar_itens_do_calendario(ano)
          AND (public.is_marketing_user(auth.uid()) OR tipo <> 'atividade'
               OR public.status_do_calendario(ano) <> 'aprovado' OR public.atividade_e_minha(criado_por, unidades)))
-  WITH CHECK (public.pode_editar_itens_do_calendario(ano));
+  -- A linha nova também precisa continuar "dela" (não vira de outra unidade).
+  WITH CHECK (public.pode_editar_itens_do_calendario(ano)
+         AND (public.is_marketing_user(auth.uid()) OR tipo <> 'atividade'
+              OR public.status_do_calendario(ano) <> 'aprovado' OR public.atividade_e_minha(criado_por, unidades)));
 
 DROP POLICY IF EXISTS calendario_itens_apagar ON public.calendario_itens;
 CREATE POLICY calendario_itens_apagar ON public.calendario_itens FOR DELETE TO authenticated
@@ -175,8 +181,36 @@ DROP TRIGGER IF EXISTS calendario_itens_registra ON public.calendario_itens;
 CREATE TRIGGER calendario_itens_registra AFTER INSERT OR UPDATE OR DELETE ON public.calendario_itens
   FOR EACH ROW EXECUTE FUNCTION public.calendario_registrar_alteracao();
 
+-- O tema do mês também muda a folha (o título): quando o marketing reabre e
+-- ele muda depois da impressão, entra no registro como "mudou".
+CREATE OR REPLACE FUNCTION public.calendario_registrar_tema_do_mes()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
+DECLARE
+  m int;
+  antes text;
+  depois text;
+  quem text := CASE WHEN auth.uid() IS NULL THEN NULL ELSE public.meu_nome_no_calendario() END;
+BEGIN
+  IF NEW.impresso_em IS NULL OR NEW.percursos IS NOT DISTINCT FROM OLD.percursos THEN RETURN NULL; END IF;
+  FOR m IN 1..12 LOOP
+    SELECT btrim(coalesce(x->>'tema', '')) INTO antes FROM jsonb_array_elements(CASE WHEN jsonb_typeof(OLD.percursos) = 'array' THEN OLD.percursos ELSE '[]'::jsonb END) x WHERE (x->>'mes')::int = m LIMIT 1;
+    SELECT btrim(coalesce(x->>'tema', '')) INTO depois FROM jsonb_array_elements(CASE WHEN jsonb_typeof(NEW.percursos) = 'array' THEN NEW.percursos ELSE '[]'::jsonb END) x WHERE (x->>'mes')::int = m LIMIT 1;
+    IF coalesce(antes, '') IS DISTINCT FROM coalesce(depois, '') THEN
+      INSERT INTO public.calendario_alteracoes (ano, mes, dia, acao, tipo, texto, unidades, item_id, quem)
+      VALUES (NEW.ano, m, make_date(NEW.ano, m, 1), 'mudou', 'tema', coalesce(nullif(depois, ''), '(sem tema)'), '{}', NULL, quem);
+    END IF;
+  END LOOP;
+  RETURN NULL;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.calendario_registrar_tema_do_mes() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS calendario_anual_registra_tema ON public.calendario_anual;
+CREATE TRIGGER calendario_anual_registra_tema AFTER UPDATE ON public.calendario_anual
+  FOR EACH ROW EXECUTE FUNCTION public.calendario_registrar_tema_do_mes();
+
 -- Conferência: as colunas da versão impressa, as regras das atividades, o registro e os gatilhos.
 SELECT 'colunas da versão impressa' AS item, (SELECT count(*)::text FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'calendario_anual' AND column_name IN ('pdf_impresso_url', 'impresso_em')) AS valor
 UNION ALL SELECT 'regras das atividades', (SELECT count(*)::text FROM pg_policies WHERE schemaname = 'public' AND tablename = 'calendario_itens' AND policyname IN ('calendario_itens_criar', 'calendario_itens_editar', 'calendario_itens_apagar') AND (qual LIKE '%pode_editar_itens_do_calendario%' OR with_check LIKE '%pode_editar_itens_do_calendario%'))
 UNION ALL SELECT 'tabela do registro', (to_regclass('public.calendario_alteracoes') IS NOT NULL)::text
-UNION ALL SELECT 'gatilhos', (SELECT string_agg(tgname, ', ' ORDER BY tgname) FROM pg_trigger WHERE tgname IN ('calendario_anual_impresso', 'calendario_itens_registra'));
+UNION ALL SELECT 'gatilhos', (SELECT string_agg(tgname, ', ' ORDER BY tgname) FROM pg_trigger WHERE tgname IN ('calendario_anual_impresso', 'calendario_itens_registra', 'calendario_anual_registra_tema'));

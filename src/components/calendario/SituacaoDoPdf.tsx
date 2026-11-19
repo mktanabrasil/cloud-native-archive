@@ -96,7 +96,7 @@ export function SituacaoDoPdf({ ano, marketing, editavel, onAno, onPrevia, onRev
         <>
           <div className="mt-2"><Selo tom="ok"><Check className="h-3 w-3" /> Aprovado · fichário digital</Selo></div>
           <p className="mt-2 text-[13.5px] leading-snug">
-            <b>Aprovado pelo marketing{(ano.impresso_em ?? ano.aprovado_em) ? ` em ${diaEMes((ano.impresso_em ?? ano.aprovado_em)!)}` : ''}.</b> Agora o mês a mês continua aberto, como um fichário.
+            <b>Aprovado pelo marketing{ano.aprovado_em ? ` em ${diaEMes(ano.aprovado_em)}` : ''}.</b>{ano.impresso_em && ano.aprovado_em && diaEMes(ano.impresso_em) !== diaEMes(ano.aprovado_em) ? ` A versão impressa é de ${diaEMes(ano.impresso_em)}.` : ''} {ano.impresso_em ? 'Agora o mês a mês continua aberto, como um fichário.' : `O calendário de ${ano.ano} está pronto.`}
           </p>
           <Button className="mt-3 w-full gap-2" disabled={!(ano.pdf_impresso_url ?? ano.pdf_url)} onClick={() => void baixarPdfAprovado(ano, 'impresso')}><Download className="h-4 w-4" /> Baixar a versão impressa</Button>
           {ano.pdf_impresso_url && ano.pdf_url && ano.pdf_url !== ano.pdf_impresso_url && (
