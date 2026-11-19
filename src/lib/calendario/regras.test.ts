@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { folhaDaUnidade, folhaEhMinha, folhaMudouDepoisDaImpressao, folhasNaOrdem, lugarDaFolha, type FolhaExtra } from './regras';
 import { atividadeEhMinha, entrouDepoisDaImpressao, itensAbertos, mudancasPorMes, noFichario, textoDaMudanca, unidadeDoCalendario, type AlteracaoDoCalendario } from './regras';
 import { andamento, autoriaDe, autoriaDoItem, chaveDoDia, diaDaSemana, itensDoDia, percursosCompletos, rotuloDasUnidades, semanasDoMes, tituloDoMes, vaiProPdf, type AnoDoCalendario, type ItemDoCalendario } from './regras';
 import { destinoDaContaRestrita, ehContaRestrita } from '@/lib/contasRestritas';
@@ -130,5 +131,25 @@ describe('o fichário digital (19/11/2026)', () => {
     expect(mudancasPorMes([m({ item_id: 'd', tipo: 'data', acao: 'saiu' }), m({ item_id: 'd', tipo: 'data', acao: 'entrou', em: '2027-03-03T10:00:00Z' })])[3]).toBeUndefined();
     expect(mudancasPorMes([m({}), m({ acao: 'saiu', em: '2027-03-02T10:05:00Z' }), m({ item_id: 'i2' })])[3]).toHaveLength(1);
     expect(mudancasPorMes([m({ acao: 'saiu', item_id: 'velho' })])[3]).toHaveLength(1);
+  });
+});
+
+describe('as folhas extras (19/11/2026)', () => {
+  const f = (o: Partial<FolhaExtra>): FolhaExtra => ({ id: Math.random().toString(36), ano: 2027, titulo: 'X', depois_do_mes: 3, unidades: [], texto: '', pauta: true, criado_em: '2027-03-02T10:00:00Z', ...o });
+  it('na ordem do fichário e o lugar de cada uma', () => {
+    const l = folhasNaOrdem([f({ titulo: 'fim', depois_do_mes: null }), f({ titulo: 'jun', depois_do_mes: 6 }), f({ titulo: 'mar2', criado_em: '2027-03-05T10:00:00Z' }), f({ titulo: 'mar1' })]);
+    expect(l.map(x => x.titulo)).toEqual(['mar1', 'mar2', 'jun', 'fim']);
+    expect(lugarDaFolha({ depois_do_mes: 3 })).toBe('depois de Março');
+    expect(lugarDaFolha({ depois_do_mes: null })).toBe('no fim do fichário');
+  });
+  it('de quem é e se mudou depois da impressão', () => {
+    expect(folhaDaUnidade({ unidades: [] }, 'DIC')).toBe(true);
+    expect(folhaDaUnidade({ unidades: ['Nilópolis'] }, 'DIC')).toBe(false);
+    expect(folhaDaUnidade({ unidades: ['Nilópolis'] }, null)).toBe(true);
+    const ano = { impresso_em: '2026-11-30T15:00:00Z' };
+    expect(folhaMudouDepoisDaImpressao({ criado_em: '2026-11-20T10:00:00Z', alterado_em: '2027-01-05T10:00:00Z' }, ano)).toBe(true);
+    expect(folhaMudouDepoisDaImpressao({ criado_em: '2026-11-20T10:00:00Z', alterado_em: null }, ano)).toBe(false);
+    expect(folhaEhMinha({ criado_por: 'DIC@x' }, 'dic@x')).toBe(true);
+    expect(folhaEhMinha({ criado_por: null }, 'dic@x')).toBe(false);
   });
 });

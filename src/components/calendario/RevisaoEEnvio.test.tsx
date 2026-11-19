@@ -100,7 +100,7 @@ describe('a revisão do marketing', () => {
     fireEvent.click(screen.getByRole('button', { name: /aprovar e liberar o pdf/i }));
     fireEvent.click(await screen.findByRole('button', { name: 'Aprovar e liberar' }));
     await waitFor(() => expect(api.aprovarComPdf).toHaveBeenCalled());
-    expect(gerar.gerarPdfDoCalendario).toHaveBeenCalledWith(emRevisao, itens, { capaUrl: 'https://arquivo/2027/capa.jpg', previa: false });
+    expect(gerar.gerarPdfDoCalendario).toHaveBeenCalledWith(emRevisao, itens, { capaUrl: 'https://arquivo/2027/capa.jpg', previa: false, extras: [] });
     expect(api.aprovarComPdf.mock.calls[0][2]).toBe('MKT ANA');
     expect(onAno).toHaveBeenCalledWith(expect.objectContaining({ status: 'aprovado' }));
   });

@@ -1,5 +1,6 @@
 import type { jsPDF as JsPdf } from 'jspdf';
 import {
+  folhaDaUnidade, folhasNaOrdem, lugarDaFolha, type FolhaExtra,
   daUnidade, DIAS_DA_SEMANA, MESES, chaveDoDia, itensDoDia, percursosCompletos, semanasDoMes, tituloDoMes, vaiProPdf,
   type AnoDoCalendario, type ItemDoCalendario,
 } from '../regras';
@@ -77,6 +78,12 @@ export interface OpcoesDoPdf {
   unidade?: string | null;
   /** "Atualizada em 03/03/2027" no pé da folha do mês: para saber qual folha trocar no fichário. */
   atualizadaEm?: string | null;
+  /**
+   * As folhas extras (19/11/2026) a imprimir: cada uma depois do mês dela,
+   * quando o mês sai; as outras (do fim, ou de mês que não saiu), antes das
+   * folhas em branco do fim. Por unidade, só as dela e as de todas.
+   */
+  extras?: FolhaExtra[];
 }
 
 /** O que vai na grade: do ano, sem a data escondida; por unidade, as atividades dela e as de todas (feriados e datas ficam). */
@@ -286,6 +293,40 @@ export function montarPdf(
   const doAno = itensDaFolha(itens, ano.ano, unidade);
   // A margem do furo do fichário (19/11/2026): ~1 cm a mais à esquerda na folha do mês.
   const FURO = 25.9;
+  const extras = folhasNaOrdem((opcoes.extras ?? []).filter(f => f.ano === ano.ano && folhaDaUnidade(f, unidade)));
+  const ALTURA_DA_PAUTA = 17.5;
+  const folhaExtra = (f: FolhaExtra) => {
+    novaFolha(); cabecalho();
+    const X = ESQUERDA + FURO;
+    const quando = opcoes.atualizadaEm ?? f.alterado_em ?? f.criado_em ?? null;
+    const rotulo = [f.depois_do_mes ? MESES[f.depois_do_mes - 1] : 'Fim do fichário', 'Folha extra', f.unidades.length && f.unidades.length < 3 ? f.unidades.join(' + ') : 'Todas as unidades'].join(' · ').toLocaleUpperCase('pt-BR');
+    letra('medium', 8, '#777777'); pdf.text(rotulo, X, 88);
+    const linhasDoTitulo = quebrarEmLinhas([{ texto: f.titulo.trim(), negrito: true }], DIREITA - X, medirTrecho(18));
+    let y = 110;
+    linhasDoTitulo.forEach((l, i) => { if (i) y += 22; desenharLinha(l, X, y, 18); });
+    y += 26;
+    const pe = () => {
+      letra('light', 6.5, '#555555');
+      pdf.text(['Folha extra', lugarDaFolha(f), quando ? `atualizada em ${dataCompleta(quando)}` : ''].filter(Boolean).join(' · '), DIREITA, 590.5, { align: 'right' });
+    };
+    for (const b of blocosDe(f.texto)) {
+      if (b.tipo === 'respiro') { y += 8; continue; }
+      const x = b.tipo === 'item' ? X + 18.7 : X;
+      quebrarEmLinhas(b.trechos.map(t => ({ ...t, texto: marcas(t.texto) })), DIREITA - x, medirTrecho(11)).forEach((l, i) => {
+        // Texto que não cabe continua numa folha seguinte, com o mesmo cabeçalho.
+        if (y > LIMITE) { pe(); novaFolha(); cabecalho(); y = TOPO + 6; }
+        if (b.tipo === 'item' && i === 0) { pdf.setFillColor(COR.preto); pdf.circle(X + 8.6, y - 3.3, 1.9, 'F'); }
+        desenharLinha(l, x, y, 11);
+        y += 15;
+      });
+    }
+    if (f.pauta) {
+      pdf.setDrawColor('#c8c8c8'); pdf.setLineWidth(0.5);
+      for (let p = y + ALTURA_DA_PAUTA; p <= 570; p += ALTURA_DA_PAUTA) pdf.line(X, p, DIREITA, p);
+    }
+    pe();
+  };
+  const jaSairam = new Set<string>();
   for (const mes of meses) {
     if (partes.anotacoes) { paginaEmBranco(); paginaEmBranco(); }
     novaFolha();
@@ -334,7 +375,9 @@ export function montarPdf(
     pdf.text(LEGENDA_DAS_SIGLAS, X0, 590.5);
     const pe = [unidade ? `Folha ${daUnidade(unidade)}` : opcoes.atualizadaEm ? 'Geral' : '', opcoes.atualizadaEm ? `atualizada em ${dataCompleta(opcoes.atualizadaEm)}` : '', unidade || opcoes.atualizadaEm ? `folha de ${MESES[mes - 1]}` : ''].filter(Boolean);
     if (pe.length) pdf.text(pe.join(' · '), 826.1, 590.5, { align: 'right' });
+    for (const f of extras.filter(x => x.depois_do_mes === mes)) { folhaExtra(f); jaSairam.add(f.id); }
   }
+  for (const f of extras) if (!jaSairam.has(f.id)) folhaExtra(f);
 
   /* ---------- as doze em branco do fim ---------- */
   if (partes.fim) for (let i = 0; i < 12; i++) paginaEmBranco();
@@ -456,7 +499,7 @@ export async function gerarPdfDoCalendario(
   const capaUrl = opcoes.capaUrl ?? null;
   const comCapa = opcoes.partes?.capa ?? true;
   const [{ jsPDF }, recursos] = await Promise.all([import('jspdf'), carregarRecursos(ano, capaUrl, comCapa)]);
-  const r = montarPdf(jsPDF, ano, itens, recursos, { previa: opcoes.previa, partes: opcoes.partes, unidade: opcoes.unidade, atualizadaEm: opcoes.atualizadaEm });
+  const r = montarPdf(jsPDF, ano, itens, recursos, { previa: opcoes.previa, partes: opcoes.partes, unidade: opcoes.unidade, atualizadaEm: opcoes.atualizadaEm, extras: opcoes.extras });
   return { blob: r.pdf.output('blob') as Blob, paginas: r.paginas, paginasDeTexto: r.paginasDeTexto, celulasCheias: r.celulasCheias };
 }
 

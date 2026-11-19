@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { aprovarComPdf, devolverAsCoordenadoras, linkDoArquivo, trocarCapa } from '@/lib/calendario/api';
 import { prepararFotoDaCapa } from '@/lib/calendario/foto';
-import { SINAL_DA_MUDANCA, andamento, autoriaDe, diaEMes, textoDaMudanca, type AlteracaoDoCalendario, type AnoDoCalendario, type ItemDoCalendario } from '@/lib/calendario/regras';
+import { SINAL_DA_MUDANCA, andamento, autoriaDe, diaEMes, folhasNaOrdem, lugarDaFolha, rotuloDasUnidades, textoDaMudanca, type AlteracaoDoCalendario, type AnoDoCalendario, type FolhaExtra, type ItemDoCalendario } from '@/lib/calendario/regras';
 import { baixarPdfAprovado } from './SituacaoDoPdf';
 
 const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
@@ -28,11 +28,13 @@ function Selo({ ok, children }: { ok: boolean; children: React.ReactNode }) {
  * liberar o PDF. Ao aprovar, o PDF final (sem a marca de prévia) é gerado
  * aqui e guardado no balde; é esse arquivo que todas baixam.
  */
-export function RevisaoDoMarketing({ ano, itens, alteracoes = [], quem, onAno, onPrevia }: {
+export function RevisaoDoMarketing({ ano, itens, extras = [], alteracoes = [], quem, onAno, onPrevia }: {
   ano: AnoDoCalendario;
   itens: ItemDoCalendario[];
   /** Fichário (19/11/2026): o que as unidades mudaram depois da impressão. */
   alteracoes?: AlteracaoDoCalendario[];
+  /** As folhas extras do fichário. */
+  extras?: FolhaExtra[];
   /** O nome de quem aprova, para o registro. */
   quem: string;
   onAno: (a: AnoDoCalendario) => void;
@@ -82,7 +84,7 @@ export function RevisaoDoMarketing({ ano, itens, alteracoes = [], quem, onAno, o
         import('@/lib/calendario/pdf/gerar'),
         ano.capa_url ? linkDoArquivo(ano.capa_url) : Promise.resolve(null),
       ]);
-      const r = await gerarPdfDoCalendario(ano, itens, { capaUrl, previa: false });
+      const r = await gerarPdfDoCalendario(ano, itens, { capaUrl, previa: false, extras });
       setFase('enviando');
       onAno(await aprovarComPdf(ano, r.blob, quem));
       toast.success('Aprovado. O PDF está liberado para as coordenadoras.');
@@ -138,6 +140,20 @@ export function RevisaoDoMarketing({ ano, itens, alteracoes = [], quem, onAno, o
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {extras.length > 0 && (
+            <div data-testid="folhas-extras-na-revisao">
+              <h2 className="mt-5 text-[16px] font-semibold">Folhas extras · {extras.length}</h2>
+              <div className="mt-2 divide-y divide-black/[.07] dark:divide-white/10">
+                {folhasNaOrdem(extras).map(f => (
+                  <div key={f.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2 text-[13.5px]">
+                    <span className="min-w-0"><b className="font-semibold">{f.titulo}</b> <span className="text-muted-foreground">· {lugarDaFolha(f)} · {rotuloDasUnidades(f.unidades)}</span></span>
+                    <span className="text-[12px] text-muted-foreground">{f.criado_por_nome ?? ''}{f.criado_em ? ` · ${diaEMes(f.alterado_em ?? f.criado_em)}` : ''}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

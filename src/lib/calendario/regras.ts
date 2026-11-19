@@ -202,6 +202,48 @@ export function mesesQueMudaram(alteracoes: AlteracaoDoCalendario[], unidade: st
     !unidade || a.tipo !== 'atividade' || a.acao === 'mudou' || a.unidades.length === 0 || a.unidades.includes(unidade))).sort((x, y) => x - y);
 }
 
+/* ---------- as folhas extras do fichário (19/11/2026) ---------- */
+
+/** Uma folha a mais no fichário: título, texto (com **negrito** e "- "), pauta e o lugar (depois de um mês, ou no fim). */
+export interface FolhaExtra {
+  id: string;
+  ano: number;
+  titulo: string;
+  /** 1 a 12; null = no fim do fichário. */
+  depois_do_mes: number | null;
+  unidades: string[];
+  texto: string;
+  pauta: boolean;
+  criado_em?: string;
+  criado_por?: string | null;
+  criado_por_nome?: string | null;
+  alterado_em?: string | null;
+  alterado_por_nome?: string | null;
+}
+export const LIMITE_DA_FOLHA_EXTRA = 3000;
+
+/** "depois de Março" ou "no fim do fichário". */
+export const lugarDaFolha = (f: Pick<FolhaExtra, 'depois_do_mes'>) => (f.depois_do_mes ? `depois de ${MESES[f.depois_do_mes - 1]}` : 'no fim do fichário');
+
+/** Na ordem do fichário: depois de cada mês, e as do fim por último; empate, a mais antiga primeiro. */
+export function folhasNaOrdem(folhas: FolhaExtra[]): FolhaExtra[] {
+  return [...folhas].sort((a, b) => (a.depois_do_mes ?? 13) - (b.depois_do_mes ?? 13) || (a.criado_em ?? '').localeCompare(b.criado_em ?? ''));
+}
+
+/** A folha vale para a unidade: dela ou de todas (null = geral, todas valem). */
+export const folhaDaUnidade = (f: Pick<FolhaExtra, 'unidades'>, unidade: string | null) =>
+  !unidade || f.unidades.length === 0 || f.unidades.includes(unidade);
+
+/** Mudou depois da impressão: criada ou alterada depois dela. */
+export const folhaMudouDepoisDaImpressao = (f: Pick<FolhaExtra, 'criado_em' | 'alterado_em'>, ano: Pick<AnoDoCalendario, 'impresso_em'>) => {
+  const quando = f.alterado_em ?? f.criado_em;
+  return !!ano.impresso_em && !!quando && Date.parse(quando) > Date.parse(ano.impresso_em);
+};
+
+/** Só quem criou (ou o marketing) muda e apaga a folha. */
+export const folhaEhMinha = (f: Pick<FolhaExtra, 'criado_por'>, email: string | null | undefined) =>
+  !!f.criado_por && !!email && f.criado_por.toLowerCase() === email.toLowerCase();
+
 /** "da DIC", "de Nilópolis", "de Santana" (as duas são cidades). */
 export const daUnidade = (u: string) => (u === 'DIC' ? 'da DIC' : `de ${u}`);
 /** "a DIC", "Nilópolis": depois de "para". */

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { jsPDF } from 'jspdf';
 import { montarCelula, prefixoDasUnidades, CORAL } from './grade';
 import { itensDaFolha, linhasDoTema, montarPdf, type Imagem, type RecursosDoPdf } from './gerar';
-import type { AnoDoCalendario, ItemDoCalendario } from '../regras';
+import type { AnoDoCalendario, FolhaExtra, ItemDoCalendario } from '../regras';
 
 describe('a célula do dia', () => {
   const item = (c: Partial<ItemDoCalendario>): ItemDoCalendario => ({ id: 'x', ano: 2027, dia: '2027-04-21', texto: 'Tiradentes', tipo: 'feriado', unidades: [], destaque: true, oculto: false, fonte: null, ...c });
@@ -84,6 +84,19 @@ describe('o PDF inteiro', () => {
     expect(itensDaFolha(lista, 2027, null).map(i => i.texto)).toEqual(['Reunião', 'Passeio', 'Acampamento', 'Formação', 'Dia da Escola']);
     const r = montarPdf(jsPDF, ano(), lista, recursos, { partes: { capa: false, textos: false, meses: [3], anotacoes: false, fim: false }, unidade: 'DIC', atualizadaEm: '2027-03-03T12:00:00Z' });
     expect(r.paginas).toBe(1);
+  });
+
+  it('folhas extras: cada uma depois do mês dela; a do fim antes das em branco; por unidade, só as dela e as de todas', () => {
+    const f = (id: string, depois_do_mes: number | null, unidades: string[] = [], texto = '**Quando:** sábado\n- convite\n- doações'): FolhaExtra => ({ id, ano: 2027, titulo: `Folha ${id}`, depois_do_mes, unidades, texto, pauta: true, criado_em: `2027-03-0${id.length}T10:00:00Z` });
+    expect(montarPdf(jsPDF, ano(), [], recursos, { extras: [f('a', 3), f('b', null)] }).paginas).toBe(58 + 2);
+    // Só março com as duas: a de março sai depois da grade; a do fim, no fim.
+    expect(montarPdf(jsPDF, ano(), [], recursos, { partes: { capa: false, textos: false, meses: [3], anotacoes: false, fim: false }, extras: [f('a', 3), f('b', null)] }).paginas).toBe(3);
+    // Só a folha: nenhuma outra parte.
+    expect(montarPdf(jsPDF, ano(), [], recursos, { partes: { capa: false, textos: false, meses: [], anotacoes: false, fim: false }, extras: [f('a', 3)] }).paginas).toBe(1);
+    // Por unidade: a de Nilópolis fica de fora da folha da DIC.
+    expect(montarPdf(jsPDF, ano(), [], recursos, { partes: { capa: false, textos: false, meses: [], anotacoes: false, fim: false }, unidade: 'DIC', extras: [f('a', 3, ['DIC']), f('bb', 4, ['Nilópolis']), f('ccc', 5)] }).paginas).toBe(2);
+    // Texto comprido continua numa segunda folha, com o mesmo cabeçalho.
+    expect(montarPdf(jsPDF, ano(), [], recursos, { partes: { capa: false, textos: false, meses: [], anotacoes: false, fim: false }, extras: [f('a', 3, [], 'Linha comprida de teste para a folha extra. '.repeat(160))] }).paginas).toBe(2);
   });
 
   it('texto que não cabe continua na página seguinte, sem cortar nada', () => {
