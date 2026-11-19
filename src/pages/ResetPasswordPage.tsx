@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { KeyRound, CheckCircle2, AlertCircle } from 'lucide-react';
 import { ROTAS_DO_CANDIDATO, ehCandidato } from '@/lib/vagas/conta';
+import { AVISO_DA_SENHA_TRANCADA, ehErroDeSenhaTrancada, minhaSenhaTrancada } from '@/lib/senhas/cadeado';
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
   AlertDialogDescription, AlertDialogFooter, AlertDialogAction,
@@ -19,6 +20,14 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState<{ title: string; message: string; type: 'error' | 'success' } | null>(null);
   const navigate = useNavigate();
+  // O cadeado das senhas (19/11/2026): conta trancada não escolhe a senha aqui.
+  const [trancada, setTrancada] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    // Só liga: a resposta pode chegar depois de uma recusa do banco, e não pode apagar o aviso.
+    void minhaSenhaTrancada().then(t => { if (vivo && t) setTrancada(true); });
+    return () => { vivo = false; };
+  }, []);
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +41,9 @@ export default function ResetPasswordPage() {
     }
     setLoading(true);
     const { data, error } = await supabase.auth.updateUser({ password });
-    if (error) {
+    if (error && (ehErroDeSenhaTrancada(error) || await minhaSenhaTrancada())) {
+      setTrancada(true);
+    } else if (error) {
       setPopup({ title: 'Erro', message: error.message, type: 'error' });
     } else {
       setPopup({ title: 'Senha alterada!', message: 'Sua senha foi redefinida com sucesso. Você será redirecionado.', type: 'success' });
@@ -65,9 +76,15 @@ export default function ResetPasswordPage() {
           <CardHeader className="text-center">
             <img src={logoImg} alt="" className="mx-auto mb-4 h-14 w-14 rounded-2xl object-cover" />
             <CardTitle className="text-2xl">Redefinir Senha</CardTitle>
-            <CardDescription>Digite sua nova senha abaixo</CardDescription>
+            <CardDescription>{trancada ? 'A senha desta conta é da administração' : 'Digite sua nova senha abaixo'}</CardDescription>
           </CardHeader>
           <CardContent>
+            {trancada ? (
+              <div role="status" className="space-y-3 text-center text-sm">
+                <p className="rounded-xl bg-muted p-3 text-foreground">{AVISO_DA_SENHA_TRANCADA}</p>
+                <Button variant="outline" className="w-full" onClick={() => navigate('/')}>Voltar ao app</Button>
+              </div>
+            ) : (
             <form onSubmit={handleReset} className="space-y-4">
               <div>
                 <Label htmlFor="new-password">Nova senha</Label>
@@ -82,6 +99,7 @@ export default function ResetPasswordPage() {
                 {loading ? 'Aguarde...' : 'Redefinir Senha'}
               </Button>
             </form>
+            )}
           </CardContent>
         </Card>
       </div>
