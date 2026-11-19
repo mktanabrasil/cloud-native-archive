@@ -8,6 +8,7 @@ import { acrescentarItem, apagarItem, editarItem, salvarAno } from '@/lib/calend
 import {
   DIAS_DA_SEMANA, LIMITE_DO_TEXTO, MESES, UNIDADES_DO_CALENDARIO, chaveDoDia, diaDaSemana, itensDoDia, percursosCompletos,
   autoriaDe, autoriaDoItem, rotuloDasUnidades, semanasDoMes, type AnoDoCalendario, type ItemDoCalendario,
+  SINAL_DA_MUDANCA, entrouDepoisDaImpressao, mudancasPorMes, textoDaMudanca, diaEMes, type AlteracaoDoCalendario,
 } from '@/lib/calendario/regras';
 
 const COR_DA_UNIDADE: Record<string, string> = {
@@ -15,12 +16,12 @@ const COR_DA_UNIDADE: Record<string, string> = {
 };
 const FIM_DE_SEMANA = 'bg-[#eff8fe] dark:bg-[hsl(201_40%_16%)]';
 
-function Pilula({ item, pequena = false }: { item: ItemDoCalendario; pequena?: boolean }) {
+function Pilula({ item, pequena = false, nova = false }: { item: ItemDoCalendario; pequena?: boolean; nova?: boolean }) {
   const tom = item.tipo === 'feriado'
     ? 'bg-[#fde3dd] font-semibold text-[#a53a26] dark:bg-[#5a2a20] dark:text-[#ffc9bd]'
     : item.tipo === 'atividade' ? 'bg-primary/45 font-semibold text-foreground' : 'bg-black/[.045] text-muted-foreground dark:bg-white/[.07]';
   return (
-    <span className={`flex items-start gap-1 rounded-[7px] px-1.5 py-[3px] leading-snug ${pequena ? 'text-[10.5px]' : 'text-[12.5px]'} ${tom} ${item.oculto ? 'line-through opacity-50' : ''}`}>
+    <span className={`flex items-start gap-1 rounded-[7px] px-1.5 py-[3px] leading-snug ${pequena ? 'text-[10.5px]' : 'text-[12.5px]'} ${tom} ${item.oculto ? 'line-through opacity-50' : ''} ${nova ? 'ring-2 ring-[#f37964]' : ''}`} data-nova={nova || undefined}>
       {item.tipo === 'atividade' && (
         <span className="mt-[3px] flex shrink-0 gap-[2px]" aria-hidden="true">
           {(item.unidades.length ? item.unidades : [...UNIDADES_DO_CALENDARIO]).map(u => <span key={u} className={`h-1.5 w-1.5 rounded-full ${COR_DA_UNIDADE[u]}`} />)}
@@ -34,14 +35,25 @@ function Pilula({ item, pequena = false }: { item: ItemDoCalendario; pequena?: b
 interface Props {
   ano: AnoDoCalendario;
   itens: ItemDoCalendario[];
+  /** As atividades (acrescentar, esconder, apagar). */
   editavel: boolean;
+  /** O tema do mês e o "revisado" (fechados no fichário). Sem ele, vale `editavel`. */
+  editavelDoMes?: boolean;
+  /** Fichário digital (19/11/2026): aprovado e impresso. */
+  fichario?: boolean;
+  alteracoes?: AlteracaoDoCalendario[];
+  /** Quem pode apagar cada atividade (no fichário, só as suas). */
+  podeApagar?: (i: ItemDoCalendario) => boolean;
   mes: number;
   onMes: (m: number) => void;
   onAno: (a: AnoDoCalendario) => void;
   onItens: (i: ItemDoCalendario[]) => void;
 }
 
-export function MesAMes({ ano, itens, editavel, mes, onMes, onAno, onItens }: Props) {
+export function MesAMes({ ano, itens, editavel, editavelDoMes = editavel, fichario = false, alteracoes = [], podeApagar = () => true, mes, onMes, onAno, onItens }: Props) {
+  const mudancas = useMemo(() => mudancasPorMes(alteracoes), [alteracoes]);
+  const doMes = mudancas[mes] ?? [];
+  const nova = (i: ItemDoCalendario) => fichario && entrouDepoisDaImpressao(i, ano);
   // O mês abre com o dia 1 escolhido: no computador o formulário já aparece ao
   // lado (13/11/2026). No celular, a janela do dia só abre no toque.
   const [sel, setSel] = useState<string | null>(() => chaveDoDia(ano.ano, mes, 1));
@@ -74,12 +86,17 @@ export function MesAMes({ ano, itens, editavel, mes, onMes, onAno, onItens }: Pr
   return (
     <div className="mx-auto w-full max-w-7xl px-4 pb-10 lg:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-[26px] font-bold tracking-tight sm:text-[28px]">{MESES[mes - 1]} · {ano.ano}</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="font-display text-[26px] font-bold tracking-tight sm:text-[28px]">{MESES[mes - 1]} · {ano.ano}</h1>
+          {fichario && doMes.length > 0 && <span className="rounded-full bg-[#fde3dd] px-2.5 py-0.5 text-[11.5px] font-semibold text-[#a53a26] dark:bg-[#5a2a20] dark:text-[#ffc9bd]" data-testid="mudancas-do-mes">{doMes.length} {doMes.length === 1 ? 'mudança' : 'mudanças'} desde a impressão</span>}
+        </div>
         <div className="flex max-w-full gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]">
           {MESES.map((m, i) => (
             <button key={m} type="button" onClick={() => onMes(i + 1)} aria-current={i + 1 === mes ? 'true' : undefined}
               className={`flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[12.5px] ${i + 1 === mes ? 'bg-foreground font-semibold text-background' : 'glass-1'}`}>
-              {ano.meses_revisados.includes(i + 1) && i + 1 !== mes && <Check className="h-3 w-3 text-[hsl(var(--sel))]" aria-label="revisado" />}{m.slice(0, 3)}
+              {fichario
+                ? (mudancas[i + 1]?.length ? <span className="h-1.5 w-1.5 rounded-full bg-[#f37964]" aria-label="mudou desde a impressão" /> : null)
+                : ano.meses_revisados.includes(i + 1) && i + 1 !== mes && <Check className="h-3 w-3 text-[hsl(var(--sel))]" aria-label="revisado" />}{m.slice(0, 3)}
             </button>
           ))}
         </div>
@@ -87,13 +104,20 @@ export function MesAMes({ ano, itens, editavel, mes, onMes, onAno, onItens }: Pr
 
       <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_330px]">
         <section className="glass-2 min-w-0 rounded-[22px] p-4">
+          {fichario && !editavelDoMes ? (
+            <p className="flex items-start gap-2 rounded-[14px] bg-white/60 px-3 py-2 text-[12.5px] dark:bg-white/5" data-tutorial="cal-tema-mes" data-testid="tema-fechado">
+              <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <span>Tema do mês: <b>{percursos[mes - 1].tema || '—'}</b>. Fechado desde a impressão; o mês a mês continua aberto.</span>
+            </p>
+          ) : (
           <div className="grid gap-3 sm:grid-cols-2" data-tutorial="cal-tema-mes">
             <div><label htmlFor="cal-tema-mes" className="text-[12.5px] font-semibold">Tema do mês <span className="font-normal text-muted-foreground">(vai no título da página)</span></label>
-              <Input id="cal-tema-mes" className="mt-1" value={tema} maxLength={80} disabled={!editavel} onChange={e => setTema(e.target.value)} onBlur={salvarPercurso} />
+              <Input id="cal-tema-mes" className="mt-1" value={tema} maxLength={80} disabled={!editavelDoMes} onChange={e => setTema(e.target.value)} onBlur={salvarPercurso} />
               {autoriaDe(ano, `percurso:${mes}`) && <p className="mt-1 text-[11.5px] text-muted-foreground">Por {autoriaDe(ano, `percurso:${mes}`)}</p>}</div>
             <div><label htmlFor="cal-sugestao-mes" className="text-[12.5px] font-semibold">Sugestão de atividade</label>
-              <Input id="cal-sugestao-mes" className="mt-1" value={sugestoes} maxLength={120} disabled={!editavel} placeholder="—" onChange={e => setSugestoes(e.target.value)} onBlur={salvarPercurso} /></div>
+              <Input id="cal-sugestao-mes" className="mt-1" value={sugestoes} maxLength={120} disabled={!editavelDoMes} placeholder="—" onChange={e => setSugestoes(e.target.value)} onBlur={salvarPercurso} /></div>
           </div>
+          )}
 
           {/* O alvo do tutorial embrulha as duas: no computador vale a grade, no celular a lista. */}
           <div data-tutorial="cal-grade">
@@ -111,7 +135,7 @@ export function MesAMes({ ano, itens, editavel, mes, onMes, onAno, onItens }: Pr
                     <button key={j} type="button" onClick={() => setSel(chave)} aria-label={`Dia ${d}`}
                       className={`flex min-h-[96px] flex-col items-stretch justify-start border-l border-black/[.07] p-1.5 text-left first:border-l-0 hover:bg-accent/50 dark:border-white/[.07] ${(j === 0 || j === 6) ? FIM_DE_SEMANA : ''} ${sel === chave ? 'outline outline-2 -outline-offset-2 outline-[hsl(var(--sel))]' : ''}`}>
                       <span className={`text-[12px] font-semibold ${doDia.some(i => i.tipo === 'feriado') ? 'text-[#c4472f]' : 'text-foreground/70'}`}>{d}</span>
-                      <span className="mt-1 block space-y-1">{doDia.map(i => <Pilula key={i.id} item={i} pequena />)}</span>
+                      <span className="mt-1 block space-y-1">{doDia.map(i => <Pilula key={i.id} item={i} pequena nova={nova(i)} />)}</span>
                     </button>
                   ) : <span key={j} className={`min-h-[96px] border-l border-black/[.07] first:border-l-0 dark:border-white/[.07] ${(j === 0 || j === 6) ? FIM_DE_SEMANA : ''}`} />;
                 })}
@@ -128,7 +152,7 @@ export function MesAMes({ ano, itens, editavel, mes, onMes, onAno, onItens }: Pr
               return (
                 <div key={d} className={`flex gap-3 rounded-[16px] p-3 ${fds ? FIM_DE_SEMANA : 'bg-card/80'}`}>
                   <span className="w-10 shrink-0 text-center leading-none"><b className="font-display text-[20px]">{d}</b><span className="block text-[10.5px] font-semibold uppercase text-muted-foreground">{DIAS_DA_SEMANA[diaDaSemana(chave)].slice(0, 3)}</span></span>
-                  <div className="min-w-0 flex-1 space-y-1">{itensDoDia(itens, chave).map(i => <Pilula key={i.id} item={i} />)}</div>
+                  <div className="min-w-0 flex-1 space-y-1">{itensDoDia(itens, chave).map(i => <Pilula key={i.id} item={i} nova={nova(i)} />)}</div>
                   <button type="button" onClick={() => { setSel(chave); setDiaNoCelular(true); }} aria-label={`Abrir o dia ${d}`} className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-black/10 bg-card"><Plus className="h-4 w-4" /></button>
                 </div>
               );
@@ -141,37 +165,61 @@ export function MesAMes({ ano, itens, editavel, mes, onMes, onAno, onItens }: Pr
             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-[#fde3dd]" /> Feriado (da agenda)</span>
             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-black/10" /> Data relevante (dá para esconder do PDF)</span>
             <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded bg-primary/45" /> Atividade das unidades</span>
+            {fichario && <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded ring-2 ring-[#f37964]" /> Entrou depois da impressão</span>}
           </div>
         </section>
 
         {/* O dia: no computador ao lado; no celular, numa janela. */}
         <aside className="hidden lg:block">
           <div data-tutorial="cal-dia">
-          {sel ? <PainelDoDia chave={sel} ano={ano} itens={itens} editavel={editavel} onItens={onItens} />
+          {sel ? <PainelDoDia chave={sel} ano={ano} itens={itens} editavel={editavel} podeApagar={podeApagar} fichario={fichario} onItens={onItens} />
             : <div className="glass-2 rounded-[22px] p-4 text-[13.5px] text-muted-foreground">Toque num dia para ver o que já tem e acrescentar uma atividade.</div>}
           </div>
-          <MesRevisado revisado={revisado} editavel={editavel} onAlternar={alternarRevisado} mes={mes} onMes={onMes} autoria={autoriaDe(ano, `revisado:${mes}`)} />
+          {fichario && <MudancasDoMes mes={mes} mudancas={doMes} />}
+          <MesRevisado revisado={revisado} editavel={editavelDoMes} mostrar={!fichario} onAlternar={alternarRevisado} mes={mes} onMes={onMes} autoria={autoriaDe(ano, `revisado:${mes}`)} />
         </aside>
-        <div className="lg:hidden"><MesRevisado revisado={revisado} editavel={editavel} onAlternar={alternarRevisado} mes={mes} onMes={onMes} autoria={autoriaDe(ano, `revisado:${mes}`)} /></div>
+        <div className="lg:hidden">{fichario && <MudancasDoMes mes={mes} mudancas={doMes} />}<MesRevisado revisado={revisado} editavel={editavelDoMes} mostrar={!fichario} onAlternar={alternarRevisado} mes={mes} onMes={onMes} autoria={autoriaDe(ano, `revisado:${mes}`)} /></div>
       </div>
 
       <Dialog open={diaNoCelular && !!sel} onOpenChange={o => { if (!o) setDiaNoCelular(false); }}>
         <DialogContent className="max-h-[90svh] overflow-y-auto">
           <DialogHeader className="sr-only"><DialogTitle>O dia</DialogTitle><DialogDescription>O que já tem neste dia e o que acrescentar.</DialogDescription></DialogHeader>
-          {sel && <PainelDoDia chave={sel} ano={ano} itens={itens} editavel={editavel} onItens={onItens} escolherDia />}
+          {sel && <PainelDoDia chave={sel} ano={ano} itens={itens} editavel={editavel} podeApagar={podeApagar} fichario={fichario} onItens={onItens} escolherDia />}
         </DialogContent>
       </Dialog>
     </div>
   );
 }
 
-function MesRevisado({ revisado, editavel, onAlternar, mes, onMes, autoria }: { revisado: boolean; editavel: boolean; onAlternar: () => void; mes: number; onMes: (m: number) => void; autoria?: string | null }) {
+/** O que mudou neste mês depois da impressão (19/11/2026): é o que pede uma folha nova no fichário. */
+function MudancasDoMes({ mes, mudancas }: { mes: number; mudancas: AlteracaoDoCalendario[] }) {
+  return (
+    <section className="glass-2 mt-3 rounded-[22px] p-4" data-testid="lista-de-mudancas">
+      <p className="text-[13px] font-semibold">O que mudou em {MESES[mes - 1].toLowerCase()} desde a impressão</p>
+      {mudancas.length === 0 ? <p className="mt-1.5 text-[12.5px] text-muted-foreground">Nada: a folha impressa continua valendo.</p> : (
+        <ul className="mt-2 space-y-1.5">
+          {mudancas.map(a => (
+            <li key={a.id} className="flex gap-2 text-[12.5px]">
+              <b className={`w-3 shrink-0 ${a.acao === 'entrou' ? 'text-[hsl(var(--success))]' : a.acao === 'saiu' ? 'text-[#c4472f]' : 'text-[hsl(var(--warning))]'}`} aria-label={a.acao}>{SINAL_DA_MUDANCA[a.acao]}</b>
+              <span className="min-w-0">{textoDaMudanca(a)}{a.acao === 'saiu' ? ' (saiu)' : a.acao === 'mudou' ? ' (mudou)' : ''}
+                <span className="block text-[11.5px] text-muted-foreground">{a.quem ? `${a.quem} · ` : ''}{diaEMes(a.em)}</span></span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function MesRevisado({ revisado, editavel, mostrar = true, onAlternar, mes, onMes, autoria }: { revisado: boolean; editavel: boolean; mostrar?: boolean; onAlternar: () => void; mes: number; onMes: (m: number) => void; autoria?: string | null }) {
   return (
     <div className="mt-3 space-y-2">
+      {mostrar && <>
       <Button variant={revisado ? 'default' : 'outline'} className="w-full gap-2" disabled={!editavel} onClick={onAlternar} data-testid="mes-revisado" data-tutorial="cal-revisado">
         <Check className="h-4 w-4" /> {revisado ? `${MESES[mes - 1]} revisado` : `Marcar ${MESES[mes - 1].toLowerCase()} como revisado`}
       </Button>
       {revisado && autoria && <p className="text-center text-[11.5px] text-muted-foreground">Revisado por {autoria}</p>}
+      </>}
       <div className="flex gap-2">
         <Button variant="ghost" className="flex-1 gap-1" disabled={mes === 1} onClick={() => onMes(mes - 1)}><ChevronLeft className="h-4 w-4" /> {mes > 1 ? MESES[mes - 2] : ''}</Button>
         <Button variant="ghost" className="flex-1 gap-1" disabled={mes === 12} onClick={() => onMes(mes + 1)}>{mes < 12 ? MESES[mes] : ''} <ChevronRight className="h-4 w-4" /></Button>
@@ -180,7 +228,7 @@ function MesRevisado({ revisado, editavel, onAlternar, mes, onMes, autoria }: { 
   );
 }
 
-function PainelDoDia({ chave, ano, itens, editavel, onItens, escolherDia = false }: { chave: string; ano: AnoDoCalendario; itens: ItemDoCalendario[]; editavel: boolean; onItens: (i: ItemDoCalendario[]) => void; escolherDia?: boolean }) {
+function PainelDoDia({ chave, ano, itens, editavel, podeApagar = () => true, fichario = false, onItens, escolherDia = false }: { chave: string; ano: AnoDoCalendario; itens: ItemDoCalendario[]; editavel: boolean; podeApagar?: (i: ItemDoCalendario) => boolean; fichario?: boolean; onItens: (i: ItemDoCalendario[]) => void; escolherDia?: boolean }) {
   const [dia, setDia] = useState(chave);
   if (!escolherDia && dia !== chave) setDia(chave);
   const [texto, setTexto] = useState('');
@@ -227,7 +275,7 @@ function PainelDoDia({ chave, ano, itens, editavel, onItens, escolherDia = false
               <span className="block text-[11.5px] text-muted-foreground">
                 {i.tipo === 'atividade' ? `Atividade · ${rotuloDasUnidades(i.unidades)}` : i.tipo === 'feriado' ? 'Feriado · da agenda' : `Data relevante${i.oculto ? ' · escondida do PDF' : ''}`}
               </span>
-              {autoriaDoItem(i) && <span className="block text-[11.5px] text-muted-foreground" data-testid="autoria-do-item">{autoriaDoItem(i)}</span>}
+              {autoriaDoItem(i) && <span className="block text-[11.5px] text-muted-foreground" data-testid="autoria-do-item">{autoriaDoItem(i)}{fichario && entrouDepoisDaImpressao(i, ano) ? ' · depois da impressão' : ''}</span>}
             </span>
             {i.tipo === 'feriado' && <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-label="Feriado: não sai" />}
             {i.tipo === 'data' && editavel && (
@@ -235,7 +283,7 @@ function PainelDoDia({ chave, ano, itens, editavel, onItens, escolherDia = false
                 {i.oculto ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             )}
-            {i.tipo === 'atividade' && editavel && (
+            {i.tipo === 'atividade' && editavel && podeApagar(i) && (
               <button type="button" onClick={() => apagar(i)} aria-label={`Apagar ${i.texto}`} className="shrink-0 text-muted-foreground hover:text-destructive"><X className="h-4 w-4" /></button>
             )}
           </div>

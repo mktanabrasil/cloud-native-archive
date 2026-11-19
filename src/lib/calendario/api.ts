@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import type { AnoDoCalendario, ItemDoCalendario, Percurso } from './regras';
+import type { AlteracaoDoCalendario, AnoDoCalendario, ItemDoCalendario, Percurso } from './regras';
 
 /**
  * O Calendário Anual no banco (14/11/2026). As tabelas são novas e ainda não
@@ -35,6 +35,17 @@ export async function lerItens(ano: number): Promise<ItemDoCalendario[]> {
   const { data, error } = await db.from('calendario_itens').select(COLUNAS_DO_ITEM).eq('ano', ano).order('dia').order('criado_em');
   falhou(error);
   return (data as ItemDoCalendario[]) ?? [];
+}
+
+/**
+ * As mudanças no mês a mês depois da impressão (19/11/2026). Sem o SQL do
+ * fichário (20261120090000) a tabela não existe: devolve vazio em vez de
+ * quebrar a tela.
+ */
+export async function lerAlteracoes(ano: number): Promise<AlteracaoDoCalendario[]> {
+  const { data, error } = await db.from('calendario_alteracoes').select('*').eq('ano', ano).order('em');
+  if (error) return [];
+  return (data as AlteracaoDoCalendario[]) ?? [];
 }
 
 export async function salvarAno(ano: number, campos: Partial<Pick<AnoDoCalendario, 'tema' | 'percursos' | 'meses_revisados' | 'textos'>>): Promise<AnoDoCalendario> {
@@ -113,7 +124,8 @@ export async function aprovarComPdf(ano: AnoDoCalendario, pdf: Blob, quem: strin
   const caminho = `${ano.ano}/calendario-anual-${ano.ano}-${Date.now()}.pdf`;
   await guardarArquivo(caminho, pdf, 'application/pdf');
   const novo = await mudarAno(ano.ano, { status: 'aprovado', aprovado_em: new Date().toISOString(), aprovado_por: quem, pdf_url: caminho, observacao: null }, 'Só o marketing aprova o calendário.');
-  await jogarFora(ano.pdf_url, caminho).catch(() => {});
+  // A versão impressa (19/11/2026) nunca sai do balde: só o PDF de uma reaprovação anterior.
+  if (ano.pdf_url !== (novo.pdf_impresso_url ?? ano.pdf_impresso_url)) await jogarFora(ano.pdf_url, caminho).catch(() => {});
   return novo;
 }
 

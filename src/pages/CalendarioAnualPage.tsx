@@ -9,8 +9,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { ROTAS_DO_CANDIDATO, ehCandidato, primeiroNome } from '@/lib/vagas/conta';
 import { ehContaDoCalendario } from '@/lib/calendario/conta';
-import { ANO_DO_CALENDARIO, lerAno, lerItens } from '@/lib/calendario/api';
-import { aberto, type AnoDoCalendario, type ItemDoCalendario } from '@/lib/calendario/regras';
+import { ANO_DO_CALENDARIO, lerAlteracoes, lerAno, lerItens } from '@/lib/calendario/api';
+import { aberto, atividadeEhMinha, itensAbertos, noFichario, unidadeDoCalendario, type AlteracaoDoCalendario, type AnoDoCalendario, type ItemDoCalendario } from '@/lib/calendario/regras';
 import { MolduraDoCalendario } from '@/components/calendario/MolduraDoCalendario';
 import AppLayout from '@/components/AppLayout';
 import { ROTAS } from '@/config/navigation';
@@ -37,7 +37,7 @@ import { MesAMes } from '@/components/calendario/MesAMes';
  */
 export default function CalendarioAnualPage() {
   const { user, isAuthenticated, loading, signOut } = useAuth();
-  const { isMarketing, temCalendarioAnual, loading: carregandoPapel } = useUserRole();
+  const { isMarketing, temCalendarioAnual, unit, loading: carregandoPapel } = useUserRole();
   const location = useLocation();
 
   if (loading) return null;
@@ -61,7 +61,7 @@ export default function CalendarioAnualPage() {
   return (
     <AppLayout>
       <TituloDaAba />
-      <Preenchimento nome={String(user?.user_metadata?.name ?? '') || user?.email || ''} marketing={isMarketing} />
+      <Preenchimento nome={String(user?.user_metadata?.name ?? '') || user?.email || ''} marketing={isMarketing} email={user?.email ?? null} unidade={unidadeDoCalendario(unit)} />
     </AppLayout>
   );
 }
@@ -91,13 +91,14 @@ function TituloDaAba() {
 }
 
 /** O preenchimento: só chega aqui quem pode (ver acima); o banco confere de novo. */
-function Preenchimento({ nome, marketing }: { nome: string; marketing: boolean }) {
+function Preenchimento({ nome, marketing, email, unidade }: { nome: string; marketing: boolean; email: string | null; unidade: string | null }) {
   const [params, setParams] = useSearchParams();
   const parte = (params.get('parte') as Parte | null) ?? 'inicio';
   const mes = Math.min(12, Math.max(1, Number(params.get('m')) || 1));
   const [estado, setEstado] = useState<'carregando' | 'fechado' | 'erro' | 'pronto'>('carregando');
   const [ano, setAno] = useState<AnoDoCalendario | null>(null);
   const [itens, setItens] = useState<ItemDoCalendario[]>([]);
+  const [alteracoes, setAlteracoes] = useState<AlteracaoDoCalendario[]>([]);
   const [previaAberta, setPreviaAberta] = useState(false);
   // O tutorial (13/11/2026): abre sozinho na primeira vez de cada roteiro.
   const tutoriais = useTutoriaisVistos();
@@ -113,8 +114,15 @@ function Preenchimento({ nome, marketing }: { nome: string; marketing: boolean }
       const [a, i] = await Promise.all([lerAno(ANO_DO_CALENDARIO), lerItens(ANO_DO_CALENDARIO)]);
       if (!a) { setEstado(marketing ? 'erro' : 'fechado'); return; }
       setAno(a); setItens(i); setEstado('pronto');
+      // O fichário (19/11/2026): o que mudou depois da impressão.
+      if (a.impresso_em) setAlteracoes(await lerAlteracoes(ANO_DO_CALENDARIO));
     } catch { setEstado('erro'); }
   }, [marketing]);
+  // Cada mudança no mês a mês vira uma linha do registro (o banco grava); relê depois de mexer.
+  const mudarItens = useCallback((novos: ItemDoCalendario[]) => {
+    setItens(novos);
+    if (ano?.impresso_em) void lerAlteracoes(ano.ano).then(setAlteracoes);
+  }, [ano?.impresso_em, ano?.ano]);
   useEffect(() => { void carregar(); }, [carregar]);
 
   const abrir = (p: Parte, m?: number) => {
@@ -141,7 +149,11 @@ function Preenchimento({ nome, marketing }: { nome: string; marketing: boolean }
     </div>
   );
 
+  // No fichário (aprovado) a gestão mexe só nas atividades do mês a mês.
   const editavel = marketing || aberto(ano);
+  const editavelItens = marketing || itensAbertos(ano);
+  const fichario = noFichario(ano);
+  const podeApagar = (i: ItemDoCalendario) => marketing || (i.tipo === 'atividade' && (!fichario || atividadeEhMinha(i, { email, unidade })));
   const voltar = (
     <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 pb-2 lg:px-6">
       {parte !== 'inicio' ? <Button variant="ghost" size="sm" className="gap-1" onClick={() => abrir('inicio')}><ArrowLeft className="h-4 w-4" /> Início</Button> : <span />}
@@ -153,9 +165,9 @@ function Preenchimento({ nome, marketing }: { nome: string; marketing: boolean }
       {voltar}
       {parte === 'percursos' && <PercursosDoAno ano={ano} editavel={editavel} onAno={setAno} />}
       {parte === 'textos' && <TextosDoProjeto ano={ano} editavel={editavel} onAno={setAno} />}
-      {parte === 'mes' && <MesAMes ano={ano} itens={itens} editavel={editavel} mes={mes} onMes={m => abrir('mes', m)} onAno={setAno} onItens={setItens} />}
-      {parte === 'revisao' && marketing && <RevisaoDoMarketing ano={ano} itens={itens} quem={nome} onAno={setAno} onPrevia={() => setPreviaAberta(true)} />}
-      {(parte === 'inicio' || (parte === 'revisao' && !marketing)) && <InicioDoCalendario ano={ano} editavel={editavel} marketing={marketing} onAno={setAno} abrir={abrir} onPrevia={() => setPreviaAberta(true)} />}
+      {parte === 'mes' && <MesAMes ano={ano} itens={itens} editavel={editavelItens} editavelDoMes={editavel} fichario={fichario} alteracoes={alteracoes} podeApagar={podeApagar} mes={mes} onMes={m => abrir('mes', m)} onAno={setAno} onItens={mudarItens} />}
+      {parte === 'revisao' && marketing && <RevisaoDoMarketing ano={ano} itens={itens} alteracoes={alteracoes} quem={nome} onAno={setAno} onPrevia={() => setPreviaAberta(true)} />}
+      {(parte === 'inicio' || (parte === 'revisao' && !marketing)) && <InicioDoCalendario ano={ano} editavel={editavel} marketing={marketing} alteracoes={alteracoes} onAno={setAno} abrir={abrir} onPrevia={() => setPreviaAberta(true)} />}
       <PreviaDoPdf ano={ano} itens={itens} podeBaixar={marketing} aberta={previaAberta} onFechar={() => setPreviaAberta(false)} />
       {roteiro && (
         <JournalTutorial percurso={roteiro} passos={ROTEIROS_DO_CALENDARIO[roteiro]} rotulo="Tutorial do Calendário Anual"

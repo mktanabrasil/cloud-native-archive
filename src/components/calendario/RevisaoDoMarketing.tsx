@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { aprovarComPdf, devolverAsCoordenadoras, linkDoArquivo, trocarCapa } from '@/lib/calendario/api';
 import { prepararFotoDaCapa } from '@/lib/calendario/foto';
-import { andamento, autoriaDe, diaEMes, type AnoDoCalendario, type ItemDoCalendario } from '@/lib/calendario/regras';
+import { SINAL_DA_MUDANCA, andamento, autoriaDe, diaEMes, textoDaMudanca, type AlteracaoDoCalendario, type AnoDoCalendario, type ItemDoCalendario } from '@/lib/calendario/regras';
 import { baixarPdfAprovado } from './SituacaoDoPdf';
 
 const hora = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
@@ -28,9 +28,11 @@ function Selo({ ok, children }: { ok: boolean; children: React.ReactNode }) {
  * liberar o PDF. Ao aprovar, o PDF final (sem a marca de prévia) é gerado
  * aqui e guardado no balde; é esse arquivo que todas baixam.
  */
-export function RevisaoDoMarketing({ ano, itens, quem, onAno, onPrevia }: {
+export function RevisaoDoMarketing({ ano, itens, alteracoes = [], quem, onAno, onPrevia }: {
   ano: AnoDoCalendario;
   itens: ItemDoCalendario[];
+  /** Fichário (19/11/2026): o que as unidades mudaram depois da impressão. */
+  alteracoes?: AlteracaoDoCalendario[];
   /** O nome de quem aprova, para o registro. */
   quem: string;
   onAno: (a: AnoDoCalendario) => void;
@@ -122,6 +124,23 @@ export function RevisaoDoMarketing({ ano, itens, quem, onAno, onPrevia }: {
             ))}
           </div>
 
+          {ano.impresso_em && (
+            <div data-testid="mudancas-depois-da-impressao">
+              <h2 className="mt-5 text-[16px] font-semibold">Mudanças depois da impressão · {alteracoes.length}</h2>
+              {alteracoes.length === 0 ? <p className="mt-1 text-[13px] text-muted-foreground">Nenhuma: o mês a mês está igual à versão impressa em {diaEMes(ano.impresso_em)}.</p> : (
+                <div className="mt-2 divide-y divide-black/[.07] dark:divide-white/10">
+                  {[...alteracoes].reverse().map(m => (
+                    <div key={m.id} className="grid grid-cols-[16px_minmax(0,1fr)_auto] items-start gap-2 py-2 text-[13.5px]">
+                      <b className={m.acao === 'entrou' ? 'text-[hsl(var(--success))]' : m.acao === 'saiu' ? 'text-[#c4472f]' : 'text-[hsl(var(--warning))]'} aria-label={m.acao}>{SINAL_DA_MUDANCA[m.acao]}</b>
+                      <span className="min-w-0">{textoDaMudanca(m)}{m.acao === 'saiu' ? ' (saiu)' : m.acao === 'mudou' ? ' (mudou)' : ''}</span>
+                      <span className="text-[12px] text-muted-foreground">{m.quem ? `${m.quem} · ` : ''}{diaEMes(m.em)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <h2 className="mt-5 text-[16px] font-semibold">A parte do marketing</h2>
           <div className="mt-3 grid gap-4 sm:grid-cols-[220px_minmax(0,1fr)]">
             <div className="relative grid place-items-center overflow-hidden rounded-[14px] border border-black/10 bg-[#d9dde0] dark:border-white/10" style={{ aspectRatio: '842/461' }}>
@@ -171,6 +190,7 @@ export function RevisaoDoMarketing({ ano, itens, quem, onAno, onPrevia }: {
               )}
               <div className="flex flex-wrap justify-end gap-2">
                 {!devolvendo && <Button variant="outline" className="gap-2" onClick={() => setDevolvendo(true)}><Undo2 className="h-4 w-4" /> Reabrir para edição</Button>}
+                {ano.pdf_impresso_url && ano.pdf_impresso_url !== ano.pdf_url && <Button variant="outline" className="gap-2" onClick={() => void baixarPdfAprovado(ano, 'impresso')}><Download className="h-4 w-4" /> Baixar a versão impressa</Button>}
                 <Button className="gap-2" disabled={!ano.pdf_url} onClick={() => void baixarPdfAprovado(ano)}><Download className="h-4 w-4" /> Baixar o PDF aprovado</Button>
               </div>
             </div>
@@ -182,8 +202,10 @@ export function RevisaoDoMarketing({ ano, itens, quem, onAno, onPrevia }: {
           <section className="glass-2 rounded-[22px] p-4 text-[13.5px] leading-snug">
             {ano.status === 'preenchimento' && <p>O calendário está aberto para elas preencherem{ano.observacao ? ', com a sua observação no topo' : ''}.</p>}
             {ano.status === 'revisao' && <p>“Em revisão”: a edição está fechada e o botão de baixar aparece travado.</p>}
-            {ano.status === 'aprovado' && <p>“Aprovado”, com o botão <b>Baixar o PDF</b>.</p>}
-            <p className="mt-2 text-[12.5px] text-muted-foreground">Se você devolver, a observação aparece no topo para elas e o calendário volta a ficar editável.</p>
+            {ano.status === 'aprovado' && <p>“Aprovado · fichário digital”: elas baixam a versão impressa e seguem mexendo <b>só no mês a mês</b> (cada gestão apaga só as suas atividades). Tema, percursos e textos ficam fechados.</p>}
+            <p className="mt-2 text-[12.5px] text-muted-foreground">{ano.status === 'aprovado'
+              ? 'Reabrir destrava tudo de novo para elas (tema, percursos e textos). A versão impressa continua guardada.'
+              : 'Se você devolver, a observação aparece no topo para elas e o calendário volta a ficar editável.'}</p>
           </section>
         </aside>
       </div>

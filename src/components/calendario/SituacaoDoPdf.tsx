@@ -18,11 +18,15 @@ export function faltasParaEnviar(ano: Pick<AnoDoCalendario, 'tema' | 'meses_revi
   return faltas;
 }
 
-/** Baixa o PDF aprovado por um link temporário do balde privado. */
-export async function baixarPdfAprovado(ano: AnoDoCalendario) {
-  if (!ano.pdf_url) return;
+/**
+ * Baixa um PDF guardado por um link temporário do balde privado: o aprovado
+ * agora (padrão) ou a versão impressa (19/11/2026).
+ */
+export async function baixarPdfAprovado(ano: AnoDoCalendario, qual: 'aprovado' | 'impresso' = 'aprovado') {
+  const caminho = qual === 'impresso' ? (ano.pdf_impresso_url ?? ano.pdf_url) : ano.pdf_url;
+  if (!caminho) return;
   try {
-    const url = await linkDoArquivo(ano.pdf_url, `Calendário Anual ${ano.ano}.pdf`);
+    const url = await linkDoArquivo(caminho, qual === 'impresso' ? `Calendário Anual ${ano.ano} (impresso).pdf` : `Calendário Anual ${ano.ano}.pdf`);
     const a = document.createElement('a');
     a.href = url; a.rel = 'noopener';
     document.body.appendChild(a); a.click(); a.remove();
@@ -90,11 +94,15 @@ export function SituacaoDoPdf({ ano, marketing, editavel, onAno, onPrevia, onRev
 
       {ano.status === 'aprovado' && (
         <>
-          <div className="mt-2"><Selo tom="ok"><Check className="h-3 w-3" /> Aprovado</Selo></div>
+          <div className="mt-2"><Selo tom="ok"><Check className="h-3 w-3" /> Aprovado · fichário digital</Selo></div>
           <p className="mt-2 text-[13.5px] leading-snug">
-            <b>Aprovado pelo marketing{ano.aprovado_em ? ` em ${diaEMes(ano.aprovado_em)}` : ''}.</b> O calendário de {ano.ano} está pronto.
+            <b>Aprovado pelo marketing{(ano.impresso_em ?? ano.aprovado_em) ? ` em ${diaEMes((ano.impresso_em ?? ano.aprovado_em)!)}` : ''}.</b> Agora o mês a mês continua aberto, como um fichário.
           </p>
-          <Button className="mt-3 w-full gap-2" disabled={!ano.pdf_url} onClick={() => void baixarPdfAprovado(ano)}><Download className="h-4 w-4" /> Baixar o PDF</Button>
+          <Button className="mt-3 w-full gap-2" disabled={!(ano.pdf_impresso_url ?? ano.pdf_url)} onClick={() => void baixarPdfAprovado(ano, 'impresso')}><Download className="h-4 w-4" /> Baixar a versão impressa</Button>
+          {ano.pdf_impresso_url && ano.pdf_url && ano.pdf_url !== ano.pdf_impresso_url && (
+            <Button variant="outline" className="mt-2 w-full gap-2" onClick={() => void baixarPdfAprovado(ano)}><Download className="h-4 w-4" /> Baixar a última aprovação</Button>
+          )}
+          {onPrevia && <Button variant="outline" className="mt-2 w-full gap-2" onClick={onPrevia}><Eye className="h-4 w-4" /> Ver como está agora</Button>}
         </>
       )}
 
