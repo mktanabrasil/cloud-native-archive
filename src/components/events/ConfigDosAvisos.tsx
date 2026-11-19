@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
-import { CAIXAS_FIXAS_EM_TEXTO, type PerfilParaAviso } from '@/lib/events/avisos';
+import { CAIXAS_FIXAS_EM_TEXTO, COPIA_DOS_SETORES, type PerfilParaAviso } from '@/lib/events/avisos';
 import {
   CONFIG_PADRAO, EQUIPE_PADRAO, NOME_DO_SETOR, type ConfigDaEquipe, type ConfigDeAvisos, ROTULO_DO_ESTADO, ROTULO_DO_MOTIVO, type SetorDaEquipe, emailValido, listaDeDestinatarios, normalizarEmail,
   quemEntraNoLancamento, resumoDaLista, sugestoesDaEquipe,
@@ -206,6 +206,9 @@ export function ConfigDosAvisos() {
           <h3 className="text-sm font-semibold">3. RH, Voluntariado e Financeiro <span className="font-normal text-muted-foreground">· a equipe do dia e as compras</span></h3>
           <p className="max-w-[70ch] text-xs text-muted-foreground">
             Quando um evento é confirmado, e de novo se mudar: o RH recebe quem vai trabalhar, o Voluntariado recebe os voluntários e o Financeiro recebe o que a ANA compra (comida que a ANA fornece e transporte de fora). Se o evento for cancelado, cada lista recebe também o mesmo e-mail de cancelamento que todos recebem. Quem também está na lista acima continua recebendo os avisos gerais.
+          </p>
+          <p className="max-w-[70ch] text-xs text-muted-foreground" data-testid="copia-dos-setores">
+            Em cópia em todos os e-mails dos setores: {COPIA_DOS_SETORES.map((e, i) => <span key={e}>{i > 0 && ' e '}<b className="font-semibold text-foreground">{e}</b></span>)}.
           </p>
           {carregado && erroDaEquipe ? (
             <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-foreground">Não consegui ler as listas do RH, do Voluntariado e do Financeiro agora. <button className="underline" onClick={() => void ler()}>Tentar de novo</button></p>

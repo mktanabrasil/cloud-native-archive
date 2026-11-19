@@ -49,6 +49,13 @@ export const SEMPRE_RECEBEM = [
   'financeiro@anabrasil.org',
 ] as const;
 
+/**
+ * Em cópia em todo e-mail dos setores (RH, Voluntariado, Financeiro), desde
+ * 19/11/2026. Espelho de `COPIA_DOS_SETORES` em
+ * supabase/functions/eventos-aviso/fila.ts.
+ */
+export const COPIA_DOS_SETORES = ['adm@anabrasil.org', 'financeiro@anabrasil.org'] as const;
+
 /** "mkt@, contato@, …, adm@ e financeiro@": as caixas fixas, para os textos do Painel. */
 export const CAIXAS_FIXAS_EM_TEXTO = (() => {
   const curtas = SEMPRE_RECEBEM.map(e => e.slice(0, e.indexOf('@') + 1));

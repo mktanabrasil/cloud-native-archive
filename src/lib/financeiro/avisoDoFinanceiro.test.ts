@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { configDaEquipeDaLeitura, destinatariosDoFinanceiro, listasNoCancelamento, ehAvisoDaEquipe as ehDaEquipeNaFuncao, ehAvisoDoFinanceiro, listasParaGravar } from '../../../supabase/functions/eventos-aviso/fila';
+import { COPIA_DOS_SETORES, copiaDosSetores, configDaEquipeDaLeitura, destinatariosDoFinanceiro, listasNoCancelamento, ehAvisoDaEquipe as ehDaEquipeNaFuncao, ehAvisoDoFinanceiro, listasParaGravar } from '../../../supabase/functions/eventos-aviso/fila';
 import {
   assuntoDoFinanceiro, corpoDoFinanceiroHtml, corpoDoFinanceiroTexto, itensDeCompra, linkDoFinanceiro, mudancaDoPedido, pedidoSemMudanca, previaDoFinanceiro,
 } from '../../../supabase/functions/eventos-aviso/financeiro';
 import { itensDoEvento, type EventoDoFinanceiro } from './compras';
-import { ROTULO_DO_TIPO, ehAvisoDaEquipe } from '@/lib/events/avisos';
+import { COPIA_DOS_SETORES as COPIA_DO_APP, ROTULO_DO_TIPO, ehAvisoDaEquipe } from '@/lib/events/avisos';
 
 /** O e-mail do Financeiro: as compras de cada evento (19/11/2026, PR 2 do Financeiro). */
 
@@ -83,6 +83,11 @@ describe('quem recebe', () => {
     expect(listasNoCancelamento({ funcionarios: true, voluntarios: false, compras: true }, eq, LANCADO)).toEqual(['rh@ana.org', 'fin@ana.org']);
     expect(listasNoCancelamento({ funcionarios: true, voluntarios: true, compras: true }, eq, { ...LANCADO, pre_lancamento: true })).toEqual([]);
     expect(listasNoCancelamento({ funcionarios: true, voluntarios: true, compras: true }, null, LANCADO)).toEqual([]);
+  });
+  it('em cópia: adm@ e financeiro@, sem repetir quem já está no Para; app e função iguais', () => {
+    expect([...COPIA_DO_APP]).toEqual(COPIA_DOS_SETORES);
+    expect(copiaDosSetores(['financeiro3@anabrasil.org'])).toEqual(['adm@anabrasil.org', 'financeiro@anabrasil.org']);
+    expect(copiaDosSetores(['Financeiro@anabrasil.org ', 'rh@anabrasil.org'])).toEqual(['adm@anabrasil.org']);
   });
   it('o tipo novo é reconhecido, corre à parte do aviso do evento e tem rótulo', () => {
     expect(ehAvisoDoFinanceiro('financeiro')).toBe(true);

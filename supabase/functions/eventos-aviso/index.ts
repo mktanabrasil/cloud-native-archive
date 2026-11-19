@@ -6,7 +6,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 // volta pela promessa que a gente espera.
 import nodemailer from 'npm:nodemailer@6.9.16';
 import {
-  CHAVE_DA_CONFIG_DA_EQUIPE, SEMPRE_RECEBEM, chaveDoVoluntario, configDaEquipeDaLeitura, configDaLeitura, destinatarios, destinatariosDaDevolucao, destinatariosDaEquipe,
+  CHAVE_DA_CONFIG_DA_EQUIPE, SEMPRE_RECEBEM, chaveDoVoluntario, copiaDosSetores, configDaEquipeDaLeitura, configDaLeitura, destinatarios, destinatariosDaDevolucao, destinatariosDaEquipe,
   destinatariosDoFinanceiro, ehAvisoDaEquipe, ehAvisoDoFinanceiro, emailValido, equipeSemMudanca, listasNoCancelamento, listasParaGravar, normEmail, reservar,
   type ConfigDaEquipe, type ConfigDeAvisos, type Perfil,
 } from './fila.ts';
@@ -950,6 +950,8 @@ Deno.serve(async (req) => {
       resultado[a.id] = `ignorado: ${motivo}`;
       continue;
     }
+    // Em cópia (19/11/2026): os e-mails dos setores levam adm@ e financeiro@.
+    const cc = daEquipe || doFinanceiro ? copiaDosSetores(para) : [];
     const precisaEmail = a.status === 'pendente' || (forcado === a.id && a.status === 'falhou');
     const precisaAgenda = a.agenda_status === 'pendente' || (forcado === a.id && a.agenda_status === 'falhou');
     let linkAgenda: string | null = a.evento.google_event_link || null;
@@ -982,10 +984,10 @@ Deno.serve(async (req) => {
         if (daEquipe) {
           const aviso = { tipo: a.tipo as 'equipe_rh' | 'equipe_voluntariado', evento: a.evento, antes: a.antes };
           const conf = a.tipo === 'equipe_voluntariado' ? await lerConfirmados() : null;
-          await transporte.sendMail({ from: remetente, to: para, subject: assuntoDaEquipe(aviso), text: corpoDaEquipeTexto(aviso, SITE, conf), html: corpoDaEquipeHtml(aviso, SITE, conf) });
+          await transporte.sendMail({ from: remetente, to: para, cc, subject: assuntoDaEquipe(aviso), text: corpoDaEquipeTexto(aviso, SITE, conf), html: corpoDaEquipeHtml(aviso, SITE, conf) });
         } else if (doFinanceiro) {
           const aviso = { evento: a.evento, antes: a.antes };
-          await transporte.sendMail({ from: remetente, to: para, subject: assuntoDoFinanceiro(aviso), text: corpoDoFinanceiroTexto(aviso, SITE), html: corpoDoFinanceiroHtml(aviso, SITE) });
+          await transporte.sendMail({ from: remetente, to: para, cc, subject: assuntoDoFinanceiro(aviso), text: corpoDoFinanceiroTexto(aviso, SITE), html: corpoDoFinanceiroHtml(aviso, SITE) });
         } else await transporte.sendMail({
           from: remetente,
           to: para,
@@ -998,11 +1000,11 @@ Deno.serve(async (req) => {
       } finally {
         transporte.close();
       }
-      await admin.from('avisos_de_evento').update({ status: 'enviado', destinatarios: para, erro: null, tentativas: a.tentativas + 1, enviado_em: new Date().toISOString() }).eq('id', a.id);
+      await admin.from('avisos_de_evento').update({ status: 'enviado', destinatarios: [...para, ...cc], erro: null, tentativas: a.tentativas + 1, enviado_em: new Date().toISOString() }).eq('id', a.id);
       resultado[a.id] = 'enviado';
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      await admin.from('avisos_de_evento').update({ status: 'falhou', destinatarios: para, erro: msg.slice(0, 500), tentativas: a.tentativas + 1 }).eq('id', a.id);
+      await admin.from('avisos_de_evento').update({ status: 'falhou', destinatarios: [...para, ...cc], erro: msg.slice(0, 500), tentativas: a.tentativas + 1 }).eq('id', a.id);
       resultado[a.id] = `falhou: ${msg}`;
     }
   }
