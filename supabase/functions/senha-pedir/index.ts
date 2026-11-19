@@ -58,8 +58,16 @@ Deno.serve(async (req) => {
     const { data: userId, error: erroConta } = await admin.rpc('conta_da_equipe_pelo_email', { _email: email });
     if (erroConta) throw new Error(`conta_da_equipe_pelo_email: ${erroConta.message}`);
 
-    // Não é conta da equipe: o "Esqueci a senha" de sempre (ou nada, se o e-mail não existir).
+    // Não é conta da equipe ativa: o "Esqueci a senha" de sempre (ou nada, se o e-mail não existir).
+    // Conta da equipe DESATIVADA não recebe nada (19/11/2026): o link do login
+    // já entra no app, e era um caminho de volta para quem saiu com e-mail pessoal.
     if (!userId) {
+      const { data: desativada, error: erroDesativada } = await admin.rpc('conta_da_equipe_desativada', { _email: email });
+      if (erroDesativada) console.warn('[senha-pedir] conta_da_equipe_desativada:', erroDesativada.message);
+      if (desativada === true) {
+        console.log('[senha-pedir] conta da equipe desativada: nenhum e-mail');
+        return json(doServidor ? { ...RESPOSTA, enviado: false, motivo: 'desativada' } : RESPOSTA);
+      }
       if (motivo === 'esqueci') {
         const { error } = await createClient(URL_, ANON).auth.resetPasswordForEmail(email, { redirectTo: `${SITE}/redefinir-senha` });
         if (error) console.warn('[senha-pedir] recuperação padrão:', error.message);
