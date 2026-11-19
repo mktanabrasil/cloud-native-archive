@@ -1,6 +1,6 @@
 import type { jsPDF as JsPdf } from 'jspdf';
 import {
-  DIAS_DA_SEMANA, MESES, chaveDoDia, itensDoDia, percursosCompletos, semanasDoMes, tituloDoMes, vaiProPdf,
+  daUnidade, DIAS_DA_SEMANA, MESES, chaveDoDia, itensDoDia, percursosCompletos, semanasDoMes, tituloDoMes, vaiProPdf,
   type AnoDoCalendario, type ItemDoCalendario,
 } from '../regras';
 import { LEGENDA_DAS_SIGLAS, montarCelula, type EstiloDaLetra } from './grade';
@@ -292,11 +292,16 @@ export function montarPdf(
     imagem(recursos.aviaoMes, 'aviao-mes', 769, 4.5, 67, 38.4);
     imagem(recursos.logoMes, 'logo-mes', 10 + FURO, 11.7, 78.3, 41.3);
     const nome = tituloDoMes(ano.ano, mes, percursos);
-    const daUnidade = unidade ? ` · ${unidade}` : '';
+    const nomeDaUnidade = unidade ? ` · ${unidade}` : '';
     let tamanhoDoTitulo = 20;
-    while (tamanhoDoTitulo > 13 && medir(nome, 'bold', tamanhoDoTitulo) + medir(daUnidade, 'normal', tamanhoDoTitulo) > 600) tamanhoDoTitulo -= 0.5;
-    letra('bold', tamanhoDoTitulo, COR.titulo); pdf.text(nome, 132.3 + FURO, 40.0);
-    if (daUnidade) { letra('normal', tamanhoDoTitulo, COR.titulo); pdf.text(daUnidade, 132.3 + FURO + medir(nome, 'bold', tamanhoDoTitulo), 40.0); }
+    const larguraDoTitulo = (n: string) => medir(n, 'bold', tamanhoDoTitulo) + medir(nomeDaUnidade, 'normal', tamanhoDoTitulo);
+    while (tamanhoDoTitulo > 13 && larguraDoTitulo(nome) > 600) tamanhoDoTitulo -= 0.5;
+    // Nem a 13 pt coube (tema muito longo): corta com reticências antes do avião.
+    let titulo = nome;
+    while (titulo.length > 1 && larguraDoTitulo(titulo === nome ? titulo : `${titulo}…`) > 600) titulo = titulo.slice(0, -1);
+    if (titulo !== nome) titulo = `${titulo.trimEnd()}…`;
+    letra('bold', tamanhoDoTitulo, COR.titulo); pdf.text(titulo, 132.3 + FURO, 40.0);
+    if (nomeDaUnidade) { letra('normal', tamanhoDoTitulo, COR.titulo); pdf.text(nomeDaUnidade, 132.3 + FURO + medir(titulo, 'bold', tamanhoDoTitulo), 40.0); }
 
     const X0 = 16.6 + FURO, Y0 = 59.6, W = 809.5 - FURO, CABECA = 44.0, CORPO = 432.0;
     const coluna = W / 7;
@@ -327,7 +332,7 @@ export function montarPdf(
     // O pé: a legenda das siglas e, nas folhas para o fichário, de quem e de quando é a folha.
     letra('light', 6.5, '#555555');
     pdf.text(LEGENDA_DAS_SIGLAS, X0, 590.5);
-    const pe = [unidade ? `Folha da ${unidade}` : opcoes.atualizadaEm ? 'Geral' : '', opcoes.atualizadaEm ? `atualizada em ${dataCompleta(opcoes.atualizadaEm)}` : '', unidade || opcoes.atualizadaEm ? `folha de ${MESES[mes - 1]}` : ''].filter(Boolean);
+    const pe = [unidade ? `Folha ${daUnidade(unidade)}` : opcoes.atualizadaEm ? 'Geral' : '', opcoes.atualizadaEm ? `atualizada em ${dataCompleta(opcoes.atualizadaEm)}` : '', unidade || opcoes.atualizadaEm ? `folha de ${MESES[mes - 1]}` : ''].filter(Boolean);
     if (pe.length) pdf.text(pe.join(' · '), 826.1, 590.5, { align: 'right' });
   }
 

@@ -26,6 +26,8 @@ describe('os meses que mudaram para cada unidade', () => {
     expect(mesesQueMudaram(alteracoes, 'DIC')).toEqual([3, 6, 9]);
     expect(mesesQueMudaram(alteracoes, 'Nilópolis')).toEqual([4, 6, 9]);
     expect(mesesQueMudaram(alteracoes, null)).toEqual([3, 4, 6, 9]);
+    // "mudou" não guarda as unidades de antes: vale para todas.
+    expect(mesesQueMudaram([alt({ mes: 7, dia: '2027-07-01', acao: 'mudou', unidades: ['Santana'] })], 'DIC')).toEqual([7]);
   });
   it('o nome do arquivo e as folhas', () => {
     expect(nomeDoArquivo(2027, 'DIC', 'mudaram', [3])).toBe('Calendário Anual 2027 · DIC · Março.pdf');
@@ -70,9 +72,30 @@ describe('a janela de baixar', () => {
     expect(screen.getByTestId('resumo-do-download')).toHaveTextContent('1 folha · Maio');
   });
 
+  it('reaberto pelo botão de um mês, volta ao padrão mesmo depois de escolher o inteiro e 3 folhas', () => {
+    const props = { ano, itens: [], alteracoes, marketing: false, unidade: 'DIC', onFechar: () => {} };
+    const { rerender } = render(<BaixarDoFichario {...props} aberto mesInicial={null} />);
+    fireEvent.click(screen.getByRole('radio', { name: /2 folhas de anotação/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /Geral/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /calendário inteiro/i }));
+    rerender(<BaixarDoFichario {...props} aberto={false} mesInicial={null} />);
+    rerender(<BaixarDoFichario {...props} aberto mesInicial={3} />);
+    expect(screen.getByTestId('resumo-do-download')).toHaveTextContent('1 folha · Março');
+    expect(screen.getByRole('radio', { name: /Só da DIC/ })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('avisa quando um dia não coube inteiro na folha', async () => {
+    const { toast } = await import('sonner');
+    const aviso = vi.spyOn(toast, 'warning');
+    gerar.gerarPdfDoCalendario.mockResolvedValueOnce({ blob: new Blob(['%PDF']), paginas: 1, paginasDeTexto: 0, celulasCheias: ['2027-03-14'] } as never);
+    abrir();
+    fireEvent.click(screen.getByRole('button', { name: /baixar para imprimir/i }));
+    await waitFor(() => expect(aviso).toHaveBeenCalledWith(expect.stringContaining('14/3'), expect.anything()));
+  });
+
   it('o inteiro sai com a capa; o marketing escolhe qualquer unidade', async () => {
     abrir({ marketing: true, unidade: null });
-    expect(screen.getAllByRole('radio').map(r => r.textContent)).toEqual(expect.arrayContaining([expect.stringContaining('Só da Santana')]));
+    expect(screen.getAllByRole('radio').map(r => r.textContent)).toEqual(expect.arrayContaining([expect.stringContaining('Só de Santana')]));
     fireEvent.click(screen.getByRole('radio', { name: /calendário inteiro/i }));
     fireEvent.click(screen.getByRole('button', { name: /baixar para imprimir/i }));
     await waitFor(() => expect(gerar.gerarPdfDoCalendario).toHaveBeenCalled());
