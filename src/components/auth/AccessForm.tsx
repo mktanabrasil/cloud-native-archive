@@ -117,7 +117,7 @@ export function AccessForm({ title, icon, loginDescription, className, stagger }
     if (error) {
       setPopup({ title: 'Erro', message: error.message, type: 'error' });
     } else {
-      setPopup({ title: 'E-mail enviado!', message: 'Verifique sua caixa de entrada para redefinir a senha.', type: 'success' });
+      setPopup({ title: 'Confira o seu e-mail', message: 'Se o e-mail estiver cadastrado, chega em instantes um e-mail com o caminho para entrar. Confira também o spam.', type: 'success' });
       setMode('login');
     }
     setLoading(false);

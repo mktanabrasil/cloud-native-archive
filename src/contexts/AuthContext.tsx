@@ -74,11 +74,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error as Error | null };
   };
 
+  // "Esqueceu a senha?" (19/11/2026, PR 3 das senhas): a função senha-pedir
+  // decide. Conta da equipe recebe o e-mail "Gerar minha senha"; administração
+  // geral e marketing, o link de sempre para escolher a senha.
   const resetPassword = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/redefinir-senha`,
-    });
-    return { error: error as Error | null };
+    const { pedirSenhaNova } = await import('@/lib/senhas/email');
+    try { await pedirSenhaNova(email); return { error: null }; }
+    catch (e) { return { error: e as Error }; }
   };
 
   const signOut = async () => {

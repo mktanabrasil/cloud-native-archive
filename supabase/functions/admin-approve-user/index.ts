@@ -58,6 +58,11 @@ Deno.serve(async (req) => {
       .select('id, user_id, status, requested_bond, requested_unit')
       .eq('id', requestId)
       .maybeSingle();
+    // Só pedido que existe, da pessoa informada, e ainda pendente (revisão de
+    // 19/11): reaprovar embaralharia a senha de uma conta que já funciona.
+    if (!pedido) return responder({ error: 'Pedido não encontrado.' }, 404);
+    if (pedido.user_id !== userId) return responder({ error: 'Este pedido é de outra pessoa.' }, 400);
+    if (pedido.status !== 'pending') return responder({ error: 'Este pedido já foi resolvido.' }, 409);
     if (pedido?.requested_bond === 'professora') {
       return await aprovarProfessora(pedido as Pedido, callerId, userClient, adminClient, SUPABASE_URL, SUPABASE_ANON_KEY);
     }
@@ -96,18 +101,22 @@ Deno.serve(async (req) => {
     }
 
     // 1. Update access request status
-    const { error: requestErr } = await adminClient
+    const { data: trocado, error: requestErr } = await adminClient
       .from('access_requests')
       .update({ 
         status: 'approved', 
         reviewed_at: new Date().toISOString(),
         reviewed_by: callerId
       })
-      .eq('id', requestId);
+      .eq('id', requestId)
+      .eq('status', 'pending')
+      .select('id');
 
     if (requestErr) {
       throw requestErr;
     }
+    // Quem chegar primeiro resolve: se outra aprovação passou no meio, nada muda.
+    if (!trocado?.length) return responder({ error: 'Este pedido já foi resolvido.' }, 409);
 
     // 2. Insert or update user role
     const { error: roleErr } = await adminClient
@@ -219,6 +228,40 @@ async function avisarAprovado(adminClient: Cliente, userId: string, SUPABASE_URL
     // aprovou precisa saber que o aviso não saiu para avisar por fora.
     let avisoEnviado = false;
     let avisoErro: string | null = null;
+
+    // Conta da equipe (19/11/2026, PR 3 das senhas): a senha escolhida no
+    // pedido deixa de valer, e o aviso é o e-mail "Gerar minha senha" (função
+    // senha-pedir). Sem o SQL das senhas, segue o aviso de sempre, abaixo.
+    const { data: daEquipe, error: erroEquipe } = await adminClient.rpc('senha_da_equipe', { _uid: userId });
+    if (!erroEquipe && daEquipe === true) {
+      try {
+        const sorteio = crypto.getRandomValues(new Uint8Array(24));
+        const descartavel = btoa(String.fromCharCode(...sorteio));
+        const { error: erroLiberar } = await adminClient.rpc('liberar_troca_de_senha', { _user_id: userId });
+        if (erroLiberar) throw new Error(`liberar: ${erroLiberar.message}`);
+        const { error: erroTroca } = await adminClient.auth.admin.updateUserById(userId, { password: descartavel });
+        if (erroTroca) {
+          await adminClient.rpc('cancelar_liberacao', { _user_id: userId });
+          throw new Error(`senha do pedido: ${erroTroca.message}`);
+        }
+        const { data: perfil } = await adminClient.from('profiles').select('email').eq('user_id', userId).maybeSingle();
+        if (!perfil?.email) throw new Error('perfil sem e-mail');
+        const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const r = await fetch(`${SUPABASE_URL}/functions/v1/senha-pedir`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SERVICE}`, apikey: SUPABASE_ANON_KEY },
+          body: JSON.stringify({ email: perfil.email, motivo: 'aprovado' }),
+        });
+        const resposta = await r.json().catch(() => ({})) as { enviado?: boolean; erro?: string };
+        if (!r.ok || resposta.enviado !== true) throw new Error(resposta.erro || `senha-pedir respondeu ${r.status}`);
+        avisoEnviado = true;
+      } catch (e) {
+        avisoErro = e instanceof Error ? e.message : String(e);
+        console.warn('Aprovado, mas o e-mail "Gerar minha senha" não saiu:', avisoErro);
+      }
+      return { avisoEnviado, avisoErro };
+    }
+
     try {
       const anonClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       const destino = Deno.env.get('APP_URL') ?? 'https://app.anabrasil.org';

@@ -159,23 +159,25 @@ export default function UsersPage() {
   const [impersonateSubmitting, setImpersonateSubmitting] = useState(false);
 
   const handlePreRegister = async () => {
-    if (!preRegisterForm.name || !preRegisterForm.email || !preRegisterForm.password) {
-      toast({ title: 'Campos obrigatórios', description: 'Preencha nome, e-mail e senha.', variant: 'destructive' });
+    if (!preRegisterForm.name || !preRegisterForm.email) {
+      toast({ title: 'Campos obrigatórios', description: 'Preencha nome e e-mail.', variant: 'destructive' });
       return;
     }
     if (faltaUnidadeDaEducacao(preRegisterForm.bond_type, preRegisterForm.unit)) {
       toast({ title: 'Escolha o CEI ou o GOE', description: 'Professora e orientação pedagógica precisam da unidade da Educação.', variant: 'destructive' });
       return;
     }
-    if (preRegisterForm.password.length < 6) {
-      toast({ title: 'Senha curta', description: 'Mínimo 6 caracteres.', variant: 'destructive' });
-      return;
-    }
 
     setPreRegisterSubmitting(true);
+    // Senha das senhas (19/11/2026): ninguém digita a senha de outra pessoa. A
+    // conta nasce com uma senha sorteada que ninguém conhece, e a pessoa entra
+    // pelo "Esqueceu a senha?" (a da equipe recebe "Gerar minha senha").
+    const sorteio = crypto.getRandomValues(new Uint8Array(24));
+    const senhaDescartavel = btoa(String.fromCharCode(...sorteio));
     const { data, error } = await supabase.functions.invoke('admin-create-user', {
       body: {
         ...preRegisterForm,
+        password: senhaDescartavel,
         role: preRegisterForm.permission_level === 'admin_geral' ? 'admin' : 
               preRegisterForm.permission_level === 'gestor_unidade' ? 'criador' : 
               preRegisterForm.permission_level === 'eventos_parceiros' ? 'criador' : 
@@ -194,7 +196,7 @@ export default function UsersPage() {
       return;
     }
 
-    toast({ title: 'Usuário cadastrado!', description: `${preRegisterForm.name} foi adicionado ao sistema.` });
+    toast({ title: 'Usuário cadastrado!', description: `${preRegisterForm.name} entra pelo "Esqueceu a senha?", com o e-mail ${preRegisterForm.email}.` });
     setShowPreRegister(false);
     setPreRegisterForm({
       name: '',
@@ -1953,19 +1955,9 @@ export default function UsersPage() {
                 onChange={e => setPreRegisterForm({ ...preRegisterForm, email: e.target.value })} 
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="pre-password">Senha Provisória</Label>
-              <Input 
-                id="pre-password" 
-                type="text" 
-                placeholder="Mínimo 6 caracteres" 
-                value={preRegisterForm.password} 
-                onChange={e => setPreRegisterForm({ ...preRegisterForm, password: e.target.value })} 
-              />
-              <p className="text-xs text-muted-foreground">
-                Informe esta senha ao usuário. Ele poderá alterá-la depois.
-              </p>
-            </div>
+            <p className="rounded-xl bg-muted p-3 text-xs text-muted-foreground">
+              Sem senha aqui: a pessoa abre o app, toca em <b className="text-foreground">"Esqueceu a senha?"</b> com este e-mail e recebe o botão "Gerar minha senha". Quem for da administração geral ou do marketing escolhe a própria senha pelo mesmo caminho.
+            </p>
             <div className="space-y-2">
               <Label>Vínculo</Label>
               <Select 
