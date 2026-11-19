@@ -67,6 +67,16 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Conta da equipe tem a senha gerada (PR 2 das senhas, 19/11/2026): nada de
+    // senha digitada. Sem o SQL do PR 2 a função não existe, e segue como antes.
+    const { data: daEquipe, error: erroEquipe } = await adminClient.rpc('senha_da_equipe', { _uid: userId });
+    if (!erroEquipe && daEquipe === true) {
+      return new Response(JSON.stringify({ error: 'Esta conta é da equipe: use "Gerar nova senha" no Painel.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // O cadeado das senhas (19/11/2026): a conta trancada só aceita troca
     // liberada pelo servidor. Sem o SQL do cadeado a função não existe, e a
     // troca segue como sempre.
