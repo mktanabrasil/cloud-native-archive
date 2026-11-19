@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check, Download, Eye, FileText, Lock, Send } from 'lucide-react';
+import { Check, Download, Eye, FileText, Lock, Printer, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,13 +42,15 @@ function Selo({ children, tom }: { children: React.ReactNode; tom: 'ok' | 'falta
  * O cartão do PDF no início (13/11/2026): a prévia, o envio ao marketing, a
  * espera da revisão e o PDF aprovado para baixar.
  */
-export function SituacaoDoPdf({ ano, marketing, editavel, onAno, onPrevia, onRevisao }: {
+export function SituacaoDoPdf({ ano, marketing, editavel, onAno, onPrevia, onRevisao, onBaixar }: {
   ano: AnoDoCalendario;
   marketing: boolean;
   editavel: boolean;
   onAno: (a: AnoDoCalendario) => void;
   onPrevia?: () => void;
   onRevisao?: () => void;
+  /** Fichário (19/11/2026): baixar para imprimir, montado com o que está no app agora. */
+  onBaixar?: () => void;
 }) {
   const [confirmar, setConfirmar] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -98,7 +100,9 @@ export function SituacaoDoPdf({ ano, marketing, editavel, onAno, onPrevia, onRev
           <p className="mt-2 text-[13.5px] leading-snug">
             <b>Aprovado pelo marketing{ano.aprovado_em ? ` em ${diaEMes(ano.aprovado_em)}` : ''}.</b>{ano.impresso_em && ano.aprovado_em && diaEMes(ano.impresso_em) !== diaEMes(ano.aprovado_em) ? ` A versão impressa é de ${diaEMes(ano.impresso_em)}.` : ''} {ano.impresso_em ? 'Agora o mês a mês continua aberto, como um fichário.' : `O calendário de ${ano.ano} está pronto.`}
           </p>
-          <Button className="mt-3 w-full gap-2" disabled={!(ano.pdf_impresso_url ?? ano.pdf_url)} onClick={() => void baixarPdfAprovado(ano, 'impresso')}><Download className="h-4 w-4" /> Baixar a versão impressa</Button>
+          {onBaixar && <Button className="mt-3 w-full gap-2" onClick={onBaixar}><Printer className="h-4 w-4" /> Baixar para imprimir</Button>}
+          {onBaixar && <p className="mt-1 text-center text-[11.5px] text-muted-foreground">Montado com o que está no app agora: só as folhas que mudaram, ou tudo.</p>}
+          <Button variant={onBaixar ? 'outline' : 'default'} className="mt-3 w-full gap-2" disabled={!(ano.pdf_impresso_url ?? ano.pdf_url)} onClick={() => void baixarPdfAprovado(ano, 'impresso')}><Download className="h-4 w-4" /> Baixar a versão impressa</Button>
           {ano.pdf_impresso_url && ano.pdf_url && ano.pdf_url !== ano.pdf_impresso_url && (
             <Button variant="outline" className="mt-2 w-full gap-2" onClick={() => void baixarPdfAprovado(ano)}><Download className="h-4 w-4" /> Baixar a última aprovação</Button>
           )}

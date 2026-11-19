@@ -20,6 +20,7 @@ import { TextosDoProjeto } from '@/components/calendario/TextosDoProjeto';
 import { PreviaDoPdf } from '@/components/calendario/PreviaDoPdf';
 import { RevisaoDoMarketing } from '@/components/calendario/RevisaoDoMarketing';
 import { MesAMes } from '@/components/calendario/MesAMes';
+import { BaixarDoFichario } from '@/components/calendario/BaixarDoFichario';
 
 /**
  * /social/calendario (14/11/2026): o Calendário Anual dos educadores, uma
@@ -100,6 +101,8 @@ function Preenchimento({ nome, marketing, email, unidade }: { nome: string; mark
   const [itens, setItens] = useState<ItemDoCalendario[]>([]);
   const [alteracoes, setAlteracoes] = useState<AlteracaoDoCalendario[]>([]);
   const [previaAberta, setPreviaAberta] = useState(false);
+  // O fichário (19/11/2026): baixar para imprimir; com um mês, só ele vem marcado.
+  const [baixar, setBaixar] = useState<{ mes: number | null } | null>(null);
   // O tutorial (13/11/2026): abre sozinho na primeira vez de cada roteiro.
   const tutoriais = useTutoriaisVistos();
   const roteiro: RoteiroDoCalendario | null = parte === 'inicio' ? 'calendario-inicio' : parte === 'mes' ? 'calendario-mes' : null;
@@ -165,9 +168,10 @@ function Preenchimento({ nome, marketing, email, unidade }: { nome: string; mark
       {voltar}
       {parte === 'percursos' && <PercursosDoAno ano={ano} editavel={editavel} onAno={setAno} />}
       {parte === 'textos' && <TextosDoProjeto ano={ano} editavel={editavel} onAno={setAno} />}
-      {parte === 'mes' && <MesAMes ano={ano} itens={itens} editavel={editavelItens} editavelDoMes={editavel} fichario={fichario} alteracoes={alteracoes} podeApagar={podeApagar} mes={mes} onMes={m => abrir('mes', m)} onAno={setAno} onItens={mudarItens} />}
+      {parte === 'mes' && <MesAMes ano={ano} itens={itens} editavel={editavelItens} editavelDoMes={editavel} fichario={fichario} alteracoes={alteracoes} podeApagar={podeApagar} onBaixar={m => setBaixar({ mes: m })} mes={mes} onMes={m => abrir('mes', m)} onAno={setAno} onItens={mudarItens} />}
       {parte === 'revisao' && marketing && <RevisaoDoMarketing ano={ano} itens={itens} alteracoes={alteracoes} quem={nome} onAno={setAno} onPrevia={() => setPreviaAberta(true)} />}
-      {(parte === 'inicio' || (parte === 'revisao' && !marketing)) && <InicioDoCalendario ano={ano} editavel={editavel} marketing={marketing} alteracoes={alteracoes} onAno={setAno} abrir={abrir} onPrevia={() => setPreviaAberta(true)} />}
+      {(parte === 'inicio' || (parte === 'revisao' && !marketing)) && <InicioDoCalendario ano={ano} editavel={editavel} marketing={marketing} alteracoes={alteracoes} onAno={setAno} abrir={abrir} onPrevia={() => setPreviaAberta(true)} onBaixar={fichario ? () => setBaixar({ mes: null }) : undefined} />}
+      {fichario && <BaixarDoFichario ano={ano} itens={itens} alteracoes={alteracoes} marketing={marketing} unidade={unidade} mesInicial={baixar?.mes} aberto={!!baixar} onFechar={() => setBaixar(null)} />}
       <PreviaDoPdf ano={ano} itens={itens} podeBaixar={marketing} aberta={previaAberta} onFechar={() => setPreviaAberta(false)} />
       {roteiro && (
         <JournalTutorial percurso={roteiro} passos={ROTEIROS_DO_CALENDARIO[roteiro].filter(p => !(fichario && p.alvo === 'cal-revisado'))} rotulo="Tutorial do Calendário Anual"

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookOpen, CalendarDays, Check, ChevronRight, Image as ImageIcon, ListChecks, Lock } from 'lucide-react';
+import { BookOpen, CalendarDays, Check, ChevronRight, Image as ImageIcon, ListChecks, Lock, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,7 +27,7 @@ function Selo({ children, tom }: { children: React.ReactNode; tom: 'ok' | 'falta
  * está o processo e as partes a preencher. O PDF, a revisão e a aprovação
  * chegam no próximo passo; aqui eles já aparecem, travados.
  */
-export function InicioDoCalendario({ ano, editavel, marketing, alteracoes = [], onAno, abrir, onPrevia }: { ano: AnoDoCalendario; editavel: boolean; marketing: boolean; alteracoes?: AlteracaoDoCalendario[]; onAno: (a: AnoDoCalendario) => void; abrir: (p: Parte, mes?: number) => void; onPrevia?: () => void }) {
+export function InicioDoCalendario({ ano, editavel, marketing, alteracoes = [], onAno, abrir, onPrevia, onBaixar }: { ano: AnoDoCalendario; editavel: boolean; marketing: boolean; alteracoes?: AlteracaoDoCalendario[]; onAno: (a: AnoDoCalendario) => void; abrir: (p: Parte, mes?: number) => void; onPrevia?: () => void; onBaixar?: () => void }) {
   const fichario = noFichario(ano);
   const mudancas = mudancasPorMes(alteracoes);
   const mesesQueMudaram = Object.keys(mudancas).map(Number).sort((x, y) => x - y);
@@ -105,7 +105,10 @@ export function InicioDoCalendario({ ano, editavel, marketing, alteracoes = [], 
                 );
               })}
             </div>
-            <Button className="mt-4 gap-2" onClick={() => abrir('mes', mesesQueMudaram[0] ?? (new Date().getFullYear() === ano.ano ? new Date().getMonth() + 1 : 1))}><CalendarDays className="h-4 w-4" /> Abrir o mês a mês</Button>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button className="gap-2" onClick={() => abrir('mes', mesesQueMudaram[0] ?? (new Date().getFullYear() === ano.ano ? new Date().getMonth() + 1 : 1))}><CalendarDays className="h-4 w-4" /> Abrir o mês a mês</Button>
+              {onBaixar && <Button variant="outline" className="gap-2" onClick={onBaixar}><Printer className="h-4 w-4" /> Baixar para imprimir</Button>}
+            </div>
           </section>
           ) : (
           <section className="glass-2 rounded-[22px] p-5" data-tutorial="cal-mes">
@@ -125,7 +128,7 @@ export function InicioDoCalendario({ ano, editavel, marketing, alteracoes = [], 
           </section>
         </div>
         <aside className="space-y-4">
-          <SituacaoDoPdf ano={ano} marketing={marketing} editavel={editavel} onAno={onAno} onPrevia={onPrevia} onRevisao={() => abrir('revisao')} />
+          <SituacaoDoPdf ano={ano} marketing={marketing} editavel={editavel} onAno={onAno} onPrevia={onPrevia} onRevisao={() => abrir('revisao')} onBaixar={onBaixar} />
         </aside>
       </div>
     </div>

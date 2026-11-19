@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Check, ChevronLeft, ChevronRight, Eye, EyeOff, Lock, Plus, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Eye, EyeOff, Lock, Plus, Printer, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,13 +44,15 @@ interface Props {
   alteracoes?: AlteracaoDoCalendario[];
   /** Quem pode apagar cada atividade (no fichário, só as suas). */
   podeApagar?: (i: ItemDoCalendario) => boolean;
+  /** Fichário: baixar a folha deste mês para imprimir. */
+  onBaixar?: (mes: number) => void;
   mes: number;
   onMes: (m: number) => void;
   onAno: (a: AnoDoCalendario) => void;
   onItens: (i: ItemDoCalendario[]) => void;
 }
 
-export function MesAMes({ ano, itens, editavel, editavelDoMes = editavel, fichario = false, alteracoes = [], podeApagar = () => true, mes, onMes, onAno, onItens }: Props) {
+export function MesAMes({ ano, itens, editavel, editavelDoMes = editavel, fichario = false, alteracoes = [], podeApagar = () => true, onBaixar, mes, onMes, onAno, onItens }: Props) {
   const mudancas = useMemo(() => mudancasPorMes(alteracoes), [alteracoes]);
   const doMes = mudancas[mes] ?? [];
   const nova = (i: ItemDoCalendario) => fichario && entrouDepoisDaImpressao(i, ano);
@@ -175,10 +177,10 @@ export function MesAMes({ ano, itens, editavel, editavelDoMes = editavel, fichar
           {sel ? <PainelDoDia chave={sel} ano={ano} itens={itens} editavel={editavel} podeApagar={podeApagar} fichario={fichario} onItens={onItens} />
             : <div className="glass-2 rounded-[22px] p-4 text-[13.5px] text-muted-foreground">Toque num dia para ver o que já tem e acrescentar uma atividade.</div>}
           </div>
-          {fichario && <MudancasDoMes mes={mes} mudancas={doMes} />}
+          {fichario && <MudancasDoMes mes={mes} mudancas={doMes} onBaixar={onBaixar} />}
           <MesRevisado revisado={revisado} editavel={editavelDoMes} mostrar={!fichario} onAlternar={alternarRevisado} mes={mes} onMes={onMes} autoria={autoriaDe(ano, `revisado:${mes}`)} />
         </aside>
-        <div className="lg:hidden">{fichario && <MudancasDoMes mes={mes} mudancas={doMes} />}<MesRevisado revisado={revisado} editavel={editavelDoMes} mostrar={!fichario} onAlternar={alternarRevisado} mes={mes} onMes={onMes} autoria={autoriaDe(ano, `revisado:${mes}`)} /></div>
+        <div className="lg:hidden">{fichario && <MudancasDoMes mes={mes} mudancas={doMes} onBaixar={onBaixar} />}<MesRevisado revisado={revisado} editavel={editavelDoMes} mostrar={!fichario} onAlternar={alternarRevisado} mes={mes} onMes={onMes} autoria={autoriaDe(ano, `revisado:${mes}`)} /></div>
       </div>
 
       <Dialog open={diaNoCelular && !!sel} onOpenChange={o => { if (!o) setDiaNoCelular(false); }}>
@@ -192,7 +194,7 @@ export function MesAMes({ ano, itens, editavel, editavelDoMes = editavel, fichar
 }
 
 /** O que mudou neste mês depois da impressão (19/11/2026): é o que pede uma folha nova no fichário. */
-function MudancasDoMes({ mes, mudancas }: { mes: number; mudancas: AlteracaoDoCalendario[] }) {
+function MudancasDoMes({ mes, mudancas, onBaixar }: { mes: number; mudancas: AlteracaoDoCalendario[]; onBaixar?: (mes: number) => void }) {
   return (
     <section className="glass-2 mt-3 rounded-[22px] p-4" data-testid="lista-de-mudancas">
       <p className="text-[13px] font-semibold">O que mudou em {MESES[mes - 1].toLowerCase()} desde a impressão</p>
@@ -207,6 +209,7 @@ function MudancasDoMes({ mes, mudancas }: { mes: number; mudancas: AlteracaoDoCa
           ))}
         </ul>
       )}
+      {onBaixar && <Button className="mt-3 w-full gap-2" variant={mudancas.length ? 'default' : 'outline'} onClick={() => onBaixar(mes)}><Printer className="h-4 w-4" /> Baixar a folha de {MESES[mes - 1].toLowerCase()}</Button>}
     </section>
   );
 }
