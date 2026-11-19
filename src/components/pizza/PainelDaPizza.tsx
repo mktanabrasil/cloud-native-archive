@@ -39,7 +39,8 @@ function Barras({ titulo, linhas, cor }: { titulo: string; linhas: Array<{ rotul
 
 export function PainelDaPizza() {
   const { isMarketing, bondType, isActive, loading } = useUserRole();
-  const pode = isMarketing || (bondType === 'financeiro' && isActive);
+  // A Pizza saiu do Financeiro (19/11/2026): só o marketing, como `pode_ver_pizza`.
+  const pode = isMarketing;
   const [lista, setLista] = useState<Confirmacao[] | null>(null);
   const [erro, setErro] = useState(false);
   const [unidade, setUnidade] = useState<string | null>(null);
