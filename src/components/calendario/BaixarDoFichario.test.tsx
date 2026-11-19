@@ -33,6 +33,8 @@ describe('os meses que mudaram para cada unidade', () => {
     expect(nomeDoArquivo(2027, 'DIC', 'mudaram', [3])).toBe('Calendário Anual 2027 · DIC · Março.pdf');
     expect(nomeDoArquivo(2027, 'geral', 'mudaram', [3, 6])).toBe('Calendário Anual 2027 · Geral · 2 meses.pdf');
     expect(nomeDoArquivo(2027, 'geral', 'inteiro', [])).toBe('Calendário Anual 2027 · Geral · inteiro.pdf');
+    expect(nomeDoArquivo(2027, 'DIC', 'mudaram', [], 1)).toBe('Calendário Anual 2027 · DIC · 1 folha extra.pdf');
+    expect(nomeDoArquivo(2027, 'DIC', 'mudaram', [3], 2)).toBe('Calendário Anual 2027 · DIC · Março + 2 folhas extras.pdf');
     expect(folhasDosMeses([3, 6], false)).toBe(2);
     expect(folhasDosMeses([3, 6], true)).toBe(6);
   });
@@ -78,7 +80,7 @@ describe('a janela de baixar', () => {
     expect(within(lista).getByRole('checkbox', { name: 'Festa da Família (mudou)' })).toHaveAttribute('aria-checked', 'true');
     expect(within(lista).getByRole('checkbox', { name: 'Velha' })).toHaveAttribute('aria-checked', 'false');
     expect(within(lista).queryByRole('checkbox', { name: /Passeio Nil/ })).not.toBeInTheDocument();
-    expect(screen.getByTestId('resumo-do-download')).toHaveTextContent('4 folhas · Março, Junho, Setembro, 1 folha extra');
+    expect(screen.getByTestId('resumo-do-download')).toHaveTextContent('3 folhas · Março, Junho, Setembro + 1 folha extra');
     fireEvent.click(screen.getByRole('button', { name: /baixar para imprimir/i }));
     await waitFor(() => expect(gerar.gerarPdfDoCalendario).toHaveBeenCalled());
     expect(((gerar.gerarPdfDoCalendario.mock.calls[0] as unknown as [unknown, unknown, { extras: { id: string }[] }])[2]).extras.map(x => x.id)).toEqual(['f1']);

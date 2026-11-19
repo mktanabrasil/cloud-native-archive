@@ -13,9 +13,11 @@ type DeQuem = 'geral' | string;
 type OQue = 'mudaram' | 'inteiro';
 
 /** "Calendário Anual 2027 · DIC · Março.pdf" */
-export function nomeDoArquivo(ano: number, deQuem: DeQuem, oQue: OQue, meses: number[]): string {
+export function nomeDoArquivo(ano: number, deQuem: DeQuem, oQue: OQue, meses: number[], extras = 0): string {
   const quem = deQuem === 'geral' ? 'Geral' : deQuem;
-  const oque = oQue === 'inteiro' ? 'inteiro' : meses.length === 1 ? MESES[meses[0] - 1] : `${meses.length} meses`;
+  const dosMeses = meses.length === 0 ? '' : meses.length === 1 ? MESES[meses[0] - 1] : `${meses.length} meses`;
+  const dasExtras = extras === 0 ? '' : `${extras} ${extras === 1 ? 'folha extra' : 'folhas extras'}`;
+  const oque = oQue === 'inteiro' ? 'inteiro' : [dosMeses, dasExtras].filter(Boolean).join(' + ');
   return `Calendário Anual ${ano} · ${quem} · ${oque}.pdf`;
 }
 
@@ -103,7 +105,7 @@ export function BaixarDoFichario({ ano, itens, extras = [], alteracoes, marketin
       const r = await gerarPdfDoCalendario(ano, itens, { capaUrl, previa: false, partes, unidade: deQuem === 'geral' ? null : deQuem, atualizadaEm: new Date().toISOString(), extras: extrasDaVez });
       const url = URL.createObjectURL(r.blob);
       const a = document.createElement('a');
-      a.href = url; a.download = nomeDoArquivo(ano.ano, deQuem, oQue, meses);
+      a.href = url; a.download = nomeDoArquivo(ano.ano, deQuem, oQue, inteiro ? [] : meses, inteiro ? 0 : extrasDaVez.length);
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
       toast.success(inteiro ? 'Calendário baixado' : `${r.paginas} ${r.paginas === 1 ? 'folha baixada' : 'folhas baixadas'}`);
@@ -114,10 +116,13 @@ export function BaixarDoFichario({ ano, itens, extras = [], alteracoes, marketin
     finally { setGerando(false); }
   };
 
-  const totalDeFolhas = oQue === 'inteiro' ? null : folhasDosMeses(meses, anotacoes) + folhas.length;
+  // As folhas dos meses são contadas certinho; a folha extra de texto longo pode continuar na seguinte.
+  const folhasDeMeses = oQue === 'inteiro' ? null : folhasDosMeses(meses, anotacoes);
+  const totalDeFolhas = folhasDeMeses === null ? null : folhasDeMeses + folhas.length;
   const resumo = totalDeFolhas === null ? 'O calendário inteiro'
     : totalDeFolhas === 0 ? 'Escolham ao menos um mês ou uma folha'
-    : `${totalDeFolhas} ${totalDeFolhas === 1 ? 'folha' : 'folhas'} · ${[...meses.map(m => MESES[m - 1]), ...(folhas.length ? [`${folhas.length} ${folhas.length === 1 ? 'folha extra' : 'folhas extras'}`] : [])].join(', ')}`;
+    : [folhasDeMeses ? `${folhasDeMeses} ${folhasDeMeses === 1 ? 'folha' : 'folhas'} · ${meses.map(m => MESES[m - 1]).join(', ')}` : '',
+       folhas.length ? `${folhas.length} ${folhas.length === 1 ? 'folha extra' : 'folhas extras'}` : ''].filter(Boolean).join(' + ');
   return (
     <Dialog open={aberto} onOpenChange={o => { if (!o && !gerando) onFechar(); }}>
       <DialogContent className="max-h-[90svh] max-w-[640px] overflow-y-auto">

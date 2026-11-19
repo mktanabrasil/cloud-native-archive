@@ -98,7 +98,7 @@ export function PreviaDoPdf({ ano, itens, extras = [], soAFolha = null, podeBaix
     if (estado.fase !== 'pronta') return;
     const url = URL.createObjectURL(estado.blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `Calendário Anual ${ano.ano} - prévia.pdf`;
+    a.href = url; a.download = soAFolha ? `Calendário Anual ${ano.ano} - folha extra - ${(soAFolha.titulo || 'sem título').replace(/[\\/:*?"<>|]/g, '-')} - prévia.pdf` : `Calendário Anual ${ano.ano} - prévia.pdf`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   };

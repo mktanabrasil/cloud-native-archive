@@ -98,6 +98,7 @@ export function EditorDaFolhaExtra({ ano, itens, folha, podeMexer, unidadePadrao
   const [pauta, setPauta] = useState(folha?.pauta ?? true);
   const [indo, setIndo] = useState(false);
   const [apagar, setApagar] = useState(false);
+  const [apagando, setApagando] = useState(false);
   const campos = { titulo: titulo.trim(), depois_do_mes: mes, unidades: unidades.length === UNIDADES_DO_CALENDARIO.length ? [] : unidades, texto: texto.trim(), pauta };
   const comoEsta: FolhaExtra = { ...(folha ?? { id: 'nova', ano: ano.ano }), ...campos, titulo: campos.titulo || 'Sem título' };
   const mudou = !folha || JSON.stringify([folha.titulo, folha.depois_do_mes, folha.unidades, folha.texto, folha.pauta]) !== JSON.stringify([campos.titulo, campos.depois_do_mes, campos.unidades, campos.texto, campos.pauta]);
@@ -112,12 +113,14 @@ export function EditorDaFolhaExtra({ ano, itens, folha, podeMexer, unidadePadrao
     finally { setIndo(false); }
   };
   const confirmarApagar = async () => {
-    if (!folha) return;
+    if (!folha || apagando) return;
+    setApagando(true);
     try { await apagarFolhaExtra(folha.id); onApagada(folha.id); toast.success('Folha apagada'); }
     catch (e) { toast.error((e as Error).message || 'Não deu para apagar agora.'); }
-    finally { setApagar(false); }
+    finally { setApagando(false); setApagar(false); }
   };
-  const alternar = (u: string) => setUnidades(us => (us.includes(u) ? us.filter(x => x !== u) : [...us, u]));
+  // Sempre na ordem DIC, Nilópolis, Santana: marcar e desmarcar de novo não conta como mudança.
+  const alternar = (u: string) => setUnidades(us => UNIDADES_DO_CALENDARIO.filter(x => (x === u ? !us.includes(u) : us.includes(x))));
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pb-10 lg:px-6">
@@ -157,8 +160,8 @@ export function EditorDaFolhaExtra({ ano, itens, folha, podeMexer, unidadePadrao
             <AlertDialogDescription>Ela sai do fichário digital e do calendário inteiro. A folha que já foi impressa continua no papel.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Não apagar</AlertDialogCancel>
-            <AlertDialogAction onClick={e => { e.preventDefault(); void confirmarApagar(); }}>Apagar</AlertDialogAction>
+            <AlertDialogCancel disabled={apagando}>Não apagar</AlertDialogCancel>
+            <AlertDialogAction disabled={apagando} onClick={e => { e.preventDefault(); void confirmarApagar(); }}>{apagando ? 'Apagando…' : 'Apagar'}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

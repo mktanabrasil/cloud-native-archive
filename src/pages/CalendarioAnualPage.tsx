@@ -119,11 +119,10 @@ function Preenchimento({ nome, marketing, email, unidade }: { nome: string; mark
 
   const carregar = useCallback(async () => {
     try {
-      const [a, i] = await Promise.all([lerAno(ANO_DO_CALENDARIO), lerItens(ANO_DO_CALENDARIO)]);
+      // As folhas extras (19/11/2026) vêm junto (vazio sem o SQL 20261120100000): o link direto para uma folha já a encontra.
+      const [a, i, x] = await Promise.all([lerAno(ANO_DO_CALENDARIO), lerItens(ANO_DO_CALENDARIO), lerFolhasExtras(ANO_DO_CALENDARIO)]);
       if (!a) { setEstado(marketing ? 'erro' : 'fechado'); return; }
-      setAno(a); setItens(i); setEstado('pronto');
-      // As folhas extras (19/11/2026): vazio sem o SQL 20261120100000.
-      setExtras(await lerFolhasExtras(ANO_DO_CALENDARIO));
+      setAno(a); setItens(i); setExtras(x); setEstado('pronto');
       // O fichário (19/11/2026): o que mudou depois da impressão.
       if (a.impresso_em) setAlteracoes(await lerAlteracoes(ANO_DO_CALENDARIO));
     } catch { setEstado('erro'); }
@@ -187,7 +186,7 @@ function Preenchimento({ nome, marketing, email, unidade }: { nome: string; mark
           onApagada={id => { setExtras(xs => xs.filter(x => x.id !== id)); abrir('inicio'); }}
           onPrevia={f => { setPreviaDaFolha(f); setPreviaAberta(true); }} />
       )}
-      {parte === 'extra' && !(folhaPedida === 'nova' ? podeCriarFolha : !!folhaAberta) && <p className="px-6 py-10 text-center text-[14px] text-muted-foreground">Esta folha extra não existe mais.</p>}
+      {parte === 'extra' && !(folhaPedida === 'nova' ? podeCriarFolha : !!folhaAberta) && <p className="px-6 py-10 text-center text-[14px] text-muted-foreground">{folhaPedida === 'nova' ? 'As folhas extras ficam abertas depois que o calendário é aprovado e impresso.' : 'Esta folha extra não existe mais.'}</p>}
       {parte === 'revisao' && marketing && <RevisaoDoMarketing ano={ano} itens={itens} extras={extras} alteracoes={alteracoes} quem={nome} onAno={setAno} onPrevia={() => { setPreviaDaFolha(null); setPreviaAberta(true); }} />}
       {(parte === 'inicio' || (parte === 'revisao' && !marketing)) && <InicioDoCalendario ano={ano} editavel={editavel} marketing={marketing} alteracoes={alteracoes} onAno={setAno} abrir={abrir} onPrevia={() => { setPreviaDaFolha(null); setPreviaAberta(true); }} onBaixar={fichario ? () => setBaixar({ mes: null }) : undefined}
         folhas={podeCriarFolha || extras.length ? { lista: extras, itens, podeCriar: podeCriarFolha, podeMexer: podeMexerNaFolha } : undefined} />}
