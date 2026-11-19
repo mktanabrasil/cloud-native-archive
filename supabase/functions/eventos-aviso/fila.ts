@@ -32,6 +32,20 @@ export interface Perfil { email: string | null; name: string | null; unit: strin
 export const normEmail = (e: string) => e.trim().toLowerCase();
 
 /**
+ * Em cópia nos e-mails dos setores (19/11/2026, pedido dele): todo e-mail
+ * que vai para as listas do RH, do Voluntariado e do Financeiro leva adm@ e
+ * financeiro@ em cópia. Espelho de `COPIA_DOS_SETORES` em
+ * src/lib/events/avisos.ts.
+ */
+export const COPIA_DOS_SETORES = ['adm@anabrasil.org', 'financeiro@anabrasil.org'];
+
+/** A cópia sem quem já está no "Para": ninguém recebe o mesmo e-mail duas vezes. */
+export function copiaDosSetores(para: string[]): string[] {
+  const ja = new Set(para.map(normEmail));
+  return COPIA_DOS_SETORES.filter(e => !ja.has(e));
+}
+
+/**
  * A configuração a partir do que a leitura de `system_configs` devolveu.
  *
  * Erro na leitura = `null`: quem chama não envia nada e o aviso fica na fila
