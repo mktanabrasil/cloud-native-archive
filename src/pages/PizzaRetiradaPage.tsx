@@ -110,7 +110,8 @@ export default function PizzaRetiradaPage() {
   useTituloDaAba('Pizza da Alegria · Retirada');
   const { isAuthenticated, loading: carregandoLogin } = useAuth();
   const { isMarketing, bondType, isActive, loading: carregandoPapel } = useUserRole();
-  const pode = isMarketing || (bondType === 'financeiro' && isActive);
+  // A Pizza saiu do Financeiro (19/11/2026): só o marketing, como `pode_ver_pizza`.
+  const pode = isMarketing;
   const [params, setParams] = useSearchParams();
   const doLink = numeroLido(params.get('n') ?? '');
 

@@ -15,7 +15,8 @@ import { DashboardDaPizza } from '@/components/pizza/DashboardDaPizza';
 export function PizzaDashboardPage() {
   useTituloDaAba('Pizza da Alegria · Dashboard');
   const { isMarketing, bondType, isActive, loading } = useUserRole();
-  const pode = isMarketing || (bondType === 'financeiro' && isActive);
+  // A Pizza saiu do Financeiro (19/11/2026): só o marketing, como `pode_ver_pizza`.
+  const pode = isMarketing;
   if (loading) return null;
   if (!pode) {
     return (

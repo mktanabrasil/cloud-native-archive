@@ -347,15 +347,6 @@ describe('painel', () => {
       expect(within(envios).getByText('O WhatsApp da MKT está desconectado do Evolution')).toBeInTheDocument();
     });
 
-    it('o financeiro vê a prévia e os envios, mas não envia nem liga', async () => {
-      banco.papel = { isMarketing: false, bondType: 'financeiro', isActive: true, loading: false };
-      banco.ranking.estado = { ...ESTADO, podeEnviar: false };
-      const janela = await abrir();
-      expect(await within(janela).findByRole('switch', { name: 'Envio automático' })).toBeDisabled();
-      expect(within(janela).queryByRole('button', { name: /Mandar teste para mim/ })).toBeNull();
-      expect(within(janela).queryByRole('button', { name: /Enviar ao grupo agora/ })).toBeNull();
-    });
-
     it('sem o token do WhatsApp: avisa e não deixa enviar', async () => {
       banco.ranking.estado = { ...ESTADO, configurado: false, envios: [] };
       const janela = await abrir();
@@ -366,10 +357,10 @@ describe('painel', () => {
     });
   });
 
-  it('o ADM (financeiro) entra; a gestora não', async () => {
+  it('só o marketing entra: o financeiro não (19/11/2026) e a gestora também não', async () => {
     banco.papel = { isMarketing: false, bondType: 'financeiro', isActive: true, loading: false };
     const { unmount } = render(<MemoryRouter><PainelDaPizza /></MemoryRouter>);
-    expect(await screen.findByText(/Nenhuma confirmação ainda/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Acesso restrito' })).toBeInTheDocument();
     unmount();
     banco.papel = { isMarketing: false, bondType: 'gestao_social', isActive: true, loading: false };
     render(<MemoryRouter><PainelDaPizza /></MemoryRouter>);
