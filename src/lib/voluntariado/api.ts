@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { comMaiusculas } from '@/lib/vagas/maiusculas';
 import { findNewsUnit } from '@/lib/news/units';
 import { areaDaUnidade } from '@/lib/pizza/modelo';
-import { digitosDoWhatsapp, type AreaDeAjuda, type Horario, type Vinculo } from './modelo';
+import { digitosDoWhatsapp, type Acompanhante, type AreaDeAjuda, type Horario, type Vinculo } from './modelo';
 
 /** Uma inscrição, como o painel lê. */
 export interface Inscricao {
@@ -36,6 +36,8 @@ export interface NovaInscricao {
   comoSoube: string | null;
   opcao1: AreaDeAjuda;
   opcao2: AreaDeAjuda | null;
+  /** Desde 23/11/2026 (pessoa idosa ou criança, com nome e idade). */
+  acompanhantes?: Acompanhante[];
 }
 
 /** Envia a inscrição; o banco confere tudo (inclusive a meta da área) e devolve o protocolo sorteado. */
@@ -55,7 +57,10 @@ export async function inscrever(d: NovaInscricao): Promise<string> {
     p_indicado_por: d.vinculo === 'comunidade' && d.indicadoPor?.trim() ? comMaiusculas(d.indicadoPor, { pessoa: true }) : undefined,
     p_igreja: d.vinculo === 'comunidade' && d.igreja?.trim() ? d.igreja.trim() : undefined,
     p_como_soube: d.vinculo === 'comunidade' && !d.indicadoPor?.trim() && d.comoSoube?.trim() ? d.comoSoube.trim() : undefined,
-  });
+    // Só vai quando há acompanhante (23/11/2026): assim a inscrição sem
+    // acompanhante não depende do SQL novo.
+    ...(d.acompanhantes?.length ? { p_acompanhantes: d.acompanhantes } : {}),
+  } as never);
   if (error) throw error;
   return String(data);
 }

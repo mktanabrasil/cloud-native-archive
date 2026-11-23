@@ -10,8 +10,8 @@ import { salvarComprovante } from '@/lib/voluntariado/comprovante';
 import { CAMINHO_DA_CENTRAL, guardarNumero } from '@/lib/voluntariado/central';
 import {
   AREAS_DE_AJUDA, AREAS_POR_VINCULO, descricaoDaArea, DIA_DO_EVENTO, GRUPO_DO_WHATSAPP, HORARIOS, SOBRE_O_EVENTO, TEXTO_DO_HORARIO, TITULO_DAS_AREAS, TREINAMENTO, UNIDADES_DO_VOLUNTARIADO, ULTIMO_DIA, VINCULOS,
-  encerrado, mascaraDoWhatsapp, mensagemDoErro, pedeAvisoDeLotada, problemaDaEtapa2, rotuloDaAjuda, rotuloDoHorario, tocarArea,
-  type AreaDeAjuda, type Horario, type Vinculo,
+  MAX_ACOMPANHANTES, acompanhantesParaEnviar, encerrado, mascaraDoWhatsapp, mensagemDoErro, pedeAvisoDeLotada, problemaDaEtapa2, rotuloDaAjuda, rotuloDoHorario, textoDosAcompanhantes, tocarArea,
+  type AcompanhanteNaTela, type AreaDeAjuda, type Horario, type Vinculo,
 } from '@/lib/voluntariado/modelo';
 
 /**
@@ -82,6 +82,12 @@ export default function VoluntariadoPage() {
   const [comoSoube, setComoSoube] = useState('');
   const [temIgreja, setTemIgreja] = useState<boolean | null>(null);
   const [igreja, setIgreja] = useState('');
+  // Acompanhantes (23/11/2026): pessoa idosa ou criança, com nome e idade.
+  const [levaAcompanhante, setLevaAcompanhante] = useState<boolean | null>(null);
+  const [acompanhantes, setAcompanhantes] = useState<AcompanhanteNaTela[]>([]);
+  const mudarAcompanhante = (i: number, campo: keyof AcompanhanteNaTela, v: string) => {
+    setAcompanhantes((l) => l.map((a, k) => (k === i ? { ...a, [campo]: v } : a))); setErro(null);
+  };
   const [opcoes, setOpcoes] = useState<{ opcao1: AreaDeAjuda | null; opcao2: AreaDeAjuda | null }>({ opcao1: null, opcao2: null });
   const [lotadas, setLotadas] = useState<string[]>([]);
   const [aviso, setAviso] = useState<AreaDeAjuda | null>(null);
@@ -111,7 +117,7 @@ export default function VoluntariadoPage() {
   }
 
   function seguirParaAsAreas() {
-    const p = problemaDaEtapa2({ nome, whatsapp, horario, vinculo, unidade: unidade || null, indicado, indicadoPor, temIgreja, igreja, comoSoube });
+    const p = problemaDaEtapa2({ nome, whatsapp, horario, vinculo, unidade: unidade || null, indicado, indicadoPor, temIgreja, igreja, comoSoube, levaAcompanhante, acompanhantes });
     if (p) { setErro(p); return; }
     ir('areas');
   }
@@ -131,6 +137,7 @@ export default function VoluntariadoPage() {
         indicadoPor: indicado ? indicadoPor : null, igreja: temIgreja ? igreja : null,
         comoSoube: indicado === false ? comoSoube : null,
         opcao1: opcoes.opcao1, opcao2: opcoes.opcao2,
+        acompanhantes: acompanhantesParaEnviar(levaAcompanhante, acompanhantes),
       });
       enviarParaAPlanilha();
       const v = VINCULOS.find((x) => x.chave === vinculo)!;
@@ -139,6 +146,8 @@ export default function VoluntariadoPage() {
       const linhas: Array<[string, string]> = [['Nome', nome.trim().replace(/\s+/g, ' ')], ['Vínculo', quem], ['Horário', rotuloDoHorario(horario)], ['1ª opção', rotuloDaAjuda(opcoes.opcao1)]];
       if (opcoes.opcao2) linhas.push(['2ª opção', rotuloDaAjuda(opcoes.opcao2)]);
       if (vinculo === 'comunidade' && temIgreja && igreja.trim()) linhas.push(['Igreja', igreja.trim()]);
+      const comVoce = acompanhantesParaEnviar(levaAcompanhante, acompanhantes);
+      if (comVoce.length) linhas.push([comVoce.length === 1 ? 'Acompanhante' : 'Acompanhantes', textoDosAcompanhantes(comVoce).replace(/\n/g, '; ')]);
       setFeito({ protocolo, linhas });
       setEtapa('feito');
       window.scrollTo?.({ top: 0 });
@@ -352,6 +361,46 @@ export default function VoluntariadoPage() {
                     <label className="flex flex-col gap-1.5 text-sm font-semibold">Qual igreja?
                       <input className={campo} style={{ borderColor: COR.linha }} maxLength={120} placeholder="Nome da igreja" value={igreja} onChange={(e) => { setIgreja(e.target.value); setErro(null); }} />
                     </label>
+                  )}
+                </div>
+              )}
+            </section>
+
+            <section className="flex flex-col gap-2" aria-labelledby="pergunta-acompanhante">
+              <Pergunta id="pergunta-acompanhante">Vai levar acompanhante?</Pergunta>
+              <p className="-mt-1 mb-1 text-[13px]" style={{ color: COR.mut }}>Pessoa idosa ou criança que vai com você no dia.</p>
+              <Escolha marcada={levaAcompanhante === false} onClick={() => { setLevaAcompanhante(false); setAcompanhantes([]); setErro(null); }}>Não</Escolha>
+              <Escolha marcada={levaAcompanhante === true} onClick={() => { setLevaAcompanhante(true); setAcompanhantes((l) => (l.length ? l : [{ tipo: '', nome: '', idade: '' }])); setErro(null); }}>Sim</Escolha>
+              {levaAcompanhante && (
+                <div className="mt-1 flex flex-col gap-3">
+                  {acompanhantes.map((a, i) => (
+                    <div key={i} className="flex flex-col gap-2.5 rounded-2xl border-2 bg-white p-3" style={{ borderColor: COR.linha }} data-testid="acompanhante">
+                      <div className="flex items-center justify-between">
+                        <b className="text-[13px]">Acompanhante {i + 1}</b>
+                        {acompanhantes.length > 1 && <button type="button" className="text-[12.5px] font-semibold underline" style={{ color: COR.mut }} onClick={() => setAcompanhantes((l) => l.filter((_, k) => k !== i))}>Tirar</button>}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={`Acompanhante ${i + 1} é`}>
+                        {([['idoso', 'Pessoa idosa'], ['crianca', 'Criança']] as const).map(([k, r]) => (
+                          <button key={k} type="button" role="radio" aria-checked={a.tipo === k} onClick={() => mudarAcompanhante(i, 'tipo', k)}
+                            className="h-11 rounded-xl border-2 text-[14px] font-semibold"
+                            style={a.tipo === k ? { borderColor: COR.verde, background: COR.verdeClaro, color: COR.verde } : { borderColor: COR.linha }}>{r}</button>
+                        ))}
+                      </div>
+                      {a.tipo && (
+                        <div className="grid grid-cols-[minmax(0,1fr)_5.5rem] gap-2">
+                          <label className="flex flex-col gap-1 text-[13px] font-semibold">Nome
+                            <input className={campo} style={{ borderColor: COR.linha }} maxLength={120} value={a.nome} onChange={(e) => mudarAcompanhante(i, 'nome', e.target.value)} />
+                          </label>
+                          <label className="flex flex-col gap-1 text-[13px] font-semibold">Idade
+                            <input className={campo} style={{ borderColor: COR.linha }} inputMode="numeric" maxLength={3} value={a.idade} onChange={(e) => mudarAcompanhante(i, 'idade', e.target.value.replace(/\D/g, ''))} />
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {acompanhantes.length < MAX_ACOMPANHANTES && (
+                    <button type="button" className="h-11 rounded-xl border-2 border-dashed text-[14px] font-semibold" style={{ borderColor: COR.linha, color: COR.verde }}
+                      onClick={() => setAcompanhantes((l) => [...l, { tipo: '', nome: '', idade: '' }])}>+ Acrescentar outro acompanhante</button>
                   )}
                 </div>
               )}

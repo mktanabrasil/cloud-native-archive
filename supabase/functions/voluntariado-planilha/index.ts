@@ -8,9 +8,11 @@ addEventListener('error', (e) => { console.error('[voluntariado-planilha] erro s
  *
  * Desde 23/10/2026 as inscrições caem direto na planilha da coordenação
  * ("Mapeamento Natal Feliz 2026", aba Voluntários), que já tem as colunas e
- * as listas suspensas (etiquetas). O app escreve de A a K, uma linha por
- * inscrição, na primeira linha livre depois da última com nome; a coluna L
- * (Observações) e o resto da planilha são da coordenação, e o app nunca
+ * as listas suspensas (etiquetas). O app escreve de A a L, uma linha por
+ * inscrição, na primeira linha livre depois da última com nome; desde
+ * 23/11/2026 a L é "Acompanhantes" (pessoa idosa ou criança, com nome e
+ * idade, um por linha na célula). A coluna M (Observações) e o resto da
+ * planilha são da coordenação, e o app nunca
  * reescreve nem apaga o que já está lá. Os valores saem com os nomes exatos
  * das etiquetas da planilha, para virarem as etiquetas coloridas dela.
  * A planilha e a aba ficam em voluntariado_planilha (id 1).
@@ -37,10 +39,15 @@ const OAUTH_CLIENT_SECRET = Deno.env.get('GOOGLE_OAUTH_CLIENT_SECRET') || '';
 const POR_VEZ = 200;
 
 /**
- * As colunas da aba Voluntários (A a K):
+ * As colunas da aba Voluntários (A a L):
  * Nome Voluntário | Área / Setor | Horário | Telefone | Vínculo | Unidade |
- * 2ª opção | Indicado por | Igreja | Protocolo | Inscrito em
+ * 2ª opção | Indicado por | Igreja | Protocolo | Inscrito em | Acompanhantes
  */
+/** "Maria Souza, 72 anos (pessoa idosa)", um por linha (o mesmo texto de src/lib/voluntariado/modelo.ts). */
+const ROTULO_DO_ACOMPANHANTE: Record<string, string> = { idoso: 'pessoa idosa', crianca: 'criança' };
+// deno-lint-ignore no-explicit-any
+const acompanhantes = (lista: any) => (Array.isArray(lista) ? lista : [])
+  .map((a) => `${a.nome}, ${a.idade} ${Number(a.idade) === 1 ? 'ano' : 'anos'} (${ROTULO_DO_ACOMPANHANTE[a.tipo] ?? a.tipo})`).join('\n');
 const VINCULO: Record<string, string> = { funcionario: 'Funcionário(a) ANA', alcance: 'Alcance JNI', comunidade: 'Voluntário(a)' };
 /** Os nomes das etiquetas da coluna Horário da planilha. */
 const HORARIO: Record<string, string> = { manha: 'Manhã', tarde: 'Tarde', dia_anterior: 'Dia anterior', pos_evento: 'Pós-Evento', dia_todo: 'Dia todo' };
@@ -108,6 +115,7 @@ const whatsapp = (d: string) =>
 const linha = (i: any) => [
   i.nome, AREA[i.opcao1] ?? i.opcao1, HORARIO[i.horario] ?? '', whatsapp(i.whatsapp), VINCULO[i.vinculo] ?? i.vinculo ?? '',
   i.unidade_nome ?? '', i.opcao2 ? (AREA[i.opcao2] ?? i.opcao2) : '', indicacao(i), igreja(i), i.protocolo, quando(i.created_at),
+  acompanhantes(i.acompanhantes),
 ];
 
 const mensagem = (e: unknown) => {
@@ -146,14 +154,14 @@ async function enviarPendentes(admin: Admin): Promise<{ enviadas: number; penden
   try {
     for (let rodada = 0; rodada < 5; rodada++) {
       const { data: lista } = await admin.from('voluntarios_natal')
-        .select('id, protocolo, nome, whatsapp, vinculo, horario, unidade_nome, indicado_por, igreja, como_soube, opcao1, opcao2, created_at')
+        .select('id, protocolo, nome, whatsapp, vinculo, horario, unidade_nome, indicado_por, igreja, como_soube, opcao1, opcao2, acompanhantes, created_at')
         .is('planilha_em', null).order('created_at').limit(POR_VEZ);
       // deno-lint-ignore no-explicit-any
       const fila = (lista ?? []) as any[];
       if (!fila.length) break;
       const primeira = await linhaLivre(g.token, p.planilha_id, aba);
       await google(g.token, 'PUT',
-        `https://sheets.googleapis.com/v4/spreadsheets/${p.planilha_id}/values/${intervalo(aba, `A${primeira}:K${primeira + fila.length - 1}`)}?valueInputOption=RAW`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${p.planilha_id}/values/${intervalo(aba, `A${primeira}:L${primeira + fila.length - 1}`)}?valueInputOption=RAW`,
         { values: fila.map(linha) });
       await admin.from('voluntarios_natal').update({ planilha_em: new Date().toISOString(), planilha_tentando_em: null }).in('id', fila.map((l) => l.id));
       enviadas += fila.length;

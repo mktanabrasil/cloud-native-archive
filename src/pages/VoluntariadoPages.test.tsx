@@ -188,7 +188,10 @@ describe('formulário', () => {
     fireEvent.change(screen.getByLabelText('Telefone (WhatsApp)'), { target: { value: '19993558242' } });
     fireEvent.click(screen.getByRole('button', { name: /^Manhã/ }));
     fireEvent.click(screen.getByRole('button', { name: vinculo }));
+    // Acompanhante (23/11/2026): a pergunta é obrigatória; aqui, "Não".
+    fireEvent.click(within(acompanhante()).getByRole('button', { name: 'Não' }));
   };
+  const acompanhante = () => document.querySelector('[aria-labelledby="pergunta-acompanhante"]') as HTMLElement;
 
   it('etapa 1: o convite, o aviso do treinamento e quem não pode para ali, sem gravar nada', () => {
     abrir();
@@ -212,7 +215,54 @@ describe('formulário', () => {
     expect(screen.getByTestId('aviso-do-treinamento')).toBeInTheDocument();
   });
 
-  it('funcionário: unidade, as 6 áreas dele, protocolo, treinamento e comprovante', async () => {
+  it('acompanhantes (23/11/2026): pessoa idosa ou criança, com nome e idade; vão na inscrição e no comprovante', async () => {
+    abrir();
+    etapa2();
+    quemSou(/^Sou funcionário\(a\) da ANA/);
+    fireEvent.change(screen.getByLabelText('Em qual unidade você trabalha?'), { target: { value: 'goe' } });
+    const sec = acompanhante();
+    fireEvent.click(within(sec).getByRole('button', { name: 'Sim' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Acompanhante: escolha se é pessoa idosa ou criança.');
+    fireEvent.click(within(sec).getByRole('radio', { name: 'Pessoa idosa' }));
+    fireEvent.change(within(sec).getByLabelText('Nome'), { target: { value: ' Maria  das Graças ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Acompanhante: escreva a idade.');
+    fireEvent.change(within(sec).getByLabelText('Idade'), { target: { value: '7a2' } });
+    expect(within(sec).getByLabelText('Idade')).toHaveValue('72');
+    fireEvent.click(within(sec).getByRole('button', { name: '+ Acrescentar outro acompanhante' }));
+    const cartoes = within(sec).getAllByTestId('acompanhante');
+    expect(cartoes).toHaveLength(2);
+    fireEvent.click(within(cartoes[1]).getByRole('radio', { name: 'Criança' }));
+    fireEvent.change(within(cartoes[1]).getByLabelText('Nome'), { target: { value: 'Davi' } });
+    fireEvent.change(within(cartoes[1]).getByLabelText('Idade'), { target: { value: '8' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+    expect(screen.getByTestId('etapas')).toHaveTextContent('Etapa 3 de 3');
+    fireEvent.click(screen.getAllByRole('button', { pressed: false })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar inscrição' }));
+    await waitFor(() => expect(banco.enviados).toHaveLength(1));
+    expect(banco.enviados[0].acompanhantes).toEqual([{ tipo: 'idoso', nome: 'Maria das Graças', idade: 72 }, { tipo: 'crianca', nome: 'Davi', idade: 8 }]);
+    expect(await screen.findByText('Maria das Graças, 72 anos (pessoa idosa); Davi, 8 anos (criança)')).toBeInTheDocument();
+  });
+
+  it('acompanhante: "Não" não manda ninguém; mudar de "Sim" para "Não" limpa a lista', async () => {
+    abrir();
+    etapa2();
+    quemSou(/^Sou funcionário\(a\) da ANA/);
+    fireEvent.change(screen.getByLabelText('Em qual unidade você trabalha?'), { target: { value: 'goe' } });
+    const sec = acompanhante();
+    fireEvent.click(within(sec).getByRole('button', { name: 'Sim' }));
+    expect(within(sec).getAllByTestId('acompanhante')).toHaveLength(1);
+    fireEvent.click(within(sec).getByRole('button', { name: 'Não' }));
+    expect(within(sec).queryAllByTestId('acompanhante')).toHaveLength(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+    fireEvent.click(screen.getAllByRole('button', { pressed: false })[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar inscrição' }));
+    await waitFor(() => expect(banco.enviados).toHaveLength(1));
+    expect(banco.enviados[0].acompanhantes).toEqual([]);
+  });
+
+    it('funcionário: unidade, as 6 áreas dele, protocolo, treinamento e comprovante', async () => {
     abrir();
     etapa2();
     expect(screen.getByTestId('etapas')).toHaveTextContent('Etapa 2 de 3');
