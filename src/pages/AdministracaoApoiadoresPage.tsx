@@ -12,7 +12,8 @@ import {
   ROTULO_DO_TIPO, TIPOS_DO_LADO, apoiadoresDoLado, emailValido, filtrarApoiadores, numerosDoLado, textoParaCopiar,
   type EventoComApoiadores, type Lado, type TipoDeApoiador,
 } from '@/lib/administracao/apoiadores';
-import { lerAcesso, lerApoiadores, mudarAcesso, type AcessoLiberado } from '@/lib/administracao/apoiadoresApi';
+import { lerAcesso, lerApoiadores, mudarAcesso } from '@/lib/administracao/apoiadoresApi';
+import { QuemMaisVe } from '@/components/administracao/QuemMaisVe';
 
 const FUSO = 'America/Sao_Paulo';
 const diaEMes = (iso: string) => new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, day: '2-digit', month: '2-digit', year: '2-digit' }).format(new Date(iso));
@@ -52,7 +53,7 @@ export default function AdministracaoApoiadoresPage({ lado }: { lado: Lado }) {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 pb-16 sm:px-6">
       <ListaDeApoiadores lado={lado} />
-      {isAdmin && <QuemMaisVe />}
+      {isAdmin && <QuemMaisVe pagina="Padrinhos e Parceiros" quemJaVe="O marketing e os vínculos Padrinhos e Parceiros já veem (o Financeiro, desde 23/11/2026, só se for liberado aqui)." ler={lerAcesso} mudar={mudarAcesso} />}
     </div>
   );
 }
@@ -176,70 +177,5 @@ function ListaDeApoiadores({ lado }: { lado: Lado }) {
         </>
       )}
     </>
-  );
-}
-
-/**
- * Quem mais vê Padrinhos e Parceiros, além do financeiro e do marketing: os
- * responsáveis que a administração liberar pelo e-mail (decisão de 18/11).
- * Só o admin vê e muda. A pessoa precisa ter conta no app com esse e-mail.
- */
-function QuemMaisVe() {
-  const [lista, setLista] = useState<AcessoLiberado[] | null>(null);
-  const [erro, setErro] = useState(false);
-  const [novo, setNovo] = useState('');
-  const [ocupado, setOcupado] = useState(false);
-
-  const ler = useCallback(async () => {
-    try { setLista(await lerAcesso()); setErro(false); } catch { setErro(true); }
-  }, []);
-  useEffect(() => { void ler(); }, [ler]);
-
-  const mudar = async (email: string, liberar: boolean) => {
-    setOcupado(true);
-    try {
-      await mudarAcesso(email, liberar);
-      await ler();
-      if (liberar) setNovo('');
-      toast.success(liberar ? `${email} passa a ver Padrinhos e Parceiros.` : `${email} não vê mais Padrinhos e Parceiros.`);
-    } catch (e) {
-      toast.error('Não foi possível salvar', { description: (e as Error).message });
-    } finally { setOcupado(false); }
-  };
-  const adicionar = (ev: React.FormEvent) => {
-    ev.preventDefault();
-    const email = novo.trim().toLowerCase();
-    if (!emailValido(email)) { toast.error('Digite um e-mail válido.'); return; }
-    if (lista?.some(a => a.email === email)) { toast.error('Esse e-mail já está na lista.'); return; }
-    void mudar(email, true);
-  };
-
-  return (
-    <section className="space-y-2 rounded-[20px] border border-dashed border-border p-4" aria-label="Quem mais vê Padrinhos e Parceiros">
-      <h2 className="text-sm font-semibold">Quem mais vê Padrinhos e Parceiros <span className="font-normal text-muted-foreground">· só a administração geral vê esta parte</span></h2>
-      <p className="max-w-[70ch] text-xs text-muted-foreground">O financeiro e o marketing já veem. Aqui entram os responsáveis, pelo e-mail da conta deles no app.</p>
-      {erro ? (
-        <p role="alert" className="text-xs text-destructive">Não consegui ler a lista. <button className="underline" onClick={() => void ler()}>Tentar de novo</button></p>
-      ) : lista === null ? <p className="text-xs text-muted-foreground">Carregando…</p> : (
-        <>
-          {lista.length === 0 ? <p className="text-xs text-muted-foreground">Ninguém além do financeiro e do marketing.</p> : (
-            <ul className="flex flex-wrap gap-1.5" aria-label="E-mails liberados">
-              {lista.map(a => (
-                <li key={a.email} className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 py-0.5 pl-2.5 pr-1 text-xs">
-                  {a.email}
-                  <button type="button" className="rounded-full p-0.5 text-muted-foreground hover:text-destructive disabled:opacity-50" disabled={ocupado} aria-label={`Tirar o acesso de ${a.email}`} onClick={() => void mudar(a.email, false)}><X className="h-3 w-3" /></button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <form className="flex max-w-md gap-2" onSubmit={adicionar}>
-            <Input aria-label="E-mail para liberar" value={novo} onChange={e => setNovo(e.target.value)} placeholder="responsavel@anabrasil.org" className="h-8 min-w-0 flex-1 text-xs" disabled={ocupado} />
-            <Button type="submit" variant="outline" className="h-8 gap-1 text-xs" disabled={ocupado || !novo.trim()}>
-              {ocupado ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Liberar
-            </Button>
-          </form>
-        </>
-      )}
-    </section>
   );
 }

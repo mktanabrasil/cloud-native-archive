@@ -1,6 +1,9 @@
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useVoluntariado } from '@/hooks/useVoluntariado';
+import { QuemMaisVe } from '@/components/administracao/QuemMaisVe';
+import { lerAcessoDoVoluntariado, mudarAcessoDoVoluntariado } from '@/lib/voluntariado/acessoApi';
 import { ListaDeVoluntarios, VoluntariosNosEventos } from '@/components/voluntariado/VoluntariadoDosEventos';
 
 export type TelaDoVoluntariado = 'eventos' | 'voluntarios';
@@ -15,12 +18,14 @@ export const telaDoVoluntariado = (pedida: string | null): TelaDoVoluntariado =>
  * Marketing (formulário e planilha próprios).
  */
 export default function AdministracaoVoluntariadoPage() {
-  const { temVoluntariado, loading } = useUserRole();
+  const { isAdmin, loading } = useUserRole();
+  // O vínculo, o marketing ou quem a administração geral liberou (23/11/2026).
+  const { vejo: temVoluntariado, carregado } = useVoluntariado();
   const [params, setParams] = useSearchParams();
   const tela = telaDoVoluntariado(params.get('tela'));
   useTituloDaAba(`${tela === 'voluntarios' ? 'Voluntários' : 'Voluntários nos eventos'} · ANA Brasil`);
 
-  if (loading) return null;
+  if (loading || !carregado) return null;
   if (!temVoluntariado) return <Navigate to="/" replace />;
 
   const opcoes: ReadonlyArray<readonly [string, TelaDoVoluntariado]> = [['Eventos', 'eventos'], ['Voluntários', 'voluntarios']];
@@ -42,6 +47,11 @@ export default function AdministracaoVoluntariadoPage() {
         </div>
       </nav>
       {tela === 'voluntarios' ? <ListaDeVoluntarios /> : <VoluntariosNosEventos />}
+      {isAdmin && (
+        <div className="mx-auto mt-6 max-w-6xl px-4 sm:px-6">
+          <QuemMaisVe pagina="o Voluntariado" quemJaVe="O marketing e o vínculo Voluntariado já veem." ler={lerAcessoDoVoluntariado} mudar={mudarAcessoDoVoluntariado} />
+        </div>
+      )}
     </div>
   );
 }

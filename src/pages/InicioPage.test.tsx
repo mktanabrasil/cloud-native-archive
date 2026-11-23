@@ -29,6 +29,7 @@ vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ isAuthenticated: tr
 vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => estado.papel }));
 vi.mock('@/hooks/useSouResponsavel', () => ({ useSouResponsavel: () => false }));
 vi.mock('@/hooks/useApoiadores', () => ({ useApoiadores: () => ({ vejo: false, carregado: true }) }));
+vi.mock('@/hooks/useVoluntariado', async () => { const { useUserRole } = await import('@/hooks/useUserRole'); return { useVoluntariado: () => ({ vejo: !!useUserRole().temVoluntariado, carregado: true }) }; });
 vi.mock('@/contexts/AppContext', () => ({ useApp: () => ({ loading: false }) }));
 vi.mock('@/hooks/useFilteredEvents', () => ({ useFilteredEvents: (publico: boolean) => (publico ? [] : estado.eventos) }));
 vi.mock('@/integrations/supabase/client', () => {
