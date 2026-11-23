@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { rotuloDoSalvamento, useSalvarSozinho } from '@/hooks/useSalvarSozinho';
 import { Check, Download, Eye, FilePlus2, Loader2, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -112,6 +113,11 @@ export function EditorDaFolhaExtra({ ano, itens, folha, podeMexer, unidadePadrao
     } catch (e) { toast.error((e as Error).message || 'Não deu para salvar a folha agora.'); }
     finally { setIndo(false); }
   };
+  // A folha já criada salva sozinha (23/11/2026); a nova é criada no botão, com título.
+  const { estado, salvarAgora } = useSalvarSozinho({
+    chave: JSON.stringify(campos), mudou: !!folha && mudou, ativo: podeMexer && !!folha && !apagando, pronto: !!campos.titulo,
+    salvar: async () => { if (folha) onSalva(await salvarFolhaExtra(folha.id, campos)); },
+  });
   const confirmarApagar = async () => {
     if (!folha || apagando) return;
     setApagando(true);
@@ -147,7 +153,10 @@ export function EditorDaFolhaExtra({ ano, itens, folha, podeMexer, unidadePadrao
           <p className="mt-1 text-[11.5px] text-muted-foreground">**negrito** e “- ” no começo da linha para lista, como nos textos do projeto. {texto.length}/{LIMITE_DA_FOLHA_EXTRA}</p></div>
         <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" checked={pauta} disabled={!podeMexer} onChange={e => setPauta(e.target.checked)} /> Linhas para escrever à mão no resto da folha</label>
         <div className="flex flex-wrap gap-2 pt-1">
-          {podeMexer && <Button className="gap-2" disabled={indo || !mudou} onClick={() => void salvar()}>{indo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Salvar</Button>}
+          {podeMexer && !folha && <Button className="gap-2" disabled={indo || !mudou} onClick={() => void salvar()}>{indo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Criar a folha</Button>}
+          {podeMexer && folha && (campos.titulo
+            ? <Button className="gap-2" variant={estado === 'erro' ? 'destructive' : 'default'} disabled={estado === 'salvo' || estado === 'salvando'} onClick={salvarAgora} aria-live="polite">{estado === 'salvando' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} {rotuloDoSalvamento(estado)}</Button>
+            : <span className="self-center text-[12.5px] text-destructive">Dê um título à folha para salvar</span>)}
           <Button variant="outline" className="gap-2" onClick={() => onPrevia(comoEsta)}><Eye className="h-4 w-4" /> Ver a folha</Button>
           {folha && <Button variant="outline" className="gap-2" disabled={mudou && podeMexer} title={mudou && podeMexer ? 'Salve antes de baixar' : undefined} onClick={() => void baixarFolhaExtra(ano, itens, folha)}><Download className="h-4 w-4" /> Baixar só esta folha</Button>}
           {folha && podeMexer && <Button variant="ghost" className="gap-2 text-destructive hover:text-destructive" onClick={() => setApagar(true)}><Trash2 className="h-4 w-4" /> Apagar</Button>}

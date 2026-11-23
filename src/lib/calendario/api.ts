@@ -86,6 +86,17 @@ export async function salvarAno(ano: number, campos: Partial<Pick<AnoDoCalendari
   return data as AnoDoCalendario;
 }
 
+/**
+ * Salva por cima da versão MAIS NOVA do banco (23/11/2026): lê o ano agora e
+ * `juntar` aplica só o que a pessoa mudou, para não apagar o que outra
+ * coordenadora acabou de salvar (o salvamento é automático).
+ */
+export async function salvarAnoJuntando(ano: number, juntar: (atual: AnoDoCalendario) => Partial<Pick<AnoDoCalendario, 'tema' | 'percursos' | 'meses_revisados' | 'textos'>>): Promise<AnoDoCalendario> {
+  const atual = await lerAno(ano);
+  if (!atual) throw Object.assign(new Error('O calendário não está aberto para edição agora.'), { code: '42501' });
+  return salvarAno(ano, juntar(atual));
+}
+
 export async function acrescentarItem(item: { ano: number; dia: string; texto: string; unidades: string[]; destaque: boolean }): Promise<ItemDoCalendario> {
   const { data, error } = await db.from('calendario_itens').insert({ ...item, tipo: 'atividade' }).select(COLUNAS_DO_ITEM).single();
   falhou(error);

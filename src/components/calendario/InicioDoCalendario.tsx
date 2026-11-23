@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BookOpen, CalendarDays, Check, ChevronRight, Image as ImageIcon, ListChecks, Lock, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { salvarAno } from '@/lib/calendario/api';
+import { rotuloDoSalvamento, useSalvarSozinho } from '@/hooks/useSalvarSozinho';
 import { MESES, andamento, autoriaDe, diaEMes, mudancasPorMes, noFichario, type AlteracaoDoCalendario, type AnoDoCalendario } from '@/lib/calendario/regras';
 import { SituacaoDoPdf } from './SituacaoDoPdf';
 import { CartaoDasFolhasExtras } from './FolhasExtras';
@@ -38,10 +39,17 @@ export function InicioDoCalendario({ ano, editavel, marketing, alteracoes = [], 
   const a = andamento(ano);
   const textosEditados = Object.keys(ano.textos ?? {}).length;
   const [tema, setTema] = useState(ano.tema);
-  const salvarTema = async () => {
-    try { onAno(await salvarAno(ano.ano, { tema: tema.trim() })); toast.success('Tema do ano salvo'); }
-    catch (e) { toast.error((e as Error).message || 'Não foi possível salvar'); }
-  };
+  // Voltou do banco um tema novo (outra pessoa salvou) e eu não mexi: mostra o novo.
+  const temaVisto = useRef(ano.tema);
+  useEffect(() => {
+    setTema(t => (t.trim() === temaVisto.current.trim() ? ano.tema : t));
+    temaVisto.current = ano.tema;
+  }, [ano.tema]);
+  // O tema salva sozinho (23/11/2026), como o resto do calendário.
+  const { estado: estadoDoTema, salvarAgora: salvarTemaAgora } = useSalvarSozinho({
+    chave: tema, mudou: tema.trim() !== ano.tema.trim(), ativo: editavel,
+    salvar: async () => { const enviado = tema.trim(); const novo = await salvarAno(ano.ano, { tema: enviado }); temaVisto.current = enviado; onAno(novo); },
+  });
   const passos = fichario ? PASSOS_DO_FICHARIO : PASSOS;
   const passo = fichario ? 3 : indiceDoStatus[ano.status];
   const proximoMes = MESES.findIndex((_, i) => !ano.meses_revisados.includes(i + 1)) + 1 || 1;
@@ -82,7 +90,7 @@ export function InicioDoCalendario({ ano, editavel, marketing, alteracoes = [], 
             <Input className="mt-3" value={tema} maxLength={120} disabled={!editavel} aria-label="Tema do ano" placeholder="Ex. de 2026: “Plantando hoje, o amanhã que sonhamos”" onChange={e => setTema(e.target.value)} />
             {autoriaDe(ano, 'tema') && <p className="mt-1.5 text-[12px] text-muted-foreground">Por {autoriaDe(ano, 'tema')}</p>}
             {fichario && !editavel && <Fechado />}
-            {editavel && <Button variant="outline" className="mt-3" disabled={tema.trim() === ano.tema.trim()} onClick={salvarTema}>Salvar o tema</Button>}
+            {editavel && <Button variant={estadoDoTema === 'erro' ? 'destructive' : 'outline'} className="mt-3" disabled={estadoDoTema === 'salvo' || estadoDoTema === 'salvando'} onClick={salvarTemaAgora} aria-live="polite">{rotuloDoSalvamento(estadoDoTema)}</Button>}
           </section>
           <section className="glass-2 rounded-[22px] p-5" data-tutorial="cal-percursos">
             <div className="flex items-start justify-between gap-3"><span className="grid h-10 w-10 place-items-center rounded-[12px] bg-primary/60"><ListChecks className="h-5 w-5" /></span><Selo tom={a.percursos === 12 ? 'ok' : 'falta'}>{a.percursos === 12 && <Check className="h-3 w-3" />} {a.percursos} de 12</Selo></div>
