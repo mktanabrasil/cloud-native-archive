@@ -8,7 +8,7 @@ import {
 import { useUserRole } from '@/hooks/useUserRole';
 import { baixarArquivo } from '@/lib/enquetes/planilha';
 import { apagarInscricao, lerMetas, listarInscricoes, type Inscricao } from '@/lib/voluntariado/api';
-import { AREAS_DE_AJUDA, CAMINHO_DO_FORMULARIO, areaNosPaineis, PRAZO, ULTIMO_DIA, rotuloDaAjuda, rotuloDoHorario, rotuloDoVinculo, type AreaDeAjuda } from '@/lib/voluntariado/modelo';
+import { AREAS_DE_AJUDA, CAMINHO_DO_FORMULARIO, areaNosPaineis, PRAZO, ULTIMO_DIA, rotuloDaAjuda, rotuloDoHorario, rotuloDoVinculo, textoDosAcompanhantes, type AreaDeAjuda } from '@/lib/voluntariado/modelo';
 import { csvDasInscricoes, nomeDaPlanilha, whatsappLegivel } from '@/lib/voluntariado/planilha';
 import { PlanilhaDoGoogle } from './PlanilhaDoGoogle';
 import { AoVivoDaGestao } from './AoVivoDaGestao';
@@ -52,6 +52,8 @@ export function PainelDoVoluntariado() {
     return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'));
   }, [lista]);
   const daUnidade = useMemo(() => (lista ?? []).filter((i) => !unidade || grupo(i) === unidade), [lista, unidade]);
+  // Quantos acompanhantes vêm com os inscritos do filtro (23/11/2026).
+  const acompanhando = daUnidade.reduce((n, i) => n + (i.acompanhantes?.length ?? 0), 0);
   const vistas = useMemo(() => daUnidade.filter((i) => !area || i.opcao1 === area || i.opcao2 === area), [daUnidade, area]);
 
   if (loading) return null;
@@ -89,7 +91,7 @@ export function PainelDoVoluntariado() {
     finally { setApagando(null); }
   }
 
-  const numeros: Array<[string, string, boolean]> = [['Inscritos', String(daUnidade.length), false], ['Unidades', String(new Set(daUnidade.flatMap((i) => (i.unidade_id ? [i.unidade_id] : []))).size), false], ['Áreas sem ninguém', String(vazias), vazias > 0], ['Faltam', dias === 0 ? 'encerrado' : `${dias} ${dias === 1 ? 'dia' : 'dias'}`, false]];
+  const numeros: Array<[string, string, boolean, string?]> = [['Inscritos', String(daUnidade.length), false, acompanhando ? `+ ${acompanhando} ${acompanhando === 1 ? 'acompanhante' : 'acompanhantes'}` : undefined], ['Unidades', String(new Set(daUnidade.flatMap((i) => (i.unidade_id ? [i.unidade_id] : []))).size), false], ['Áreas sem ninguém', String(vazias), vazias > 0], ['Faltam', dias === 0 ? 'encerrado' : `${dias} ${dias === 1 ? 'dia' : 'dias'}`, false]];
   // Uma lista só para computador e celular: na tela larga vira tabela (colunas),
   // na estreita cada inscrição empilha em duas colunas, sem rolar para o lado.
   const COLUNAS = 'lg:grid-cols-[92px_minmax(0,1.1fr)_136px_minmax(0,1.3fr)_88px_minmax(0,1fr)_minmax(0,1fr)_40px]';
@@ -134,14 +136,14 @@ export function PainelDoVoluntariado() {
 
       {/* Faixa de números (padrão do Dashboard): cor só no número que pede ação */}
       <div className="glass-1 grid grid-cols-2 overflow-hidden rounded-[20px] lg:grid-cols-4">
-        {numeros.map(([r, v, alerta], n) => (
+        {numeros.map(([r, v, alerta, sub], n) => (
           <div
             key={r}
             className={`border-black/10 p-4 dark:border-white/10 sm:px-5 ${n % 2 === 1 ? 'border-l' : ''} ${n >= 2 ? 'border-t lg:border-t-0' : ''} ${n === 2 ? 'lg:border-l' : ''}`}
             data-testid={`kpi-${r}`}
           >
             <b className={`block font-display text-2xl font-bold tabular-nums sm:text-3xl ${alerta ? 'text-destructive' : ''}`}>{v}</b>
-            <span className="mt-0.5 block text-[13px] text-muted-foreground">{r}</span>
+            <span className="mt-0.5 block text-[13px] text-muted-foreground">{r}{sub && <> · {sub}</>}</span>
           </div>
         ))}
       </div>
@@ -175,8 +177,16 @@ export function PainelDoVoluntariado() {
             {vistas.map((i) => (
               <li key={i.id} className={`grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-1 border-b border-border/70 px-4 py-3.5 transition-colors last:border-b-0 hover:bg-muted/40 lg:items-center lg:gap-3 lg:py-2.5 ${COLUNAS}`} data-testid="inscricao">
                 <span className="order-4 self-center text-right text-xs font-semibold tabular-nums text-[hsl(var(--fraco))] lg:order-none lg:text-left lg:text-sm lg:text-foreground">{i.protocolo}</span>
-                <span className="order-1 min-w-0 self-center font-semibold lg:order-none lg:font-normal">{i.nome}</span>
-                <span className="order-3 self-center"><a href={`https://wa.me/55${i.whatsapp}`} target="_blank" rel="noopener noreferrer" className="font-semibold tabular-nums text-[hsl(var(--sel))] hover:underline">{whatsappLegivel(i.whatsapp)}</a></span>
+                <span className="order-1 min-w-0 self-center font-semibold lg:order-none lg:font-normal">
+                  {i.nome}
+                  {/* Acompanhantes (23/11/2026): pessoa idosa ou criança, com nome e idade. */}
+                  {!!i.acompanhantes?.length && (
+                    <small className="block text-xs font-normal text-[hsl(var(--fraco))]" data-testid="acompanhantes">
+                      + {i.acompanhantes.length === 1 ? 'acompanhante' : `${i.acompanhantes.length} acompanhantes`}: {textoDosAcompanhantes(i.acompanhantes).replace(/\n/g, ' · ')}
+                    </small>
+                  )}
+                </span>
+                <span className="order-3 self-center lg:order-none"><a href={`https://wa.me/55${i.whatsapp}`} target="_blank" rel="noopener noreferrer" className="font-semibold tabular-nums text-[hsl(var(--sel))] hover:underline">{whatsappLegivel(i.whatsapp)}</a></span>
                 <span className="order-5 col-span-2 lg:order-none lg:col-span-1">
                   {i.unidade_nome ?? rotuloDoVinculo(i.vinculo)}
                   {(i.indicado_por || i.igreja || i.como_soube) && <small className="block text-xs text-[hsl(var(--fraco))]">{[i.indicado_por && `indicado(a) por ${i.indicado_por}`, i.como_soube && `soube: ${i.como_soube}`, i.igreja].filter(Boolean).join(' · ')}</small>}
