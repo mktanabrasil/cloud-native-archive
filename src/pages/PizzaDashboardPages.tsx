@@ -28,7 +28,7 @@ export function PizzaDashboardPage() {
     );
   }
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">
+    <div className="mx-auto w-full max-w-app px-4 py-6 lg:px-8">
       <DashboardDaPizza topo={
         <Link to="/pizza-da-alegria/painel" className="inline-flex h-9 items-center gap-1.5 rounded-[10px] border-[1.5px] border-[#EADBC8] bg-white px-3 text-[13px] font-semibold text-[#2B1A14]">
           <ArrowLeft className="h-4 w-4" /> Painel

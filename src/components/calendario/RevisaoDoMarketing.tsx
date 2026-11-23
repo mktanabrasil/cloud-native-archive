@@ -107,7 +107,7 @@ export function RevisaoDoMarketing({ ano, itens, extras = [], alteracoes = [], q
   ];
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 pb-10 lg:px-6">
+    <div className="mx-auto w-full max-w-app px-4 pb-10 lg:px-6">
       <h1 className="font-display text-[28px] font-bold tracking-tight sm:text-[30px]">Calendário Anual {ano.ano} · revisão</h1>
       <p className="mt-1 text-[14px] text-muted-foreground">{subtitulo}</p>
 

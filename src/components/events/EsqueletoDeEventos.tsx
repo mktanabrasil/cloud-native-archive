@@ -76,7 +76,7 @@ export function EsqueletoDaVitrine({ comHero = true }: VitrineProps) {
       <div aria-hidden="true">
         {/* Esboço V2: o herói recuado e arredondado, e a lista em linhas. */}
         {comHero && (
-          <div className="relative mx-auto mt-4 h-[400px] w-[calc(100%-2rem)] max-w-7xl overflow-hidden rounded-[20px] rounded-br-[48px] bg-slate-900 md:h-[460px] md:w-[calc(100%-3rem)]">
+          <div className="relative mx-auto mt-4 h-[400px] w-[calc(100%-2rem)] max-w-app overflow-hidden rounded-[20px] rounded-br-[48px] bg-slate-900 md:h-[360px] md:w-[calc(100%-3rem)]">
             <div className="absolute bottom-4 left-4 right-4 flex flex-col gap-3 rounded-[20px] bg-white/5 p-5 md:bottom-8 md:left-8 md:right-auto md:w-[480px] md:p-7">
               <Skeleton className="h-[22px] w-16 bg-white/10" />
               <Skeleton className="h-8 w-56 md:w-80 bg-white/10" />
@@ -84,7 +84,7 @@ export function EsqueletoDaVitrine({ comHero = true }: VitrineProps) {
             </div>
           </div>
         )}
-        <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="max-w-app mx-auto px-6 py-8">
           <Skeleton className="h-8 w-72 max-w-full" />
           <Skeleton className="mt-3 h-3.5 w-96 max-w-full" />
           <Skeleton className="mt-6 h-12 w-full max-w-md rounded-xl" />

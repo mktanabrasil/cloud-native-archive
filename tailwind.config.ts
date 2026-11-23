@@ -13,6 +13,12 @@ export default {
       },
     },
     extend: {
+      // A largura do app em tela larga (23/11/2026): "é ferramenta", aproveita
+      // a lateral. O embed do site (versão clássica) e as páginas públicas
+      // seguem no max-w-7xl.
+      maxWidth: {
+        app: "1600px",
+      },
       fontFamily: {
         sans: ["Poppins", "sans-serif"],
       },

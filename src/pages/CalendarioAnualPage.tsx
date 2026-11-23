@@ -171,7 +171,7 @@ function Preenchimento({ nome, marketing, email, unidade }: { nome: string; mark
   const podeMexerNaFolha = (f: FolhaExtra) => marketing || (fichario && folhaEhMinha(f, email));
   const folhaAberta = folhaPedida && folhaPedida !== 'nova' ? extras.find(f => f.id === folhaPedida) ?? null : null;
   const voltar = (
-    <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 pb-2 lg:px-6">
+    <div className="mx-auto flex w-full max-w-app items-center justify-between px-4 pb-2 lg:px-6">
       {parte !== 'inicio' ? <Button variant="ghost" size="sm" className="gap-1" onClick={() => abrir('inicio')}><ArrowLeft className="h-4 w-4" /> Início</Button> : <span />}
       {roteiro && <Button variant="ghost" size="sm" className="gap-1" data-tutorial="cal-ajuda" onClick={() => setTutorialAberto(true)}><HelpCircle className="h-4 w-4" /> Ver o tutorial</Button>}
     </div>
