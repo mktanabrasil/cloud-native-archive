@@ -35,6 +35,37 @@ const dataCurta = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { t
 const semCentavos = (n: number) => reais(n).replace(/,00$/, '');
 const plural = (n: number, um: string, varios: string) => `${n.toLocaleString('pt-BR')} ${n === 1 ? um : varios}`;
 
+/** As pessoas que mais compraram (23/11/2026): as 10 primeiras, na ordem do ranking do grupo, com medalha nas 3 primeiras. */
+const MEDALHA = ['#E8B400', '#9AA5A8', '#C77B3F'];
+function Pessoas({ lista, quantas = 10 }: { lista: Array<{ id: string; nome: string; unidade: string; pizzas: number; valor: number; posicao: number }>; quantas?: number }) {
+  const mostrar = lista.slice(0, quantas);
+  const maior = Math.max(1, ...mostrar.map((p) => p.pizzas));
+  return (
+    <ol className="grid gap-x-6 gap-y-1 md:grid-cols-2" aria-label="Pessoas que mais compraram">
+      {mostrar.map((p) => (
+        <li key={p.id} className="grid min-w-0 grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-3 border-b py-2 last:border-b-0 md:[&:nth-last-child(2):nth-child(odd)]:border-b-0" style={{ borderColor: COR.linha }}>
+          <span className="grid h-7 w-7 place-items-center rounded-full text-[12.5px] font-bold tabular-nums"
+            style={p.posicao <= 3 ? { background: MEDALHA[p.posicao - 1], color: '#fff' } : { background: COR.creme, color: COR.mut }}
+            aria-label={`${p.posicao}º lugar`}>{p.posicao}</span>
+          <span className="min-w-0">
+            <span className="block truncate text-[14px] font-semibold" title={p.nome}>{p.nome}</span>
+            <span className="flex items-center gap-2">
+              <span className="truncate text-[12px]" style={{ color: COR.mut }}>{p.unidade}</span>
+              <span className="hidden h-1.5 min-w-[2rem] flex-1 overflow-hidden rounded sm:block" style={{ background: COR.creme }} aria-hidden>
+                <span className="block h-full rounded" style={{ width: `${Math.round((p.pizzas / maior) * 100)}%`, background: COR_DO_GRUPO.pix }} />
+              </span>
+            </span>
+          </span>
+          <span className="text-right">
+            <b className="block text-[15px] tabular-nums">{plural(p.pizzas, 'pizza', 'pizzas')}</b>
+            <span className="block text-[12px] tabular-nums" style={{ color: COR.mut }}>{semCentavos(p.valor)}</span>
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function Cartao({ titulo, sub, children, testid }: { titulo: string; sub?: string; children: React.ReactNode; testid?: string }) {
   return (
     <section className="flex min-w-0 flex-col gap-3 rounded-2xl border-[1.5px] p-4" style={{ background: COR.cartao, borderColor: COR.linha }} data-testid={testid}>
@@ -332,6 +363,12 @@ export function DashboardDaPizza({ codigo, topo }: { codigo?: string; topo?: Rea
               </Cartao>
             </div>
           </div>
+
+          <Cartao titulo="Pessoas que mais compraram" sub={filtros.unidade || filtros.area ? 'As 10 primeiras, com o filtro escolhido. Os pedidos do mesmo WhatsApp contam juntos.' : 'As 10 primeiras. Os pedidos do mesmo WhatsApp contam juntos, como no ranking do grupo.'} testid="pessoas">
+            {c.porPessoa.length
+              ? <Pessoas lista={c.porPessoa} />
+              : <p className="text-sm" style={{ color: COR.mut }}>Nenhum pedido ainda.</p>}
+          </Cartao>
 
           <Cartao titulo="Pedidos" sub="Os mais recentes primeiro" testid="pedidos">
             <label className="relative w-full max-w-[300px]">

@@ -68,10 +68,19 @@ describe('dashboard da Pizza', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Limpar filtros' }));
     fireEvent.click(within(screen.getByTestId('ranking')).getByRole('button', { name: /ANA DIC/ }));
     expect(screen.getAllByTestId('linha-pedido')).toHaveLength(1);
-    expect(screen.getByText('Maria Souza')).toBeInTheDocument();
+    expect(within(screen.getAllByTestId('linha-pedido')[0]).getByText('Maria Souza')).toBeInTheDocument();
   });
 
-  it('a busca acha por nome', async () => {
+  it('as pessoas que mais compraram, com posição, unidade, pizzas e valor (23/11/2026)', async () => {
+    gestao();
+    const cartao = await screen.findByTestId('pessoas');
+    expect(within(cartao).getByRole('heading', { name: 'Pessoas que mais compraram' })).toBeInTheDocument();
+    const itens = within(cartao).getAllByRole('listitem');
+    expect(itens.map((li) => li.textContent?.replace(/\s/g, ' '))).toEqual(['1João LimaCEI X2 pizzasR$ 110', '2Maria SouzaANA DIC1 pizzaR$ 55']);
+    expect(within(itens[0]).getByLabelText('1º lugar')).toBeInTheDocument();
+  });
+
+    it('a busca acha por nome', async () => {
     gestao();
     await screen.findAllByTestId('linha-pedido');
     fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar pedido' }), { target: { value: 'joão' } });
