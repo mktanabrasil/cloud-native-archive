@@ -86,3 +86,47 @@ export function problemaDoPrint(f: Pick<File, 'type' | 'size'>): string | null {
 
 /** "png", "jpg", "webp". */
 export const extensaoDoPrint = (tipo: string) => (tipo === 'image/jpeg' ? 'jpg' : tipo === 'image/webp' ? 'webp' : 'png');
+
+/** Um feedback como o marketing vê na caixa do Painel (PR 2, 23/11/2026). */
+export interface FeedbackDaCaixa extends MeuFeedback {
+  autor_id: string | null;
+  autor_nome: string;
+  autor_email: string | null;
+  caminho: string | null;
+  aparelho: Aparelho | null;
+  navegador: string | null;
+  print_path: string | null;
+  respondido_por: string | null;
+  lido_em: string | null;
+  atualizado_em: string;
+}
+
+export interface FiltroDaCaixa { situacao: SituacaoDoFeedback | 'todos'; setor: string | 'todos'; tipo: TipoDeFeedback | 'todos' }
+
+/** O que a caixa mostra com o filtro (os mais novos primeiro, como vêm do banco). */
+export function filtrarCaixa(lista: FeedbackDaCaixa[], f: FiltroDaCaixa): FeedbackDaCaixa[] {
+  return lista.filter(x =>
+    (f.situacao === 'todos' || x.situacao === f.situacao) &&
+    (f.setor === 'todos' || (x.setor ?? 'Fora dos setores') === f.setor) &&
+    (f.tipo === 'todos' || x.tipo === f.tipo));
+}
+
+/** Quantos em cada situação (para as pílulas). */
+export function contarPorSituacao(lista: FeedbackDaCaixa[]): Record<SituacaoDoFeedback | 'todos', number> {
+  const c = { todos: lista.length, novo: 0, analise: 0, feito: 0, nao: 0 };
+  for (const x of lista) c[x.situacao]++;
+  return c;
+}
+
+/** Os setores que aparecem nos feedbacks, para o filtro. */
+export const setoresDaCaixa = (lista: FeedbackDaCaixa[]) =>
+  [...new Set(lista.map(x => x.setor ?? 'Fora dos setores'))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+/** Os que o marketing ainda não abriu (o número na aba). */
+export const naoLidos = (lista: Pick<FeedbackDaCaixa, 'lido_em'>[]) => lista.filter(x => !x.lido_em).length;
+
+/** "23/11, 10:42" no fuso de Brasília. */
+export function quandoCurto(instante: string): string {
+  return new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .format(new Date(instante)).replace(' ', ' ');
+}

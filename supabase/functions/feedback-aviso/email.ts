@@ -124,3 +124,90 @@ export function emailDoFeedbackNovo(f: FeedbackDoEmail, site: string, comPrint =
   ].join('\n');
   return { assunto, html, texto };
 }
+
+// --- PR 2 (23/11/2026): o marketing mudou a situação ou respondeu --------------------------
+
+/** Os nomes das situações (os mesmos de `src/lib/feedback/regras.ts`; o teste confere). */
+export const SITUACOES_DO_EMAIL: Record<string, { nome: string; bg: string; fg: string; borda: string }> = {
+  novo: { nome: 'Novo', bg: '#e5f4fd', fg: '#0b5f8a', borda: '#a8d8f3' },
+  analise: { nome: 'Em análise', bg: '#fdf3d6', fg: '#8a5a00', borda: '#f1d98a' },
+  feito: { nome: 'Feito', bg: '#d9f3ec', fg: '#1e5a4d', borda: '#9fdcc9' },
+  nao: { nome: 'Não vamos fazer', bg: '#f1efea', fg: '#474747', borda: '#dcd7ce' },
+};
+
+export interface RespostaDoEmail extends FeedbackDoEmail {
+  situacao: string;
+  resposta: string | null;
+  respondido_por: string | null;
+}
+
+/** A frase de cada situação, para quem mandou. */
+const FRASE_DA_SITUACAO: Record<string, string> = {
+  novo: 'O seu feedback voltou para a fila do marketing.',
+  analise: 'O marketing está analisando o seu feedback.',
+  feito: 'O que você pediu foi feito.',
+  nao: 'O marketing leu e decidiu não fazer agora.',
+};
+
+/** Para quem mandou: a situação nova e, se houver, a resposta do marketing. */
+export function emailDaResposta(f: RespostaDoEmail, site: string): Email {
+  const s = SITUACOES_DO_EMAIL[f.situacao] ?? SITUACOES_DO_EMAIL.analise;
+  const t = TIPOS_DO_EMAIL[f.tipo] ?? TIPOS_DO_EMAIL.ideia;
+  const onde = ondeFoi(f);
+  const resposta = (f.resposta ?? '').trim();
+  const assunto = `Seu feedback: ${s.nome} · ${resumo(f.texto, 50)}`;
+  const frase = FRASE_DA_SITUACAO[f.situacao] ?? 'O marketing atualizou o seu feedback.';
+  const previa = resposta ? `${frase} Resposta: ${resumo(resposta, 80)}` : frase;
+  const quem = f.respondido_por?.trim() || 'Marketing';
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${escape(assunto)}</title></head>
+<body style="margin:0;padding:0;background:#f8f6f3;font-family:${FONTE};color:#191b1a">
+<div style="display:none;font-size:1px;line-height:1px;max-height:0;overflow:hidden;color:#f8f6f3">${escape(previa)}</div>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8f6f3"><tr><td align="center" style="padding:22px 12px 28px">
+<table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;width:100%">
+  <tr><td style="padding:0 2px 14px">
+    <table role="presentation" cellspacing="0" cellpadding="0"><tr>
+      <td style="vertical-align:middle;padding-right:10px"><img src="${site}/logo.png" width="36" height="36" alt="anabrasil" style="display:block;border-radius:10px"></td>
+      <td style="vertical-align:middle;font-size:20px;font-weight:700;letter-spacing:-.02em;color:#191b1a;font-family:${FONTE}">anabrasil</td>
+      <td style="vertical-align:middle;padding-left:10px;font-size:12px;color:#474747">Feedback do app</td>
+    </tr></table>
+  </td></tr>
+  <tr><td>
+    <div style="background:#fefdfb;border:1px solid #e6e1d9;border-radius:12px;overflow:hidden">
+      <div style="padding:22px 24px 8px">
+        <span style="display:inline-block;padding:3px 10px;border-radius:999px;background:${s.bg};color:${s.fg};border:1px solid ${s.borda};font-size:12px;font-weight:600;margin-bottom:12px">${escape(s.nome)}</span>
+        <p style="margin:0 0 14px;font-size:15px;line-height:1.5;color:#191b1a">${escape(frase)}</p>
+        ${resposta ? `<div style="border-left:4px solid #1e5a4d;background:#eef8f5;border-radius:0 10px 10px 0;padding:12px 16px;margin:0 0 16px">
+          <div style="font-size:12px;font-weight:600;color:#1e5a4d;letter-spacing:.02em;margin-bottom:4px">RESPOSTA DE ${escape(quem.toUpperCase())}</div>
+          <div style="font-size:15px;line-height:1.5;color:#191b1a">${escape(resposta).replace(/\r?\n/g, '<br>')}</div>
+        </div>` : ''}
+        <div style="font-size:12px;font-weight:600;color:#474747;margin:0 0 6px">O QUE VOCÊ MANDOU · ${escape(t.nome.toUpperCase())}</div>
+        <div style="border:1px solid #efece6;border-radius:10px;padding:12px 16px;margin:0 0 12px;font-size:14px;line-height:1.5;color:#474747">${escape(f.texto.trim()).replace(/\r?\n/g, '<br>')}</div>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:6px;border-collapse:collapse">${
+          linha('Onde', escape(onde)) + linha('Enviado', escape(quando(f.criado_em)))
+        }</table>
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:18px 0 4px"><tr>
+          <td><a href="${escape(site)}" style="display:block;text-align:center;background:#81e2cf;color:#191b1a;text-decoration:none;font-weight:600;font-size:15px;padding:13px 18px;border-radius:8px;font-family:${FONTE}">Abrir o app</a></td>
+        </tr></table>
+        <p style="margin:10px 0 0;font-size:13px;text-align:center;color:#474747;line-height:1.5">No app, o botão "Dar feedback" mostra todos os seus feedbacks e a situação de cada um.</p>
+      </div>
+      <div style="padding:12px 24px 16px;font-size:12px;color:#474747;border-top:1px solid #efece6;margin-top:14px;line-height:1.5">Você recebe este e-mail porque mandou este feedback pelo app.</div>
+    </div>
+  </td></tr>
+  <tr><td style="padding:20px 8px 0;text-align:center;font-size:12px;color:#474747;line-height:1.6">
+    <b style="color:#191b1a;font-size:13px">ANA Brasil</b><br>
+    ${FRASE_DA_ANA}<br>
+    <a href="https://anabrasil.org" style="color:#191b1a;text-decoration:none">anabrasil.org</a> &nbsp;·&nbsp; <a href="https://www.instagram.com/anabrasilorg" style="color:#191b1a;text-decoration:none">@anabrasilorg</a><br>
+    <span style="color:#8a8f8b">Aviso automático do feedback do app.</span>
+  </td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+  const texto = [
+    previa, '', 'ANA Brasil · Feedback do app', '', s.nome.toUpperCase(), frase, '',
+    ...(resposta ? [`Resposta de ${quem}:`, resposta, ''] : []),
+    `O que você mandou (${t.nome}):`, f.texto.trim(), '',
+    `Onde: ${onde}`, `Enviado: ${quando(f.criado_em)}`, '',
+    `Abrir o app: ${site}`, '', 'No app, o botão "Dar feedback" mostra todos os seus feedbacks e a situação de cada um.',
+  ].join('\n');
+  return { assunto, html, texto };
+}

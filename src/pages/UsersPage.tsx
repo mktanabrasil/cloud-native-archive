@@ -32,6 +32,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { mensagemDaFuncao } from '@/lib/erroDaFuncao';
 import { useNavigate } from 'react-router-dom';
 import PageGuide from '@/components/PageGuide';
+import { CaixaDeFeedback } from '@/components/feedback/CaixaDeFeedback';
+import { contarNaoLidos } from '@/lib/feedback/api';
 
 const EMBED_PAGES = [
   { name: 'Visão Geral', path: '/' },
@@ -94,6 +96,14 @@ export default function UsersPage() {
   const [showApprovalConfirm, setShowApprovalConfirm] = useState<{ req: any } | null>(null);
   const [viewSearch, setViewSearch] = useState('');
   const [activeTab, setActiveTab] = useState(urlSearchParams.get('tab') || 'users');
+  // Feedback do app (PR 2, 23/11/2026): o número de não lidos na aba.
+  const [feedbacksNaoLidos, setFeedbacksNaoLidos] = useState(0);
+  useEffect(() => {
+    if (!isMarketing) return;
+    let vivo = true;
+    contarNaoLidos().then(n => { if (vivo) setFeedbacksNaoLidos(n); }, () => {});
+    return () => { vivo = false; };
+  }, [isMarketing]);
   const [selectedViewUser, setSelectedViewUser] = useState<AppUser | null>(null);
   const isMobile = useIsMobile();
   const { toast } = useToast();
@@ -1006,6 +1016,12 @@ export default function UsersPage() {
             {isAdmin && <TabsTrigger value="view-configs" className="h-9 px-3.5">Visualização</TabsTrigger>}
             {isAdmin && <TabsTrigger value="embed" className="h-9 px-3.5">Embed</TabsTrigger>}
             {isAdmin && <TabsTrigger value="agenda" className="h-9 px-3.5">Agenda</TabsTrigger>}
+            {isMarketing && (
+              <TabsTrigger value="feedback" className="h-9 gap-1.5 px-3.5">
+                Feedback
+                {feedbacksNaoLidos > 0 && <span className="rounded-full bg-[hsl(var(--info))] px-1.5 text-[11px] font-semibold leading-[18px] text-white" aria-label={`${feedbacksNaoLidos} não lidos`}>{feedbacksNaoLidos}</span>}
+              </TabsTrigger>
+            )}
           </TabsList>
         </div>
 
@@ -1197,6 +1213,12 @@ export default function UsersPage() {
         {isAdmin && (
           <TabsContent value="beta-configs" className="mt-0 space-y-5">
             <BetaManager />
+          </TabsContent>
+        )}
+
+        {isMarketing && (
+          <TabsContent value="feedback" className="mt-0">
+            <CaixaDeFeedback onNaoLidos={setFeedbacksNaoLidos} />
           </TabsContent>
         )}
 
