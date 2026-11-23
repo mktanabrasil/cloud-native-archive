@@ -33,6 +33,7 @@ vi.mock('@/hooks/useIsEntryGate', () => ({ useEntryGateTransition: () => ({ isGa
 vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => estado.celular }));
 vi.mock('@/hooks/useSouResponsavel', () => ({ useSouResponsavel: () => estado.responsavel }));
 vi.mock('@/hooks/useApoiadores', () => ({ useApoiadores: () => ({ vejo: false, carregado: true }) }));
+vi.mock('@/hooks/useVoluntariado', async () => { const { useUserRole } = await import('@/hooks/useUserRole'); return { useVoluntariado: () => ({ vejo: !!useUserRole().temVoluntariado, carregado: true }) }; });
 vi.mock('@/hooks/useAvisosDaEquipe', () => ({ useAvisosDaEquipe: () => estado.avisos }));
 vi.mock('@/components/ImpersonationBanner', () => ({ default: () => null }));
 // O menu da foto aberto de vez: o Radix aberto trava o jsdom com a página inteira em volta.

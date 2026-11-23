@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useApoiadores } from '@/hooks/useApoiadores';
+import { useVoluntariado } from '@/hooks/useVoluntariado';
 import { useSouResponsavel } from '@/hooks/useSouResponsavel';
 import { useFilteredEvents } from '@/hooks/useFilteredEvents';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
@@ -71,6 +72,7 @@ export default function InicioPage() {
   const papel = useUserRole();
   const souResponsavel = useSouResponsavel();
   const { vejo: temApoiadores } = useApoiadores();
+  const { vejo: temVoluntariado } = useVoluntariado();
   const { loading: carregandoEventos } = useApp();
   const daEquipe = useFilteredEvents(false, false);
   const daVitrine = useFilteredEvents(true, false);
@@ -81,7 +83,7 @@ export default function InicioPage() {
   const campo = useRef<HTMLInputElement>(null);
   const idDaLista = useId();
 
-  const { isMarketing, canAccessJournal, soEducacao, temSemanario, isRh, temVoluntariado, temFinanceiro, temCalendarioAnual, isAdmin, isManager, canViewAuditoria, userName } = papel;
+  const { isMarketing, canAccessJournal, soEducacao, temSemanario, isRh, temFinanceiro, temCalendarioAnual, isAdmin, isManager, canViewAuditoria, userName } = papel;
   const setores = setoresVisiveis({ isAuthenticated, soEducacao, canAccessJournal, temSemanario, isRh, souResponsavel, temVoluntariado, temFinanceiro, temApoiadores, isMarketing, isAdmin, isManager, canViewAuditoria });
   const quem = { soEducacao: !!soEducacao, canAccessJournal: !!canAccessJournal, temSemanario: !!temSemanario, temCalendario: !!(isMarketing || temCalendarioAnual), veVagas: !!(isRh || souResponsavel), temVoluntariado: !!temVoluntariado, temFinanceiro: !!temFinanceiro, temApoiadores, isMarketing: !!isMarketing };
 

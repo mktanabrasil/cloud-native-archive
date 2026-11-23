@@ -6,8 +6,9 @@ import { ehCandidato } from '@/lib/vagas/conta';
 import { vejoApoiadores } from '@/lib/administracao/apoiadoresApi';
 
 /**
- * Se a pessoa vê Padrinhos e Parceiros (18/11/2026, PR 6): o financeiro, o
- * marketing e quem a administração liberou pelo e-mail. O banco responde
+ * Se a pessoa vê Padrinhos e Parceiros (18/11/2026, PR 6): o marketing, os
+ * vínculos Padrinhos e Parceiros e quem a administração liberou pelo e-mail
+ * (o Financeiro saiu em 23/11/2026). O banco responde
  * (`vejo_apoiadores`), porque a lista de e-mails não sai dele. `carregado`:
  * a resposta já chegou (antes disso, ninguém é mandado embora).
  */
@@ -25,10 +26,10 @@ export function useApoiadores(): { vejo: boolean; carregado: boolean } {
     return () => { vivo = false; };
   }, [id]);
   const atual = !!estado && estado.id === id;
-  // Simulando outra pessoa (modo de teste), vale o papel simulado: o financeiro
-  // e o marketing veem; a lista de e-mails liberados não se simula.
+  // Simulando outra pessoa (modo de teste), vale o papel simulado: o marketing
+  // e os vínculos Padrinhos e Parceiros veem; a lista de e-mails não se simula.
   const { activePersona } = useTestView();
-  const { temFinanceiro, loading: carregandoPapel } = useUserRole();
-  if (activePersona) return { vejo: !!temFinanceiro, carregado: !carregandoPapel };
+  const { isMarketing, bondType, loading: carregandoPapel } = useUserRole();
+  if (activePersona) return { vejo: !!isMarketing || bondType === 'padrinhos' || bondType === 'parceiros', carregado: !carregandoPapel };
   return { vejo: atual ? estado!.vejo : false, carregado: !loading && atual };
 }

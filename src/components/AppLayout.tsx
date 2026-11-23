@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useApoiadores } from '@/hooks/useApoiadores';
+import { useVoluntariado } from '@/hooks/useVoluntariado';
 import { useBetaPreference } from '@/hooks/useBetaPreference';
 import { useIsEmbedded } from '@/hooks/useIsEmbedded';
 import { useEntryGateTransition } from '@/hooks/useIsEntryGate';
@@ -61,8 +62,10 @@ export default function AppLayout({ children }: { children?: ReactNode } = {}) {
   const { isAuthenticated: temSessao, signOut, user } = useAuth();
   // Conta de candidato (Trabalhe Conosco) vê o app como visitante: sem menu da equipe.
   const isAuthenticated = temSessao && !ehContaRestrita(user);
-  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh, soEducacao, temCalendarioAnual, temSemanario, loading: carregandoPapel, temVoluntariado, temFinanceiro } = useUserRole();
+  const { isAdmin, isManager, userName, unit, canViewAuditoria, isMarketing, canAccessJournal, isRh, soEducacao, temCalendarioAnual, temSemanario, loading: carregandoPapel, temFinanceiro } = useUserRole();
   const { vejo: temApoiadores } = useApoiadores();
+  // Voluntariado: o vínculo, o marketing ou quem foi liberado pelo e-mail (23/11/2026).
+  const { vejo: temVoluntariado } = useVoluntariado();
   // A bolinha em "Vagas": novos + respostas não lidas (passo 5, 20/10/2026).
   const avisosDeVagas = useAvisosDaEquipe(isRh || souResponsavel, location.pathname);
   const { eligible: betaEligible, rawEnabled: betaOn, toggleBeta } = useBetaPreference();
