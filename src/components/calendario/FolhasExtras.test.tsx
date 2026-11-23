@@ -28,13 +28,13 @@ describe('o editor', () => {
     fireEvent.change(screen.getByLabelText('Título'), { target: { value: '  Roteiro  ' } });
     fireEvent.change(screen.getByLabelText('Fica no fichário'), { target: { value: 'fim' } });
     fireEvent.change(screen.getByLabelText('Texto'), { target: { value: '- convite' } });
-    fireEvent.click(screen.getByRole('button', { name: /salvar/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar a folha/i }));
     await waitFor(() => expect(api.criarFolhaExtra).toHaveBeenCalledWith(2027, { titulo: 'Roteiro', depois_do_mes: null, unidades: ['DIC'], texto: '- convite', pauta: true }));
     expect(onSalva).toHaveBeenCalled();
   });
   it('sem título não salva', () => {
     render(<EditorDaFolhaExtra ano={ano} itens={[]} folha={null} podeMexer unidadePadrao={null} onSalva={() => {}} onApagada={() => {}} onPrevia={() => {}} />);
-    fireEvent.click(screen.getByRole('button', { name: /salvar/i }));
+    fireEvent.click(screen.getByRole('button', { name: /criar a folha/i }));
     expect(api.criarFolhaExtra).not.toHaveBeenCalled();
   });
   it('a folha de outra pessoa: só ver e baixar', () => {

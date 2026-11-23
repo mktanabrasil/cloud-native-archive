@@ -5,7 +5,7 @@ import {
   type AnoDoCalendario, type ItemDoCalendario,
 } from '../regras';
 import { LEGENDA_DAS_SIGLAS, montarCelula, type EstiloDaLetra } from './grade';
-import { blocosDe, quebrarEmLinhas, trocarMarcas } from './marcacao';
+import { blocosDe, quebrarEmLinhas, temaSemAspas, trocarMarcas } from './marcacao';
 import { corpoDaSecao, secoesDoAno, tituloDaSecao } from './textosBase';
 
 /**
@@ -105,7 +105,7 @@ export interface ResultadoDoPdf {
 
 /** As linhas do tema na capa, como em 2026: quebra depois da vírgula, ou ao meio. */
 export function linhasDoTema(tema: string): [string, string] | [string] | [] {
-  const t = tema.trim().toLocaleUpperCase('pt-BR');
+  const t = temaSemAspas(tema).toLocaleUpperCase('pt-BR');
   if (!t) return [];
   const virgula = t.indexOf(',');
   if (virgula > 0 && virgula < t.length - 1) return [`“${t.slice(0, virgula + 1)}`, `${t.slice(virgula + 1).trim()}”`];
@@ -264,13 +264,33 @@ export function montarPdf(
     pdf.setDrawColor(COR.linha); pdf.setLineWidth(0.75); pdf.rect(x0, topo, x3 - x0, ALTURA_DA_TABELA, 'S');
     fio(x1, topo, x1, topo + ALTURA_DA_TABELA); fio(x2, topo, x2, topo + ALTURA_DA_TABELA);
     for (let i = 1; i < 13; i++) fio(x0, topo + i * ALTURA_DA_LINHA, x3, topo + i * ALTURA_DA_LINHA);
+    // Cabe numa linha até 8 pt; mais longo, quebra em duas (23/11/2026: antes
+    // encolhia até 6,5 pt e, mesmo assim, passava da borda da célula).
     const escrever = (texto: string, xa: number, xb: number, linha: number, centro: boolean) => {
       const t = texto.toLocaleUpperCase('pt-BR');
+      const largura = xb - xa - 11;
       let tamanho = 9.5;
-      while (tamanho > 6.5 && medir(t, 'normal', tamanho) > xb - xa - 11) tamanho -= 0.5;
+      while (tamanho > 8 && medir(t, 'normal', tamanho) > largura) tamanho -= 0.5;
+      let linhas = [t];
+      if (medir(t, 'normal', tamanho) > largura) {
+        const palavras = t.split(/\s+/);
+        let melhor = [t, ''], pior = Infinity;
+        for (let i = 1; i < palavras.length; i++) {
+          const a = palavras.slice(0, i).join(' '), b = palavras.slice(i).join(' ');
+          const d = Math.max(medir(a, 'normal', 8), medir(b, 'normal', 8));
+          if (d < pior) { pior = d; melhor = [a, b]; }
+        }
+        linhas = melhor;
+        tamanho = 8;
+        while (tamanho > 6 && Math.max(...linhas.map(l => medir(l, 'normal', tamanho))) > largura) tamanho -= 0.5;
+      }
       letra('normal', tamanho);
-      const y = topo + linha * ALTURA_DA_LINHA + ALTURA_DA_LINHA / 2 + tamanho * 0.35;
-      if (centro) pdf.text(t, (xa + xb) / 2, y, { align: 'center' }); else pdf.text(t, xa + 5.6, y);
+      const meio = topo + linha * ALTURA_DA_LINHA + ALTURA_DA_LINHA / 2;
+      const entre = tamanho * 1.15;
+      linhas.forEach((l, k) => {
+        const y = meio + tamanho * 0.35 + (k - (linhas.length - 1) / 2) * entre;
+        if (centro) pdf.text(l, (xa + xb) / 2, y, { align: 'center' }); else pdf.text(l, xa + 5.6, y);
+      });
     };
     escrever('Mês', x0, x1, 0, true); escrever('Temas transversais', x1, x2, 0, true); escrever('Sugestões de atividades', x2, x3, 0, true);
     percursos.forEach((p, i) => {

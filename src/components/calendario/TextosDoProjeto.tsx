@@ -1,13 +1,13 @@
-import { useLayoutEffect, useRef, useState, type ComponentProps } from 'react';
-import { toast } from 'sonner';
+import { useEffect, useLayoutEffect, useRef, useState, type ComponentProps } from 'react';
 import { Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { salvarAno } from '@/lib/calendario/api';
+import { salvarAnoJuntando } from '@/lib/calendario/api';
+import { rotuloDoSalvamento, useSalvarSozinho } from '@/hooks/useSalvarSozinho';
 import { trocarMarcas } from '@/lib/calendario/pdf/marcacao';
 import { SECOES_DO_TEXTO, chaveDoTitulo, corpoDaSecao, proximaUnidade, romano, secoesDoAno, tituloDaSecao, unidadesNovas, type SecaoDoTexto } from '@/lib/calendario/pdf/textosBase';
-import { autoriaDe, type AnoDoCalendario } from '@/lib/calendario/regras';
+import { autoriaDe, juntarTextos, type AnoDoCalendario } from '@/lib/calendario/regras';
 
 /**
  * Os textos do projeto (13/11/2026): as páginas 2 a 10 do PDF, que as
@@ -22,6 +22,9 @@ import { autoriaDe, type AnoDoCalendario } from '@/lib/calendario/regras';
  * Unidades novas (13/11/2026): o botão depois da ANA III acrescenta a próxima
  * (ANA IV, ANA V…), com o texto em branco para elas escreverem. A unidade nova
  * fica gravada mesmo vazia; só a última pode ser tirada, para a ordem não pular.
+ *
+ * Desde 23/11/2026 salva sozinho (1,5 s depois de parar de digitar), gravando
+ * só as seções que a pessoa mudou por cima da versão mais nova do banco.
  */
 
 /** As seções por página do PDF, a partir da 2, como em 2026. */
@@ -36,7 +39,7 @@ function porPagina(secoes: SecaoDoTexto[]): { pagina: number; secoes: SecaoDoTex
 const ehNova = (id: string) => /^ana-\d+$/.test(id) && Number(id.slice(4)) > 3;
 
 const limpo = (t: string) => t.replace(/\r\n?/g, '\n').replace(/[ \t]+$/gm, '').trim();
-const base = (id: string) => limpo(SECOES_DO_TEXTO.find(s => s.id === id)?.corpo ?? '');
+const baseDe2026 = (id: string) => limpo(SECOES_DO_TEXTO.find(s => s.id === id)?.corpo ?? '');
 
 /** O campo cresce com o texto: a coordenadora lê a seção inteira sem rolar dentro dele. */
 function CampoQueCresce(props: ComponentProps<typeof Textarea>) {
@@ -56,7 +59,27 @@ export function TextosDoProjeto({ ano, editavel, onAno }: { ano: AnoDoCalendario
   const [corpos, setCorpos] = useState<Record<string, string>>(() => Object.fromEntries(secoesDoAno(ano.textos).map(s => [s.id, corpoDaSecao(ano.textos, s.id)])));
   const [titulos, setTitulos] = useState<Record<string, string>>(() => Object.fromEntries(secoesDoAno(ano.textos).map(s => [s.id, tituloDaSecao(ano.textos, s)])));
   const [novas, setNovas] = useState<number[]>(() => unidadesNovas(ano.textos));
-  const [salvando, setSalvando] = useState(false);
+  // Os textos do banco na última vez que a tela viu (para saber o que eu mudei).
+  const base = useRef<Record<string, string>>(ano.textos ?? {});
+  // Voltou do banco (depois de salvar, com o que as outras salvaram): as seções
+  // que eu não mexi passam a mostrar o texto novo.
+  useEffect(() => {
+    const antigo = base.current, novo = ano.textos ?? {};
+    if (antigo === novo) return;
+    const todas = secoesDoAno(novo, unidadesNovas(novo));
+    setCorpos(c => {
+      const r = { ...c };
+      for (const s of todas) if (limpo(c[s.id] ?? corpoDaSecao(antigo, s.id)) === limpo(corpoDaSecao(antigo, s.id))) r[s.id] = corpoDaSecao(novo, s.id);
+      return r;
+    });
+    setTitulos(t => {
+      const r = { ...t };
+      for (const s of todas) if (limpo(t[s.id] ?? tituloDaSecao(antigo, s)) === limpo(tituloDaSecao(antigo, s))) r[s.id] = tituloDaSecao(novo, s);
+      return r;
+    });
+    setNovas(n => (n.join() === unidadesNovas(antigo).join() ? unidadesNovas(novo) : n));
+    base.current = novo;
+  }, [ano.textos]);
   const secoes = secoesDoAno(ano.textos, novas);
   const grupos = porPagina(secoes);
   const corpo = (id: string) => corpos[id] ?? '';
@@ -65,8 +88,8 @@ export function TextosDoProjeto({ ano, editavel, onAno }: { ano: AnoDoCalendario
   /** O título mudou em relação ao de 2026? Vazio conta como o de 2026. */
   const tituloEditado = (s: SecaoDoTexto) => limpo(titulo(s)) !== '' && limpo(titulo(s)) !== limpo(s.titulo);
   const mudou = novas.join() !== unidadesNovas(ano.textos).join()
-    || secoes.some(s => limpo(corpo(s.id)) !== limpo(corpoDaSecao(ano.textos, s.id)) || limpo(titulo(s)) !== limpo(tituloDaSecao(ano.textos, s)));
-  const editadas = secoes.filter(s => ehNova(s.id) || limpo(corpo(s.id)) !== base(s.id) || tituloEditado(s)).length;
+    || secoes.some(s => limpo(corpo(s.id)) !== limpo(corpoDaSecao(ano.textos, s.id)) || (limpo(titulo(s)) || limpo(s.titulo)) !== limpo(tituloDaSecao(ano.textos, s)));
+  const editadas = secoes.filter(s => ehNova(s.id) || limpo(corpo(s.id)) !== baseDe2026(s.id) || tituloEditado(s)).length;
   const ultimaUnidade = `ana-${novas[novas.length - 1] ?? 3}`;
   const proxima = proximaUnidade(novas);
   const acrescentarUnidade = () => { setNovas(n => [...n, proxima]); setCorpos(c => ({ ...c, [`ana-${proxima}`]: '' })); };
@@ -77,24 +100,31 @@ export function TextosDoProjeto({ ano, editavel, onAno }: { ano: AnoDoCalendario
     setTitulos(t => { const r = { ...t }; delete r[`ana-${n}`]; return r; });
   };
 
-  const salvar = async () => {
-    setSalvando(true);
-    try {
-      const textos: Record<string, string> = {};
-      for (const s of secoes) {
-        if (ehNova(s.id) || limpo(corpo(s.id)) !== base(s.id)) textos[s.id] = limpo(corpo(s.id));
-        if (tituloEditado(s)) textos[chaveDoTitulo(s.id)] = limpo(titulo(s));
-      }
-      onAno(await salvarAno(ano.ano, { textos }));
-      toast.success('Textos salvos');
-    } catch (e) { toast.error((e as Error).message || 'Não foi possível salvar'); }
-    finally { setSalvando(false); }
+  /** O que esta tela gravaria (só o que difere de 2026, como sempre). */
+  const meusTextos = () => {
+    const textos: Record<string, string> = {};
+    for (const s of secoes) {
+      if (ehNova(s.id) || limpo(corpo(s.id)) !== baseDe2026(s.id)) textos[s.id] = limpo(corpo(s.id));
+      if (tituloEditado(s)) textos[chaveDoTitulo(s.id)] = limpo(titulo(s));
+    }
+    return textos;
   };
+  const { estado, salvarAgora } = useSalvarSozinho({
+    chave: JSON.stringify([corpos, titulos, novas]), mudou, ativo: editavel,
+    salvar: async () => {
+      const meus = meusTextos(), vistos = base.current;
+      const novo = await salvarAnoJuntando(ano.ano, atual => ({ textos: juntarTextos(atual.textos ?? {}, vistos, meus) }));
+      // A base passa a ser o que eu enviei (o resto, como eu tinha visto): o que mudar
+      // na tela durante o salvamento continua sendo "meu" e vai no próximo.
+      base.current = juntarTextos(vistos, vistos, meus);
+      onAno(novo);
+    },
+  });
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 pb-10 lg:px-6">
       <h1 className="font-display text-[26px] font-bold tracking-tight sm:text-[28px]">Textos do projeto · {ano.ano}</h1>
-      <p className="mt-1 text-[14px] text-muted-foreground">As páginas 2 a 10 do PDF. Vieram os títulos e os textos de 2026: revisem e troquem o que mudou.</p>
+      <p className="mt-1 text-[14px] text-muted-foreground">As páginas 2 a 10 do PDF. Vieram os títulos e os textos de 2026: revisem e troquem o que mudou. Salva sozinho.</p>
 
       <section className="glass-2 mt-5 rounded-[22px] p-4 text-[13.5px] leading-relaxed">
         <p className="font-semibold">Como escrever</p>
@@ -112,7 +142,7 @@ export function TextosDoProjeto({ ano, editavel, onAno }: { ano: AnoDoCalendario
           <div className="mt-2 space-y-3">
             {g.secoes.map(s => {
               const nova = ehNova(s.id);
-              const editada = !nova && (limpo(corpo(s.id)) !== base(s.id) || tituloEditado(s));
+              const editada = !nova && (limpo(corpo(s.id)) !== baseDe2026(s.id) || tituloEditado(s));
               const autoria = autoriaDe(ano, `texto:${s.id}`) ?? autoriaDe(ano, `texto:${chaveDoTitulo(s.id)}`);
               return (
                 <div key={s.id}>
@@ -142,7 +172,7 @@ export function TextosDoProjeto({ ano, editavel, onAno }: { ano: AnoDoCalendario
                     onChange={e => setCorpos(c => ({ ...c, [s.id]: e.target.value }))}
                   />
                   {editavel && editada && (
-                    <Button variant="ghost" size="sm" className="mt-1.5 gap-1.5 text-muted-foreground" onClick={() => { setCorpos(c => ({ ...c, [s.id]: base(s.id) })); setTitulos(t => ({ ...t, [s.id]: s.titulo })); }}>
+                    <Button variant="ghost" size="sm" className="mt-1.5 gap-1.5 text-muted-foreground" onClick={() => { setCorpos(c => ({ ...c, [s.id]: baseDe2026(s.id) })); setTitulos(t => ({ ...t, [s.id]: s.titulo })); }}>
                       <RotateCcw className="h-3.5 w-3.5" /> Voltar ao texto de 2026
                     </Button>
                   )}
@@ -169,7 +199,7 @@ export function TextosDoProjeto({ ano, editavel, onAno }: { ano: AnoDoCalendario
       {editavel && (
         <div className="sticky bottom-3 mt-4 flex items-center justify-end gap-3">
           <span className="rounded-full bg-background/80 px-3 py-1 text-[12.5px] text-muted-foreground backdrop-blur">{editadas === 0 ? 'Igual a 2026' : `${editadas} ${editadas === 1 ? 'seção editada' : 'seções editadas'}`}</span>
-          <Button onClick={salvar} disabled={!mudou || salvando} className="shadow-lg">{salvando ? 'Salvando…' : mudou ? 'Salvar os textos' : 'Tudo salvo'}</Button>
+          <Button onClick={salvarAgora} disabled={estado === 'salvo' || estado === 'salvando'} variant={estado === 'erro' ? 'destructive' : 'default'} className="shadow-lg" aria-live="polite">{rotuloDoSalvamento(estado)}</Button>
         </div>
       )}
     </div>

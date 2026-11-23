@@ -15,9 +15,22 @@ export type Bloco =
   | { tipo: 'item'; trechos: Trecho[] }
   | { tipo: 'respiro' };
 
+/**
+ * O tema sem as aspas de fora (23/11/2026): o PDF já põe as dele em volta do
+ * tema; quem escreveu "“Nossa História…”" no campo não ganha aspas dobradas.
+ */
+export function temaSemAspas(tema: string): string {
+  const t = tema.trim();
+  // Só quando o tema INTEIRO está entre aspas (abrem no começo, fecham no fim,
+  // e não há outras no meio): "Somos “família”" e "“a” e “b”" ficam como estão.
+  const m = /^(["“'‘«]+)([\s\S]*?)(["”'’»]+)$/.exec(t);
+  if (!m || /["“”'‘’«»]/.test(m[2])) return t;
+  return m[2].trim();
+}
+
 /** Troca {ano}, {tema} e {TEMA}. Sem tema, fica um lembrete entre colchetes. */
 export function trocarMarcas(texto: string, ano: number, tema: string): string {
-  const t = tema.trim() || '[tema do ano]';
+  const t = temaSemAspas(tema) || '[tema do ano]';
   return texto.replace(/\{ano\}/g, String(ano)).replace(/\{TEMA\}/g, t.toLocaleUpperCase('pt-BR')).replace(/\{tema\}/g, t);
 }
 

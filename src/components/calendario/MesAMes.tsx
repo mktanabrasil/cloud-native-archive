@@ -6,11 +6,11 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { acrescentarItem, apagarItem, editarItem, salvarAno } from '@/lib/calendario/api';
+import { acrescentarItem, apagarItem, editarItem, salvarAnoJuntando } from '@/lib/calendario/api';
 import {
   DIAS_DA_SEMANA, LIMITE_DO_TEXTO, MESES, UNIDADES_DO_CALENDARIO, chaveDoDia, diaDaSemana, itensDoDia, percursosCompletos,
   autoriaDe, autoriaDoItem, rotuloDasUnidades, semanasDoMes, type AnoDoCalendario, type ItemDoCalendario,
-  SINAL_DA_MUDANCA, entrouDepoisDaImpressao, mudancasPorMes, textoDaMudanca, diaEMes, type AlteracaoDoCalendario,
+  SINAL_DA_MUDANCA, entrouDepoisDaImpressao, mudancasPorMes, textoDaMudanca, diaEMes, juntarPercursos, mesesRevisadosCom, type AlteracaoDoCalendario,
 } from '@/lib/calendario/regras';
 
 const COR_DA_UNIDADE: Record<string, string> = {
@@ -74,16 +74,17 @@ export function MesAMes({ ano, itens, editavel, editavelDoMes = editavel, fichar
   if (mesDosCampos !== mes) { setMesDosCampos(mes); setTema(percursos[mes - 1].tema); setSugestoes(percursos[mes - 1].sugestoes); }
   const revisado = ano.meses_revisados.includes(mes);
 
+  // Grava só este mês, por cima da versão mais nova do banco (23/11/2026): as
+  // coordenadoras preenchem ao mesmo tempo e um mês não apaga o outro.
   const salvarPercurso = async () => {
     const atual = percursos[mes - 1];
     if (atual.tema === tema.trim() && atual.sugestoes === sugestoes.trim()) return;
-    const novos = percursos.map(p => (p.mes === mes ? { ...p, tema: tema.trim(), sugestoes: sugestoes.trim() } : p));
-    try { onAno(await salvarAno(ano.ano, { percursos: novos })); toast.success('Tema do mês salvo'); }
+    const meu = { mes, tema: tema.trim(), sugestoes: sugestoes.trim() };
+    try { onAno(await salvarAnoJuntando(ano.ano, a => ({ percursos: juntarPercursos(a.percursos, percursos, percursos.map(p => (p.mes === mes ? meu : p))) }))); toast.success('Tema do mês salvo'); }
     catch (e) { toast.error((e as Error).message || 'Não foi possível salvar'); }
   };
   const alternarRevisado = async () => {
-    const meses = revisado ? ano.meses_revisados.filter(m => m !== mes) : [...ano.meses_revisados, mes].sort((a, b) => a - b);
-    try { onAno(await salvarAno(ano.ano, { meses_revisados: meses })); }
+    try { onAno(await salvarAnoJuntando(ano.ano, a => ({ meses_revisados: mesesRevisadosCom(a.meses_revisados, mes, !revisado) }))); }
     catch (e) { toast.error((e as Error).message || 'Não foi possível salvar'); }
   };
 

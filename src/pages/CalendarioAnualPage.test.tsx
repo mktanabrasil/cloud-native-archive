@@ -31,6 +31,11 @@ vi.mock('@/lib/calendario/api', () => ({
   lerAlteracoes: async () => [],
   lerFolhasExtras: async () => [],
   salvarAno: vi.fn(),
+  // A gravação juntando (23/11/2026): lê o ano de mentira e chama o salvarAno, como a de verdade.
+  salvarAnoJuntando: async (ano: number, juntar: (a: unknown) => unknown) => {
+    const api = await import('@/lib/calendario/api');
+    return api.salvarAno(ano, juntar(await api.lerAno(ano)) as never);
+  },
   enviarAoMarketing: vi.fn(), devolverAsCoordenadoras: vi.fn(), aprovarComPdf: vi.fn(), trocarCapa: vi.fn(), linkDoArquivo: vi.fn(async () => 'https://x'),
 }));
 
@@ -153,7 +158,7 @@ describe('os textos do projeto (13/11/2026)', () => {
     const original = (avaliacao as HTMLTextAreaElement).value;
     fireEvent.change(avaliacao, { target: { value: original + ' Mais.' } });
     fireEvent.change(avaliacao, { target: { value: original } });
-    fireEvent.click(screen.getByRole('button', { name: 'Salvar os textos' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar agora' }));
     await waitFor(() => expect(salvarAno).toHaveBeenCalledWith(2027, { textos: { metodologia: 'Texto novo da metodologia.' } }));
     expect(await screen.findByRole('button', { name: 'Tudo salvo' })).toBeDisabled();
   });
@@ -171,12 +176,12 @@ describe('os textos do projeto (13/11/2026)', () => {
     const justificativa = titulos.find((t) => t.value === 'JUSTIFICATIVA')!;
     fireEvent.change(justificativa, { target: { value: 'POR QUE ESTE PROJETO' } });
     expect(screen.getByText('Editado')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Salvar os textos' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar agora' }));
     await waitFor(() => expect(salvarAno).toHaveBeenCalledWith(2027, { textos: { 'titulo:justificativa': 'POR QUE ESTE PROJETO' } }));
 
     fireEvent.click(await screen.findByRole('button', { name: /voltar ao texto de 2026/i }));
     expect(screen.getByLabelText('Texto: JUSTIFICATIVA')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Salvar os textos' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar agora' }));
     await waitFor(() => expect(salvarAno).toHaveBeenLastCalledWith(2027, { textos: {} }));
   });
 });
@@ -219,7 +224,7 @@ describe('unidade nova nos textos (13/11/2026)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tirar a ANA V' }));
     expect(screen.queryByLabelText('Texto: ANA V')).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Texto: ANA IV'), { target: { value: 'A unidade nova.' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Salvar os textos' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar agora' }));
     await waitFor(() => expect(salvarAno).toHaveBeenCalledWith(2027, { textos: { 'ana-4': 'A unidade nova.' } }));
   });
 });

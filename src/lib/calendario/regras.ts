@@ -279,3 +279,53 @@ export function autoriaDoItem(i: ItemDoCalendario): string | null {
   if (i.alterado_por_nome && i.alterado_em) partes.push(`${partes.length ? 'editado' : 'Editado'} por ${i.alterado_por_nome} · ${diaEMes(i.alterado_em)}`);
   return partes.length ? partes.join(' · ') : null;
 }
+
+// --- Salvar sozinho sem apagar o que outra pessoa salvou (23/11/2026) -------------------------
+//
+// As coordenadoras preenchem ao mesmo tempo. Quem salva grava SÓ o que mudou
+// desde a última versão que viu, por cima da versão mais nova do banco; o
+// resto fica como a outra pessoa deixou.
+
+const percursoIgual = (a: Percurso | undefined, b: Percurso | undefined) =>
+  (a?.tema ?? '').trim() === (b?.tema ?? '').trim() && (a?.sugestoes ?? '').trim() === (b?.sugestoes ?? '').trim();
+
+const mesmo = (a: string | undefined, b: string | undefined) => (a ?? '').trim() === (b ?? '').trim();
+
+/**
+ * Os percursos a gravar: os CAMPOS que eu mudei (em relação a `base`), por cima
+ * dos `atuais`. Campo a campo: o tema de uma não apaga as sugestões da outra.
+ */
+export function juntarPercursos(atuais: Percurso[], base: Percurso[], meus: Percurso[]): Percurso[] {
+  const a = percursosCompletos(atuais), b = percursosCompletos(base), m = percursosCompletos(meus);
+  return a.map((p, i) => (percursoIgual(m[i], b[i]) ? p : {
+    mes: p.mes,
+    tema: mesmo(m[i].tema, b[i].tema) ? p.tema : m[i].tema.trim(),
+    sugestoes: mesmo(m[i].sugestoes, b[i].sugestoes) ? p.sugestoes : m[i].sugestoes.trim(),
+  }));
+}
+
+/** Os percursos que vieram do banco, trazidos para a tela: só os campos que eu não mexi. */
+export function percursosNaTela(naTela: Percurso[], baseAntiga: Percurso[], novos: Percurso[]): Percurso[] {
+  const t = percursosCompletos(naTela), b = percursosCompletos(baseAntiga), n = percursosCompletos(novos);
+  return t.map((p, i) => ({
+    mes: p.mes,
+    tema: mesmo(p.tema, b[i].tema) ? n[i].tema : p.tema,
+    sugestoes: mesmo(p.sugestoes, b[i].sugestoes) ? n[i].sugestoes : p.sugestoes,
+  }));
+}
+
+/** Os textos a gravar: as chaves que eu mudei (ou tirei) em relação a `base`, por cima dos `atuais`. */
+export function juntarTextos(atuais: Record<string, string>, base: Record<string, string>, meus: Record<string, string>): Record<string, string> {
+  const r = { ...(atuais ?? {}) };
+  for (const k of new Set([...Object.keys(base ?? {}), ...Object.keys(meus)])) {
+    if ((meus[k] ?? null) === (base?.[k] ?? null)) continue;
+    // Eu criei a chave vazia (unidade nova) e outra pessoa já tinha escrito nela: fica o dela.
+    if (!(k in (base ?? {})) && meus[k] === '' && (r[k] ?? '').trim()) continue;
+    if (k in meus) r[k] = meus[k]; else delete r[k];
+  }
+  return r;
+}
+
+/** Marca ou desmarca um mês como revisado na lista mais nova. */
+export const mesesRevisadosCom = (atuais: number[], mes: number, revisado: boolean) =>
+  [...new Set(revisado ? [...(atuais ?? []), mes] : (atuais ?? []).filter(m => m !== mes))].sort((a, b) => a - b);
