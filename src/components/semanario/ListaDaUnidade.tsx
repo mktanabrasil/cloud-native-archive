@@ -102,7 +102,7 @@ export function ListaDaUnidade({ titulo, marketing, podeDevolver = () => false, 
   };
 
   return (
-    <main className={cn('mx-auto w-full px-4 pb-16 lg:px-6', telaLarga ? 'max-w-7xl' : 'max-w-5xl')}>
+    <main className={cn('mx-auto w-full px-4 pb-16 lg:px-6', telaLarga ? 'max-w-app' : 'max-w-5xl')}>
       <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-x-3"><h1 className="font-display text-[30px] font-bold tracking-tight">{titulo}</h1>{tut.botao}</div>

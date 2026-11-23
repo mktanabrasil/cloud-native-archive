@@ -231,7 +231,7 @@ export function FichaDoSemanario({ id, souADona, podeDevolver = () => false }: {
     );
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 pb-16 lg:px-6">
+    <main className="mx-auto w-full max-w-app px-4 pb-16 lg:px-6">
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
         <Link to={ROTAS.semanario} className="inline-flex items-center gap-1.5 text-[13px] font-medium text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> Semanário</Link>
         <span className="flex flex-wrap items-center gap-2">

@@ -38,7 +38,7 @@ export function FaixaDoSetor({ pode, cor, compacta = false }: {
   const Icone = item?.icon;
 
   return (
-    <nav aria-label={`Páginas de ${item?.label ?? 'setor'}`} className="mx-auto w-full max-w-7xl px-4 pt-4 lg:px-8 print:hidden">
+    <nav aria-label={`Páginas de ${item?.label ?? 'setor'}`} className="mx-auto w-full max-w-app px-4 pt-4 lg:px-8 print:hidden">
       <div ref={trilho} className={cn('relative flex items-center gap-2', compacta && '-mx-4 overflow-x-auto px-4 [scrollbar-width:none]')}>
         {!compacta && item && (
           <span className="flex shrink-0 items-center gap-1.5 text-[13px] font-semibold text-foreground">

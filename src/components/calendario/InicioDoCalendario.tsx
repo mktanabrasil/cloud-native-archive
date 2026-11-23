@@ -47,7 +47,7 @@ export function InicioDoCalendario({ ano, editavel, marketing, alteracoes = [], 
   const proximoMes = MESES.findIndex((_, i) => !ano.meses_revisados.includes(i + 1)) + 1 || 1;
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 pb-10 lg:px-6">
+    <div className="mx-auto w-full max-w-app px-4 pb-10 lg:px-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-[30px] font-bold tracking-tight sm:text-[34px]">Calendário Anual {ano.ano}</h1>

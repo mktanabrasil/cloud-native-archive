@@ -49,7 +49,7 @@ export default function MarketingHubPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">
+    <div className="mx-auto w-full max-w-app px-4 py-6 lg:px-8">
       <Aba key={aba} />
     </div>
   );

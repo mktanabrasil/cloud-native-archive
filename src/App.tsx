@@ -89,7 +89,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
  * página inicial e do Marketing elas já ganham a margem de lá.
  */
 function ComMargem({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">{children}</div>;
+  return <div className="mx-auto w-full max-w-app px-4 py-6 lg:px-8">{children}</div>;
 }
 
 /**

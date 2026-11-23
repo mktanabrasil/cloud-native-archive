@@ -91,7 +91,7 @@ export function MesAMes({ ano, itens, editavel, editavelDoMes = editavel, fichar
   const diasComAlgo = semanas.flat().filter((d): d is number => d !== null).filter(d => itensDoDia(itens, chaveDoDia(ano.ano, mes, d)).length > 0);
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 pb-10 lg:px-6">
+    <div className="mx-auto w-full max-w-app px-4 pb-10 lg:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="font-display text-[26px] font-bold tracking-tight sm:text-[28px]">{MESES[mes - 1]} · {ano.ano}</h1>

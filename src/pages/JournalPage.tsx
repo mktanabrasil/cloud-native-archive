@@ -368,7 +368,7 @@ export default function JournalPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-5 px-4 py-6 lg:px-8">
+    <div className="mx-auto w-full max-w-app space-y-5 px-4 py-6 lg:px-8">
       <PageHeader
         className="mb-0"
         title={`Olá${userName ? `, ${userName.split(' ')[0]}` : ''}`}

@@ -34,7 +34,7 @@ export default function ImpersonationBanner() {
     // Esboço V2: faixa sólida no tom do cartão, com a situação em texto e bolinha
     // (a cor fala só no aviso), no lugar do fundo vermelho chapado.
     <div className="sticky top-0 z-[60] w-full border-b border-destructive/30 bg-card text-foreground">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2 lg:px-8">
+      <div className="mx-auto flex max-w-app flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2 lg:px-8">
         <div className="flex min-w-0 items-center gap-2 text-sm">
           <span className="h-2 w-2 shrink-0 rounded-full bg-destructive" aria-hidden="true" />
           <span className="min-w-0">

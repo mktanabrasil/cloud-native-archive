@@ -372,7 +372,7 @@ function ProgramacaoV2() {
       {/* A faixa da equipe: diz o modo e traz o interruptor. Só para quem está
           logado; o visitante anônimo nunca a vê. */}
       {isAuthenticated && (
-        <div className="max-w-7xl mx-auto px-6 pt-6">
+        <div className="max-w-app mx-auto px-6 pt-6">
           <div
             className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-border bg-card text-sm ${
               comoVisitante ? 'px-4 py-2' : 'px-4 py-3'
@@ -417,7 +417,7 @@ function ProgramacaoV2() {
             if (ini === null || fim === undefined || bannerEvents.length < 2 || Math.abs(fim - ini) < 40) return;
             if (fim < ini) nextSlide(); else prevSlide();
           }}
-          className={`relative mx-auto h-[400px] w-[calc(100%-2rem)] max-w-7xl overflow-hidden rounded-[20px] rounded-br-[48px] bg-slate-900 md:h-[460px] md:w-[calc(100%-3rem)] ${isAuthenticated ? 'mt-5' : 'mt-4'}`}
+          className={`relative mx-auto h-[400px] w-[calc(100%-2rem)] max-w-app overflow-hidden rounded-[20px] rounded-br-[48px] bg-slate-900 md:h-[360px] md:w-[calc(100%-3rem)] ${isAuthenticated ? 'mt-5' : 'mt-4'}`}
         >
           {bannerEvents.map((event, index) => (
             <div
@@ -546,7 +546,7 @@ function ProgramacaoV2() {
         </section>
       )}
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-app mx-auto px-6 py-8">
         {slugInvalido && (
           <div
             role="status"
@@ -698,7 +698,7 @@ function ProgramacaoV2() {
           /* Esboço V2: os eventos em lista, com a data em destaque, no lugar da
              grade de cartões. Mesmo papel de botão, mesmo título (h3), mesma
              capa e o mesmo endereço; só o arranjo mudou. */
-          <div className="overflow-hidden rounded-[20px] border border-black/5 bg-card dark:border-white/5">
+          <div className="overflow-hidden rounded-[20px] border border-black/5 bg-card dark:border-white/5 xl:grid xl:grid-cols-2" data-testid="lista-de-eventos">
             {sortedEvents.map(event => {
               const inicio = new Date(event.start_datetime);
               return (
@@ -709,7 +709,7 @@ function ProgramacaoV2() {
                   aria-label={`Ver detalhes de ${tituloEmTexto(event.title)}`}
                   onKeyDown={(e) => teclaNoCard(e, event)}
                   onClick={() => handleCardClick(event)}
-                  className={`group grid cursor-pointer grid-cols-[48px_minmax(0,1fr)] items-center gap-x-4 gap-y-2 border-b border-border/70 px-4 py-4 transition-colors last:border-b-0 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:grid-cols-[56px_minmax(0,1fr)_auto_136px] sm:px-5 ${
+                  className={`group grid cursor-pointer grid-cols-[48px_minmax(0,1fr)] items-center gap-x-4 gap-y-2 border-b border-border/70 px-4 py-4 transition-colors last:border-b-0 xl:odd:border-r xl:[&:nth-last-child(2):nth-child(odd)]:border-b-0 hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:grid-cols-[56px_minmax(0,1fr)_auto_136px] sm:px-5 ${
                     aba === 'passados' ? 'opacity-75 [&_img]:saturate-50 [&_.capa-sem-imagem]:saturate-50' : ''
                   }`}
                 >
