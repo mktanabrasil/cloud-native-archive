@@ -214,6 +214,40 @@ export function tocarArea(atual: Opcoes, area: AreaDeAjuda, lotadas: readonly st
 export const pedeAvisoDeLotada = (atual: Opcoes, area: AreaDeAjuda, lotadas: readonly string[]) =>
   lotadas.includes(area) && !atual.opcao1 && atual.opcao2 !== area;
 
+/**
+ * Acompanhantes (23/11/2026): quem leva pessoa idosa ou criança informa nome e
+ * idade de cada uma (até 4). Vão para a coluna "Acompanhantes" da planilha da
+ * coordenação. A função inscrever_voluntario confere o mesmo.
+ */
+export type TipoDeAcompanhante = 'idoso' | 'crianca';
+export interface AcompanhanteNaTela { tipo: '' | TipoDeAcompanhante; nome: string; idade: string }
+export interface Acompanhante { tipo: TipoDeAcompanhante; nome: string; idade: number }
+export const MAX_ACOMPANHANTES = 4;
+export const ROTULO_DO_ACOMPANHANTE: Record<TipoDeAcompanhante, string> = { idoso: 'pessoa idosa', crianca: 'criança' };
+
+/** O que falta nos acompanhantes, ou null. `leva` undefined: a pergunta não se aplica. */
+export function problemaDosAcompanhantes(leva: boolean | null | undefined, lista: AcompanhanteNaTela[] = []): string | null {
+  if (leva === undefined) return null;
+  if (leva === null) return 'Conte se vai levar acompanhante.';
+  if (!leva) return null;
+  if (!lista.length) return 'Acrescente o acompanhante, ou marque "Não".';
+  for (let i = 0; i < lista.length; i++) {
+    const a = lista[i], n = lista.length > 1 ? `Acompanhante ${i + 1}: ` : 'Acompanhante: ';
+    if (!a.tipo) return `${n}escolha se é pessoa idosa ou criança.`;
+    if (a.nome.trim().length < 2) return `${n}escreva o nome.`;
+    if (!/^\d{1,3}$/.test(a.idade.trim()) || Number(a.idade) > 120) return `${n}escreva a idade.`;
+  }
+  return null;
+}
+
+/** Os acompanhantes como vão para o banco (só quando leva). */
+export const acompanhantesParaEnviar = (leva: boolean | null | undefined, lista: AcompanhanteNaTela[] = []): Acompanhante[] =>
+  leva ? lista.filter((a): a is AcompanhanteNaTela & { tipo: TipoDeAcompanhante } => !!a.tipo).map(a => ({ tipo: a.tipo, nome: a.nome.trim().replace(/\s+/g, ' '), idade: Number(a.idade) })) : [];
+
+/** "Maria Souza, 72 anos (pessoa idosa)", um por linha (comprovante e planilha). */
+export const textoDosAcompanhantes = (lista: Acompanhante[]) =>
+  lista.map(a => `${a.nome}, ${a.idade} ${a.idade === 1 ? 'ano' : 'anos'} (${ROTULO_DO_ACOMPANHANTE[a.tipo]})`).join('\n');
+
 export interface DadosDaEtapa2 {
   nome: string;
   whatsapp: string;
@@ -227,6 +261,9 @@ export interface DadosDaEtapa2 {
   igreja?: string;
   /** Desde 12/11/2026: quem não foi indicado conta como ficou sabendo (obrigatório). */
   comoSoube?: string;
+  /** Desde 23/11/2026: leva acompanhante? (pessoa idosa ou criança, com nome e idade). */
+  levaAcompanhante?: boolean | null;
+  acompanhantes?: AcompanhanteNaTela[];
 }
 
 /** O que falta na etapa 2; null quando dá para seguir. */
@@ -241,7 +278,7 @@ export function problemaDaEtapa2(d: DadosDaEtapa2): string | null {
   if (d.vinculo === 'comunidade' && d.indicado === false && (d.comoSoube ?? '').trim().length < 2) return 'Conte como você ficou sabendo do voluntariado.';
   if (d.vinculo === 'comunidade' && (d.temIgreja === null || d.temIgreja === undefined)) return 'Conte se você faz parte de alguma igreja.';
   if (d.vinculo === 'comunidade' && d.temIgreja && (d.igreja ?? '').trim().length < 2) return 'Escreva o nome da sua igreja.';
-  return null;
+  return problemaDosAcompanhantes(d.levaAcompanhante, d.acompanhantes);
 }
 
 /**
@@ -264,6 +301,7 @@ export function mensagemDoErro(e: unknown): string {
   if (/ja_inscrito/.test(t)) return 'Este WhatsApp já está inscrito. Para mudar a área, fale com a equipe.';
   if (/whatsapp_invalido/.test(t)) return 'Confira o telefone (WhatsApp), com DDD.';
   if (/nome_invalido/.test(t)) return 'Confira o seu nome.';
+  if (/acompanhante_invalido/.test(t)) return 'Confira os acompanhantes: pessoa idosa ou criança, com nome e idade (até 4).';
   if (/area_lotada/.test(t)) return 'As vagas da sua 1ª opção acabaram de ser preenchidas. Escolha outra área como 1ª opção; essa pode ficar como 2ª.';
   return 'Não deu para enviar. Confira a internet e tente de novo.';
 }
