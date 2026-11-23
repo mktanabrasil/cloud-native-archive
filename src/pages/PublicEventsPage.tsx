@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, type KeyboardEvent } from 'react';
+import { useMemo, useRef, useState, useEffect, type KeyboardEvent } from 'react';
 import { useReduzMovimento } from '@/hooks/useReduzMovimento';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import { useIsEmbedded } from '@/hooks/useIsEmbedded';
@@ -77,6 +77,7 @@ function ProgramacaoV2() {
   const [showNewEvent, setShowNewEvent] = useState(false);
   /** Mouse em cima ou foco dentro do carrossel: ele para de girar. */
   const [carrosselPausado, setCarrosselPausado] = useState(false);
+  const toqueInicial = useRef<number | null>(null);
   const reduzMovimento = useReduzMovimento();
   const { isAdmin, canEdit, isMarketing, unit, delegatedUnits } = useUserRole();
   /**
@@ -408,6 +409,14 @@ function ProgramacaoV2() {
           onMouseLeave={() => setCarrosselPausado(false)}
           onFocus={() => setCarrosselPausado(true)}
           onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setCarrosselPausado(false); }}
+          // No celular, deslizar troca o slide (as setas saíram com a capa C+, 23/11/2026).
+          onTouchStart={(e) => { toqueInicial.current = e.touches[0]?.clientX ?? null; }}
+          onTouchEnd={(e) => {
+            const ini = toqueInicial.current; toqueInicial.current = null;
+            const fim = e.changedTouches[0]?.clientX;
+            if (ini === null || fim === undefined || bannerEvents.length < 2 || Math.abs(fim - ini) < 40) return;
+            if (fim < ini) nextSlide(); else prevSlide();
+          }}
           className={`relative mx-auto h-[400px] w-[calc(100%-2rem)] max-w-7xl overflow-hidden rounded-[20px] rounded-br-[48px] bg-slate-900 md:h-[460px] md:w-[calc(100%-3rem)] ${isAuthenticated ? 'mt-5' : 'mt-4'}`}
         >
           {bannerEvents.map((event, index) => (
@@ -419,13 +428,12 @@ function ProgramacaoV2() {
               {...({ inert: index !== currentSlide ? '' : undefined } as Record<string, unknown>)}
               className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             >
-              {/* Desktop Banner (21:9 preferencial, fallback para capa 16:9) */}
+              {/* A capa C+ (aprovada em 23/11/2026, pedido da gestão: "mais
+                  fotográfica e menos informativa"): a imagem inteira, sem véu;
+                  só uma sombra curta no pé para o nome ler. */}
               {(event.banner_image_desktop || event.banner_url_desktop || event.banner_url_mobile) && carregaImagem(index) ? (
-                /* Uma <img> só. Antes eram duas alternadas por classe (hidden
-                   md:block / md:hidden), e display:none não impede o download:
-                   o celular baixava as 21:9 de desktop que nunca veria. O
-                   <source> deixa o navegador escolher antes de baixar.
-                   Celular: 9:16, depois capa 4:3, 16:9 e por fim o 21:9. */
+                /* Uma <img> só; o <source> deixa o navegador escolher antes de
+                   baixar. Celular: 9:16, depois capa 4:3, 16:9 e por fim o 21:9. */
                 <picture>
                   <source
                     media="(min-width: 768px)"
@@ -434,154 +442,105 @@ function ProgramacaoV2() {
                   <img
                     src={event.banner_image_mobile || event.banner_url_mobile || event.banner_url_desktop || event.banner_image_desktop}
                     alt={tituloEmTexto(event.title)}
-                    className="w-full h-full object-cover opacity-60"
+                    className="h-full w-full object-cover"
                   />
                 </picture>
               ) : (
                 /* Sem imagem: a foto da unidade, ou a cor do evento quando não há foto */
                 <CapaDaUnidade evento={event} comTitulo={false} prioridade />
               )}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-[42%] bg-gradient-to-t from-[rgba(12,16,18,0.62)] to-transparent md:h-[34%]" aria-hidden="true" />
 
-              {event.show_banner_overlay !== false && (
-                <div className="absolute inset-0 bg-slate-900/40 z-[5]" />
-              )}
+              {/* A data num card branco de cantos arredondados, no canto de cima. */}
+              <div className="absolute left-4 top-4 z-[20] rounded-[14px] bg-white px-3.5 pb-2.5 pt-3 text-center text-[#1F2322] md:left-7 md:top-7 md:rounded-[18px] md:px-5 md:pb-3 md:pt-4" data-testid="data-heroi">
+                <span className="sr-only">{textoDaData(event, anoQuandoPreciso(event))}</span>
+                <span aria-hidden="true" className="block font-display text-[32px] font-extrabold leading-[0.9] md:text-[44px]">{format(new Date(event.start_datetime), 'dd')}</span>
+                <span aria-hidden="true" className="mt-1.5 block font-display text-[11px] font-bold tracking-[0.2em] text-[#f37964] md:text-[13px]">{format(new Date(event.start_datetime), 'MMM', { locale: ptBR }).replace('.', '').toUpperCase()}</span>
+              </div>
 
-              {event.show_banner_fade !== false && (
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent z-[10]" />
-              )}
-
-              <div className="glass-photo absolute bottom-4 left-4 right-4 z-[20] flex max-h-[calc(100%-2rem)] flex-col items-start rounded-[20px] p-5 md:bottom-8 md:left-8 md:right-auto md:max-w-[580px] md:p-7">
-                <div className="flex flex-wrap gap-2 mb-4 shrink-0">
-                  <Badge className={`${UNIT_BG_COLORS[event.unit]} ${tintaNaCorDaUnidade(event.unit)} border-none shadow-lg`}>
-                    {event.unit}
-                  </Badge>
-                  {/* Por que a família não vê este slide: é interno, ou é
-                      público mas está fora do banner. Evento que já aconteceu
-                      não chega mais aqui (11/11/2026). */}
-                  {equipe && event.visibility !== 'publico' ? (
-                    <Badge variant="outline" className="bg-slate-900/80 text-slate-200 border-slate-700 backdrop-blur-sm">
-                      Interno · só a equipe
-                    </Badge>
-                  ) : equipe && isAdmin && !event.show_in_banner && (
-                    <Badge variant="outline" className="bg-slate-900/80 text-slate-200 border-slate-700 backdrop-blur-sm">
-                      Oculto para o público
-                    </Badge>
-                  )}
+              {/* Modo equipe: por que a família não vê este slide (interno, ou
+                  público fora do banner). Evento que já aconteceu não chega aqui. */}
+              {equipe && (event.visibility !== 'publico' || (isAdmin && !event.show_in_banner)) && (
+                <div className="absolute right-4 top-4 z-[20] md:right-7 md:top-7">
+                  <span className="rounded-full bg-slate-900/80 px-3 py-1 text-xs font-medium text-slate-100 backdrop-blur-sm">
+                    {event.visibility !== 'publico' ? 'Interno · só a equipe' : 'Oculto para o público'}
+                  </span>
                 </div>
+              )}
 
-                {event.use_logo_as_title && event.event_logo_url ? (
-                  <div className={`mb-6 animate-in slide-in-from-left duration-700 w-full flex items-center justify-start ${event.full_height_title ? 'h-1/2' : 'h-24 md:h-40'}`}>
-                    <img
-                      src={event.event_logo_url}
-                      alt={tituloEmTexto(event.title)}
-                      className={`object-contain object-left h-full max-w-full filter drop-shadow-2xl`}
-                    />
-                  </div>
-                ) : (
-                  <h2
-                    className={`font-bold text-white mb-4 leading-tight drop-shadow-lg ${event.full_height_title ? 'text-4xl md:text-6xl' : 'text-3xl md:text-5xl'}`}
-                  >
-                    <TituloDoEvento texto={event.title} apenasNoDesktop />
-                  </h2>
-                )}
-                <div className="flex flex-wrap gap-4 text-slate-200 text-sm md:text-base mb-2">
-                  <div className="flex items-center gap-2">
-                    <CalendarDays className="h-5 w-5" />
-                    <span>{textoDaData(event, anoQuandoPreciso(event))}</span>
-                  </div>
+              {/* O pé: o nome e o lugar curto (sem endereço, sem selo de unidade),
+                  o contador e um botão só, "Saber mais", em pílula branca. */}
+              <div className="absolute inset-x-5 bottom-5 z-[20] flex flex-col items-start gap-3 text-white md:inset-x-8 md:bottom-7 md:flex-row md:items-end md:justify-between md:gap-6">
+                <div className="min-w-0 max-w-full md:max-w-[60%]">
+                  {event.use_logo_as_title && event.event_logo_url ? (
+                    <img src={event.event_logo_url} alt={tituloEmTexto(event.title)} className="max-h-14 max-w-full object-contain object-left drop-shadow-lg md:max-h-20" />
+                  ) : (
+                    <h2 className="font-display text-[22px] font-semibold leading-tight [text-shadow:0_1px_10px_rgba(0,0,0,0.35)] md:text-[24px]">
+                      <TituloDoEvento texto={event.title} apenasNoDesktop />
+                    </h2>
+                  )}
                   {event.location && (
-                    <div className="flex items-start gap-2" data-testid="local-heroi">
-                      <MapPin className="h-5 w-5 shrink-0" />
-                      <span>
-                        {event.location}
-                        {event.visibility === 'publico' && enderecoDoLocal(event.location) && (
-                          <span className="block text-xs md:text-sm text-slate-300" data-testid="endereco-heroi">{enderecoDoLocal(event.location)}</span>
-                        )}
-                      </span>
-                    </div>
+                    <p className="mt-0.5 line-clamp-1 text-[14px] opacity-95 [text-shadow:0_1px_8px_rgba(0,0,0,0.35)] md:text-[15px]" data-testid="local-heroi">{event.location}</p>
                   )}
                 </div>
-                <div className="mt-3 flex flex-wrap items-center gap-3">
-                  <Button
-                    size="lg"
-                    className="rounded-xl bg-white px-6 text-[#1F2322] hover:bg-white/90"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCardClick(event);
-                    }}
-                  >
-                    Saber mais
-                  </Button>
-                  {/* Evento interno não vai ao banner do site: sem o botão. */}
-                  {equipe && isAdmin && event.visibility === 'publico' && (
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className={`rounded-xl border-white/40 bg-transparent text-white backdrop-blur-md hover:bg-white/15 hover:text-white ${event.show_in_banner ? '' : 'border-[#81e2cf] text-[#81e2cf]'}`}
+                <div className="flex w-full items-center justify-between gap-5 md:w-auto md:justify-end md:gap-7">
+                  <div className="order-1 flex items-center gap-2 md:order-2">
+                    <button
+                      type="button"
+                      className="rounded-full bg-white px-6 py-2.5 font-display text-[14px] font-semibold text-[#1F2322] transition-colors hover:bg-white/90 md:text-[15px]"
                       onClick={(e) => {
-                        e.preventDefault();
                         e.stopPropagation();
-                        handleToggleBanner(event);
+                        handleCardClick(event);
                       }}
                     >
-                      {event.show_in_banner ? (
-                        <>
-                          <EyeOff className="h-5 w-5 mr-2" /> Ocultar Banner
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="h-5 w-5 mr-2" /> Ativar banner
-                        </>
-                      )}
-                    </Button>
+                      Saber mais
+                    </button>
+                    {/* Modo equipe, admin: tirar ou pôr no banner do site (evento interno não vai). */}
+                    {equipe && isAdmin && event.visibility === 'publico' && (
+                      <button
+                        type="button"
+                        className={`rounded-full border px-4 py-2 text-[13px] font-medium backdrop-blur-md transition-colors hover:bg-white/15 ${event.show_in_banner ? 'border-white/50 text-white' : 'border-[#81e2cf] text-[#81e2cf]'}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleToggleBanner(event);
+                        }}
+                      >
+                        {event.show_in_banner ? 'Ocultar Banner' : 'Ativar banner'}
+                      </button>
+                    )}
+                  </div>
+                  {/* O contador "01 —— 02" (só no slide atual): tocar passa para o próximo; no celular, deslizar. */}
+                  {bannerEvents.length > 1 && index === currentSlide && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); nextSlide(); }}
+                      aria-label="Próximo slide"
+                      data-testid="contador-heroi"
+                      className="order-2 flex items-center gap-2.5 font-display text-[12px] font-semibold tracking-[0.1em] tabular-nums [text-shadow:0_1px_6px_rgba(0,0,0,0.35)] md:order-1"
+                    >
+                      <span>{String(currentSlide + 1).padStart(2, '0')}</span>
+                      <span className="relative block h-[2px] w-11 bg-white/35"><span className="absolute inset-y-0 left-0 bg-white" style={{ width: `${((currentSlide + 1) / bannerEvents.length) * 100}%` }} /></span>
+                      <span>{String(bannerEvents.length).padStart(2, '0')}</span>
+                    </button>
                   )}
                 </div>
               </div>
             </div>
           ))}
 
+          {/* As setas e os pontinhos saíram (lidos como interface): o contador do
+              slide passa para o próximo; para voltar, o teclado tem o botão abaixo,
+              e no celular dá para deslizar. */}
           {bannerEvents.length > 1 && (
             <>
               <button
                 onClick={prevSlide}
                 aria-label="Slide anterior"
-                className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all z-20"
+                className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-1/2 focus:z-30 focus:rounded-full focus:bg-white focus:px-3 focus:py-1.5 focus:text-sm focus:text-[#1F2322]"
               >
-                <ChevronLeft className="h-6 w-6" />
+                Anterior
               </button>
-              <button
-                onClick={nextSlide}
-                aria-label="Próximo slide"
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-all z-20"
-              >
-                <ChevronRight className="h-6 w-6" />
-              </button>
-
-              {/* Acima de oito slides os pontinhos deixam de funcionar como
-                  navegação — viram uma fileira ilegível. Aí só o contador. */}
-              {bannerEvents.length > 8 ? (
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 rounded-full bg-black/40 px-3 py-1 text-xs font-medium tabular-nums text-white backdrop-blur-sm">
-                  {currentSlide + 1} / {bannerEvents.length}
-                </div>
-              ) : (
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex z-20">
-                  {bannerEvents.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCurrentSlide(i)}
-                      aria-label={`Ir para o slide ${i + 1} de ${bannerEvents.length}`}
-                      aria-current={i === currentSlide}
-                      /* O ponto continua com 6px; quem cresce é o alvo, que
-                         chega a 44px pelo padding e fica invisível. */
-                      className="group grid h-11 w-11 place-items-center"
-                    >
-                      <span
-                        className={`h-1.5 block transition-all rounded-full ${i === currentSlide ? 'w-8 bg-white' : 'w-2 bg-white/30 group-hover:bg-white/60'}`}
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
             </>
           )}
         </section>

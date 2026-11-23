@@ -1136,3 +1136,50 @@ describe('herói sem local (varredura de 25/09/2026)', () => {
     expect(screen.getByTestId('local-heroi')).toHaveTextContent('Unidade DIC');
   });
 });
+
+describe('a capa C+ do herói (23/11/2026)', () => {
+  const capa = (id: string, title: string, dia: number, location = 'Recanto Maanaim, Campinas') => evento({
+    id, title, location, visibility: 'publico', show_in_banner: true, banner_image_desktop: `https://exemplo/${id}.jpg`,
+    start_datetime: new Date(2026, 11, dia, 10).toISOString(), end_datetime: new Date(2026, 11, dia, 18).toISOString(),
+  });
+  const regiao = () => screen.getByRole('region', { name: /eventos em destaque/i });
+  const atual = () => regiao().querySelector('[aria-hidden="false"]')!;
+
+  it('a data num card (dia e mês), o nome e o lugar curto, sem endereço e sem selo de unidade', () => {
+    espiao.eventos = [capa('n1', 'Natal Feliz 2026', 8, 'Unidade DIC')];
+    montarV2();
+    const data = within(atual() as HTMLElement).getByTestId('data-heroi');
+    expect(data).toHaveTextContent('08');
+    expect(data).toHaveTextContent('DEZ');
+    expect(within(atual() as HTMLElement).getByTestId('local-heroi')).toHaveTextContent('Unidade DIC');
+    expect(within(atual() as HTMLElement).queryByTestId('endereco-heroi')).toBeNull();
+    expect(atual().querySelector('img')!.className).not.toContain('opacity');
+  });
+
+  it('um botão só, "Saber mais", e o contador "01 —— 02" no lugar das setas e dos pontinhos', () => {
+    espiao.eventos = [capa('n1', 'Natal Feliz 2026', 8), capa('k1', 'Open Tomodati Karatê', 15)];
+    montarV2();
+    expect(within(atual() as HTMLElement).getAllByRole('button', { name: 'Saber mais' })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: /ir para o slide/i })).toBeNull();
+    const contador = screen.getByTestId('contador-heroi');
+    expect(contador).toHaveTextContent('01');
+    expect(contador).toHaveTextContent('02');
+    fireEvent.click(contador);
+    expect(atual()).toHaveTextContent('Open Tomodati Karatê');
+  });
+
+  it('no celular, deslizar troca o slide (para a esquerda, o próximo; para a direita, o anterior)', () => {
+    espiao.eventos = [capa('n1', 'Natal Feliz 2026', 8), capa('k1', 'Open Tomodati Karatê', 15)];
+    montarV2();
+    fireEvent.touchStart(regiao(), { touches: [{ clientX: 300 }] });
+    fireEvent.touchEnd(regiao(), { changedTouches: [{ clientX: 120 }] });
+    expect(atual()).toHaveTextContent('Open Tomodati Karatê');
+    fireEvent.touchStart(regiao(), { touches: [{ clientX: 100 }] });
+    fireEvent.touchEnd(regiao(), { changedTouches: [{ clientX: 300 }] });
+    expect(atual()).toHaveTextContent('Natal Feliz 2026');
+    // Um toque sem arrastar não troca.
+    fireEvent.touchStart(regiao(), { touches: [{ clientX: 200 }] });
+    fireEvent.touchEnd(regiao(), { changedTouches: [{ clientX: 210 }] });
+    expect(atual()).toHaveTextContent('Natal Feliz 2026');
+  });
+});
