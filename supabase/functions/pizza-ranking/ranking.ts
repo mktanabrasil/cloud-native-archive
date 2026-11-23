@@ -21,7 +21,7 @@ export interface Ranking { unidades: Colocado[]; pessoas: Colocado[]; pizzas: nu
 /** Fim dos pedidos: 05/12/2026, 23:59 em Brasília. A mesma data de src/lib/pizza/modelo.ts. */
 export const PRAZO = new Date('2026-12-06T00:00:00-03:00');
 
-const comparavel = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+export const comparavel = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 const chaveDaPessoa = (c: Pedido) => (c.telefone ? `w:${c.telefone}` : `n:${comparavel(c.nome)}|${c.unidade_id}`);
 const ordem = (a: Colocado, b: Colocado) => b.pizzas - a.pizzas || a.ultimo.localeCompare(b.ultimo) || a.nome.localeCompare(b.nome);
 

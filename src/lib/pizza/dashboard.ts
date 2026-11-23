@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ROTULO_DA_AREA, SABORES, formaDoMercadoPago, rotuloDaForma, type Area } from './modelo';
+import { calcularRanking, comparavel as comparavelDoRanking } from '../../../supabase/functions/pizza-ranking/ranking';
 
 /**
  * O dashboard da Pizza da Alegria (10/11/2026, mockup aprovado:
@@ -13,6 +14,11 @@ export interface PedidoDoDashboard {
   /** Só para a equipe do painel: o link da gestão não traz o número. */
   numero?: string;
   nome: string;
+  /**
+   * A mesma pessoa, pelo WhatsApp (23/11/2026; SQL 20261123130000): um número
+   * sem significado, igual para o mesmo WhatsApp. Sem WhatsApp (ou antes do SQL), nada.
+   */
+  pessoa?: number | null;
   unidade_id: string;
   unidade_nome: string;
   area: Area;
@@ -88,9 +94,38 @@ export interface Contas {
   retirados: number;
   porDia: Dia[];
   porUnidade: Array<{ id: string; nome: string; pizzas: number; valor: number }>;
+  /** As pessoas, das que mais compraram para as que menos (23/11/2026). */
+  porPessoa: PessoaDoRanking[];
   porSabor: Array<{ sabor: string; rotulo: string; pizzas: number }>;
   porGrupo: Array<{ grupo: Grupo; rotulo: string; pizzas: number }>;
   porArea: Array<{ area: Area; rotulo: string; pizzas: number }>;
+}
+
+/** Uma pessoa no ranking: todos os pedidos dela somados. */
+export interface PessoaDoRanking { id: string; nome: string; unidade: string; pizzas: number; valor: number; pedidos: number; posicao: number }
+
+/**
+ * As pessoas que mais compraram (23/11/2026), com a MESMA conta do ranking que
+ * vai ao grupo às sextas (calcularRanking): pelo WhatsApp (aqui, o campo
+ * "pessoa", sem o número); sem ele, pelo nome sem acento na mesma unidade; o
+ * nome e a unidade do primeiro pedido; no empate, fica à frente quem chegou
+ * primeiro ao número. Aqui soma também o valor.
+ */
+export function porPessoa(pedidos: PedidoDoDashboard[]): PessoaDoRanking[] {
+  const r = calcularRanking(pedidos.map((p) => ({
+    nome: p.nome, unidade_id: p.unidade_id, unidade_nome: p.unidade_nome, quantidade: p.quantidade, created_at: p.created_at,
+    telefone: p.pessoa != null ? `p${p.pessoa}` : null,
+  })));
+  const valor = new Map<string, { valor: number; pedidos: number }>();
+  for (const p of pedidos) {
+    const k = p.pessoa != null ? `w:p${p.pessoa}` : `n:${comparavelDoRanking(p.nome)}|${p.unidade_id}`;
+    const v = valor.get(k) ?? { valor: 0, pedidos: 0 };
+    v.valor += p.total; v.pedidos += 1; valor.set(k, v);
+  }
+  return r.pessoas.map((c, i) => ({
+    id: c.chave, nome: c.nome.trim(), unidade: c.unidade ?? '', pizzas: c.pizzas, posicao: i + 1,
+    valor: valor.get(c.chave)?.valor ?? 0, pedidos: valor.get(c.chave)?.pedidos ?? 0,
+  }));
 }
 
 export function calcular(pedidos: PedidoDoDashboard[], agora: string): Contas {
@@ -123,6 +158,7 @@ export function calcular(pedidos: PedidoDoDashboard[], agora: string): Contas {
     retirados: pedidos.filter((p) => p.retirada).length,
     porDia,
     porUnidade: [...unidades.values()].sort((a, b) => b.pizzas - a.pizzas || a.nome.localeCompare(b.nome)),
+    porPessoa: porPessoa(pedidos),
     porSabor: SABORES.map(([k, r]) => ({ sabor: k as string, rotulo: r as string, pizzas: pedidos.reduce((a, p) => a + Number(p.sabores?.[k] ?? 0), 0) }))
       .sort((a, b) => b.pizzas - a.pizzas),
     porGrupo: GRUPOS.map(([g, r]) => ({ grupo: g, rotulo: r, pizzas: pedidos.filter((p) => grupoDoPagamento(p) === g).reduce((a, p) => a + p.quantidade, 0) })),
