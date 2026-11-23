@@ -451,7 +451,7 @@ describe('o carrossel', () => {
       end_datetime: new Date(2026, 9, dia, 12).toISOString(),
     });
   const slides = [noBanner('s1', 'Slide Um', 10), noBanner('s2', 'Slide Dois', 11), noBanner('s3', 'Slide Três', 12), noBanner('s4', 'Slide Quatro', 13), noBanner('s5', 'Slide Cinco', 14)];
-  const slideAtual = () => screen.getByRole('region', { name: /eventos em destaque/i }).querySelector('[aria-hidden="false"]')!;
+  const slideAtual = () => screen.getByRole('region', { name: /eventos em destaque/i }).querySelector(':scope > [aria-hidden="false"]')!;
 
   beforeEach(() => {
     espiao.eventos = slides;
@@ -521,8 +521,8 @@ describe('o carrossel', () => {
     montar();
     const regiao = screen.getByRole('region', { name: /eventos em destaque/i });
 
-    expect(regiao.querySelectorAll('[aria-hidden="true"]').length).toBe(4);
-    expect(regiao.querySelectorAll('[aria-hidden="false"]').length).toBe(1);
+    expect(regiao.querySelectorAll(':scope > [aria-hidden="true"]').length).toBe(4);
+    expect(regiao.querySelectorAll(':scope > [aria-hidden="false"]').length).toBe(1);
   });
 });
 
@@ -681,7 +681,7 @@ describe('o herói e a régua de "já passou"', () => {
     espiao.eventos = [jaPassou, futuro];
     montar();
 
-    const slides = [...regiao().querySelectorAll('[aria-hidden]')];
+    const slides = [...regiao().querySelectorAll(':scope > [aria-hidden]')];
     expect(slides[0]).toHaveTextContent('Hope Day');
     expect(slides[1]).toHaveTextContent('Festa que Passou');
     expect(slides[1]).toHaveTextContent('Já aconteceu');
@@ -939,7 +939,7 @@ describe('o herói da equipe (V2)', () => {
   const foraDoBanner = evento({ id: 'f', title: 'Público Fora do Banner', show_in_banner: false, ...quando(20, 9) });
   const pendente = evento({ id: 'pe', title: 'Ainda Pendente', status: 'pendente', ...quando(25, 9) });
   const regiao = () => screen.getByRole('region', { name: /eventos em destaque/i });
-  const slide = (titulo: string) => [...regiao().querySelectorAll('[aria-hidden]')].find(s => s.textContent?.includes(titulo));
+  const slide = (titulo: string) => [...regiao().querySelectorAll(':scope > [aria-hidden]')].find(s => s.textContent?.includes(titulo));
 
   beforeEach(() => { espiao.eventos = [jaPassou, noBanner, interno, foraDoBanner, pendente]; espiao.autenticado = true; });
 
@@ -948,7 +948,7 @@ describe('o herói da equipe (V2)', () => {
 
     expect(regiao()).not.toHaveTextContent('Festa que Passou');
     expect(regiao()).not.toHaveTextContent('Ainda Pendente');
-    const slides = [...regiao().querySelectorAll('[aria-hidden]')];
+    const slides = [...regiao().querySelectorAll(':scope > [aria-hidden]')];
     expect(slides[0]).toHaveTextContent('Karatê no Banner');
     expect(regiao()).not.toHaveTextContent('Já aconteceu');
   });
@@ -1060,7 +1060,7 @@ describe('o herói no celular', () => {
     espiao.autenticado = false;
     montar();
     const regiao = screen.getByRole('region', { name: /eventos em destaque/i });
-    const slide = regiao.querySelector('[aria-hidden="false"]')!;
+    const slide = regiao.querySelector(':scope > [aria-hidden="false"]')!;
 
     expect(slide.querySelectorAll('img')).toHaveLength(1);
     const source = slide.querySelector('picture > source')!;
@@ -1143,7 +1143,7 @@ describe('a capa C+ do herói (23/11/2026)', () => {
     start_datetime: new Date(2026, 11, dia, 10).toISOString(), end_datetime: new Date(2026, 11, dia, 18).toISOString(),
   });
   const regiao = () => screen.getByRole('region', { name: /eventos em destaque/i });
-  const atual = () => regiao().querySelector('[aria-hidden="false"]')!;
+  const atual = () => regiao().querySelector(':scope > [aria-hidden="false"]')!;
 
   it('a data num card (dia e mês), o nome e o lugar curto, sem endereço e sem selo de unidade', () => {
     espiao.eventos = [capa('n1', 'Natal Feliz 2026', 8, 'Unidade DIC')];
@@ -1171,6 +1171,53 @@ describe('a capa C+ do herói (23/11/2026)', () => {
   it('no celular, deslizar troca o slide (para a esquerda, o próximo; para a direita, o anterior)', () => {
     espiao.eventos = [capa('n1', 'Natal Feliz 2026', 8), capa('k1', 'Open Tomodati Karatê', 15)];
     montarV2();
+    fireEvent.touchStart(regiao(), { touches: [{ clientX: 300 }] });
+    fireEvent.touchEnd(regiao(), { changedTouches: [{ clientX: 120 }] });
+    expect(atual()).toHaveTextContent('Open Tomodati Karatê');
+    fireEvent.touchStart(regiao(), { touches: [{ clientX: 100 }] });
+    fireEvent.touchEnd(regiao(), { changedTouches: [{ clientX: 300 }] });
+    expect(atual()).toHaveTextContent('Natal Feliz 2026');
+    // Um toque sem arrastar não troca.
+    fireEvent.touchStart(regiao(), { touches: [{ clientX: 200 }] });
+    fireEvent.touchEnd(regiao(), { changedTouches: [{ clientX: 210 }] });
+    expect(atual()).toHaveTextContent('Natal Feliz 2026');
+  });
+});
+
+describe('a capa C+ também no embed (página clássica, 23/11/2026)', () => {
+  const capa = (id: string, title: string, dia: number, location = 'Recanto Maanaim, Campinas') => evento({
+    id, title, location, visibility: 'publico', show_in_banner: true, banner_image_desktop: `https://exemplo/${id}.jpg`,
+    start_datetime: new Date(2026, 11, dia, 10).toISOString(), end_datetime: new Date(2026, 11, dia, 18).toISOString(),
+  });
+  const regiao = () => screen.getByRole('region', { name: /eventos em destaque/i });
+  const atual = () => regiao().querySelector(':scope > [aria-hidden="false"]')!;
+
+  it('a data num card (dia e mês), o nome e o lugar curto, sem endereço e sem selo de unidade', () => {
+    espiao.eventos = [capa('n1', 'Natal Feliz 2026', 8, 'Unidade DIC')];
+    montar();
+    const data = within(atual() as HTMLElement).getByTestId('data-heroi');
+    expect(data).toHaveTextContent('08');
+    expect(data).toHaveTextContent('DEZ');
+    expect(within(atual() as HTMLElement).getByTestId('local-heroi')).toHaveTextContent('Unidade DIC');
+    expect(within(atual() as HTMLElement).queryByTestId('endereco-heroi')).toBeNull();
+    expect(atual().querySelector('img')!.className).not.toContain('opacity');
+  });
+
+  it('um botão só, "Saber mais", e o contador "01 —— 02" no lugar das setas e dos pontinhos', () => {
+    espiao.eventos = [capa('n1', 'Natal Feliz 2026', 8), capa('k1', 'Open Tomodati Karatê', 15)];
+    montar();
+    expect(within(atual() as HTMLElement).getAllByRole('button', { name: 'Saber mais' })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: /ir para o slide/i })).toBeNull();
+    const contador = screen.getByTestId('contador-heroi');
+    expect(contador).toHaveTextContent('01');
+    expect(contador).toHaveTextContent('02');
+    fireEvent.click(contador);
+    expect(atual()).toHaveTextContent('Open Tomodati Karatê');
+  });
+
+  it('no celular, deslizar troca o slide (para a esquerda, o próximo; para a direita, o anterior)', () => {
+    espiao.eventos = [capa('n1', 'Natal Feliz 2026', 8), capa('k1', 'Open Tomodati Karatê', 15)];
+    montar();
     fireEvent.touchStart(regiao(), { touches: [{ clientX: 300 }] });
     fireEvent.touchEnd(regiao(), { changedTouches: [{ clientX: 120 }] });
     expect(atual()).toHaveTextContent('Open Tomodati Karatê');
