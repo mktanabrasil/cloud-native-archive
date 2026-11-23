@@ -1,4 +1,4 @@
-import { rotuloDaAjuda, rotuloDoHorario, rotuloDoVinculo, textoDaIgreja, textoDaIndicacao } from './modelo';
+import { rotuloDaAjuda, rotuloDoHorario, rotuloDoVinculo, textoDaIgreja, textoDaIndicacao, textoDosAcompanhantes } from './modelo';
 import type { Inscricao } from './api';
 
 /**
@@ -22,10 +22,12 @@ export const whatsappLegivel = (d: string) =>
 
 export function csvDasInscricoes(linhas: Inscricao[]): string {
   // As mesmas colunas da planilha do Google (23/10/2026).
-  const cabecalho = ['Protocolo', 'Quando', 'Nome', 'WhatsApp', 'Vínculo', 'Unidade', 'Indicado por', 'Igreja', 'Horário', '1ª opção', '2ª opção'];
+  // Acompanhantes no fim (23/11/2026), como na planilha da coordenação.
+  const cabecalho = ['Protocolo', 'Quando', 'Nome', 'WhatsApp', 'Vínculo', 'Unidade', 'Indicado por', 'Igreja', 'Horário', '1ª opção', '2ª opção', 'Acompanhantes'];
   const corpo = linhas.map((i) => [
     i.protocolo, dataHora(i.created_at), i.nome, whatsappLegivel(i.whatsapp), rotuloDoVinculo(i.vinculo), i.unidade_nome ?? '',
     textoDaIndicacao(i), textoDaIgreja(i), rotuloDoHorario(i.horario), rotuloDaAjuda(i.opcao1), i.opcao2 ? rotuloDaAjuda(i.opcao2) : '',
+    textoDosAcompanhantes(i.acompanhantes ?? []).replace(/\n/g, ' · '),
   ].map(campo).join(';'));
   return '﻿' + [cabecalho.join(';'), ...corpo].join('\r\n') + '\r\n';
 }

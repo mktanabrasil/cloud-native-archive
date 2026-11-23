@@ -158,9 +158,9 @@ describe('regras', () => {
 
   it('a planilha tem as colunas novas, com o vínculo e o horário pelo nome', () => {
     const csv = csvDasInscricoes([I({}) as never, I({ protocolo: 'VL-ABCDE', vinculo: 'comunidade', unidade_id: null, unidade_nome: null, area: null, indicado_por: 'Carla', igreja: 'Igreja Batista', horario: 'pos_evento', opcao2: null }) as never]).replace('﻿', '').split('\r\n');
-    expect(csv[0]).toBe('Protocolo;Quando;Nome;WhatsApp;Vínculo;Unidade;Indicado por;Igreja;Horário;1ª opção;2ª opção');
-    expect(csv[1]).toMatch(/^VL-7K2Q9;.*;Leonardo Garbo Rodrigues;\(19\) 99355-8242;Funcionário\(a\) ANA;Grupo de Oração Esperança;;;Manhã;Cozinha \/ Servimento;Decoração$/);
-    expect(csv[2]).toMatch(/;Voluntário\(a\);;Carla;Igreja Batista;Pós-evento;Cozinha \/ Servimento;$/);
+    expect(csv[0]).toBe('Protocolo;Quando;Nome;WhatsApp;Vínculo;Unidade;Indicado por;Igreja;Horário;1ª opção;2ª opção;Acompanhantes');
+    expect(csv[1]).toMatch(/^VL-7K2Q9;.*;Leonardo Garbo Rodrigues;\(19\) 99355-8242;Funcionário\(a\) ANA;Grupo de Oração Esperança;;;Manhã;Cozinha \/ Servimento;Decoração;$/);
+    expect(csv[2]).toMatch(/;Voluntário\(a\);;Carla;Igreja Batista;Pós-evento;Cozinha \/ Servimento;;$/);
   });
 
   it('"Indicado por" e "Igreja": o Não aparece escrito, com como ficou sabendo (12/11/2026)', () => {
@@ -173,7 +173,12 @@ describe('regras', () => {
     // Inscrição de antes de 12/11, de quem respondeu Não às duas: o Não aparece, sem "soube".
     expect(csv[2]).toMatch(/;Voluntário\(a\);;Não;Não;/);
     // INCC não responde essas perguntas: vazio.
-    expect(csv[3]).toMatch(/;INCC;;;;Manhã;CCII;$/);
+    expect(csv[3]).toMatch(/;INCC;;;;Manhã;CCII;;$/);
+  });
+
+  it('acompanhantes no CSV (23/11/2026), um depois do outro na mesma célula', () => {
+    const csv = csvDasInscricoes([I({ acompanhantes: [{ tipo: 'idoso', nome: 'Maria das Graças', idade: 72 }, { tipo: 'crianca', nome: 'Davi', idade: 1 }] }) as never]).replace('﻿', '').split('\r\n');
+    expect(csv[1]).toMatch(/;Maria das Graças, 72 anos \(pessoa idosa\) · Davi, 1 ano \(criança\)$/);
   });
 });
 
@@ -479,6 +484,14 @@ describe('formulário', () => {
 });
 
 describe('painel', () => {
+  it('acompanhantes (23/11/2026): embaixo do nome e somados nos inscritos', async () => {
+    banco.lista = [I({ acompanhantes: [{ tipo: 'idoso', nome: 'Maria das Graças', idade: 72 }, { tipo: 'crianca', nome: 'Davi', idade: 8 }] }), I({ id: 'i2', protocolo: 'VL-ABCDE', nome: 'Ana Paula', acompanhantes: [] })];
+    render(<MemoryRouter><PainelDoVoluntariado /></MemoryRouter>);
+    expect(await screen.findByTestId('acompanhantes')).toHaveTextContent('+ 2 acompanhantes: Maria das Graças, 72 anos (pessoa idosa) · Davi, 8 anos (criança)');
+    expect(screen.getAllByTestId('acompanhantes')).toHaveLength(1);
+    expect(screen.getByTestId('kpi-Inscritos')).toHaveTextContent('2Inscritos · + 2 acompanhantes');
+  });
+
   it('conta por área (1ª opção /meta, +2ª ao lado), marca as vazias e filtra por área', async () => {
     banco.metas = { cozinha: 25 };
     banco.lista = [I({}), I({ id: 'i2', protocolo: 'VL-ABCDE', nome: 'Ana Paula', unidade_id: 'cei-pierre-weil', unidade_nome: 'CEI Bem Querer Prof. Pierre Weil', opcao1: 'decoracao', opcao2: null })];

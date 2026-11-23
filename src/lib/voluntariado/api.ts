@@ -23,6 +23,8 @@ export interface Inscricao {
   opcao1: AreaDeAjuda;
   opcao2: AreaDeAjuda | null;
   created_at: string;
+  /** Pessoa idosa ou criança, com nome e idade (23/11/2026). */
+  acompanhantes?: Acompanhante[] | null;
 }
 
 export interface NovaInscricao {
@@ -85,10 +87,10 @@ export async function areasLotadas(): Promise<string[]> {
 
 export async function listarInscricoes(): Promise<Inscricao[]> {
   const { data, error } = await supabase.from('voluntarios_natal')
-    .select('id, protocolo, nome, whatsapp, vinculo, horario, unidade_id, unidade_nome, area, indicado_por, igreja, como_soube, opcao1, opcao2, created_at')
+    .select('id, protocolo, nome, whatsapp, vinculo, horario, unidade_id, unidade_nome, area, indicado_por, igreja, como_soube, opcao1, opcao2, acompanhantes, created_at')
     .order('created_at', { ascending: false });
   if (error) throw error;
-  return (data ?? []) as Inscricao[];
+  return (data ?? []) as unknown as Inscricao[];
 }
 
 export async function apagarInscricao(id: string): Promise<void> {
