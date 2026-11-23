@@ -7,6 +7,7 @@ const estado = vi.hoisted(() => ({
   celular: true,
   avisos: 0,
   responsavel: false,
+  conta: {} as Record<string, unknown>,
 }));
 const MARKETING = {
   isAdmin: true, isManager: true, userName: 'Comunicação', unit: 'Administração', canViewAuditoria: true,
@@ -24,7 +25,7 @@ const DIRECAO_DE_CEI = {
 };
 
 vi.mock('@/contexts/AuthContext', () => ({
-  useAuth: () => ({ isAuthenticated: true, signOut: vi.fn(), user: { email: 'equipe@anabrasil.org', user_metadata: {} } }),
+  useAuth: () => ({ isAuthenticated: true, signOut: vi.fn(), user: { id: 'u1', email: 'equipe@anabrasil.org', user_metadata: estado.conta } }),
 }));
 vi.mock('@/hooks/useUserRole', () => ({ useUserRole: () => estado.papel }));
 vi.mock('@/hooks/useBetaPreference', () => ({ useBetaPreference: () => ({ eligible: false, rawEnabled: false, toggleBeta: vi.fn() }) }));
@@ -77,6 +78,7 @@ const aberto = (el: HTMLElement) => within(el).getAllByRole('link').filter(l => 
 beforeEach(() => {
   estado.papel = { ...MARKETING };
   estado.celular = true;
+  estado.conta = {};
 });
 
 /**
@@ -145,9 +147,31 @@ describe('a faixa do setor', () => {
     expect(aberto(screen.getByRole('navigation', { name: 'Páginas de Marketing' }))).toEqual(['Mercado Solidário']);
   });
 
-  it.each(['/vagas', '/painel'])('%s: setor com abas próprias, sem faixa', (rota) => {
-    abrir(rota);
+  it('/vagas: fora dos setores, sem faixa', () => {
+    abrir('/vagas');
     expect(screen.queryByRole('navigation', { name: /^Páginas de/ })).not.toBeInTheDocument();
+  });
+
+  it('/painel: a faixa só com o nome do setor e o "Dar feedback" (23/11/2026)', () => {
+    estado.celular = false;
+    abrir('/painel');
+    const faixa = screen.getByRole('navigation', { name: 'Páginas de Painel' });
+    expect(faixa).toHaveTextContent(/^Painel/);
+    expect(within(faixa).queryAllByRole('link')).toHaveLength(0);
+    expect(within(faixa).getByRole('button', { name: 'Dar feedback' })).toBeInTheDocument();
+  });
+
+  it('o "Dar feedback" fica na faixa de cada setor, no celular só o ícone', () => {
+    abrir('/social/calendario');
+    const faixa = screen.getByRole('navigation', { name: 'Páginas de Social' });
+    expect(within(faixa).getByRole('button', { name: 'Dar feedback' })).toHaveTextContent('');
+  });
+
+  it('conta de candidato não vê o "Dar feedback"', () => {
+    estado.conta = { conta: 'candidato' };
+    abrir('/social/calendario');
+    // A conta de candidato vê o app como visitante: nem a faixa nem o botão.
+    expect(screen.queryByRole('button', { name: 'Dar feedback' })).not.toBeInTheDocument();
   });
 
   it.each([
@@ -174,8 +198,18 @@ describe('a faixa do setor', () => {
     expect(screen.queryByRole('navigation', { name: 'Páginas de Educação' })).not.toBeInTheDocument();
   });
 
-  it('sem o Calendário Anual liberado, o Social tem uma página só: sem faixa', () => {
+  it('sem o Calendário Anual liberado, o Social tem uma página só: a faixa traz só o nome e o "Dar feedback"', () => {
     estado.papel = { ...GESTORA_DO_SOCIAL, temCalendarioAnual: false };
+    abrir('/social/eventos');
+    const faixa = screen.getByRole('navigation', { name: 'Páginas de Social' });
+    expect(faixa).toHaveTextContent(/^Social/);
+    expect(within(faixa).queryAllByRole('link')).toHaveLength(0);
+    expect(within(faixa).getByRole('button', { name: 'Dar feedback' })).toBeInTheDocument();
+  });
+
+  it('com uma página só, a conta de candidato não vê faixa nenhuma', () => {
+    estado.papel = { ...GESTORA_DO_SOCIAL, temCalendarioAnual: false };
+    estado.conta = { conta: 'candidato' };
     abrir('/social/eventos');
     expect(screen.queryByRole('navigation', { name: 'Páginas de Social' })).not.toBeInTheDocument();
   });

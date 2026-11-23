@@ -277,6 +277,8 @@ export const ROTAS_DO_SETOR: Record<string, string[]> = {
   [ROTAS.jornal]: ['/educacao'],
   [ROTAS.rh]: ['/administracao'],
   [ROTAS.marketing]: [ROTAS.marketing, '/pizza-da-alegria/painel'],
+  // O Painel entra para a faixa levar o "Dar feedback" (23/11/2026).
+  [ROTAS.painel]: [ROTAS.painel],
 };
 
 /** O setor aberto pelo endereço (o `to` dele no menu), ou nada. */
