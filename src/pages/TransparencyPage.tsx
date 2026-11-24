@@ -35,6 +35,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import PageHeader from '@/components/PageHeader';
+import { CartaoDoSite, SituacaoNoSite, useEstadoDoSite } from '@/components/transparencia/NoSite';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import {
@@ -62,6 +63,9 @@ const TransparencyPage = () => {
   const { isAdmin, loading: carregandoPapel } = useUserRole();
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  // Situação da API pública (site do ANA): só para quem cuida do portal, fora do modo embed.
+  const ehGestorDoPortal = !carregandoPapel && (isAdmin || ['mkt@anabrasil.org', 'transparencia@anabrasil.org', 'contato@anabrasil.org'].includes(user?.email ?? ''));
+  const noSite = useEstadoDoSite(ehGestorDoPortal && searchParams.get('embed') !== 'true');
   const [configs, setConfigs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
@@ -564,6 +568,8 @@ const TransparencyPage = () => {
       )}
 
 
+      <CartaoDoSite s={noSite} />
+
       {loading ? <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : (
         // Esboço V2: cada pasta é um bloco sólido; o cabeçalho abre e fecha, as ações ficam à direita
         // (no celular, embaixo do nome) e os arquivos aparecem dentro, sem moldura extra.
@@ -585,6 +591,7 @@ const TransparencyPage = () => {
                           <span className="ml-1.5 text-sm font-normal text-muted-foreground">({config.original_folder_name})</span>
                         )}
                       </h3>
+                      <SituacaoNoSite s={noSite} configId={config.id} slug={config.slug} />
                       <p className="mt-0.5 truncate font-mono text-[11px] text-[hsl(var(--fraco))]">ID: {config.folder_id}</p>
                     </div>
                   </div>
