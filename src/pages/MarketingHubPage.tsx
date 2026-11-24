@@ -3,6 +3,7 @@ import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { PainelDaPizza } from '@/components/pizza/PainelDaPizza';
 import { PainelDoVoluntariado } from '@/components/voluntariado/PainelDoVoluntariado';
+import { LembretesDoWhatsApp } from '@/components/lembretes/LembretesDoWhatsApp';
 import EnquetesPage from '@/pages/EnquetesPage';
 import { useUserRole } from '@/hooks/useUserRole';
 import AuditPage from '@/pages/AuditPage';
@@ -19,6 +20,7 @@ const ABAS: Record<AbaDoMarketing, ComponentType> = {
   enquetes: EnquetesPage,
   pizza: PainelDaPizza,
   voluntariado: PainelDoVoluntariado,
+  lembretes: LembretesDoWhatsApp,
 };
 
 /**

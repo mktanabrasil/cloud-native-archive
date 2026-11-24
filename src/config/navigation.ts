@@ -57,7 +57,7 @@ export const ROTAS = {
 } as const;
 
 /** As abas do Marketing, cada uma no seu endereço: `/marketing/pizza`. */
-export const ABAS_DO_MARKETING = ['auditoria', 'design-manual', 'transparencia', 'widgets', 'enquetes', 'pizza', 'voluntariado'] as const;
+export const ABAS_DO_MARKETING = ['auditoria', 'design-manual', 'transparencia', 'widgets', 'enquetes', 'pizza', 'voluntariado', 'lembretes'] as const;
 export type AbaDoMarketing = (typeof ABAS_DO_MARKETING)[number];
 /** A aba que abre em `/marketing` sem nada depois, como antes. */
 export const ABA_INICIAL_DO_MARKETING: AbaDoMarketing = 'auditoria';
@@ -263,6 +263,8 @@ export const PAGINAS_DOS_SETORES: Record<string, PaginaDoSetor[]> = {
     { rotulo: 'Mercado Solidário', to: ROTAS.mercado, aberta: (c) => c === ROTAS.mercado },
     { rotulo: 'Pizza da Alegria', to: rotaDoMarketing('pizza'), aberta: abaAberta('pizza', '/pizza-da-alegria/painel') },
     { rotulo: 'Voluntariado', to: rotaDoMarketing('voluntariado'), aberta: abaAberta('voluntariado') },
+    // O lembrete diário dos registros das unidades no WhatsApp (24/11/2026).
+    { rotulo: 'Lembretes', to: rotaDoMarketing('lembretes'), aberta: abaAberta('lembretes') },
     { rotulo: 'Enquetes', to: rotaDoMarketing('enquetes'), aberta: abaAberta('enquetes') },
     { rotulo: 'Manual Design', to: rotaDoMarketing('design-manual'), aberta: abaAberta('design-manual') },
     { rotulo: 'Portal Transparência', to: rotaDoMarketing('transparencia'), aberta: abaAberta('transparencia') },
