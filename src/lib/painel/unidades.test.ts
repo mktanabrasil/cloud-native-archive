@@ -23,3 +23,12 @@ describe('as unidades do Painel', () => {
     expect(unidadesDoPainel(undefined, 'usuario_padrao').map(u => u.valor)).toEqual(['DIC', 'Nilópolis', 'Santana', 'Administração']);
   });
 });
+
+describe('Gestão Educação (24/11/2026)', () => {
+  it('a direção do CEI: gestor numa unidade da Educação, no grupo da Educação', async () => {
+    const { BOND_GROUPS, BOND_LABELS } = await import('@/types');
+    expect(BOND_RULES.gestao_educacao).toEqual({ permission_level: 'gestor_unidade', unitMode: 'educacao' });
+    expect(BOND_LABELS.gestao_educacao).toBe('Gestão Educação');
+    expect(BOND_GROUPS.find((g) => g.label.includes('Educação'))?.options[0]).toBe('gestao_educacao');
+  });
+});

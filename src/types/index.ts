@@ -13,6 +13,7 @@ export type BondType =
   | 'padrinhos'
   | 'parceiros'
   | 'gestao_social'
+  | 'gestao_educacao'
   | 'educador'
   | 'orientacao_pedagogica'
   | 'professora'
@@ -287,6 +288,7 @@ export const BOND_LABELS: Record<BondType, string> = {
   padrinhos: 'Padrinhos',
   parceiros: 'Parceiros',
   gestao_social: 'Gestão Social',
+  gestao_educacao: 'Gestão Educação',
   educador: 'Educador',
   orientacao_pedagogica: 'Orientação pedagógica',
   professora: 'Professora',
@@ -298,7 +300,8 @@ export const BOND_GROUPS: { label: string; options: BondType[] }[] = [
   { label: 'Interno — Administrativo (Setor)', options: ['rh', 'financeiro', 'marketing', 'nota_fiscal', 'voluntariado', 'padrinhos', 'parceiros'] },
   { label: 'Interno — Social (Unidade)', options: ['gestao_social', 'educador'] },
   // O Semanário (17/11/2026): quem preenche e quem dá a devolutiva, por CEI.
-  { label: 'Interno — Educação (CEI)', options: ['orientacao_pedagogica', 'professora'] },
+  // A direção do CEI (24/11/2026): "Gestão Educação", como a Gestão Social do lado da Educação.
+  { label: 'Interno — Educação (CEI)', options: ['gestao_educacao', 'orientacao_pedagogica', 'professora'] },
   { label: 'Externo', options: ['parceiro', 'usuario_comum'] },
 ];
 
@@ -328,6 +331,9 @@ export const BOND_RULES: Record<BondType, { permission_level: PermissionLevel; u
   educador: { permission_level: 'usuario_padrao', unitMode: 'choose' },
   // Interno — Educação (o Semanário, 17/11/2026). Usuário padrão de propósito:
   // nenhuma das duas é gestão do CEI nem entra no Jornal; o que elas veem vem do vínculo.
+  // A direção do CEI (24/11/2026): gestor do CEI ou do GOE; vê o Jornal da
+  // unidade e os jornais das unidades, como a gestão da Educação sempre viu.
+  gestao_educacao: { permission_level: 'gestor_unidade', unitMode: 'educacao' },
   orientacao_pedagogica: { permission_level: 'usuario_padrao', unitMode: 'educacao' },
   professora: { permission_level: 'usuario_padrao', unitMode: 'educacao' },
   // Externo
