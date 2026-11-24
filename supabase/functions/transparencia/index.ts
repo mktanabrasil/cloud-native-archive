@@ -28,9 +28,10 @@ addEventListener('unhandledrejection', (e) => { console.error('[transparencia] p
 
 const BASE_PUBLICA = (Deno.env.get('TRANSPARENCIA_URL') || 'https://supabase.anabrasil.org/functions/v1/transparencia').replace(/\/$/, '');
 const DRIVE = 'https://www.googleapis.com/drive/v3';
-const COMECAR_UNIDADE_ATE_MS = 60_000; // depois disso, as unidades que faltam ficam para o próximo ciclo
-const PRAZO_DO_CICLO_MS = 100_000;     // nenhuma leitura passa disso (a trava dura 300 s)
-const TRAVA_S = 300;
+// O servidor (Kong) corta a chamada aos 60 s: o ciclo inteiro precisa acabar antes disso.
+const COMECAR_UNIDADE_ATE_MS = 25_000; // depois disso, as unidades que faltam ficam para o próximo ciclo
+const PRAZO_DO_CICLO_MS = 45_000;      // nenhuma leitura passa disso
+const TRAVA_S = 110;                   // se o ciclo for cortado, a trava vence antes do próximo agendamento
 const PARALELO = 6;                    // pastas lidas ao mesmo tempo
 const LIMITE_DE_ITENS = 20_000;        // por unidade
 const RELER_TUDO_APOS_H = 24;          // releitura completa de segurança
