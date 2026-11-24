@@ -82,7 +82,7 @@ describe('Portal Transparência no site do ANA', () => {
     const linhas = screen.getAllByTestId('situacao-no-site');
     expect(linhas[0]).toHaveTextContent('No site: 733 documentos · lista lida às 16:38');
     expect(linhas[1]).toHaveTextContent('Não atualiza: a pasta principal');
-    expect(screen.getByRole('link', { name: /Ver o que o site recebe/ })).toHaveAttribute('href', ESTADO.base);
+    expect(screen.getByRole('button', { name: /Ver o que o site recebe/ })).toBeInTheDocument();
   });
 
   it('lista parada: cartão em alerta com o motivo', async () => {

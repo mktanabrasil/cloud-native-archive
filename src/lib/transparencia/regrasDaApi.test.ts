@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  mostraNaTela, quedaSuspeita, chaveDe, compararNomes, contar, ehChave, ehFinalizada, grupoDa, nomeDaUnidade, nomeParaBaixar, ordemDa, ordenar, slugDe, slugLivre, tipoDo,
+  achatar, buscar, palavrasDaBusca, mostraNaTela, quedaSuspeita, chaveDe, compararNomes, contar, ehChave, ehFinalizada, grupoDa, nomeDaUnidade, nomeParaBaixar, ordemDa, ordenar, slugDe, slugLivre, tipoDo,
 } from '../../../supabase/functions/transparencia/regras';
 
 /** As 20 pastas cadastradas em 24/11/2026 (nome original no Drive). */
@@ -78,5 +78,62 @@ describe('a API pública do Portal Transparência', () => {
     expect(quedaSuspeita(733, 700)).toBe(false);
     expect(quedaSuspeita(4, 1)).toBe(false);
     expect(quedaSuspeita(0, 0)).toBe(false);
+  });
+});
+
+describe('a busca do site nos documentos do portal', () => {
+  const arvore = {
+    nome: '', documentos: [],
+    pastas: [
+      { nome: '3 Balanços', pastas: [], documentos: [
+        { nome: 'BALANÇO 2024.pdf', tipo: 'pdf', tamanho: 1, atualizado_em: '2025-03-01T00:00:00Z', chave: 'a' },
+        { nome: 'BALANÇO 2025.pdf', tipo: 'pdf', tamanho: 1, atualizado_em: '2026-03-01T00:00:00Z', chave: 'b' },
+        { nome: 'Notas explicativas 2024.pdf', tipo: 'pdf', tamanho: 1, atualizado_em: '2025-03-02T00:00:00Z', chave: 'c' },
+      ] },
+      { nome: '5 Certidões', pastas: [{ nome: 'VENCIDAS', pastas: [], documentos: [{ nome: 'CNPJ 16/01/2024.pdf', tipo: 'pdf', tamanho: 1, atualizado_em: null, chave: 'd' }] }], documentos: [] },
+    ],
+  };
+  const docs = [...achatar(arvore, { slug: 'ana-jardim-nilopolis', nome: 'Ana Jardim Nilópolis' }), ...achatar({ nome: '', pastas: [], documentos: [{ nome: 'Balanço 2024.pdf', tipo: 'pdf', tamanho: 1, atualizado_em: null, chave: 'e' }] }, { slug: 'ana-dic', nome: 'Ana Dic' })];
+
+  it('acha sem acento nem maiúscula, com o caminho de pastas', () => {
+    const r = buscar(docs, 'balanco 2024');
+    // As Notas estão na pasta Balanços e têm 2024 no nome: entram, depois das que têm tudo no nome.
+    expect(r.total).toBe(3);
+    expect(r.resultados.map((d) => [d.nome, d.unidade.slug, d.caminho])).toEqual([['BALANÇO 2024.pdf', 'ana-jardim-nilopolis', ['3 Balanços']], ['Balanço 2024.pdf', 'ana-dic', []], ['Notas explicativas 2024.pdf', 'ana-jardim-nilopolis', ['3 Balanços']]]);
+  });
+  it('quem tem as palavras no nome vem antes de quem só está na pasta', () => {
+    expect(buscar(docs, 'balanço').resultados.map((d) => d.nome)).toEqual(['BALANÇO 2025.pdf', 'BALANÇO 2024.pdf', 'Balanço 2024.pdf', 'Notas explicativas 2024.pdf']);
+  });
+  it('acha pela pasta, pela unidade e por data com barra', () => {
+    expect(buscar(docs, 'vencidas cnpj').resultados[0].nome).toBe('CNPJ 16/01/2024.pdf');
+    expect(buscar(docs, 'nilopolis notas').total).toBe(1);
+    expect(buscar(docs, '16/01/2024').total).toBe(1);
+  });
+  it('filtro por unidade, limite e pesquisa vazia', () => {
+    expect(buscar(docs, '2024', { unidade: 'ana-dic' }).total).toBe(1);
+    expect(buscar(docs, '2024', { limite: 1 }).resultados).toHaveLength(1);
+    expect(buscar(docs, ' ').total).toBe(0);
+    expect(palavrasDaBusca('  O balanço, de 2024!  ')).toEqual(['balanco', '2024']);
+    expect(palavrasDaBusca('de')).toEqual(['de']);
+  });
+
+  const mais = [...docs, ...achatar({ nome: '', pastas: [], documentos: [
+    { nome: 'Data base salarial.pdf', tipo: 'pdf', tamanho: 1, atualizado_em: '2026-10-01T00:00:00Z', chave: 'f' },
+    { nome: 'ATA da assembleia.pdf', tipo: 'pdf', tamanho: 1, atualizado_em: '2020-01-01T00:00:00Z', chave: 'g' },
+    { nome: 'Relatório de Atividades 2024.pdf', tipo: 'pdf', tamanho: 1, atualizado_em: null, chave: 'h' },
+    { nome: 'QUALQUER ORIGEM 29.12.2025.pdf', tipo: 'pdf', tamanho: 1, atualizado_em: null, chave: 'i' },
+    { nome: '1º Termo Aditivo.pdf', tipo: 'pdf', tamanho: 1, atualizado_em: null, chave: 'j' },
+  ] }, { slug: 'ana-oziel', nome: 'Ana Oziel' })];
+
+  it('como as pessoas digitam: "de", datas com ponto, 1o/1º', () => {
+    expect(buscar(mais, 'relatorio de 2024').resultados.map((d) => d.nome)).toEqual(['Relatório de Atividades 2024.pdf']);
+    expect(buscar(mais, '29/12/2025').resultados.map((d) => d.nome)).toEqual(['QUALQUER ORIGEM 29.12.2025.pdf']);
+    expect(buscar(mais, '1o termo').resultados.map((d) => d.nome)).toEqual(['1º Termo Aditivo.pdf']);
+  });
+
+  it('"ata" põe as atas antes de "Data" e outros nomes que só contêm as letras', () => {
+    const r = buscar(mais, 'ata').resultados.map((d) => d.nome);
+    expect(r[0]).toBe('ATA da assembleia.pdf');
+    expect(r.indexOf('Data base salarial.pdf')).toBeGreaterThan(0);
   });
 });

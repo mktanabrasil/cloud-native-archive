@@ -2,8 +2,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import nodemailer from 'npm:nodemailer@6.9.16';
 import { ehEmailGestor } from '../google-drive-proxy/regras.ts';
 import {
-  ATALHO, NATIVO, PASTA, chaveDe, contar, ehChave, ehFinalizada, grupoDa, mostraNaTela, nomeDaUnidade, nomeParaBaixar, ordemDa, ordenar, quedaSuspeita, slugDe, slugLivre, tipoDo,
-  type Documento, type ItemDoDrive, type ItemGuardado, type Pasta,
+  ATALHO, NATIVO, PASTA, achatar, buscar, chaveDe, contar, ehChave, ehFinalizada, grupoDa, mostraNaTela, nomeDaUnidade, nomeParaBaixar, ordemDa, ordenar, quedaSuspeita, slugDe, slugLivre, tipoDo,
+  type Documento, type DocumentoNaBusca, type ItemDoDrive, type ItemGuardado, type Pasta,
 } from './regras.ts';
 
 addEventListener('unhandledrejection', (e) => { console.error('[transparencia] promessa solta:', e.reason); e.preventDefault(); });
@@ -17,6 +17,8 @@ addEventListener('unhandledrejection', (e) => { console.error('[transparencia] p
  *   GET  /transparencia/unidade/{slug}         → pastas e documentos da unidade
  *   GET  /transparencia/arquivo/{chave}/{nome} → o documento (passa pelo nosso
  *        servidor sem ser guardado; ?baixar=1 para baixar)
+ *   GET  /transparencia/busca?q=…&unidade=…&limite=… → documentos de todas as
+ *        unidades cujo nome (ou pasta) tem as palavras pesquisadas
  *
  * Atualização (por trás):
  *   POST { acao: 'atualizar' } com x-transparencia-segredo: o agendamento, a
@@ -277,6 +279,66 @@ async function umaUnidade(db: Banco, slug: string) {
   return { unidade: resumo(u, c), atualizado_em: c?.atualizado_em ?? null, pastas: arvore.pastas, documentos: arvore.documentos };
 }
 
+/**
+ * Todos os documentos publicados, prontos para a busca. Guardados por 60 s; um
+ * só carregamento por vez; com um índice velho, responde com ele e renova por
+ * trás; se o banco falhar, segue com o último bom.
+ */
+let indiceDeBusca: { em: number; docs: DocumentoNaBusca[] } | null = null;
+let carregandoIndice: Promise<DocumentoNaBusca[]> | null = null;
+function carregarIndice(db: Banco): Promise<DocumentoNaBusca[]> {
+  carregandoIndice ??= (async () => {
+    try {
+      const [us, cs] = await comPrazo(Promise.all([
+        db.from('transparency_configs').select('id, label, original_folder_name, slug').then((r: never) => ok(r, 'busca/unidades')),
+        db.from('transparencia_unidades').select('config_id, arvore, atualizado_em').then((r: never) => ok(r, 'busca/listas')),
+      ]), 15_000);
+      const porId = new Map(((cs ?? []) as { config_id: string; arvore: Pasta | null; atualizado_em: string | null }[]).map((c) => [c.config_id, c]));
+      const docs: DocumentoNaBusca[] = [];
+      for (const u of (us ?? []) as Unidade[]) {
+        const c = porId.get(u.id);
+        if (!u.slug || !c?.arvore || !c.atualizado_em) continue;
+        docs.push(...achatar(c.arvore, { slug: u.slug, nome: nomeDaUnidade(u.original_folder_name || u.label) }));
+      }
+      indiceDeBusca = { em: Date.now(), docs };
+      return docs;
+    } catch (e) {
+      if (indiceDeBusca) { indiceDeBusca.em = Date.now() - 50_000; return indiceDeBusca.docs; } // tenta o banco de novo em 10 s
+      throw e;
+    } finally { carregandoIndice = null; }
+  })();
+  return carregandoIndice;
+}
+async function documentosParaBusca(db: Banco): Promise<DocumentoNaBusca[]> {
+  if (indiceDeBusca && Date.now() - indiceDeBusca.em < 60_000) return indiceDeBusca.docs;
+  if (indiceDeBusca) { void carregarIndice(db).catch(() => {}); return indiceDeBusca.docs; } // velho: responde já e renova
+  return await carregarIndice(db);
+}
+
+async function busca(req: Request, db: Banco, url: URL): Promise<Response> {
+  const q = (url.searchParams.get('q') ?? '').trim();
+  const unidade = url.searchParams.get('unidade') || undefined;
+  const limite = url.searchParams.has('limite') ? Number(url.searchParams.get('limite')) : 50;
+  const cab: Record<string, string> = { ...cors, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=60, stale-while-revalidate=600, stale-if-error=86400' };
+  if (q.length < 2) return new Response(JSON.stringify({ q, total: 0, resultados: [] }), { status: 200, headers: cab });
+  let docs: DocumentoNaBusca[];
+  try { docs = await documentosParaBusca(db); }
+  catch (e) {
+    console.error('[transparencia] busca:', e instanceof Error ? e.message : e);
+    return json({ error: 'Não foi possível pesquisar agora. Tente de novo em instantes.' }, 503, { 'Retry-After': '30' });
+  }
+  const r = buscar(docs, q, { unidade, limite });
+  const corpo = {
+    q, total: r.total,
+    resultados: r.resultados.map(({ _nome, _resto, ...d }) => ({ ...d, endereco: `${BASE_PUBLICA}/arquivo/${d.chave}/${encodeURIComponent(d.nome)}` })),
+  };
+  const texto = JSON.stringify(corpo);
+  const bytes = new Uint8Array(await crypto.subtle.digest('SHA-1', new TextEncoder().encode(texto)));
+  cab.ETag = `"${[...bytes.subarray(0, 10)].map((x) => x.toString(16).padStart(2, '0')).join('')}"`;
+  if (casaEtag(req.headers.get('if-none-match'), cab.ETag)) return new Response(null, { status: 304, headers: cab });
+  return new Response(req.method === 'HEAD' ? null : texto, { status: 200, headers: cab });
+}
+
 const PAGINA_DE_ERRO = (titulo: string, texto: string) => `<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${titulo} · Portal da Transparência</title><body style="font-family:system-ui,sans-serif;max-width:560px;margin:15vh auto;padding:0 20px;color:#1f2322"><h1 style="font-size:22px">${titulo}</h1><p style="color:#555;line-height:1.5">${texto}</p><p style="color:#888;font-size:13px">Portal da Transparência · ANA Brasil</p></body></html>`;
 const html = (status: number, titulo: string, texto: string, extra: Record<string, string> = {}) =>
   new Response(PAGINA_DE_ERRO(titulo, texto), { status, headers: { ...cors, 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'", ...extra } });
@@ -491,7 +553,7 @@ async function atualizar(db: Banco, tudo = false) {
   await db.from('transparencia_estado').update({ ciclo_em: new Date().toISOString(), ciclo_erro: resultado.erro }).eq('id', 1);
   await db.from('transparencia_estado').update({ trava_ate: null }).eq('id', 1).eq('trava_ate', minhaTrava);
   // Respostas guardadas vencem (o próximo visitante busca a lista nova), mas continuam de reserva se o banco falhar.
-  if (resultado.lidas.length) for (const m of memoria.values()) m.em = 0;
+  if (resultado.lidas.length) { for (const m of memoria.values()) m.em = 0; if (indiceDeBusca) indiceDeBusca.em = 0; }
   return resultado;
 }
 
@@ -556,6 +618,7 @@ Deno.serve(async (req) => {
       if (!a) return await respostaGuardada(req, 'indice', () => listaDeUnidades(db));
       if (a === 'unidade' && b) return await respostaGuardada(req, `u:${b}`, () => umaUnidade(db, b));
       if (a === 'arquivo' && b) return await arquivo(req, db, b, url.searchParams.get('baixar') === '1');
+      if (a === 'busca' && !b) return await busca(req, db, url);
       return json({ error: 'Endereço não encontrado.' }, 404);
     }
     if (req.method !== 'POST') return json({ error: 'Método não permitido.' }, 405);

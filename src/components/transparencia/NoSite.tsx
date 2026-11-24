@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { ENDERECO_DA_API, atualizarSiteAgora, estadoDoSite, type EstadoDoSite } from '@/lib/transparencia/api';
+import { PreviaDoSite } from './PreviaDoSite';
 
 /**
  * O Portal Transparência no site do ANA (API pública, 24/11/2026): o cartão
@@ -103,6 +104,7 @@ type Situacao = ReturnType<typeof useEstadoDoSite>;
 export function CartaoDoSite({ s }: { s: Situacao }) {
   const { estado, falhou, recarregar } = s;
   const [confirmar, setConfirmar] = useState(false);
+  const [previa, setPrevia] = useState(false);
   const [atualizando, setAtualizando] = useState(false);
   const acompanhando = useRef<ReturnType<typeof setInterval> | null>(null);
   const montado = useRef(true);
@@ -173,9 +175,7 @@ export function CartaoDoSite({ s }: { s: Situacao }) {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" className="h-10 gap-1.5" onClick={() => void copiar()}><Copy className="h-4 w-4" />Copiar endereço da API</Button>
-          <Button variant="outline" size="sm" className="h-10 gap-1.5" asChild>
-            <a href={estado?.base ?? ENDERECO_DA_API} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" />Ver o que o site recebe</a>
-          </Button>
+          <Button variant="outline" size="sm" className="h-10 gap-1.5" onClick={() => setPrevia(true)}><ExternalLink className="h-4 w-4" />Ver o que o site recebe</Button>
           <Button size="sm" className="h-10 gap-1.5" onClick={() => setConfirmar(true)} disabled={atualizando}>
             {atualizando ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}Atualizar agora
           </Button>
@@ -190,6 +190,8 @@ export function CartaoDoSite({ s }: { s: Situacao }) {
           </div>
         </div>
       )}
+
+      <PreviaDoSite aberta={previa} onOpenChange={setPrevia} base={estado?.base ?? ENDERECO_DA_API} />
 
       <AlertDialog open={confirmar} onOpenChange={setConfirmar}>
         <AlertDialogContent>
