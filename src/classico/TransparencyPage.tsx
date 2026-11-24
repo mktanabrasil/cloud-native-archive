@@ -1081,10 +1081,11 @@ export const DriveExplorer = ({ folderId, folderName }: { folderId: string, fold
   );
   if (items.length === 0) return <div className="p-8 text-center text-muted-foreground text-sm">Nenhum arquivo encontrado.</div>;
 
-  return <div className="space-y-1">{items.map(item => <DriveItemComponent key={item.id} item={item} depth={0} />)}</div>;
+  return <div className="space-y-1">{items.map(item => <DriveItemComponent key={item.id} item={item} depth={0} caminho={[folderId]} />)}</div>;
 };
 
-const DriveItemComponent = ({ item, depth }: { item: DriveItem, depth: number }) => {
+// `caminho`: as pastas do topo até a que mostra o item. A função confere por ele as pastas que chegam por atalho.
+const DriveItemComponent = ({ item, depth, caminho }: { item: DriveItem, depth: number, caminho: string[] }) => {
   const [searchParams] = useSearchParams();
   const [isOpen, setIsOpen] = useState(false);
   const [children, setChildren] = useState<DriveItem[]>([]);
@@ -1101,7 +1102,7 @@ const DriveItemComponent = ({ item, depth }: { item: DriveItem, depth: number })
       if (!isOpen && children.length === 0) {
         setLoading(true);
         try {
-          const { data, error } = await supabase.functions.invoke('google-drive-proxy', { body: { action: 'list_files', folderId: actualId } });
+          const { data, error } = await supabase.functions.invoke('google-drive-proxy', { body: { action: 'list_files', folderId: actualId, caminho } });
           if (error) throw error;
           const files = (data.files || []);
           if (files.length === 0) {
@@ -1198,7 +1199,7 @@ const DriveItemComponent = ({ item, depth }: { item: DriveItem, depth: number })
               </div>
             ) : (
               children.map(child => (
-                <DriveItemComponent key={child.id} item={child} depth={depth + 1} />
+                <DriveItemComponent key={child.id} item={child} depth={depth + 1} caminho={[...caminho, actualId]} />
               ))
             )}
           </div>
