@@ -128,3 +128,71 @@ export function slugLivre(base: string, usados: Set<string>): string {
   if (!usados.has(base)) return base;
   for (let i = 2; ; i++) if (!usados.has(`${base}-${i}`)) return `${base}-${i}`;
 }
+
+// --- Busca (24/11/2026): a barra de pesquisa do site procura nos documentos de todas as unidades ---
+
+/** Sem acento, em minúsculas e com º/ª virando o/a ("1º Balanço" = "1o balanco"). */
+export const semAcento = (s: string) => s.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase();
+/** Texto pronto para comparar: só letras e números, separados por um espaço (datas com / . - viram palavras). */
+export const paraBusca = (s: string) => ` ${semAcento(s).replace(/[^a-z0-9]+/g, ' ').trim()} `;
+
+/** Palavras que não precisam aparecer (só contam se forem tudo o que a pessoa digitou). */
+const LIGACOES = new Set(['a', 'o', 'as', 'os', 'de', 'da', 'do', 'das', 'dos', 'e', 'em', 'no', 'na', 'nos', 'nas', 'para', 'pra', 'por', 'com', 'um', 'uma', 'ao', 'aos']);
+
+/** Um documento pronto para a busca. */
+export interface DocumentoNaBusca extends Documento {
+  caminho: string[];
+  unidade: { slug: string; nome: string };
+  _nome: string;
+  _resto: string;
+}
+
+/** Achata a árvore de uma unidade numa lista de documentos com o caminho de pastas. */
+export function achatar(arvore: Pasta, unidade: { slug: string; nome: string }): DocumentoNaBusca[] {
+  const saida: DocumentoNaBusca[] = [];
+  const daUnidade = paraBusca(unidade.nome);
+  const anda = (p: Pasta, caminho: string[]) => {
+    const resto = `${paraBusca(caminho.join(' '))}${daUnidade}`;
+    for (const d of p.documentos) saida.push({ ...d, caminho, unidade, _nome: paraBusca(d.nome), _resto: resto });
+    for (const s of p.pastas) anda(s, [...caminho, s.nome]);
+  };
+  anda(arvore, []);
+  return saida;
+}
+
+/** As palavras da pesquisa (até 8). Ligações como "de" e "da" saem quando há outras palavras. */
+export function palavrasDaBusca(q: string): string[] {
+  const todas = paraBusca(q.slice(0, 120)).trim().split(' ').filter((w) => w.length >= 2 || /^\d$/.test(w));
+  const fortes = todas.filter((w) => !LIGACOES.has(w));
+  return (fortes.length ? fortes : todas).slice(0, 8);
+}
+
+const colacao = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' });
+
+/**
+ * Procura: todas as palavras precisam aparecer no nome do documento, no nome
+ * das pastas ou no da unidade. Pontos: palavra que começa no nome do documento
+ * (3), pedaço do nome (2), só na pasta ou na unidade (1). Empate: o mais recente.
+ */
+export function buscar(docs: DocumentoNaBusca[], q: string, opcoes: { unidade?: string; limite?: number } = {}): { total: number; resultados: DocumentoNaBusca[] } {
+  const palavras = palavrasDaBusca(q);
+  if (!palavras.length) return { total: 0, resultados: [] };
+  const comEspaco = palavras.map((w) => ` ${w}`);
+  const achados: { d: DocumentoNaBusca; pontos: number }[] = [];
+  for (const d of docs) {
+    if (opcoes.unidade && d.unidade.slug !== opcoes.unidade) continue;
+    let pontos = 0;
+    let todas = true;
+    for (let i = 0; i < palavras.length; i++) {
+      if (d._nome.includes(comEspaco[i])) pontos += 3;
+      else if (d._nome.includes(palavras[i])) pontos += 2;
+      else if (d._resto.includes(palavras[i])) pontos += 1;
+      else { todas = false; break; }
+    }
+    if (todas) achados.push({ d, pontos });
+  }
+  const data = (x: DocumentoNaBusca) => x.atualizado_em ?? '';
+  achados.sort((a, b) => b.pontos - a.pontos || (data(a.d) < data(b.d) ? 1 : data(a.d) > data(b.d) ? -1 : 0) || colacao.compare(a.d.nome, b.d.nome));
+  const limite = Math.min(Math.max(Number.isFinite(opcoes.limite) ? (opcoes.limite as number) : 50, 1), 100);
+  return { total: achados.length, resultados: achados.slice(0, limite).map((x) => x.d) };
+}

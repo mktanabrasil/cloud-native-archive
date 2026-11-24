@@ -86,16 +86,71 @@ Endereço base: `https://supabase.anabrasil.org/functions/v1/transparencia`
 - Se o documento foi retirado do portal ou não existe, a resposta é uma página `404` em português.
 - A `chave` não muda entre as atualizações. Ela só muda se o documento for apagado e enviado de novo ao Drive.
 
+### `GET /busca?q=…` — a barra de pesquisa do site
+
+Procura nos documentos de **todas as unidades**. Serve para a pesquisa do site mostrar, junto com os outros resultados, um bloco "Portal da Transparência".
+
+- Parâmetros:
+  - `q`: o que a pessoa digitou, com pelo menos 2 letras;
+  - `unidade` (opcional): o `slug` de uma unidade, para procurar só nela;
+  - `limite` (opcional): de 1 a 100, padrão 50.
+- A pesquisa não diferencia acentos nem maiúsculas: "balanco 2024" acha "BALANÇO 2024.pdf".
+- Todas as palavras precisam aparecer no nome do documento, no nome de alguma pasta do caminho ou no nome da unidade.
+- Ordem dos resultados: primeiro quem tem as palavras no nome do documento, depois os mais recentes.
+- Com menos de 2 letras, a resposta vem vazia (`total: 0`).
+- A busca nunca consulta o Google: usa a mesma lista guardada. Se o banco falhar, usa a última lista boa.
+
+```json
+{
+  "q": "balanço 2024",
+  "total": 12,
+  "resultados": [
+    {
+      "nome": "BALANÇO 2024.pdf",
+      "tipo": "pdf",
+      "tamanho": 15100000,
+      "atualizado_em": "2025-03-01T10:00:00Z",
+      "chave": "q1W2e3R4t5Y6u7I8",
+      "caminho": ["3 Balanços"],
+      "unidade": { "slug": "ana-jardim-nilopolis", "nome": "Ana Jardim Nilópolis" },
+      "endereco": "https://supabase.anabrasil.org/functions/v1/transparencia/arquivo/q1W2e3R4t5Y6u7I8/BALAN%C3%87O%202024.pdf"
+    }
+  ]
+}
+```
+
+Exemplo para a pesquisa do site, que pode ser colado no script de busca:
+
+```js
+async function procurarNoPortal(texto) {
+  const url = 'https://supabase.anabrasil.org/functions/v1/transparencia/busca?q=' + encodeURIComponent(texto) + '&limite=10';
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return [];
+    const { resultados } = await r.json();
+    // Cada resultado: nome, unidade.nome, caminho (lista de pastas) e endereco (abre o documento).
+    return resultados.map((d) => ({
+      titulo: d.nome,
+      detalhe: [d.unidade.nome, ...d.caminho].join(' › '),
+      link: d.endereco,
+    }));
+  } catch {
+    return []; // sem a API, a pesquisa do site continua funcionando sem o bloco do portal
+  }
+}
+```
+
 ## Cache e CORS
 
 - `Access-Control-Allow-Origin: *`: qualquer página pode chamar a API.
-- `GET /` e `GET /unidade/…` respondem com `Cache-Control: public, max-age=60, stale-while-revalidate=600` e `ETag` (com `If-None-Match`, a resposta é `304`).
+- `GET /`, `GET /unidade/…` e `GET /busca` respondem com `Cache-Control: public, max-age=60, stale-while-revalidate=600` e `ETag` (com `If-None-Match`, a resposta é `304`).
 - Os documentos respondem com `max-age=3600`.
 
 **Sugestão para o site:** guardar a última resposta da API (no build ou no `localStorage`) e mostrá-la se a API não responder. Assim, nem uma queda do nosso servidor deixa a página de transparência vazia.
 
 ## Para a equipe
 
+- Ver como o site mostra, com a busca: o botão "Ver o que o site recebe" no cartão "No site do ANA" do painel.
 - Cadastrar ou retirar uma unidade: Marketing › Portal Transparência no app. A API segue em até 2 minutos.
 - Documento novo no Drive: aparece na API em até 2 minutos.
 - Código: `supabase/functions/transparencia` (`index.ts`, `regras.ts`). Tabelas: `transparencia_*` (migração `20261124130000_transparencia_api.sql`).
