@@ -202,7 +202,7 @@ export function LembretesDoWhatsApp() {
             <div className="grid grid-cols-5 gap-2">
               {CORES.map((c, i) => (
                 <div key={c} className={cn('overflow-hidden rounded-[10px] border-2', c === corDeHoje ? 'border-foreground' : 'border-transparent')}>
-                  <img src={`${ARTES}/${arteDoLembrete(c)}`} alt={`Arte ${NOME_DA_COR[c]}`} className="aspect-[16/9] w-full object-cover" loading="lazy" />
+                  <img src={`${ARTES}/${arteDoLembrete(c)}`} alt={`Arte ${NOME_DA_COR[c]}`} className="aspect-square w-full object-cover" loading="lazy" />
                   <p className="flex items-center gap-1 px-1.5 py-1 text-[11.5px]"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: HEX_DA_COR[c] }} />{NOMES_DOS_DIAS[i + 1]}</p>
                 </div>
               ))}

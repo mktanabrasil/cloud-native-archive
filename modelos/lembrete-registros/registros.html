@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&display=block" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@48,500,1,0&display=block" rel="stylesheet">
+<style>
+/* "Lembrete - Registros das unidades" em 1:1 (1600x1600), refeito das artes 16:9 dele com as mesmas cores por variante. */
+:root { --creme: #f0ede4; --amarelo: #fbce00; --coral: #f37964; --verde: #81e2cf; --azul: #01adff; --areia: #f5dfba; --escuro: #1f2322; }
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1600px; height: 1600px; overflow: hidden; }
+body { background: var(--fundo); font-family: Poppins, sans-serif; color: var(--tinta); position: relative; }
+.ms { font-family: 'Material Symbols Sharp'; font-weight: 500; font-style: normal; line-height: 1; letter-spacing: 0; text-transform: none; white-space: nowrap; font-feature-settings: 'liga'; -webkit-font-smoothing: antialiased; }
+
+/* Formas do canto (as mesmas da arte 16:9, 1,2x). */
+.deco { position: absolute; right: 0; top: 0; width: 416px; height: 400px; }
+.a { position: absolute; left: 0; top: 0; width: 192px; height: 192px; background: var(--decoA); border-bottom-left-radius: 192px; }
+.b { position: absolute; left: 192px; top: 0; width: 224px; height: 192px; background: var(--decoB); overflow: hidden; }
+.b::after { content: ''; position: absolute; right: -160px; top: -160px; width: 320px; height: 320px; border-radius: 50%; background: var(--decoC); }
+.d { position: absolute; right: 0; top: 192px; width: 176px; height: 176px; background: var(--decoD); border-top-left-radius: 176px; }
+
+.bolinha { position: absolute; right: 250px; top: 233px; width: 74px; height: 74px; border-radius: 50%; background: var(--ponto); }
+
+.logo { position: absolute; left: 86px; top: 66px; width: 300px; height: auto; }
+
+.conteudo { position: absolute; left: 128px; right: 96px; top: 444px; display: flex; flex-direction: column; align-items: flex-start; }
+.pilula { display: inline-flex; align-items: center; gap: 18px; height: 92px; padding: 0 44px 0 34px; border-radius: 46px; background: var(--pilula); color: var(--textoPilula); font-weight: 800; font-size: 40px; letter-spacing: .22em; }
+.pilula .ms { font-size: 52px; }
+h1 { margin-top: 26px; font-weight: 800; font-size: 196px; line-height: 1.0; letter-spacing: -.035em; color: var(--tinta); }
+h1 span { display: block; }
+.caixa { display: inline-block; margin-left: 4px; padding: 0 30px 6px 30px; border-radius: 30px; background: var(--caixa); color: var(--textoCaixa); }
+.linha3 { margin-top: 14px; }
+.chips { display: flex; gap: 24px; margin-top: 64px; }
+.chip { display: inline-flex; align-items: center; gap: 20px; height: 108px; padding: 0 40px 0 12px; border-radius: 54px; font-weight: 700; font-size: 40px; color: var(--escuro); }
+.chip i { display: grid; place-items: center; width: 84px; height: 84px; border-radius: 50%; color: var(--escuro); font-size: 46px; }
+.legenda { margin-top: 48px; font-weight: 500; font-size: 38px; color: var(--tinta); }
+.legenda b { font-weight: 800; }
+
+/* Rodapé: as 4 cores que não são o fundo, rentes à borda. */
+.rodape { position: absolute; left: 0; right: 0; bottom: 0; height: 52px; display: flex; }
+.rodape div { flex: 1; }
+</style></head>
+<body>
+<div class="deco"><div class="a"></div><div class="b"></div><div class="d"></div></div>
+<div class="bolinha"></div>
+<img class="logo" id="logo" alt="">
+<div class="conteudo">
+  <div class="pilula"><span class="ms">warning</span>LEMBRETE</div>
+  <h1><span>Enviem os</span><span>registros das</span><span class="linha3"><span class="caixa">unidades.</span></span></h1>
+  <div class="chips">
+    <div class="chip" style="background:var(--chipFotos)"><i class="ms" style="background:var(--circulo)">photo_camera</i>Fotos</div>
+    <div class="chip" style="background:var(--chipVideos)"><i class="ms" style="background:var(--circuloVideos)">videocam</i>Vídeos</div>
+    <div class="chip" style="background:var(--chipInfo)"><i class="ms" style="background:var(--circuloInfo)">chat</i>Informações</div>
+  </div>
+  <p class="legenda">Aqui no grupo de publicações. <b>Contamos com vocês!</b></p>
+</div>
+<div class="rodape" id="rodape"></div>
+<script>
+const C = { creme: '#f0ede4', amarelo: '#fbce00', coral: '#f37964', verde: '#81e2cf', azul: '#01adff', areia: '#f5dfba', escuro: '#1f2322', branco: '#ffffff' };
+// Cores lidas das artes originais de cada variante.
+const V = {
+  azul:    { fundo: C.azul, tinta: C.branco, pilula: C.escuro, textoPilula: C.amarelo, caixa: C.amarelo, textoCaixa: C.escuro, chipFotos: C.verde, chipVideos: C.creme, chipInfo: C.coral, circulo: C.creme, circuloVideos: C.azul, circuloInfo: C.creme, ponto: C.amarelo, decoA: C.creme, decoB: C.amarelo, decoC: C.coral, decoD: C.verde },
+  amarelo: { fundo: C.amarelo, tinta: C.escuro, pilula: C.coral, textoPilula: C.escuro, caixa: C.escuro, textoCaixa: C.amarelo, chipFotos: C.verde, chipVideos: C.azul, chipInfo: C.coral, circulo: C.creme, circuloVideos: C.creme, circuloInfo: C.creme, ponto: C.creme, decoA: C.creme, decoB: C.azul, decoC: C.coral, decoD: C.verde },
+  coral:   { fundo: C.coral, tinta: C.branco, pilula: C.escuro, textoPilula: C.amarelo, caixa: C.amarelo, textoCaixa: C.escuro, chipFotos: C.verde, chipVideos: C.creme, chipInfo: C.azul, circulo: C.creme, circuloVideos: C.azul, circuloInfo: C.creme, ponto: C.amarelo, decoA: C.creme, decoB: C.amarelo, decoC: C.azul, decoD: C.verde },
+  verde:   { fundo: C.verde, tinta: C.escuro, pilula: C.escuro, textoPilula: C.amarelo, caixa: C.coral, textoCaixa: C.escuro, chipFotos: C.creme, chipVideos: C.azul, chipInfo: C.amarelo, circulo: C.verde, circuloVideos: C.creme, circuloInfo: C.creme, ponto: C.amarelo, decoA: C.creme, decoB: C.amarelo, decoC: C.coral, decoD: C.azul },
+  areia:   { fundo: C.areia, tinta: C.escuro, pilula: C.escuro, textoPilula: C.amarelo, caixa: C.azul, textoCaixa: C.escuro, chipFotos: C.verde, chipVideos: C.coral, chipInfo: C.amarelo, circulo: C.creme, circuloVideos: C.creme, circuloInfo: C.creme, ponto: C.coral, decoA: C.azul, decoB: C.amarelo, decoC: C.coral, decoD: C.verde },
+};
+const nome = new URLSearchParams(location.search).get('v') || 'azul';
+for (const [k, v] of Object.entries(V[nome])) document.documentElement.style.setProperty('--' + k, v);
+document.getElementById('logo').src = `logos/logo-${nome}.png`;
+// Rodapé: a ordem de sempre (areia, amarelo, coral, verde, azul), sem a cor do fundo.
+document.getElementById('rodape').innerHTML = ['areia', 'amarelo', 'coral', 'verde', 'azul'].filter(c => c !== nome).map(c => `<div style="background:${C[c]}"></div>`).join('');
+</script>
+</body></html>
