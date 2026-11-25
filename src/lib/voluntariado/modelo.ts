@@ -15,7 +15,7 @@
  * `inscrever_voluntario` do banco, que também sorteia o protocolo (VL-XXXXX).
  */
 
-import { UNIDADES_POR_AREA } from '@/lib/pizza/modelo';
+import { ROTULO_DA_AREA, UNIDADES_POR_AREA } from '@/lib/pizza/modelo';
 
 /**
  * Os endereços (21/10/2026): cada campanha mora em /voluntariado/<campanha>.
@@ -170,17 +170,24 @@ export const AREAS_DO_VOLUNTARIADO: readonly string[] = ['educacao'];
 
 /**
  * Fora da Educação, mas no formulário (25/11/2026, a pedido): o Escritório
- * (ADM), como na Pizza. Entra no grupo da sua área (Social) e se inscreve
- * como as demais unidades.
+ * (ADM), como na Pizza. Se inscreve como as demais unidades (a área gravada
+ * continua a dele, Social), mas na lista fica num grupo próprio.
  */
 export const UNIDADES_ALEM_DAS_AREAS: readonly string[] = ['escritorio-adm'];
+/** O grupo dessas unidades na lista (25/11/2026, a pedido): "ANA Brasil", não "Social". */
+export const GRUPO_ALEM_DAS_AREAS = 'ANA Brasil';
 
-export const UNIDADES_DO_VOLUNTARIADO = UNIDADES_POR_AREA
-  .map((g) => ({
-    ...g,
-    unidades: g.unidades.filter((u) => (AREAS_DO_VOLUNTARIADO.includes(g.area) || UNIDADES_ALEM_DAS_AREAS.includes(u.id)) && !UNIDADES_FORA_DO_VOLUNTARIADO.includes(u.id)),
-  }))
-  .filter((g) => g.unidades.length > 0);
+/** Os grupos da lista de unidades: `chave` para o React, `rotulo` para a tela. */
+export const UNIDADES_DO_VOLUNTARIADO = [
+  ...UNIDADES_POR_AREA
+    .filter((g) => AREAS_DO_VOLUNTARIADO.includes(g.area))
+    .map((g) => ({ chave: g.area as string, rotulo: ROTULO_DA_AREA[g.area], unidades: g.unidades.filter((u) => !UNIDADES_FORA_DO_VOLUNTARIADO.includes(u.id)) })),
+  {
+    chave: 'ana-brasil',
+    rotulo: GRUPO_ALEM_DAS_AREAS,
+    unidades: UNIDADES_POR_AREA.flatMap((g) => g.unidades).filter((u) => UNIDADES_ALEM_DAS_AREAS.includes(u.id) && !UNIDADES_FORA_DO_VOLUNTARIADO.includes(u.id)),
+  },
+].filter((g) => g.unidades.length > 0);
 
 export const encerrado = (agora: Date = new Date()) => agora >= PRAZO;
 

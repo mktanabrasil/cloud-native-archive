@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { CalendarDays, Check, ChevronRight, Download, Heart, QrCode, Users } from 'lucide-react';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import InstitutionalFooterBar from '@/components/news/InstitutionalFooterBar';
-import { ROTULO_DA_AREA, unidadeDaPizza } from '@/lib/pizza/modelo';
+import { unidadeDaPizza } from '@/lib/pizza/modelo';
 import { areasLotadas, centralNoFormulario, enviarParaAPlanilha, inscrever } from '@/lib/voluntariado/api';
 import { salvarComprovante } from '@/lib/voluntariado/comprovante';
 import { CAMINHO_DA_CENTRAL, guardarNumero } from '@/lib/voluntariado/central';
@@ -327,8 +327,8 @@ export default function VoluntariadoPage() {
                 <label className="mt-2 flex flex-col gap-1.5 text-sm font-semibold">Em qual unidade você trabalha?
                   <select className={campo} style={{ borderColor: COR.linha }} value={unidade} onChange={(e) => { setUnidade(e.target.value); setErro(null); }}>
                     <option value="">Escolha a unidade</option>
-                    {UNIDADES_DO_VOLUNTARIADO.map(({ area, unidades }) => (
-                      <optgroup key={area} label={ROTULO_DA_AREA[area]}>
+                    {UNIDADES_DO_VOLUNTARIADO.map(({ chave, rotulo, unidades }) => (
+                      <optgroup key={chave} label={rotulo}>
                         {unidades.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
                       </optgroup>
                     ))}
