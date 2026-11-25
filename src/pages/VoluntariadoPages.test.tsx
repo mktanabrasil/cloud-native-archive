@@ -99,9 +99,10 @@ describe('regras', () => {
     for (const v of ['funcionario', 'alcance', 'comunidade'] as const) expect(lista(v), v).toEqual([...AREAS_POR_VINCULO[v]]);
   });
 
-  it('funcionário: só a Educação, sem a ANA Piauí', () => {
+  it('funcionário: a Educação e o Escritório (ADM), sem a ANA Piauí', () => {
     const ids = UNIDADES_DO_VOLUNTARIADO.flatMap((g) => g.unidades.map((u) => u.id));
-    expect(ids).toHaveLength(12);
+    expect(ids).toHaveLength(13);
+    expect(ids).toContain('escritorio-adm');
     expect(ids).toContain('goe');
     expect(ids).not.toContain('ana-dic');
     expect(ids).not.toContain('ana-piaui');
