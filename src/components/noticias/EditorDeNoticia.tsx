@@ -74,7 +74,8 @@ function daNoticia(n: NoticiaDoPainel): Edicao {
   const fotos = semRepetir([...(d.capa ? [d.capa] : []), ...d.midias.filter((m) => m.tipo === 'foto')]);
   const videos = d.midias.filter((m) => m.tipo === 'video');
   return {
-    titulo: d.titulo, data: d.data, hora: d.data_hora?.slice(11, 16) || '12:00', unidade: d.unidade, extras: d.unidades.filter((u) => u !== d.unidade),
+    // Sem a hora lida (notícia lida antes de a API guardar a hora): campo vazio, e o salvar mantém a do post.json.
+    titulo: d.titulo, data: d.data, hora: d.data_hora && d.data_hora.length >= 16 ? d.data_hora.slice(11, 16) : '', unidade: d.unidade, extras: d.unidades.filter((u) => u !== d.unidade),
     texto: textoDe(d.texto), fotos, videos, capa: d.capa?.chave ?? null, remover: [],
     descricoes: Object.fromEntries([...fotos, ...videos].filter((m) => m.alt).map((m) => [m.chave, m.alt])), na_lista: d.na_lista, fixada: d.fixada,
   };

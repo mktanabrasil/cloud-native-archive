@@ -266,6 +266,18 @@ describe('Notícias do blog', () => {
     s.unmount();
   });
 
+  it('notícia lida antes de a API guardar a hora: o campo fica vazio e o salvar mantém a hora do post.json', async () => {
+    const semHora = structuredClone(P1);
+    delete (semHora.dados as { data_hora?: string }).data_hora;
+    api.noticiaDoPainel.mockResolvedValue(semHora);
+    abrir('/marketing/noticias?noticia=P1');
+    await screen.findByDisplayValue('Dia das Crianças especial com o Colégio Objetivo');
+    expect((document.querySelector('input[type=time]') as HTMLInputElement).value).toBe('');
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
+    await waitFor(() => expect(api.salvarNoticia).toHaveBeenCalled());
+    expect(api.salvarNoticia.mock.calls[0][0].hora).toBeUndefined();
+  });
+
   it('notícia que o Drive não conseguiu ler não abre como formulário em branco', async () => {
     api.noticiaDoPainel.mockResolvedValue({ ...structuredClone(P1), dados: null, erro: 'o post.json desta notícia está com o texto quebrado' });
     abrir('/marketing/noticias?noticia=P1');
