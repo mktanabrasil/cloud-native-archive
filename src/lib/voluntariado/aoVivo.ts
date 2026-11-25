@@ -20,6 +20,7 @@ export const COR_DA_UNIDADE: Record<string, string> = {
   'CEI Bem Querer Gov. Leonel de Moura Brizola': '#F3E2D3', 'CEI Bem Querer Paulo Reglus Neves Freire': '#E0EAF0',
   'CEI Bem Querer Mayara Masson Christofoletti': '#F6DDF0', 'CEI Bem Querer Profa. Renata Ferramola': '#D9F2E4',
   'CEI Bem Querer Vandir Justino da Costa Dias': '#FBE7D7',
+  'Escritório (ADM)': '#E4E4E7',
   // Quem não é funcionário não tem unidade: a linha vai pela cor do vínculo (23/10/2026).
   'INCC': '#FFCC99', 'Voluntário(a)': '#E6E0D4',
 };

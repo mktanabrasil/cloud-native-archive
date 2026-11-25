@@ -3,8 +3,7 @@ import { Link } from 'react-router-dom';
 import { CalendarDays, Check, ChevronRight, Download, Heart, QrCode, Users } from 'lucide-react';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import InstitutionalFooterBar from '@/components/news/InstitutionalFooterBar';
-import { findNewsUnit } from '@/lib/news/units';
-import { ROTULO_DA_AREA } from '@/lib/pizza/modelo';
+import { ROTULO_DA_AREA, unidadeDaPizza } from '@/lib/pizza/modelo';
 import { areasLotadas, centralNoFormulario, enviarParaAPlanilha, inscrever } from '@/lib/voluntariado/api';
 import { salvarComprovante } from '@/lib/voluntariado/comprovante';
 import { CAMINHO_DA_CENTRAL, guardarNumero } from '@/lib/voluntariado/central';
@@ -141,7 +140,7 @@ export default function VoluntariadoPage() {
       });
       enviarParaAPlanilha();
       const v = VINCULOS.find((x) => x.chave === vinculo)!;
-      const quem = vinculo === 'funcionario' ? `${v.curto} · ${findNewsUnit(unidade)?.name ?? ''}`
+      const quem = vinculo === 'funcionario' ? `${v.curto} · ${unidadeDaPizza(unidade)?.name ?? ''}`
         : vinculo === 'comunidade' && indicado && indicadoPor.trim() ? `${v.curto} · indicado(a) por ${indicadoPor.trim()}` : v.curto;
       const linhas: Array<[string, string]> = [['Nome', nome.trim().replace(/\s+/g, ' ')], ['Vínculo', quem], ['Horário', rotuloDoHorario(horario)], ['1ª opção', rotuloDaAjuda(opcoes.opcao1)]];
       if (opcoes.opcao2) linhas.push(['2ª opção', rotuloDaAjuda(opcoes.opcao2)]);

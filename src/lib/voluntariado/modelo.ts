@@ -168,9 +168,18 @@ export const UNIDADES_FORA_DO_VOLUNTARIADO: readonly string[] = ['ana-piaui'];
 /** Só a Educação (GOE e CEIs) para os funcionários (21/10/2026, mantido em 23/10/2026). */
 export const AREAS_DO_VOLUNTARIADO: readonly string[] = ['educacao'];
 
+/**
+ * Fora da Educação, mas no formulário (25/11/2026, a pedido): o Escritório
+ * (ADM), como na Pizza. Entra no grupo da sua área (Social) e se inscreve
+ * como as demais unidades.
+ */
+export const UNIDADES_ALEM_DAS_AREAS: readonly string[] = ['escritorio-adm'];
+
 export const UNIDADES_DO_VOLUNTARIADO = UNIDADES_POR_AREA
-  .filter((g) => AREAS_DO_VOLUNTARIADO.includes(g.area))
-  .map((g) => ({ ...g, unidades: g.unidades.filter((u) => !UNIDADES_FORA_DO_VOLUNTARIADO.includes(u.id)) }))
+  .map((g) => ({
+    ...g,
+    unidades: g.unidades.filter((u) => (AREAS_DO_VOLUNTARIADO.includes(g.area) || UNIDADES_ALEM_DAS_AREAS.includes(u.id)) && !UNIDADES_FORA_DO_VOLUNTARIADO.includes(u.id)),
+  }))
   .filter((g) => g.unidades.length > 0);
 
 export const encerrado = (agora: Date = new Date()) => agora >= PRAZO;

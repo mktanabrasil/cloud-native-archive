@@ -1,7 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { comMaiusculas } from '@/lib/vagas/maiusculas';
-import { findNewsUnit } from '@/lib/news/units';
-import { areaDaUnidade } from '@/lib/pizza/modelo';
+import { areaDaUnidade, unidadeDaPizza } from '@/lib/pizza/modelo';
 import { digitosDoWhatsapp, type Acompanhante, type AreaDeAjuda, type Horario, type Vinculo } from './modelo';
 
 /** Uma inscrição, como o painel lê. */
@@ -44,7 +43,7 @@ export interface NovaInscricao {
 
 /** Envia a inscrição; o banco confere tudo (inclusive a meta da área) e devolve o protocolo sorteado. */
 export async function inscrever(d: NovaInscricao): Promise<string> {
-  const unidade = d.vinculo === 'funcionario' ? findNewsUnit(d.unidadeId ?? '') : null;
+  const unidade = d.vinculo === 'funcionario' ? unidadeDaPizza(d.unidadeId ?? '') /* as unidades do app e o Escritório (ADM) */ : null;
   if (d.vinculo === 'funcionario' && !unidade) throw new Error('unidade_invalida');
   const { data, error } = await supabase.rpc('inscrever_voluntario', {
     p_nome: comMaiusculas(d.nome, { pessoa: true }),
