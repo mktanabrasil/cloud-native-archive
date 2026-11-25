@@ -4,6 +4,7 @@ import { Lock } from 'lucide-react';
 import { PainelDaPizza } from '@/components/pizza/PainelDaPizza';
 import { PainelDoVoluntariado } from '@/components/voluntariado/PainelDoVoluntariado';
 import { LembretesDoWhatsApp } from '@/components/lembretes/LembretesDoWhatsApp';
+import { NoticiasDoBlog } from '@/components/noticias/NoticiasDoBlog';
 import EnquetesPage from '@/pages/EnquetesPage';
 import { useUserRole } from '@/hooks/useUserRole';
 import AuditPage from '@/pages/AuditPage';
@@ -13,6 +14,7 @@ import AdminToolboxPage from '@/pages/AdminToolboxPage';
 import { ABA_INICIAL_DO_MARKETING, rotaDoMarketing, type AbaDoMarketing } from '@/config/navigation';
 
 const ABAS: Record<AbaDoMarketing, ComponentType> = {
+  noticias: NoticiasDoBlog,
   auditoria: AuditPage,
   'design-manual': DesignManualPage,
   transparencia: TransparencyPage,

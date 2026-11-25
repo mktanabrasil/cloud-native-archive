@@ -57,7 +57,7 @@ export const ROTAS = {
 } as const;
 
 /** As abas do Marketing, cada uma no seu endereço: `/marketing/pizza`. */
-export const ABAS_DO_MARKETING = ['auditoria', 'design-manual', 'transparencia', 'widgets', 'enquetes', 'pizza', 'voluntariado', 'lembretes'] as const;
+export const ABAS_DO_MARKETING = ['noticias', 'auditoria', 'design-manual', 'transparencia', 'widgets', 'enquetes', 'pizza', 'voluntariado', 'lembretes'] as const;
 export type AbaDoMarketing = (typeof ABAS_DO_MARKETING)[number];
 /** A aba que abre em `/marketing` sem nada depois, como antes. */
 export const ABA_INICIAL_DO_MARKETING: AbaDoMarketing = 'auditoria';
@@ -260,6 +260,8 @@ export const PAGINAS_DOS_SETORES: Record<string, PaginaDoSetor[]> = {
     { rotulo: 'Parceiros', to: ROTAS.parceiros, aberta: (c) => c === ROTAS.parceiros, soComApoiadores: true },
   ],
   [ROTAS.marketing]: [
+    // Os posts do blog do site, que a API de notícias entrega (25/11/2026).
+    { rotulo: 'Notícias', to: rotaDoMarketing('noticias'), aberta: abaAberta('noticias') },
     { rotulo: 'Mercado Solidário', to: ROTAS.mercado, aberta: (c) => c === ROTAS.mercado },
     { rotulo: 'Pizza da Alegria', to: rotaDoMarketing('pizza'), aberta: abaAberta('pizza', '/pizza-da-alegria/painel') },
     { rotulo: 'Voluntariado', to: rotaDoMarketing('voluntariado'), aberta: abaAberta('voluntariado') },

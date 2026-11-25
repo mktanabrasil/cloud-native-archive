@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buscarNoticias, escala, lerNomeDaPasta, manchete, montarNoticia, resumoDe, slugDaNoticia, unidadeDe } from '../../../supabase/functions/noticias/regras';
+import { buscarNoticias, escala, lerNomeDaPasta, manchete, maisRecentePrimeiro, montarNoticia, nomeDaPastaDoPost, nomeNaOrdem, pastaDaUnidade, problemasDaEdicao, resumoDe, slugDaNoticia, unidadeDe } from '../../../supabase/functions/noticias/regras';
 
 /** A API de notícias (25/11/2026): pastas do blog no Drive → lista para o site. */
 describe('as regras da API de notícias', () => {
@@ -24,7 +24,8 @@ describe('as regras da API de notícias', () => {
 
   it('monta a notícia do post.json; o que faltar sai do nome da pasta', () => {
     const n = montarNoticia({ titulo: 'Natal', data: '2025-12-13T00:00:00', unidade: 'Ana Jardim Santana', unidades: ['Ana Jardim Santana', 'Ana Dic'], texto_paragrafos: [' Um. ', '', 'Dois.'] }, { nome: '2025-12-13 — Natal', unidadePasta: 'Ana Jardim Santana' });
-    expect(n).toEqual({ titulo: 'Natal', data: '2025-12-13', unidade: 'ana-jardim-santana', unidades: ['ana-jardim-santana', 'ana-dic'], texto: ['Um.', 'Dois.'], na_lista: true, fixada: false });
+    expect(n).toEqual({ titulo: 'Natal', data: '2025-12-13', data_hora: '2025-12-13T00:00', unidade: 'ana-jardim-santana', unidades: ['ana-jardim-santana', 'ana-dic'], texto: ['Um.', 'Dois.'], na_lista: true, fixada: false, publicado: true });
+    expect(montarNoticia({ data: '2026-10-28T00:02:00', publicado: false }, { nome: '2026-10-28 — X', unidadePasta: 'Ana Dic' })).toMatchObject({ data_hora: '2026-10-28T00:02', publicado: false });
     expect(montarNoticia({}, { nome: '2024-05-01 — Festa Junina', unidadePasta: 'Ana Piauí' })).toMatchObject({ titulo: 'Festa Junina', data: '2024-05-01', unidade: 'ana-piaui' });
     expect(resumoDe(['', 'a '.repeat(200)], 20)).toMatch(/…$/);
   });
@@ -49,5 +50,23 @@ describe('as regras da API de notícias', () => {
     expect(buscarNoticias(l, 'balanco', {}).resultados.map((n) => n.titulo)).toEqual(['Balanço 2024 publicado', 'Festa']);
     expect(buscarNoticias(l, 'balanco', {}, { unidade: 'ana-piaui' }).total).toBe(1);
     expect(buscarNoticias(l, 'festa piaui', { 'ana-piaui': 'Ana Piauí' }).total).toBe(1);
+  });
+
+  it('edição: pasta, ordem das fotos, unidade e o que falta para publicar', () => {
+    expect(nomeDaPastaDoPost('2026-11-25', '🎄 Oficina de Natal: famílias/alunos')).toBe('2026-11-25 — Oficina de Natal famílias alunos');
+    expect(nomeNaOrdem(3, '01 - IMG_0803.jpg')).toBe('03 - IMG_0803.jpg');
+    // Só a numeração do painel sai: nome que começa com data ou número fica inteiro.
+    expect(nomeNaOrdem(1, '2024-05-01 festa.jpg')).toBe('01 - 2024-05-01 festa.jpg');
+    expect(nomeNaOrdem(2, '1-capa.jpg')).toBe('02 - 1-capa.jpg');
+    expect(nomeNaOrdem(4, '120 - IMG.jpg')).toBe('04 - IMG.jpg');
+    expect(pastaDaUnidade('institucional')).toBe('ANA Brasil (institucional)');
+    expect(pastaDaUnidade('nao-existe')).toBeNull();
+    const base = { titulo: 'X', data: '2026-11-25', unidade: 'ana-dic', texto: ['Oi'] };
+    expect(problemasDaEdicao(base, true)).toEqual([]);
+    expect(problemasDaEdicao({ ...base, texto: [] }, false)).toEqual(['o texto', 'a capa']);
+    expect(problemasDaEdicao({ ...base, texto: [], publicado: false }, false)).toEqual([]);
+    expect(problemasDaEdicao({ ...base, data: '2026-02-30', hora: '25:00' }, true)).toEqual(['a data', 'a hora']);
+    const l = [{ slug: 'a', data: '2026-10-28', data_hora: '2026-10-28T00:00' }, { slug: 'b', data: '2026-10-28', data_hora: '2026-10-28T00:02' }];
+    expect([...l].sort(maisRecentePrimeiro).map((x) => x.slug)).toEqual(['b', 'a']);
   });
 });
