@@ -2,8 +2,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import nodemailer from 'npm:nodemailer@6.9.16';
 import { chaveDe, ehChave, quedaSuspeita } from '../transparencia/regras.ts';
 import {
-  LADO_MINI, LADO_TELA, UNIDADES, buscarNoticias, ehImagem, ehVideo, escala, manchete, montarNoticia, resumoDe, slugDaNoticia, slugLivre,
-  type MidiaGuardada, type NoticiaGuardada, type PostJson,
+  LADO_MINI, LADO_TELA, UNIDADES, buscarNoticias, maisRecentePrimeiro, nomeDaPastaDoPost, nomeNaOrdem, nomeSeguro, semOrdem, pastaDaUnidade, problemasDaEdicao, ehImagem, ehVideo, escala, manchete, montarNoticia, resumoDe, slugDaNoticia, slugLivre,
+  type Edicao, type MidiaGuardada, type NoticiaGuardada, type PostJson,
 } from './regras.ts';
 
 addEventListener('unhandledrejection', (e) => { console.error('[noticias] promessa solta:', e.reason); e.preventDefault(); });
@@ -155,7 +155,12 @@ async function lerNoticia(db: Banco, segredo: string, linha: { pasta_id: string;
   }
   const sub = (nome: string) => conteudo.find((f) => f.mimeType === PASTA && f.name.toLowerCase() === nome);
   const fotosPasta = sub('fotos'), videosPasta = sub('videos');
-  const [fotos, videos] = await Promise.all([fotosPasta ? filhos(db, fotosPasta.id) : [], videosPasta ? filhos(db, videosPasta.id) : []]);
+  // Envios do painel: todas as subpastas com esse nome (dois envios juntos podem ter criado duas).
+  const enviandoPastas = conteudo.filter((f) => f.mimeType === PASTA && f.name === ENVIANDO);
+  const [fotos, videos, enviando] = await Promise.all([
+    fotosPasta ? filhos(db, fotosPasta.id) : [], videosPasta ? filhos(db, videosPasta.id) : [],
+    Promise.all(enviandoPastas.map((p) => filhos(db, p.id))).then((x) => x.flat()),
+  ]);
   const porNome = (a: ItemDoDrive, b: ItemDoDrive) => a.name.localeCompare(b.name, 'pt-BR', { numeric: true });
   const arquivos: ArquivoGuardado[] = [];
   const midia = async (f: ItemDoDrive, tipo: 'foto' | 'video'): Promise<MidiaGuardada> => {
@@ -163,18 +168,20 @@ async function lerNoticia(db: Banco, segredo: string, linha: { pasta_id: string;
     const d = dimensoes(f);
     arquivos.push({ chave, drive_id: f.id, nome: f.name, mime: f.mimeType, tamanho: f.size ? Number(f.size) : null, w: d.w, h: d.h, modificado_em: f.modifiedTime ?? null });
     const dur = f.videoMediaMetadata?.durationMillis ? Math.round(Number(f.videoMediaMetadata.durationMillis) / 1000) : null;
-    return { tipo, chave, nome: f.name.replace(/^\d+\s*-\s*/, ''), w: d.w, h: d.h, duracao: dur, alt: (j.descricoes?.[f.name] ?? '').trim() };
+    return { tipo, chave, nome: semOrdem(f.name), w: d.w, h: d.h, duracao: dur, alt: (j.descricoes?.[f.name] ?? '').trim() };
   };
   const capaArq = conteudo.find((f) => /^capa\./i.test(f.name) && ehImagem(f.mimeType));
   const capa = capaArq ? await midia(capaArq, 'foto') : null;
   const midias: MidiaGuardada[] = [];
   for (const f of fotos.filter((x) => ehImagem(x.mimeType)).sort(porNome)) midias.push(await midia(f, 'foto'));
   for (const f of videos.filter((x) => ehVideo(x.mimeType)).sort(porNome)) midias.push(await midia(f, 'video'));
+  // Envios do painel ainda não salvos: ganham chave (o painel mostra), mas não entram na notícia.
+  for (const f of enviando.filter((x) => ehImagem(x.mimeType) || ehVideo(x.mimeType))) await midia(f, ehVideo(f.mimeType) ? 'video' : 'foto');
   const base = montarNoticia(j, { nome: linha.pasta_nome, unidadePasta: linha.unidade_pasta ?? '' });
   return {
     noticia: { ...base, capa: capa ?? midias.find((m) => m.tipo === 'foto') ?? null, midias },
     arquivos,
-    subpastas: [fotosPasta?.id, videosPasta?.id].filter(Boolean) as string[],
+    subpastas: [fotosPasta?.id, videosPasta?.id, ...enviandoPastas.map((p) => p.id)].filter(Boolean) as string[],
     wp_id: typeof j.id === 'number' ? j.id : null,
     wp_slug: j.slug ?? null,
   };
@@ -289,7 +296,8 @@ async function atualizar(db: Banco, tudo = false) {
         throw new Error(`a pasta do blog tem agora ${agora.size} notícias e a lista no ar tem ${antes.size}. Se foi de propósito, use "Atualizar agora".`);
       }
       const novas = v.posts.filter((p) => !antes.has(p.pasta_id));
-      if (novas.length) ok(await db.from('noticias').insert(novas.map((p) => ({ ...p, sujo: true }))), 'novas');
+      // upsert: o painel pode ter cadastrado a mesma pasta (notícia nova) entre a foto da lista e aqui.
+      if (novas.length) ok(await db.from('noticias').upsert(novas.map((p) => ({ ...p, sujo: true })), { onConflict: 'pasta_id', ignoreDuplicates: true }), 'novas');
       // Nome da pasta pode ter mudado (título editado à mão): guarda e relê.
       for (const p of v.posts) {
         const l = linhas.find((x) => x.pasta_id === p.pasta_id);
@@ -308,19 +316,38 @@ async function atualizar(db: Banco, tudo = false) {
     ok(await db.from('noticias_estado').update({ marcador_de_mudancas: m.marcador }).eq('id', 1), 'marcador');
 
     // Lê as notícias marcadas, várias ao mesmo tempo.
-    const fila = ok(await db.from('noticias').select('pasta_id, pasta_nome, unidade_pasta, slug').eq('sujo', true).order('tentativa_em', { ascending: true, nullsFirst: true }), 'fila') as { pasta_id: string; pasta_nome: string; unidade_pasta: string | null; slug: string | null }[];
+    const fila = ok(await db.from('noticias').select('pasta_id, pasta_nome, unidade_pasta, slug, atualizado_em').eq('sujo', true).order('tentativa_em', { ascending: true, nullsFirst: true }), 'fila') as { pasta_id: string; pasta_nome: string; unidade_pasta: string | null; slug: string | null; atualizado_em: string | null }[];
     const usados = new Set((ok(await db.from('noticias').select('slug').not('slug', 'is', null), 'slugs') as { slug: string }[]).map((x) => x.slug));
     let i = 0;
+    // Um salvar do painel esperando a trava: o ciclo para de começar leituras (o resto fica para o próximo).
+    // Uma consulta por vez (os leitores em paralelo esperam a mesma), no máximo a cada 2 s.
+    let conferidoEm = 0, cede = false, conferindo: Promise<boolean> | null = null;
+    const salvarEsperando = async (): Promise<boolean> => {
+      if (cede) return true;
+      if (conferindo) return await conferindo;
+      if (Date.now() - conferidoEm < 2_000) return cede;
+      conferidoEm = Date.now();
+      conferindo = (async () => {
+        try {
+          const { data } = await db.from('noticias_estado').select('salvar_esperando_ate').eq('id', 1).maybeSingle();
+          cede = !!data?.salvar_esperando_ate && Date.parse(data.salvar_esperando_ate) > Date.now();
+        } catch { /* sem a coluna ou banco lento: segue lendo */ }
+        return cede;
+      })().finally(() => { conferindo = null; });
+      return await conferindo;
+    };
     const trabalhador = async () => {
       while (i < fila.length) {
         const l = fila[i++];
-        if (Date.now() - inicio > COMECAR_ATE_MS) { resultado.pendentes++; continue; }
+        if (Date.now() - inicio > COMECAR_ATE_MS || await salvarEsperando()) { resultado.pendentes++; continue; }
         try {
           const lida = await lerNoticia(db, est.segredo_das_chaves, l, inicio + PRAZO_MS);
           let slug = l.slug;
           if (!slug) { slug = slugLivre(slugDaNoticia(lida.noticia.titulo, lida.wp_slug), usados); usados.add(slug); }
           const dados: NoticiaGuardada = { slug, ...lida.noticia };
-          ok(await db.rpc('noticias_gravar', { p_pasta: l.pasta_id, p_slug: slug, p_dados: dados, p_data: dados.data, p_subpastas: lida.subpastas, p_wp_id: lida.wp_id, p_wp_slug: lida.wp_slug, p_arquivos: lida.arquivos }), 'gravar');
+          // Condicional: se o painel salvou esta notícia enquanto o ciclo lia, fica a do painel (e ela é relida no próximo).
+          const gravou = ok(await db.rpc('noticias_gravar', { p_pasta: l.pasta_id, p_slug: slug, p_dados: dados, p_data: dados.data, p_subpastas: lida.subpastas, p_wp_id: lida.wp_id, p_wp_slug: lida.wp_slug, p_arquivos: lida.arquivos, p_condicional: true, p_antes: l.atualizado_em }), 'gravar');
+          if (gravou === false) { resultado.pendentes++; continue; }
           resultado.lidas++;
         } catch (e) {
           if (e instanceof ContaDesconectada) throw e;
@@ -338,9 +365,9 @@ async function atualizar(db: Banco, tudo = false) {
     resultado.erro = e instanceof Error ? e.message : String(e);
     console.error('[noticias] ciclo:', resultado.erro);
   }
-  await conferirAvisos(db, resultado.erro).catch((e) => console.error('[noticias] avisos:', e instanceof Error ? e.message : e));
   await db.from('noticias_estado').update({ ciclo_em: new Date().toISOString(), ciclo_erro: resultado.erro }).eq('id', 1);
   await db.from('noticias_estado').update({ trava_ate: null }).eq('id', 1).eq('trava_ate', minhaTrava);
+  await conferirAvisos(db, resultado.erro).catch((e) => console.error('[noticias] avisos:', e instanceof Error ? e.message : e));
   if (resultado.lidas || resultado.retiradas) { if (listaGuardada) listaGuardada.em = 0; for (const v of memoria.values()) v.em = 0; }
   return resultado;
 }
@@ -431,7 +458,7 @@ async function responder(req: Request, chave: string, montar: () => Promise<unkn
       velha = true;
     }
   }
-  const cab = { ...cors, 'Content-Type': 'application/json; charset=utf-8', ETag: m.etag, 'Cache-Control': velha ? 'public, max-age=30, stale-if-error=86400' : 'public, max-age=60, stale-while-revalidate=600, stale-if-error=86400' };
+  const cab = { ...cors, 'Content-Type': 'application/json; charset=utf-8', ETag: m.etag, 'Cache-Control': velha ? 'public, max-age=30, stale-if-error=86400' : 'public, max-age=60, stale-while-revalidate=60, stale-if-error=86400' };
   if (casaEtag(req.headers.get('if-none-match'), m.etag)) return new Response(null, { status: 304, headers: cab });
   return new Response(req.method === 'HEAD' ? null : m.corpo, { status: 200, headers: cab });
 }
@@ -459,7 +486,7 @@ function resumoParaOSite(n: NoticiaGuardada, destaque: boolean) {
 }
 
 async function listaPublica(db: Banco, u: URL) {
-  const todas = (await lista(db)).map((l) => l.dados).filter((n) => n.na_lista).sort((a, b) => b.data.localeCompare(a.data) || a.slug.localeCompare(b.slug));
+  const todas = (await lista(db)).map((l) => l.dados).filter((n) => n.na_lista && n.publicado !== false).sort(maisRecentePrimeiro);
   const unidade = u.searchParams.get('unidade') || undefined;
   const porPagina = Math.min(Math.max(Number(u.searchParams.get('por_pagina')) || 24, 1), 100);
   const pagina = Math.max(Number(u.searchParams.get('pagina')) || 1, 1);
@@ -476,7 +503,7 @@ async function listaPublica(db: Banco, u: URL) {
 }
 
 async function umaNoticia(db: Banco, slug: string) {
-  const n = (await lista(db)).map((l) => l.dados).find((x) => x.slug === slug);
+  const n = (await lista(db)).map((l) => l.dados).find((x) => x.slug === slug && x.publicado !== false);
   if (!n) throw new NaoEncontrado('Notícia não encontrada.');
   return {
     slug: n.slug, titulo: n.titulo, data: n.data, unidade: { slug: n.unidade, nome: nomeDe(n.unidade) }, unidades: n.unidades.map((s) => ({ slug: s, nome: nomeDe(s) })),
@@ -487,7 +514,7 @@ async function umaNoticia(db: Banco, slug: string) {
 
 async function buscaPublica(req: Request, db: Banco, u: URL): Promise<Response> {
   const q = (u.searchParams.get('q') ?? '').trim();
-  const cab: Record<string, string> = { ...cors, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=60, stale-while-revalidate=600, stale-if-error=86400' };
+  const cab: Record<string, string> = { ...cors, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=60, stale-while-revalidate=60, stale-if-error=86400' };
   if (q.length < 2) return new Response(JSON.stringify({ q, total: 0, resultados: [] }), { status: 200, headers: cab });
   let todas: NoticiaGuardada[];
   try { todas = (await lista(db)).map((l) => l.dados); }
@@ -535,17 +562,44 @@ async function linkDeMiniatura(db: Banco, driveId: string, versao: string): Prom
   return link;
 }
 
-async function arquivo(req: Request, db: Banco, chave: string, tamanho: string | null): Promise<Response> {
+/** As chaves que o site mostra (capa e mídias de notícia publicada), da lista guardada. */
+let chavesPublicas: { de: Linha[]; chaves: Set<string> } | null = null;
+function chavesDe(l: Linha[]): Set<string> {
+  if (chavesPublicas?.de === l) return chavesPublicas.chaves;
+  const chaves = new Set<string>();
+  for (const x of l) if (x.dados.publicado !== false) { if (x.dados.capa) chaves.add(x.dados.capa.chave); for (const m of x.dados.midias) chaves.add(m.chave); }
+  chavesPublicas = { de: l, chaves };
+  return chaves;
+}
+let listaForcada: Promise<Linha[]> | null = null;
+let listaForcadaEm = 0;
+async function ehPublica(db: Banco, chave: string): Promise<boolean> {
+  if (chavesDe(await lista(db)).has(chave)) return true;
+  // Pode ser de uma notícia publicada há pouco por outro processo: confere com a lista nova (no máximo uma a cada 5 s;
+  // quem chega enquanto ela carrega espera por ela).
+  if (!listaForcada && Date.now() - listaForcadaEm >= 5_000) {
+    listaForcadaEm = Date.now();
+    listaForcada = carregarLista(db).finally(() => { listaForcada = null; });
+  }
+  if (!listaForcada) return false;
+  return chavesDe(await listaForcada).has(chave);
+}
+
+async function arquivo(req: Request, db: Banco, chave: string, tamanho: string | null, codigo: string | null = null): Promise<Response> {
   if (!ehChave(chave)) return html(404, 'Arquivo não encontrado', 'O endereço deste arquivo não existe.');
   let a: { drive_id: string; nome: string; mime: string | null; tamanho: number | null; modificado_em: string | null } | undefined;
   try { a = ok(await comPrazo(db.from('noticias_arquivos').select('drive_id, nome, mime, tamanho, modificado_em').eq('chave', chave).limit(1).then((r: never) => r), 8_000), 'arquivo')?.[0]; }
   catch (e) { console.error('[noticias]', e instanceof Error ? e.message : e); return INDISPONIVEL(); }
   if (!a) return html(404, 'Arquivo não encontrado', 'Este arquivo foi retirado do site.');
+  // Rascunho e envio ainda não salvo: só com o código do painel (e nunca guardado em cache público).
+  let publica: boolean;
+  try { publica = await ehPublica(db, chave); } catch (e) { console.error('[noticias]', e instanceof Error ? e.message : e); return INDISPONIVEL(); }
+  if (!publica && !(await codigoValido(db, chave, codigo).catch(() => false))) return html(404, 'Arquivo não encontrado', 'Este arquivo não está no site.');
   const etag = `"${chave}-${tamanho ?? 'o'}-${a.modificado_em ? Date.parse(a.modificado_em) : 0}"`;
   const video = ehVideo(a.mime ?? undefined);
   const reduzido = tamanho === 'mini' || tamanho === 'tela';
   const tipoOriginal = a.mime && (ehImagem(a.mime) || video) ? a.mime : 'application/octet-stream';
-  const cab: Record<string, string> = { ...cors, 'Cache-Control': 'public, max-age=86400', ETag: etag, 'X-Content-Type-Options': 'nosniff', 'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(a.nome.replace(/^\d+\s*-\s*/, ''))}` };
+  const cab: Record<string, string> = { ...cors, 'Cache-Control': publica ? 'public, max-age=86400' : 'private, max-age=3600', ETag: etag, 'X-Content-Type-Options': 'nosniff', 'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(semOrdem(a.nome))}` };
   if (casaEtag(req.headers.get('if-none-match'), etag)) return new Response(null, { status: 304, headers: cab });
 
   // Foto reduzida (ou capa de vídeo): a miniatura que o próprio Drive gera, no tamanho pedido.
@@ -601,6 +655,386 @@ async function arquivo(req: Request, db: Banco, chave: string, tamanho: string |
   return INDISPONIVEL();
 }
 
+// --- Edição pelo painel (Marketing › Notícias) ----------------------------------------------
+//
+// Tudo continua no Drive: salvar cria ou atualiza a pasta do post (unidade › ano ›
+// "AAAA-MM-DD — Título"), o post.json, a ordem das fotos e dos vídeos (o número
+// na frente do nome) e a capa (o arquivo capa.*). Fotos e vídeos vão do
+// navegador direto para o Drive, por um envio autorizado aberto aqui (não
+// passam pelo servidor), e chegam na subpasta `_enviando`, que o site não lê:
+// só entram na notícia quando o painel salva. Depois de salvar, a notícia é
+// relida na hora.
+
+const ORIGENS_DO_PAINEL = ['https://app.anabrasil.org', 'http://localhost:8080'];
+/** Onde chegam os envios do painel. O site não lê; ao salvar, o que foi usado vai para fotos/ e videos/. */
+const ENVIANDO = '_enviando';
+/** Um salvar inteiro cabe nisto (o Kong corta aos 60 s). */
+const SALVAR_ATE_MS = 48_000;
+/** A reler leva até isto; com menos tempo sobrando, o salvar deixa a releitura para o ciclo. */
+const RELER_PRECISA_MS = 10_000;
+/** Quantas vezes (1 por segundo) o salvar espera a trava, se o ciclo estiver rodando. */
+const ESPERA_DA_TRAVA_VEZES = 20;
+
+/** Chamada de escrita ao Drive (criar, mover, renomear, apagar). */
+async function driveEscrever(db: Banco, metodo: string, caminho: string, params: Record<string, string>, corpo?: unknown): Promise<Record<string, unknown>> {
+  const u = new URL(`${DRIVE}${caminho}`);
+  for (const [k, v] of Object.entries({ supportsAllDrives: 'true', ...params })) u.searchParams.set(k, v);
+  for (let i = 1; ; i++) {
+    const token = await tokenDoGoogle(db);
+    const r = await fetch(u, { method: metodo, headers: { Authorization: `Bearer ${token}`, ...(corpo ? { 'Content-Type': 'application/json' } : {}) }, body: corpo ? JSON.stringify(corpo) : undefined, signal: AbortSignal.timeout(20_000) });
+    if (r.status === 204) return {};
+    const j = await r.json().catch(() => ({}));
+    if (r.ok) return j;
+    if (r.status === 401 && i < 3) { tokenGuardado = null; continue; }
+    if ((r.status === 429 || r.status >= 500) && i < 3) { await espera(800 * i); continue; }
+    throw new ErroDoDrive(r.status, `o Google Drive recusou a mudança (${r.status}): ${j?.error?.message ?? ''}`.trim());
+  }
+}
+
+async function criarPasta(db: Banco, nome: string, pai: string, marcas?: Record<string, string>): Promise<string> {
+  const r = await driveEscrever(db, 'POST', '/files', { fields: 'id' }, { name: nome, mimeType: PASTA, parents: [pai], ...(marcas ? { appProperties: marcas } : {}) });
+  return r.id as string;
+}
+async function pastaFilha(db: Banco, pai: string, nome: string, criar: boolean): Promise<string | null> {
+  const achada = (await filhos(db, pai)).find((f) => f.mimeType === PASTA && f.name === nome);
+  if (achada) return achada.id;
+  return criar ? await criarPasta(db, nome, pai) : null;
+}
+/** A pasta de uma notícia nova já criada por um salvar anterior que não chegou ao fim (mesmo código do editor). */
+async function pastaDoCodigo(db: Banco, codigo: string): Promise<string | null> {
+  const r = await drive(db, '/files', {
+    q: `appProperties has { key='anaNovo' and value='${codigo}' } and mimeType = '${PASTA}' and trashed = false`,
+    fields: 'files(id)', supportsAllDrives: 'true', includeItemsFromAllDrives: 'true', corpora: 'drive', driveId: DRIVE_COMPARTILHADO_ID,
+  }) as { files?: { id: string }[] };
+  return r.files?.[0]?.id ?? null;
+}
+
+/** Grava o post.json (cria ou substitui o conteúdo). */
+async function gravarPostJson(db: Banco, pastaId: string, conteudo: PostJson, existenteId?: string) {
+  const token = await tokenDoGoogle(db);
+  const corpo = JSON.stringify(conteudo, null, 2);
+  const limite = `limite${crypto.randomUUID()}`;
+  const meta = existenteId ? {} : { name: 'post.json', parents: [pastaId], mimeType: 'application/json' };
+  const multipart = `--${limite}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${limite}\r\nContent-Type: application/json\r\n\r\n${corpo}\r\n--${limite}--`;
+  const u = existenteId
+    ? `https://www.googleapis.com/upload/drive/v3/files/${existenteId}?uploadType=multipart&supportsAllDrives=true`
+    : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true';
+  const r = await fetch(u, { method: existenteId ? 'PATCH' : 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': `multipart/related; boundary=${limite}` }, body: multipart, signal: AbortSignal.timeout(20_000) });
+  if (!r.ok) throw new ErroDoDrive(r.status, `não consegui gravar o post.json (${r.status})`);
+}
+
+/** Poucos por vez (o Drive aceita bem 6 em paralelo). */
+async function emParalelo<T>(itens: T[], n: number, f: (x: T) => Promise<unknown>) {
+  let i = 0;
+  await Promise.all(Array.from({ length: Math.min(n, itens.length) }, async () => { while (i < itens.length) await f(itens[i++]); }));
+}
+
+// Código do painel: abre arquivos que o site não mostra (rascunho, envio ainda não salvo). Vale hoje e ontem.
+let segredoGuardado: string | null = null;
+async function segredoDasChaves(db: Banco): Promise<string> {
+  segredoGuardado ??= (ok(await db.from('noticias_estado').select('segredo_das_chaves').eq('id', 1).single(), 'estado') as { segredo_das_chaves: string }).segredo_das_chaves;
+  return segredoGuardado!;
+}
+const diaUTC = (atras = 0) => new Date(Date.now() - atras * 86_400_000).toISOString().slice(0, 10);
+const codigoDoPainel = (segredo: string, chave: string, dia: string) => chaveDe(segredo, `painel:${chave}:${dia}`);
+async function codigoValido(db: Banco, chave: string, codigo: string | null): Promise<boolean> {
+  if (!codigo) return false;
+  const s = await segredoDasChaves(db);
+  for (const d of [diaUTC(0), diaUTC(1)]) if (codigo === await codigoDoPainel(s, chave, d)) return true;
+  return false;
+}
+async function urlDoPainel(db: Banco, chave: string, nome: string, tamanho?: 'mini' | 'tela') {
+  const u = url(chave, nome, tamanho);
+  return `${u}${u.includes('?') ? '&' : '?'}p=${await codigoDoPainel(await segredoDasChaves(db), chave, diaUTC())}`;
+}
+
+/** Relê uma notícia do Drive e grava (o mesmo que o ciclo faz, sem condição), na hora. */
+async function relerAgora(db: Banco, pastaId: string, prazo = Date.now() + 40_000) {
+  const l = ok(await db.from('noticias').select('pasta_id, pasta_nome, unidade_pasta, slug, atualizado_em').eq('pasta_id', pastaId).maybeSingle(), 'notícia') as { pasta_id: string; pasta_nome: string; unidade_pasta: string | null; slug: string | null; atualizado_em: string | null } | null;
+  if (!l) throw new NaoEncontrado('Notícia não encontrada.');
+  const lida = await lerNoticia(db, await segredoDasChaves(db), l, prazo);
+  let slug = l.slug;
+  if (!slug) {
+    const usados = new Set((ok(await db.from('noticias').select('slug').not('slug', 'is', null), 'slugs') as { slug: string }[]).map((x) => x.slug));
+    slug = slugLivre(slugDaNoticia(lida.noticia.titulo, lida.wp_slug), usados);
+  }
+  const dados: NoticiaGuardada = { slug, ...lida.noticia };
+  const gravou = ok(await db.rpc('noticias_gravar', { p_pasta: pastaId, p_slug: slug, p_dados: dados, p_data: dados.data, p_subpastas: lida.subpastas, p_wp_id: lida.wp_id, p_wp_slug: lida.wp_slug, p_arquivos: lida.arquivos, p_condicional: true, p_antes: l.atualizado_em }), 'gravar') !== false;
+  esquecerRespostas();
+  return { dados, gravou };
+}
+function esquecerRespostas() {
+  if (listaGuardada) listaGuardada.em = 0;
+  for (const v of memoria.values()) v.em = 0;
+}
+
+type ArquivoDaNoticia = { chave: string; drive_id: string; nome: string; mime: string | null; w: number | null; h: number | null };
+/** Arquivos da notícia por chave → código no Drive (só desta notícia). */
+async function arquivosDaNoticia(db: Banco, pastaId: string): Promise<Map<string, ArquivoDaNoticia>> {
+  const as = ok(await db.from('noticias_arquivos').select('chave, drive_id, nome, mime, w, h').eq('pasta_id', pastaId), 'arquivos') as ArquivoDaNoticia[];
+  return new Map(as.map((a) => [a.chave, a]));
+}
+
+/** A notícia como o painel precisa: as mídias com a chave (o painel nunca vê o código do Google) e os envios ainda não salvos. */
+async function noticiaParaOPainel(db: Banco, pastaId: string) {
+  const l = ok(await db.from('noticias').select('pasta_id, pasta_nome, slug, dados, atualizado_em, erro, sujo').eq('pasta_id', pastaId).maybeSingle(), 'notícia');
+  if (!l) throw new NaoEncontrado('Notícia não encontrada.');
+  const d = l.dados as NoticiaGuardada | null;
+  const midia = async (m: MidiaGuardada) => ({ ...m, mini: await urlDoPainel(db, m.chave, m.nome, 'mini'), tela: await urlDoPainel(db, m.chave, m.nome, 'tela'), original: await urlDoPainel(db, m.chave, m.nome) });
+  const naNoticia = new Set([d?.capa?.chave, ...(d?.midias ?? []).map((m) => m.chave)].filter(Boolean));
+  const enviados: MidiaGuardada[] = [...(await arquivosDaNoticia(db, pastaId)).values()]
+    .filter((a) => !naNoticia.has(a.chave) && (ehImagem(a.mime ?? undefined) || ehVideo(a.mime ?? undefined)))
+    .map((a) => ({ tipo: ehVideo(a.mime ?? undefined) ? 'video' : 'foto', chave: a.chave, nome: semOrdem(a.nome), w: a.w, h: a.h, duracao: null, alt: '' }));
+  return {
+    pasta_id: l.pasta_id, pasta_nome: l.pasta_nome, slug: l.slug, erro: l.erro, atualizado_em: l.atualizado_em,
+    /** Releitura do Drive pendente: o que está aqui pode não ser o último salvo. */
+    lendo: !!l.sujo && !l.erro && !!d?.releitura_pendente,
+    dados: d ? { ...d, capa: d.capa ? await midia(d.capa) : null, midias: await Promise.all(d.midias.map(midia)) } : null,
+    enviados: await Promise.all(enviados.map(midia)),
+    endereco_no_site: l.slug ? `${BASE_PUBLICA}/noticia/${l.slug}` : null,
+  };
+}
+
+async function listaParaOPainel(db: Banco) {
+  const ls = ok(await db.from('noticias').select('pasta_id, pasta_nome, slug, dados, atualizado_em, erro, sujo'), 'lista do painel') as { pasta_id: string; pasta_nome: string; slug: string | null; dados: NoticiaGuardada | null; atualizado_em: string | null; erro: string | null; sujo: boolean }[];
+  const itens = await Promise.all(ls.map(async (l) => {
+    const d = l.dados;
+    const fotos = d ? new Set([d.capa?.chave, ...d.midias.filter((m) => m.tipo === 'foto').map((m) => m.chave)].filter(Boolean)).size : 0;
+    return {
+      pasta_id: l.pasta_id, slug: l.slug, erro: l.erro, lendo: l.sujo && !l.erro,
+      titulo: d?.titulo ?? l.pasta_nome, data: d?.data ?? null, data_hora: d?.data_hora ?? d?.data ?? null,
+      unidade: d?.unidade ?? null, unidades: d?.unidades ?? [], publicado: d ? d.publicado !== false : false, na_lista: d?.na_lista ?? true, fixada: d?.fixada ?? false,
+      capa: d?.capa ? await urlDoPainel(db, d.capa.chave, d.capa.nome, 'mini') : null,
+      fotos, videos: d ? d.midias.filter((m) => m.tipo === 'video').length : 0,
+    };
+  }));
+  return itens.sort((a, b) => (b.data_hora ?? '').localeCompare(a.data_hora ?? ''));
+}
+
+interface PedidoDeSalvar extends Edicao { pasta_id?: string; novo_id?: string; ordem?: string[]; videos?: string[]; capa?: string | null; remover?: string[] }
+
+/** O pedido como veio do navegador, com cada campo no tipo certo (o resto é descartado). */
+// deno-lint-ignore no-explicit-any
+function lerPedido(c: any): PedidoDeSalvar {
+  const textos = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+  const texto = (v: unknown) => (typeof v === 'string' ? v : '');
+  return {
+    pasta_id: typeof c.pasta_id === 'string' && c.pasta_id ? c.pasta_id : undefined,
+    novo_id: typeof c.novo_id === 'string' && /^[A-Za-z0-9-]{8,64}$/.test(c.novo_id) ? c.novo_id : undefined,
+    titulo: texto(c.titulo), data: texto(c.data), hora: typeof c.hora === 'string' && c.hora ? c.hora : undefined,
+    unidade: texto(c.unidade), unidades: textos(c.unidades), texto: textos(c.texto),
+    na_lista: c.na_lista !== false, fixada: c.fixada === true, publicado: c.publicado !== false,
+    descricoes: c.descricoes && typeof c.descricoes === 'object' ? Object.fromEntries(Object.entries(c.descricoes).filter(([, v]) => typeof v === 'string')) as Record<string, string> : {},
+    ordem: textos(c.ordem), videos: Array.isArray(c.videos) ? textos(c.videos) : undefined, remover: textos(c.remover), capa: typeof c.capa === 'string' && c.capa ? c.capa : null,
+  };
+}
+
+/** O salvar e o ciclo nunca correm juntos: o salvar pega a mesma trava (espera o ciclo terminar, até ~15 s). */
+async function pegarTravaParaSalvar(db: Banco): Promise<string | null> {
+  let avisou = false;
+  try {
+    for (let i = 0; i < ESPERA_DA_TRAVA_VEZES; i++) {
+      const r = await db.rpc('noticias_pegar_trava', { p_segundos: TRAVA_S });
+      if (r.error) throw new Error(`não consegui pegar a trava: ${r.error.message}`);
+      if (r.data) return r.data as string;
+      // O ciclo está rodando: pede a vez (ele para de começar leituras e solta a trava em poucos segundos).
+      if (!avisou) { avisou = true; await db.from('noticias_estado').update({ salvar_esperando_ate: new Date(Date.now() + (ESPERA_DA_TRAVA_VEZES + 5) * 1000).toISOString() }).eq('id', 1); }
+      await espera(1000);
+    }
+    return null;
+  } finally {
+    if (avisou) await db.from('noticias_estado').update({ salvar_esperando_ate: null }).eq('id', 1);
+  }
+}
+const soltarTrava = (db: Banco, trava: string) => db.from('noticias_estado').update({ trava_ate: null }).eq('id', 1).eq('trava_ate', trava);
+
+// deno-lint-ignore no-explicit-any
+async function salvarNoticia(db: Banco, corpo: any) {
+  const inicio = Date.now();
+  const p = lerPedido(corpo);
+  const raiz = (ok(await db.from('noticias_estado').select('raiz_id').eq('id', 1).single(), 'estado')).raiz_id as string | null;
+  if (!raiz) return { erro: 'A pasta do blog ainda não foi encontrada no Drive. Tente de novo em 2 minutos.' };
+  // Só pastas que já são notícias do blog (nunca uma pasta qualquer do Drive).
+  if (p.pasta_id && !ok(await db.from('noticias').select('pasta_id').eq('pasta_id', p.pasta_id).maybeSingle(), 'notícia')) throw new NaoEncontrado('Notícia não encontrada.');
+  const trava = await pegarTravaParaSalvar(db);
+  if (!trava) return { erro: 'A lista do site está sendo atualizada agora. Tente salvar de novo em alguns segundos.' };
+  try {
+    return await salvarComTrava(db, p, raiz, inicio);
+  } finally {
+    await soltarTrava(db, trava);
+  }
+}
+
+async function salvarComTrava(db: Banco, p: PedidoDeSalvar, raiz: string, inicio: number) {
+  const atual = p.pasta_id ? (ok(await db.from('noticias').select('dados').eq('pasta_id', p.pasta_id).maybeSingle(), 'notícia') as { dados: NoticiaGuardada | null } | null)?.dados ?? null : null;
+  const arquivos = p.pasta_id ? await arquivosDaNoticia(db, p.pasta_id) : new Map<string, ArquivoDaNoticia>();
+  const remover = new Set((p.remover ?? []).filter((c) => arquivos.has(c)));
+  const capaChave = p.capa && !remover.has(p.capa) && ehImagem(arquivos.get(p.capa)?.mime ?? undefined) ? p.capa : null;
+  const temCapa = !!capaChave || (!!atual?.capa && !remover.has(atual.capa.chave));
+  const problemas = problemasDaEdicao(p, temCapa);
+  if (problemas.length) return { erro: `Falta preencher: ${problemas.join(', ')}.` };
+  const unidadePasta = pastaDaUnidade(p.unidade)!;
+
+  // 1. A pasta certa: unidade › ano › "data — título" (cria o que faltar; move e renomeia se mudou).
+  const pastaUnidade = await pastaFilha(db, raiz, unidadePasta, true);
+  const pastaAno = await pastaFilha(db, pastaUnidade!, p.data.slice(0, 4), true);
+  const nome = nomeDaPastaDoPost(p.data, p.titulo);
+  let pastaId = p.pasta_id ?? null;
+  if (!pastaId) {
+    // Notícia nova. Se um salvar anterior criou a pasta e não chegou ao fim, ela é a mesma (código do editor).
+    pastaId = p.novo_id ? await pastaDoCodigo(db, p.novo_id) : null;
+    if (!pastaId) {
+      pastaId = await criarPasta(db, nome, pastaAno!, p.novo_id ? { anaNovo: p.novo_id } : undefined);
+      // Já nasce rascunho: se o resto falhar, o ciclo nunca põe no ar uma pasta pela metade.
+      await gravarPostJson(db, pastaId, { versao: 2, titulo: p.titulo.trim(), data: `${p.data}T${p.hora ?? '12:00'}:00`, unidade: unidadePasta, publicado: false });
+    }
+    ok(await db.from('noticias').upsert({ pasta_id: pastaId, pasta_nome: nome, unidade_pasta: unidadePasta, sujo: true }, { onConflict: 'pasta_id', ignoreDuplicates: true }), 'nova notícia');
+  }
+  const info = await drive(db, `/files/${pastaId}`, { fields: 'name, parents', supportsAllDrives: 'true' }) as { name: string; parents?: string[] };
+  if (!info.parents?.includes(pastaAno!) || info.name !== nome) {
+    const params: Record<string, string> = { fields: 'id' };
+    if (!info.parents?.includes(pastaAno!)) { params.addParents = pastaAno!; params.removeParents = (info.parents ?? []).join(','); }
+    await driveEscrever(db, 'PATCH', `/files/${pastaId}`, params, info.name !== nome ? { name: nome } : {});
+  }
+  ok(await db.from('noticias').update({ pasta_nome: nome, unidade_pasta: unidadePasta }).eq('pasta_id', pastaId), 'renomear');
+
+  // 2. O que há na pasta agora: onde cada arquivo está e com que nome.
+  const conteudo = await filhos(db, pastaId);
+  const sub = (n: string) => conteudo.find((f) => f.mimeType === PASTA && f.name.toLowerCase() === n)?.id ?? null;
+  let fotosId = sub('fotos'), videosId = sub('videos');
+  const enviandoIds = new Set(conteudo.filter((f) => f.mimeType === PASTA && f.name === ENVIANDO).map((f) => f.id));
+  const pai = new Map<string, string>(), nomeAgora = new Map<string, string>();
+  for (const f of conteudo) if (f.mimeType !== PASTA) { pai.set(f.id, pastaId); nomeAgora.set(f.id, f.name); }
+  await Promise.all([fotosId, videosId, ...enviandoIds].map(async (id) => {
+    if (id) for (const f of await filhos(db, id)) { pai.set(f.id, id); nomeAgora.set(f.id, f.name); }
+  }));
+
+  // 3. O plano: onde cada arquivo vai ficar e com que nome (calculado antes de mexer em qualquer coisa).
+  type Destino = 'raiz' | 'fotos' | 'videos';
+  const plano = new Map<string, { destino: Destino; nome: string }>();
+  const capaAtual = conteudo.find((f) => /^capa\./i.test(f.name) && ehImagem(f.mimeType));
+  const capaAtualChave = capaAtual ? [...arquivos].find(([, a]) => a.drive_id === capaAtual.id)?.[0] : undefined;
+  const novaCapa = capaChave ? arquivos.get(capaChave) : undefined;
+  if (novaCapa && novaCapa.drive_id !== capaAtual?.id) {
+    if (capaAtual && !(capaAtualChave && remover.has(capaAtualChave))) {
+      plano.set(capaAtual.id, { destino: 'fotos', nome: nomeNaOrdem(0, `capa-anterior${capaAtual.name.slice(capaAtual.name.lastIndexOf('.'))}`) });
+    }
+    const ext = novaCapa.nome.includes('.') ? novaCapa.nome.slice(novaCapa.nome.lastIndexOf('.')).toLowerCase() : '.jpg';
+    plano.set(novaCapa.drive_id, { destino: 'raiz', nome: `capa${ext}` });
+  }
+  const usar = (lista: string[] | undefined, tipo: (m: string | undefined) => boolean) =>
+    (lista ?? []).filter((c, i, a) => a.indexOf(c) === i && !remover.has(c) && c !== capaChave && tipo(arquivos.get(c)?.mime ?? undefined)).map((c) => arquivos.get(c)!);
+  usar(p.ordem, ehImagem).forEach((a, i) => plano.set(a.drive_id, { destino: 'fotos', nome: nomeNaOrdem(i + 1, plano.get(a.drive_id)?.nome ?? nomeAgora.get(a.drive_id) ?? a.nome) }));
+  usar(p.videos, ehVideo).forEach((a, i) => plano.set(a.drive_id, { destino: 'videos', nome: nomeNaOrdem(i + 1, nomeAgora.get(a.drive_id) ?? a.nome) }));
+  const nomeFinal = (driveId: string) => plano.get(driveId)?.nome ?? (enviandoIds.has(pai.get(driveId) ?? '') ? null : nomeAgora.get(driveId) ?? null);
+
+  // 4. O post.json primeiro, já com o que a pessoa pediu (publicado ou rascunho, descrições pelo nome final).
+  //    Se algo falhar depois, o Drive fica com o pedido (incompleto), nunca com um estado que ninguém salvou.
+  const pj = conteudo.find((f) => f.name.toLowerCase() === 'post.json');
+  let antigo: PostJson = {};
+  if (pj) { try { antigo = JSON.parse(String(await drive(db, `/files/${pj.id}`, { alt: 'media', supportsAllDrives: 'true' }, true)).replace(/^﻿/, '')); } catch { antigo = {}; } }
+  const descricoes: Record<string, string> = {};
+  for (const [chave, alt] of Object.entries(p.descricoes ?? {})) {
+    const a = arquivos.get(chave);
+    const n = a && !remover.has(chave) ? nomeFinal(a.drive_id) : null;
+    if (n && alt.trim()) descricoes[n] = alt.trim().slice(0, 300);
+  }
+  const unidades = [p.unidade, ...(p.unidades ?? [])].filter((u, i, a) => a.indexOf(u) === i).map((u) => pastaDaUnidade(u)).filter(Boolean) as string[];
+  const hora = p.hora ?? (typeof antigo.data === 'string' && /T\d{2}:\d{2}/.test(antigo.data) ? antigo.data.slice(11, 16) : '12:00');
+  await gravarPostJson(db, pastaId, {
+    ...antigo, versao: 2, titulo: p.titulo.trim(), data: `${p.data}T${hora}:00`, unidade: unidadePasta, unidades,
+    texto_paragrafos: p.texto.map((t) => t.trim()).filter(Boolean), na_lista: p.na_lista !== false, fixada: p.fixada === true, publicado: p.publicado !== false, descricoes,
+  }, pj?.id);
+
+  // 5. Os arquivos: retirados para a lixeira (dá para recuperar por 30 dias); os outros no lugar e no nome do plano.
+  await emParalelo([...remover], 6, (chave) => driveEscrever(db, 'PATCH', `/files/${arquivos.get(chave)!.drive_id}`, { fields: 'id' }, { trashed: true }));
+  const precisa = (d: Destino) => [...plano.values()].some((x) => x.destino === d);
+  if (precisa('fotos')) fotosId ??= await criarPasta(db, 'fotos', pastaId);
+  if (precisa('videos')) videosId ??= await criarPasta(db, 'videos', pastaId);
+  const idDo = (d: Destino) => (d === 'raiz' ? pastaId! : d === 'fotos' ? fotosId! : videosId!);
+  await emParalelo([...plano.entries()], 6, async ([driveId, { destino, nome: novoNome }]) => {
+    const de = pai.get(driveId), para = idDo(destino);
+    if (de === para && nomeAgora.get(driveId) === novoNome) return;
+    const params: Record<string, string> = { fields: 'id' };
+    if (de && de !== para) { params.addParents = para; params.removeParents = de; }
+    await driveEscrever(db, 'PATCH', `/files/${driveId}`, params, nomeAgora.get(driveId) !== novoNome ? { name: novoNome } : {});
+  });
+
+  // 6. Relê na hora, dentro do prazo. Sem tempo (ou se a releitura falhar), o essencial já vale e o ciclo relê o resto.
+  let relendo = false;
+  try {
+    const sobra = inicio + SALVAR_ATE_MS - Date.now();
+    if (sobra < RELER_PRECISA_MS) throw new TempoEsgotado('sem tempo para reler');
+    const r = await Promise.race([relerAgora(db, pastaId, inicio + SALVAR_ATE_MS), espera(sobra).then((): never => { throw new TempoEsgotado('a releitura passou do prazo'); })]);
+    if (!r.gravou) throw new Error('outra leitura gravou antes (releitura que tinha ficado para trás)');
+  } catch (e) {
+    if (e instanceof ContaDesconectada) throw e;
+    console.error('[noticias] salvar: releitura adiada:', e instanceof Error ? e.message : e);
+    relendo = true;
+    await adiarReleitura(db, pastaId, p, [...remover]);
+  }
+  return { ...(await noticiaParaOPainel(db, pastaId)), relendo };
+}
+
+/** Releitura adiada: a lista do site já fica com o que foi salvo (texto, data, rascunho, fotos retiradas) e o ciclo relê o resto. */
+async function adiarReleitura(db: Banco, pastaId: string, p: PedidoDeSalvar, retiradas: string[]) {
+  const d = (ok(await db.from('noticias').select('dados').eq('pasta_id', pastaId).maybeSingle(), 'notícia') as { dados: NoticiaGuardada | null } | null)?.dados;
+  const fora = new Set(retiradas);
+  const hora = p.hora ?? d?.data_hora?.slice(11, 16) ?? '12:00';
+  const dados = d ? {
+    ...d, releitura_pendente: true, titulo: p.titulo.trim(), data: p.data, data_hora: `${p.data}T${hora}`, publicado: p.publicado !== false, na_lista: p.na_lista !== false, fixada: p.fixada === true,
+    unidade: p.unidade, unidades: [p.unidade, ...(p.unidades ?? [])].filter((u, i, a) => a.indexOf(u) === i && pastaDaUnidade(u)), texto: p.texto.map((t) => t.trim()).filter(Boolean),
+    capa: d.capa && !fora.has(d.capa.chave) ? d.capa : null, midias: d.midias.filter((m) => !fora.has(m.chave)),
+  } : null;
+  // atualizado_em novo: uma leitura do ciclo começada antes não grava por cima (noticias_gravar condicional).
+  ok(await db.from('noticias').update({ ...(dados ? { dados, data: dados.data } : {}), sujo: true, atualizado_em: new Date().toISOString() }).eq('pasta_id', pastaId), 'adiar releitura');
+  if (fora.size) ok(await db.from('noticias_arquivos').delete().in('chave', [...fora]), 'arquivos retirados');
+  esquecerRespostas();
+}
+
+/** Abre um envio direto do navegador para o Drive (foto ou vídeo), na subpasta de envios da notícia. */
+async function iniciarEnvio(db: Banco, req: Request, p: { pasta_id: string; nome: string; mime: string; tamanho: number }) {
+  const origem = req.headers.get('origin') ?? '';
+  if (!ORIGENS_DO_PAINEL.includes(origem)) return { erro: 'Envio só pelo app.' };
+  if (typeof p.nome !== 'string' || typeof p.mime !== 'string' || typeof p.tamanho !== 'number' || !(p.tamanho > 0)) return { erro: 'Arquivo inválido.' };
+  const video = ehVideo(p.mime), foto = ehImagem(p.mime);
+  if (!video && !foto) return { erro: 'Só fotos (JPG, PNG, HEIC) e vídeos.' };
+  if (p.tamanho > (video ? 2_000_000_000 : 50_000_000)) return { erro: video ? 'Vídeo acima de 2 GB.' : 'Foto acima de 50 MB.' };
+  const linha = ok(await db.from('noticias').select('pasta_id').eq('pasta_id', p.pasta_id).maybeSingle(), 'notícia');
+  if (!linha) return { erro: 'Salve a notícia antes de enviar fotos.' };
+  const destino = await pastaFilha(db, p.pasta_id, ENVIANDO, true);
+  const nome = nomeSeguro(p.nome, 60);
+  const token = await tokenDoGoogle(db);
+  const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id,name', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json; charset=UTF-8', 'X-Upload-Content-Type': p.mime, 'X-Upload-Content-Length': String(p.tamanho), Origin: origem },
+    body: JSON.stringify({ name: nome, parents: [destino] }),
+    signal: AbortSignal.timeout(20_000),
+  });
+  const local = r.headers.get('location');
+  if (!r.ok || !local) return { erro: `O Google não abriu o envio (${r.status}).` };
+  return { url: local, nome };
+}
+
+/** Envio terminado: relê a notícia (os envios ganham chave para o painel mostrar), com a mesma trava do salvar e do ciclo. */
+async function envioConcluido(db: Banco, pastaId: string): Promise<Response> {
+  if (!ok(await db.from('noticias').select('pasta_id').eq('pasta_id', pastaId).maybeSingle(), 'notícia')) throw new NaoEncontrado('Notícia não encontrada.');
+  const trava = await pegarTravaParaSalvar(db);
+  if (!trava) return json({ error: 'A lista do site está sendo atualizada agora. Os arquivos já estão no Drive: tente de novo em alguns segundos.' }, 409);
+  try { await relerAgora(db, pastaId); } finally { await soltarTrava(db, trava); }
+  return json(await noticiaParaOPainel(db, pastaId));
+}
+
+/** Retira a notícia: a pasta vai para a lixeira do Drive (dá para recuperar por 30 dias). */
+async function excluirNoticia(db: Banco, pastaId: string) {
+  const l = ok(await db.from('noticias').select('pasta_id').eq('pasta_id', pastaId).maybeSingle(), 'notícia');
+  if (!l) throw new NaoEncontrado('Notícia não encontrada.');
+  await driveEscrever(db, 'PATCH', `/files/${pastaId}`, { fields: 'id' }, { trashed: true });
+  ok(await db.from('noticias').delete().eq('pasta_id', pastaId), 'retirar');
+  esquecerRespostas();
+  return { ok: true };
+}
+
 // --- Painel (só marketing) ----------------------------------------------------------------
 
 async function ehMarketing(db: Banco, req: Request): Promise<boolean> {
@@ -635,13 +1069,14 @@ Deno.serve(async (req) => {
       if (!a) return await responder(req, `lista:${u.searchParams.get('unidade') ?? ''}:${u.searchParams.get('pagina') ?? ''}:${u.searchParams.get('por_pagina') ?? ''}`, () => listaPublica(db, u));
       if (a === 'noticia' && b) return await responder(req, `n:${b}`, () => umaNoticia(db, b));
       if (a === 'busca' && !b) return await buscaPublica(req, db, u);
-      if (a === 'arquivo' && b) return await arquivo(req, db, b, u.searchParams.get('tamanho'));
+      if (a === 'arquivo' && b) return await arquivo(req, db, b, u.searchParams.get('tamanho'), u.searchParams.get('p'));
       return json({ error: 'Endereço não encontrado.' }, 404);
     }
     if (req.method !== 'POST') return json({ error: 'Método não permitido.' }, 405);
     // deno-lint-ignore no-explicit-any
     let corpo: any = {};
     try { corpo = await req.json(); } catch { /* vazio */ }
+    if (!corpo || typeof corpo !== 'object') corpo = {};
     const segredo = req.headers.get('x-noticias-segredo');
     if (segredo) {
       const est = ok(await db.from('noticias_estado').select('segredo').eq('id', 1).single(), 'segredo');
@@ -652,9 +1087,17 @@ Deno.serve(async (req) => {
     if (!(await ehMarketing(db, req))) return json({ error: 'Só o marketing.' }, 403);
     if (corpo.acao === 'estado') return json(await estadoParaOPainel(db));
     if (corpo.acao === 'atualizar') return json(await atualizar(db, true));
+    if (corpo.acao === 'lista') return json({ noticias: await listaParaOPainel(db), base: BASE_PUBLICA });
+    if (corpo.acao === 'noticia' && typeof corpo.pasta_id === 'string') return json(await noticiaParaOPainel(db, corpo.pasta_id));
+    if (corpo.acao === 'salvar') { const r = await salvarNoticia(db, corpo); return 'pasta_id' in r ? json(r) : json({ error: r.erro }, 400); }
+    if (corpo.acao === 'iniciar_envio' && typeof corpo.pasta_id === 'string') { const r = await iniciarEnvio(db, req, corpo); return 'erro' in r ? json({ error: r.erro }, 400) : json(r); }
+    if (corpo.acao === 'envio_concluido' && typeof corpo.pasta_id === 'string') return await envioConcluido(db, corpo.pasta_id);
+    if (corpo.acao === 'excluir' && typeof corpo.pasta_id === 'string') return json(await excluirNoticia(db, corpo.pasta_id));
     return json({ error: 'Ação inválida.' }, 400);
   } catch (e) {
     console.error('[noticias]', e instanceof Error ? e.message : e);
+    if (e instanceof NaoEncontrado) return json({ error: e.message }, 404);
+    if (e instanceof ContaDesconectada || e instanceof ErroDoDrive) return json({ error: e.message }, 502);
     return json({ error: 'Erro ao responder. Tente de novo em instantes.' }, 500);
   }
 });

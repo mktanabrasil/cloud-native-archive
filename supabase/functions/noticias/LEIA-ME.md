@@ -86,12 +86,23 @@ A `capa` da notícia tem o mesmo formato de uma foto.
 ## Cache e CORS
 
 - `Access-Control-Allow-Origin: *`.
-- A lista, a notícia e a busca respondem com `Cache-Control: public, max-age=60, stale-while-revalidate=600, stale-if-error=86400` e `ETag` (com `If-None-Match`, a resposta é 304).
-- As fotos e os vídeos respondem com `max-age=86400` e `ETag`.
+- A lista, a notícia e a busca respondem com `Cache-Control: public, max-age=60, stale-while-revalidate=60, stale-if-error=86400` e `ETag` (com `If-None-Match`, a resposta é 304).
+- As fotos e os vídeos das notícias publicadas respondem com `max-age=86400` e `ETag`. Os de rascunho (e os envios ainda não salvos) só abrem pelo painel, com um código do dia (`?p=`), e nunca ficam em cache público.
 
 ## Para a equipe
 
-- Corrigir uma notícia antiga: editar o `post.json` da pasta no Drive (ou, quando existir, usar a ferramenta do app). O site atualiza em até 2 minutos.
+- Publicar e corrigir notícias: app › Marketing › Notícias. Também dá para editar o `post.json` da pasta no Drive; o site atualiza em até 2 minutos.
 - Código: `supabase/functions/noticias` (`index.ts`, `regras.ts`).
-- Tabelas: `noticias*` (migração `20261125090000_noticias_api.sql`).
+- Tabelas: `noticias*` (migrações `20261125090000_noticias_api.sql` e `20261125150000_noticias_gravar_condicional.sql`).
 - Conexão com o Drive: a mesma da Pizza da Alegria (conta contato@, Drive Setor Marketing).
+
+## O painel (Marketing › Notícias)
+
+Ações em `POST /noticias`, só para o marketing (login do app): `lista`, `noticia`, `salvar`, `iniciar_envio`, `envio_concluido`, `excluir`.
+
+- **Tudo fica no Drive.** O salvar cria ou atualiza a pasta (unidade › ano › "AAAA-MM-DD — Título"), grava o `post.json` primeiro (com `publicado`, a ordem e as descrições pelo nome final) e depois põe cada arquivo no lugar: `capa.*`, `fotos/` e `videos/` numerados ("03 - nome.jpg"). Retirar uma foto manda para a lixeira do Drive (30 dias).
+- **Fotos e vídeos vão do navegador direto para o Drive**, por um envio que a função abre (nada passa pelo servidor). Eles chegam na subpasta `_enviando`, que o site não lê; só entram na notícia quando alguém salva.
+- **Rascunho** é `"publicado": false` no `post.json`: não aparece na lista, na notícia, na busca nem nos arquivos.
+- **Notícia nova** nasce como rascunho, marcada com o código do editor (`appProperties.anaNovo`). Um salvar repetido depois de uma falha reaproveita a mesma pasta.
+- **O salvar e o ciclo nunca correm juntos**: o salvar (e o fim de um envio) pega a mesma trava (`noticias_pegar_trava`) e, se o ciclo estiver rodando, pede a vez (`salvar_esperando_ate`). O ciclo grava com condição (`noticias_gravar` com `p_condicional`), então uma leitura velha nunca cobre uma mais nova.
+- **Releitura adiada**: se o salvar não tiver tempo de reler (o Kong corta aos 60 s), a lista já fica com o que foi salvo e o ciclo termina em até 2 minutos. O painel avisa e trava a edição até recarregar.

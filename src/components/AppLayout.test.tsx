@@ -132,7 +132,7 @@ describe('a faixa do setor', () => {
   it('Marketing: o Mercado Solidário e as abas, cada uma no seu endereço', () => {
     abrir('/marketing/voluntariado');
     const faixa = screen.getByRole('navigation', { name: 'Páginas de Marketing' });
-    expect(nomes(faixa)).toEqual(['Mercado Solidário', 'Pizza da Alegria', 'Voluntariado', 'Lembretes', 'Enquetes', 'Manual Design', 'Portal Transparência', 'Widgets', 'Auditoria']);
+    expect(nomes(faixa)).toEqual(['Notícias', 'Mercado Solidário', 'Pizza da Alegria', 'Voluntariado', 'Lembretes', 'Enquetes', 'Manual Design', 'Portal Transparência', 'Widgets', 'Auditoria']);
     expect(aberto(faixa)).toEqual(['Voluntariado']);
     expect(within(faixa).getByRole('link', { name: 'Pizza da Alegria' })).toHaveAttribute('href', '/marketing/pizza');
   });

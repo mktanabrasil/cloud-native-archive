@@ -68,6 +68,8 @@ export interface PostJson {
   texto_paragrafos?: string[];
   na_lista?: boolean;
   fixada?: boolean;
+  /** false = rascunho (não aparece no site). Os posts antigos não têm o campo: publicados. */
+  publicado?: boolean;
   /** Descrição de cada foto para leitor de tela, pelo nome do arquivo. */
   descricoes?: Record<string, string>;
 }
@@ -85,10 +87,16 @@ export interface NoticiaGuardada {
   midias: MidiaGuardada[];
   na_lista: boolean;
   fixada: boolean;
+  publicado: boolean;
+  /** Data e hora (AAAA-MM-DDTHH:MM) para ordenar posts do mesmo dia. */
+  data_hora: string;
+  /** Só do painel: um salvar deixou a releitura do Drive para o ciclo (estes dados são o resumo do que foi salvo). */
+  releitura_pendente?: boolean;
 }
 
 /** Monta a notícia a partir do post.json e da pasta. Os campos obrigatórios caem no nome da pasta se faltarem. */
 export function montarNoticia(j: PostJson, pasta: { nome: string; unidadePasta: string }): Omit<NoticiaGuardada, 'slug' | 'capa' | 'midias'> {
+  const hora = typeof j.data === 'string' && /^\d{4}-\d{2}-\d{2}T(\d{2}):(\d{2})/.test(j.data) ? j.data.slice(11, 16) : '00:00';
   const daPasta = lerNomeDaPasta(pasta.nome);
   const texto = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
   const dataValida = (v: unknown) => {
@@ -103,25 +111,29 @@ export function montarNoticia(j: PostJson, pasta: { nome: string; unidadePasta: 
   const extras = Array.isArray(j.unidades) ? j.unidades.map(texto).filter(Boolean) : [];
   const todas = [principal.slug, ...extras.map((u) => unidadeDe(u).slug)].filter((x, i, a) => a.indexOf(x) === i);
   const paragrafos = Array.isArray(j.texto_paragrafos) ? j.texto_paragrafos.map(texto).filter(Boolean) : [];
-  return { titulo, data, unidade: principal.slug, unidades: todas, texto: paragrafos, na_lista: j.na_lista !== false, fixada: j.fixada === true };
+  return { titulo, data, data_hora: `${data}T${hora}`, unidade: principal.slug, unidades: todas, texto: paragrafos, na_lista: j.na_lista !== false, fixada: j.fixada === true, publicado: j.publicado !== false };
 }
 
 /** Manchete: a fixada mais recente; sem fixada, a mais recente da lista. */
-export function manchete<T extends { data: string; na_lista: boolean; fixada: boolean; slug: string }>(lista: T[]): T | null {
-  const vis = lista.filter((n) => n.na_lista);
-  const ordem = (a: T, b: T) => b.data.localeCompare(a.data) || a.slug.localeCompare(b.slug);
+/** Mais recentes primeiro, pela data e hora; sem hora, pela data. */
+export const maisRecentePrimeiro = (a: { data: string; data_hora?: string; slug: string }, b: { data: string; data_hora?: string; slug: string }) =>
+  (b.data_hora ?? b.data).localeCompare(a.data_hora ?? a.data) || a.slug.localeCompare(b.slug);
+
+export function manchete<T extends { data: string; data_hora?: string; na_lista: boolean; fixada: boolean; slug: string; publicado?: boolean }>(lista: T[]): T | null {
+  const vis = lista.filter((n) => n.na_lista && n.publicado !== false);
+  const ordem = maisRecentePrimeiro;
   return [...vis.filter((n) => n.fixada)].sort(ordem)[0] ?? [...vis].sort(ordem)[0] ?? null;
 }
 
 /** Busca nas notícias: título (vale mais), texto e unidade. Mesmas regras da busca da transparência. */
-export function buscarNoticias<T extends { titulo: string; texto: string[]; unidade: string; unidades: string[]; data: string; na_lista: boolean }>(
+export function buscarNoticias<T extends { titulo: string; texto: string[]; unidade: string; unidades: string[]; data: string; na_lista: boolean; publicado?: boolean }>(
   lista: T[], q: string, nomes: Record<string, string>, opcoes: { unidade?: string; limite?: number } = {},
 ): { total: number; resultados: T[] } {
   const palavras = palavrasDaBusca(q);
   if (!palavras.length) return { total: 0, resultados: [] };
   const achados: { n: T; pontos: number }[] = [];
   for (const n of lista) {
-    if (!n.na_lista) continue;
+    if (!n.na_lista || n.publicado === false) continue;
     if (opcoes.unidade && !n.unidades.includes(opcoes.unidade)) continue;
     const titulo = paraBusca(n.titulo);
     const resto = paraBusca(`${n.texto.join(' ')} ${n.unidades.map((u) => nomes[u] ?? u).join(' ')}`);
@@ -142,3 +154,50 @@ export function buscarNoticias<T extends { titulo: string; texto: string[]; unid
 
 export const ehImagem = (mime: string | undefined) => !!mime && /^image\/(jpeg|png|webp|gif|heic|heif)$/.test(mime);
 export const ehVideo = (mime: string | undefined) => !!mime && /^video\//.test(mime);
+
+/** Nome da pasta da unidade no Drive, pelo slug (o inverso de unidadeDe). */
+export function pastaDaUnidade(slug: string): string | null {
+  for (const [pasta, u] of Object.entries(UNIDADES)) if (u.slug === slug) return pasta;
+  return null;
+}
+
+/** Nome de arquivo ou pasta seguro para o Drive e para quem baixa (sem barra, sem emoji, curto). */
+export function nomeSeguro(s: string, max = 70): string {
+  let t = s.replace(/\p{Extended_Pictographic}|\p{Emoji_Modifier}|[\u200d\ufe0e\ufe0f\u20e3]/gu, '').replace(/[<>:"/\\|?*\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').replace(/ \./g, '.').trim();
+  if (t.length > max) t = t.slice(0, max).replace(/\s+\S*$/, '') + '…';
+  return t.replace(/[. ]+$/, '') || 'sem título';
+}
+/** "2026-11-25 — Oficina de Natal" */
+export const nomeDaPastaDoPost = (data: string, titulo: string) => `${data} — ${nomeSeguro(titulo)}`;
+/** "03 - IMG_0803.jpg": a ordem fica no começo do nome. */
+/** Tira só a numeração que o painel (e o backup) põe, "03 - ". Um nome como "2024-05-01 festa.jpg" fica inteiro. */
+export const semOrdem = (nome: string) => nome.replace(/^\d{2,4} - /, '');
+export const nomeNaOrdem = (n: number, nome: string) => `${String(n).padStart(2, '0')} - ${semOrdem(nome)}`;
+
+/** O que o painel manda ao salvar. */
+export interface Edicao {
+  titulo: string;
+  data: string;
+  hora?: string;
+  unidade: string;
+  unidades?: string[];
+  texto: string[];
+  na_lista?: boolean;
+  fixada?: boolean;
+  publicado?: boolean;
+  descricoes?: Record<string, string>;
+}
+/** Confere a edição. Para publicar: título, data, unidade, texto e capa. Rascunho: título, data e unidade. */
+export function problemasDaEdicao(e: Edicao, temCapa: boolean): string[] {
+  const p: string[] = [];
+  if (!e.titulo?.trim()) p.push('o título');
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(e.data ?? '') ? new Date(`${e.data}T00:00:00Z`) : null;
+  if (!d || isNaN(+d) || d.toISOString().slice(0, 10) !== e.data) p.push('a data');
+  if (e.hora && !/^([01]\d|2[0-3]):[0-5]\d$/.test(e.hora)) p.push('a hora');
+  if (!pastaDaUnidade(e.unidade)) p.push('a unidade');
+  if (e.publicado !== false) {
+    if (!e.texto?.some((t) => t.trim())) p.push('o texto');
+    if (!temCapa) p.push('a capa');
+  }
+  return p;
+}
