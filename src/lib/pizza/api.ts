@@ -96,7 +96,36 @@ export async function meusPedidos(nome: string, telefone: string): Promise<MeusP
   if (error) throw error;
   const d = (data ?? {}) as unknown as Partial<MeusPedidos>;
   const num = <T extends { total: unknown; quantidade: unknown }>(l: T[] | undefined) => (l ?? []).map((x) => ({ ...x, total: Number(x.total), quantidade: Number(x.quantidade) }));
-  return { pagos: num(d.pagos) as PedidoPago[], pendentes: num(d.pendentes) as PedidoSemPagar[] };
+  return conferirPendentes({ pagos: num(d.pagos) as PedidoPago[], pendentes: num(d.pendentes) as PedidoSemPagar[] });
+}
+
+/** Um pedido aprovado, lido pela situação, no formato de "Seus pedidos". */
+export const pagoDaSituacao = (s: SituacaoOnline): PedidoPago => ({
+  numero: s.numero!, nome: s.nome ?? '', unidade_nome: s.unidade, sabores: s.sabores ?? {}, quantidade: Number(s.quantidade), total: Number(s.total),
+  mp_forma: s.pagamento?.forma ?? null, mp_bandeira: s.pagamento?.bandeira ?? null, codigo: s.pagamento?.codigo ?? null,
+  pago_em: s.pagamento?.aprovado_em ?? new Date().toISOString(), retirada: false,
+});
+
+/**
+ * Pagou, mas o pedido ficou "sem pagar" (26/11/2026): quando o aviso do
+ * Mercado Pago não chega e a pessoa não volta à página, o pedido segue
+ * pendente no banco, sem número nem QR Code, e "Seus pedidos" oferecia pagar
+ * de novo. Agora cada pedido sem pagar passa pela situação, que relê a order
+ * no Mercado Pago (e aprova, se foi paga): o aprovado vai para os pagos, com
+ * o QR Code, e sai dos sem pagar, para ninguém pagar duas vezes.
+ */
+export async function conferirPendentes(m: MeusPedidos, situacao: (pedido: string) => Promise<SituacaoOnline> = situacaoDoPedido): Promise<MeusPedidos> {
+  if (!m.pendentes.length) return m;
+  const lidas = await Promise.all(m.pendentes.map((p) => situacao(p.pedido).catch(() => null)));
+  const pagos = [...m.pagos];
+  const pendentes: PedidoSemPagar[] = [];
+  m.pendentes.forEach((p, i) => {
+    const s = lidas[i];
+    if (s?.status === 'aprovado' && s.numero) {
+      if (!pagos.some((x) => x.numero === s.numero)) pagos.push(pagoDaSituacao(s));
+    } else pendentes.push(p);
+  });
+  return { pagos, pendentes };
 }
 
 /** Novo link de pagamento para um pedido recusado ou que expirou. */
