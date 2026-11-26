@@ -40,7 +40,7 @@ Resposta:
   - `destaque` (true na manchete) e `fixada`;
   - `endereco`.
 
-Slugs das unidades: ana-dic, ana-jardim-santana, ana-piaui, aninha-cancela, ana-jardim-nilopolis, ana-oziel, grupo-de-oracao-esperanca e institucional (posts gerais da ANA Brasil). São os mesmos da API de transparência.
+Slugs das unidades: ana-dic, ana-jardim-santana, ana-piaui, aninha-cancela, ana-jardim-nilopolis e institucional (posts gerais da ANA Brasil). São os mesmos da API de transparência. O grupo-de-oracao-esperanca aparece só nas 4 notícias antigas; ele e o ana-oziel não são oferecidos no editor (26/11/2026).
 
 ### `GET /noticia/{slug}` — a notícia completa
 

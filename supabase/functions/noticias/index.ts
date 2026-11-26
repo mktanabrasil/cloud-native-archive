@@ -999,7 +999,7 @@ async function iniciarEnvio(db: Banco, req: Request, p: { pasta_id: string; nome
   if (typeof p.nome !== 'string' || typeof p.mime !== 'string' || typeof p.tamanho !== 'number' || !(p.tamanho > 0)) return { erro: 'Arquivo inválido.' };
   const video = ehVideo(p.mime), foto = ehImagem(p.mime);
   if (!video && !foto) return { erro: 'Só fotos (JPG, PNG, HEIC) e vídeos.' };
-  if (p.tamanho > (video ? 2_000_000_000 : 50_000_000)) return { erro: video ? 'Vídeo acima de 2 GB.' : 'Foto acima de 50 MB.' };
+  // Sem teto de tamanho (26/11/2026): vídeo longo é raro; o Drive aceita o arquivo inteiro.
   const linha = ok(await db.from('noticias').select('pasta_id').eq('pasta_id', p.pasta_id).maybeSingle(), 'notícia');
   if (!linha) return { erro: 'Salve a notícia antes de enviar fotos.' };
   const destino = await pastaFilha(db, p.pasta_id, ENVIANDO, true);

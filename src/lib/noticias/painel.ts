@@ -9,8 +9,18 @@ import { UNIDADES } from '../../../supabase/functions/noticias/regras.ts';
  */
 
 /** As unidades, na ordem do seletor, pelo endereço (slug) que a API usa. */
-export const UNIDADES_DAS_NOTICIAS = Object.values(UNIDADES).map((u) => ({ slug: u.slug, nome: u.nome }));
-export const nomeDaUnidade = (slug: string | null | undefined) => UNIDADES_DAS_NOTICIAS.find((u) => u.slug === slug)?.nome ?? slug ?? '';
+const TODAS_AS_UNIDADES = Object.values(UNIDADES).map((u) => ({ slug: u.slug, nome: u.nome }));
+/**
+ * Fora das notícias novas (26/11/2026): o Ana Oziel e o GOE. As notícias antigas
+ * do GOE continuam no site e, se abertas no editor, mostram a unidade delas.
+ */
+export const UNIDADES_FORA_DAS_NOTICIAS = new Set(['ana-oziel', 'grupo-de-oracao-esperanca']);
+/** As unidades que o editor oferece (só as ativas). */
+export const UNIDADES_DAS_NOTICIAS = TODAS_AS_UNIDADES.filter((u) => !UNIDADES_FORA_DAS_NOTICIAS.has(u.slug));
+/** As ativas e, se a notícia já tiver alguma das que saíram, essas também (para não sumir ao editar). */
+export const unidadesParaOEditor = (jaUsadas: string[]) =>
+  TODAS_AS_UNIDADES.filter((u) => !UNIDADES_FORA_DAS_NOTICIAS.has(u.slug) || jaUsadas.includes(u.slug));
+export const nomeDaUnidade = (slug: string | null | undefined) => TODAS_AS_UNIDADES.find((u) => u.slug === slug)?.nome ?? slug ?? '';
 /** Cor de cada unidade (a mesma bolinha do mockup aprovado). */
 export const COR_DA_UNIDADE: Record<string, string> = {
   'ana-dic': '#01adff', 'ana-jardim-nilopolis': '#81e2cf', 'ana-piaui': '#fbce00', 'ana-jardim-santana': '#f37964',
