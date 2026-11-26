@@ -87,3 +87,14 @@ describe('Administração › Financeiro, Padrinhos e Parceiros (18/11/2026, PR 
     expect(setorDoCaminho(ROTAS.parceiros)).toBe(ROTAS.rh);
   });
 });
+
+describe('Administração › Ouvidoria (26/11/2026)', () => {
+  const nada = { temCalendario: false, canAccessJournal: false, temSemanario: false, temRh: false, temVoluntariado: false };
+  it('a administração e o marketing veem a Ouvidoria na faixa; quem não tem, não', () => {
+    expect(setoresVisiveis({ isAuthenticated: true, temOuvidoria: true }).map(i => i.label)).toContain('Administração');
+    expect(paginasVisiveis(ROTAS.rh, { ...nada, temRh: true, temOuvidoria: true }).map(p => p.rotulo)).toEqual(['RH', 'Ouvidoria']);
+    expect(paginasVisiveis(ROTAS.rh, { ...nada, temFinanceiro: true }).map(p => p.rotulo)).not.toContain('Ouvidoria');
+    expect(setorDoCaminho(ROTAS.ouvidoria)).toBe(ROTAS.rh);
+    expect(ROTAS.ouvidoria).toBe('/administracao/ouvidoria');
+  });
+});

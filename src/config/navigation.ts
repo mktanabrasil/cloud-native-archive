@@ -54,6 +54,8 @@ export const ROTAS = {
   financeiro: '/administracao/financeiro',
   padrinhos: '/administracao/padrinhos',
   parceiros: '/administracao/parceiros',
+  /** A ligação do formulário da Ouvidoria do site (26/11/2026). */
+  ouvidoria: '/administracao/ouvidoria',
 } as const;
 
 /** As abas do Marketing, cada uma no seu endereço: `/marketing/pizza`. */
@@ -133,6 +135,8 @@ export interface QuemVe {
   temFinanceiro?: boolean;
   /** Padrinhos e Parceiros: financeiro, marketing e quem a administração liberou. */
   temApoiadores?: boolean;
+  /** Ouvidoria: a administração (RH/admin) e o marketing (26/11/2026). */
+  temOuvidoria?: boolean;
   isMarketing?: boolean;
   isAdmin?: boolean;
   isManager?: boolean;
@@ -154,7 +158,7 @@ export function setoresVisiveis(q: QuemVe): NavItem[] {
     if (item.journalOnly) return !!(q.canAccessJournal || q.temSemanario);
     // RH, ou quem é responsável por algum processo (passo 3, 19/10/2026).
     // A Administração (18/11/2026): o RH (e quem é responsável por processo) e o Voluntariado.
-    if (item.rhOnly) return !!(q.isRh || q.souResponsavel || q.temVoluntariado || q.temFinanceiro || q.temApoiadores);
+    if (item.rhOnly) return !!(q.isRh || q.souResponsavel || q.temVoluntariado || q.temFinanceiro || q.temApoiadores || q.temOuvidoria);
     if (item.marketingOnly) return !!q.isMarketing;
     if (item.adminOnly) return !!q.isAdmin;
     if (item.managerOnly) return !!(q.isAdmin || q.isManager);
@@ -187,6 +191,8 @@ export interface PaginaDoSetor {
   soComFinanceiro?: boolean;
   /** Só para quem vê Padrinhos e Parceiros. */
   soComApoiadores?: boolean;
+  /** Só para a administração e o marketing (Ouvidoria). */
+  soComOuvidoria?: boolean;
 }
 
 /** O que a pessoa pode abrir na faixa (vem de `useUserRole`). */
@@ -199,6 +205,7 @@ export interface PodeAbrir {
   temVoluntariado: boolean;
   temFinanceiro?: boolean;
   temApoiadores?: boolean;
+  temOuvidoria?: boolean;
 }
 
 /** As páginas de um setor que a pessoa vê, na ordem da faixa. */
@@ -210,7 +217,8 @@ export function paginasVisiveis(setor: string, pode: PodeAbrir): PaginaDoSetor[]
     (!p.soComRh || pode.temRh) &&
     (!p.soComVoluntariado || pode.temVoluntariado) &&
     (!p.soComFinanceiro || !!pode.temFinanceiro) &&
-    (!p.soComApoiadores || !!pode.temApoiadores));
+    (!p.soComApoiadores || !!pode.temApoiadores) &&
+    (!p.soComOuvidoria || !!pode.temOuvidoria));
 }
 
 /**
@@ -258,6 +266,8 @@ export const PAGINAS_DOS_SETORES: Record<string, PaginaDoSetor[]> = {
     { rotulo: 'Financeiro', to: ROTAS.financeiro, aberta: (c) => c === ROTAS.financeiro, soComFinanceiro: true },
     { rotulo: 'Padrinhos', to: ROTAS.padrinhos, aberta: (c) => c === ROTAS.padrinhos, soComApoiadores: true },
     { rotulo: 'Parceiros', to: ROTAS.parceiros, aberta: (c) => c === ROTAS.parceiros, soComApoiadores: true },
+    // O formulário da Ouvidoria do site (26/11/2026): só o cartão da API.
+    { rotulo: 'Ouvidoria', to: ROTAS.ouvidoria, aberta: (c) => c === ROTAS.ouvidoria, soComOuvidoria: true },
   ],
   [ROTAS.marketing]: [
     // Os posts do blog do site, que a API de notícias entrega (25/11/2026).

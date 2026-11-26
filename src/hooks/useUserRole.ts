@@ -186,6 +186,8 @@ export function useUserRole() {
   const temVoluntariado = (isMarketing && (isAdmin || isActive)) || isVoluntariado;
   /** O Financeiro (18/11/2026, PR 6): o vínculo financeiro ou o marketing. Espelha `eh_do_financeiro` (compras dos eventos, 19/11). */
   const temFinanceiro = (isMarketing && (isAdmin || isActive)) || (bondType === 'financeiro' && isActive);
+  /** A Ouvidoria (26/11/2026): a administração (RH/admin) e o marketing. Espelha a função `ouvidoria` (is_rh_or_admin ou is_marketing_user). */
+  const temOuvidoria = isRh || (isMarketing && (isAdmin || isActive));
 
   const isUnitManager = permissionLevel === 'gestor_unidade' && isActive && !!unit;
   /**
@@ -276,6 +278,7 @@ export function useUserRole() {
     isVoluntariado,
     temVoluntariado,
     temFinanceiro,
+    temOuvidoria,
     isUnitManager,
     isGestaoDaEducacao,
     isProfessora,

@@ -12,7 +12,7 @@ import { ROTAS, rotaDoMarketing } from '@/config/navigation';
 export const normalizar = (texto: string) => texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 /** O que cada página exige para aparecer na busca. */
-export type Acesso = 'todos' | 'social' | 'calendario' | 'jornal' | 'semanario' | 'vagas' | 'voluntariado' | 'financeiro' | 'apoiadores' | 'marketing' | 'perfil';
+export type Acesso = 'todos' | 'social' | 'calendario' | 'jornal' | 'semanario' | 'vagas' | 'voluntariado' | 'financeiro' | 'apoiadores' | 'ouvidoria' | 'marketing' | 'perfil';
 
 export interface PaginaDaBusca {
   titulo: string;
@@ -37,6 +37,7 @@ export const PAGINAS_DA_BUSCA: PaginaDaBusca[] = [
   { titulo: 'Voluntariado dos eventos', detalhe: 'Administração · os voluntários indicados e quem já foi confirmado', para: ROTAS.voluntariado, setor: ROTAS.rh, acesso: 'voluntariado', palavras: 'voluntariado voluntarios confirmados whatsapp administracao' },
   { titulo: 'Financeiro', detalhe: 'Administração · compras e cotações dos eventos', para: ROTAS.financeiro, setor: ROTAS.rh, acesso: 'financeiro', palavras: 'financeiro compras cotacao alimentacao transporte fretado eventos administracao' },
   { titulo: 'Padrinhos e doadores', detalhe: 'Administração · os citados nos eventos', para: ROTAS.padrinhos, setor: ROTAS.rh, acesso: 'apoiadores', palavras: 'padrinhos padrinho doadores doador administracao' },
+  { titulo: 'Ouvidoria', detalhe: 'Administração · o formulário da ouvidoria do site', para: ROTAS.ouvidoria, setor: ROTAS.rh, acesso: 'ouvidoria', palavras: 'ouvidoria denuncia reclamacao elogio sugestao formulario site api administracao' },
   { titulo: 'Parceiros', detalhe: 'Administração · empresas e instituições dos eventos', para: ROTAS.parceiros, setor: ROTAS.rh, acesso: 'apoiadores', palavras: 'parceiros parceiro empresas instituicoes figura publica administracao' },
   { titulo: 'RH · Vagas', detalhe: 'Administração · processos e candidaturas', para: ROTAS.rh, setor: ROTAS.rh, acesso: 'vagas', palavras: 'vagas trabalhe conosco candidatos candidaturas processos rh administracao' },
   { titulo: 'Mercado Solidário', detalhe: 'Marketing', para: ROTAS.mercado, setor: ROTAS.marketing, acesso: 'marketing', palavras: 'mercado solidario doacoes cestas' },
@@ -62,6 +63,7 @@ export interface QuemBusca {
   temVoluntariado?: boolean;
   temFinanceiro?: boolean;
   temApoiadores?: boolean;
+  temOuvidoria?: boolean;
   isMarketing: boolean;
 }
 
@@ -76,6 +78,7 @@ export function podeVer(acesso: Acesso, q: QuemBusca): boolean {
     case 'voluntariado': return !!q.temVoluntariado;
     case 'financeiro': return !!q.temFinanceiro;
     case 'apoiadores': return !!q.temApoiadores;
+    case 'ouvidoria': return !!q.temOuvidoria;
     case 'marketing': return q.isMarketing;
     // O marketing chega ao próprio perfil pelo "Painel".
     case 'perfil': return !q.isMarketing;

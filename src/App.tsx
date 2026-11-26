@@ -17,6 +17,7 @@ import AdministracaoRhPage from "./pages/AdministracaoRhPage";
 import AdministracaoVoluntariadoPage from "./pages/AdministracaoVoluntariadoPage";
 import AdministracaoFinanceiroPage from "./pages/AdministracaoFinanceiroPage";
 import AdministracaoApoiadoresPage from "./pages/AdministracaoApoiadoresPage";
+import AdministracaoOuvidoriaPage from "./pages/AdministracaoOuvidoriaPage";
 import LoginPage from "./pages/LoginPage";
 import PublicEventsPage from "./pages/PublicEventsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -248,6 +249,10 @@ const App = () => (
                   } />
                   <Route path="/administracao/parceiros" element={
                     <ProtectedRoute><AdministracaoApoiadoresPage lado="parceiros" /></ProtectedRoute>
+                  } />
+                  {/* Administração › Ouvidoria (26/11/2026): só o cartão da API do formulário do site. */}
+                  <Route path="/administracao/ouvidoria" element={
+                    <ProtectedRoute><AdministracaoOuvidoriaPage /></ProtectedRoute>
                   } />
                   <Route path="/painel" element={
                     <ProtectedRoute><ComMargem><UsersPage /></ComMargem></ProtectedRoute>
