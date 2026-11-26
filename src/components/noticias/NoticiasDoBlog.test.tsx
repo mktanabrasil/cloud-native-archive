@@ -122,7 +122,7 @@ describe('Notícias do blog', () => {
     expect(avisos.error).toHaveBeenCalledWith('Falta preencher: o título, a unidade, o texto, a capa.');
     expect(api.salvarNoticia).not.toHaveBeenCalled();
     fireEvent.change(screen.getByPlaceholderText(/Oficina de Natal reúne/), { target: { value: 'Oficina nova' } });
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'ana-oziel' } });
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'ana-piaui' } });
     api.salvarNoticia.mockResolvedValueOnce({ pasta_id: 'NOVA', pasta_nome: 'x', slug: 'oficina-nova', erro: null, atualizado_em: null, endereco_no_site: null, enviados: [], dados: { ...P1.dados!, titulo: 'Oficina nova', capa: null, midias: [], publicado: false } });
     api.enviarArquivo.mockImplementation(async (_p, _f, progresso) => { progresso(0.5); });
     api.envioConcluido.mockResolvedValue({ ...P1, pasta_id: 'NOVA', dados: { ...P1.dados!, capa: null, midias: [], publicado: false }, enviados: [midia('N1'), midia('N2')] });
@@ -130,7 +130,7 @@ describe('Notícias do blog', () => {
     fireEvent.change(entrada, { target: { files: [new File(['x'], 'IMG_1.jpg', { type: 'image/jpeg' }), new File(['y'], 'IMG_2.jpg', { type: 'image/jpeg' })] } });
     await waitFor(() => expect(api.envioConcluido).toHaveBeenCalledWith('NOVA'));
     const criar = api.salvarNoticia.mock.calls[0][0];
-    expect(criar).toMatchObject({ titulo: 'Oficina nova', unidade: 'ana-oziel', publicado: false });
+    expect(criar).toMatchObject({ titulo: 'Oficina nova', unidade: 'ana-piaui', publicado: false });
     expect(criar.pasta_id).toBeUndefined(); expect(criar.novo_id).toMatch(/.{8,}/);
     expect(api.enviarArquivo).toHaveBeenCalledTimes(2);
     expect(api.enviarArquivo.mock.calls[0][0]).toBe('NOVA');
@@ -276,6 +276,44 @@ describe('Notícias do blog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }));
     await waitFor(() => expect(api.salvarNoticia).toHaveBeenCalled());
     expect(api.salvarNoticia.mock.calls[0][0].hora).toBeUndefined();
+  });
+
+  it('só as unidades ativas: sem Ana Oziel e GOE na notícia nova; notícia antiga do GOE mantém a unidade', async () => {
+    const r = abrir('/marketing/noticias?noticia=nova');
+    const select = await screen.findByRole('combobox');
+    const opcoes = [...(select as HTMLSelectElement).options].map((o) => o.textContent);
+    expect(opcoes).toEqual(['Escolha…', 'Ana Dic', 'Ana Jardim Santana', 'Ana Piauí', 'Aninha Cancela', 'Ana Jardim Nilópolis', 'ANA Brasil']);
+    fireEvent.change(select, { target: { value: 'ana-dic' } });
+    expect(screen.queryByRole('button', { name: 'Ana Oziel' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Grupo de Oração Esperança' })).not.toBeInTheDocument();
+    r.unmount();
+    const goe = structuredClone(P1);
+    goe.dados!.unidade = 'grupo-de-oracao-esperanca'; goe.dados!.unidades = ['grupo-de-oracao-esperanca'];
+    api.noticiaDoPainel.mockResolvedValue(goe);
+    abrir('/marketing/noticias?noticia=P1');
+    await screen.findByDisplayValue('Dia das Crianças especial com o Colégio Objetivo');
+    expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe('grupo-de-oracao-esperanca');
+    expect(screen.getByRole('option', { name: 'Grupo de Oração Esperança' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Ana Oziel' })).not.toBeInTheDocument();
+  });
+
+  it('um campo só para fotos e vídeos: escolher ou arrastar; cada arquivo vai pelo tipo e sem limite de tamanho', async () => {
+    api.enviarArquivo.mockResolvedValue(undefined);
+    api.envioConcluido.mockResolvedValue({ ...structuredClone(P1), enviados: [midia('NF'), midia('NV', 'video')] });
+    abrir('/marketing/noticias?noticia=P1');
+    await screen.findByDisplayValue('Dia das Crianças especial com o Colégio Objetivo');
+    const entrada = screen.getByLabelText('Adicionar fotos e vídeos') as HTMLInputElement;
+    expect(entrada.accept).toBe('image/*,video/*,.heic,.heif');
+    expect(document.querySelectorAll('input[type=file]')).toHaveLength(1);
+    const grande = new File(['x'], 'longo.mp4', { type: 'video/mp4' });
+    Object.defineProperty(grande, 'size', { value: 5_000_000_000 });
+    const foto = new File(['y'], 'foto.jpg', { type: 'image/jpeg' });
+    const secao = screen.getByRole('button', { name: /Adicionar fotos e vídeos/ }).closest('section')!;
+    fireEvent.drop(secao, { dataTransfer: { files: [foto, grande], types: ['Files'] } });
+    await waitFor(() => expect(api.envioConcluido).toHaveBeenCalledWith('P1'));
+    expect(api.enviarArquivo.mock.calls.map((c) => c[1].name)).toEqual(['foto.jpg', 'longo.mp4']);
+    expect(await screen.findByRole('button', { name: 'Retirar o vídeo NV.jpg' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^Foto \d/ })).toHaveLength(4); // CAPA, F1, F2 e a nova
   });
 
   it('notícia que o Drive não conseguiu ler não abre como formulário em branco', async () => {

@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import {
-  COR_DA_UNIDADE, UNIDADES_DAS_NOTICIAS, dataBR, enviarArquivo, envioConcluido, excluirNoticia, nomeDaUnidade, noticiaDoPainel, paragrafosDe, salvarNoticia, textoDe,
+  COR_DA_UNIDADE, dataBR, unidadesParaOEditor, enviarArquivo, envioConcluido, excluirNoticia, nomeDaUnidade, noticiaDoPainel, paragrafosDe, salvarNoticia, textoDe,
   type MidiaDoPainel, type NoticiaDoPainel, type PedidoDeSalvar,
 } from '@/lib/noticias/painel';
 import { problemasDaEdicao } from '../../../supabase/functions/noticias/regras.ts';
@@ -131,8 +131,8 @@ export function EditorDeNoticia({ pastaId: pastaDoEndereco, voltar, criada }: { 
   const [perguntaExcluir, setPerguntaExcluir] = useState(false);
   const [faltam, setFaltam] = useState<string[]>([]);
   const [copia, setCopia] = useState<CopiaLocal | null>(null);
-  const entradaFotos = useRef<HTMLInputElement>(null);
-  const entradaVideos = useRef<HTMLInputElement>(null);
+  const entrada = useRef<HTMLInputElement>(null);
+  const [soltando, setSoltando] = useState(false);
   const previa = useRef<HTMLElement>(null);
   const contador = useRef(0);
 
@@ -266,6 +266,7 @@ export function EditorDeNoticia({ pastaId: pastaDoEndereco, voltar, criada }: { 
     });
   }
   const soltar = (ev: DragEvent, alvo: string) => {
+    if (ev.dataTransfer.files.length) return; // arquivos soltos aqui: a seção cuida (envio)
     ev.preventDefault();
     if (arrastando && arrastando !== alvo) mover(arrastando, e.fotos.findIndex((m) => m.chave === alvo));
     setArrastando(null);
@@ -399,7 +400,7 @@ export function EditorDeNoticia({ pastaId: pastaDoEndereco, voltar, criada }: { 
                 <Rotulo>Unidade</Rotulo>
                 <select value={e.unidade} onChange={(x) => mudar({ unidade: x.target.value, extras: e.extras.filter((u) => u !== x.target.value) })} className={cn(campo, 'h-[46px]', falta('a unidade') && 'border-destructive')}>
                   <option value="">Escolha…</option>
-                  {UNIDADES_DAS_NOTICIAS.map((u) => <option key={u.slug} value={u.slug}>{u.nome}</option>)}
+                  {unidadesParaOEditor([e.unidade]).map((u) => <option key={u.slug} value={u.slug}>{u.nome}</option>)}
                 </select>
               </label>
             </div>
@@ -407,7 +408,7 @@ export function EditorDeNoticia({ pastaId: pastaDoEndereco, voltar, criada }: { 
               <div className="space-y-1">
                 <span className="text-[12.5px] text-muted-foreground">Também aparece em:</span>
                 <div className="flex flex-wrap gap-1.5">
-                  {UNIDADES_DAS_NOTICIAS.filter((u) => u.slug !== e.unidade).map((u) => {
+                  {unidadesParaOEditor(e.extras).filter((u) => u.slug !== e.unidade).map((u) => {
                     const ligada = e.extras.includes(u.slug);
                     return (
                       <button key={u.slug} type="button" aria-pressed={ligada} onClick={() => mudar({ extras: ligada ? e.extras.filter((x) => x !== u.slug) : [...e.extras, u.slug] })}
@@ -426,9 +427,13 @@ export function EditorDeNoticia({ pastaId: pastaDoEndereco, voltar, criada }: { 
             </label>
           </section>
 
-          <section className={cn('space-y-3 rounded-[20px] border border-border/60 bg-card p-4', falta('a capa') && 'border-destructive')}>
+          <section
+            onDragOver={(x) => { if (x.dataTransfer.types.includes('Files')) { x.preventDefault(); setSoltando(true); } }}
+            onDragLeave={(x) => { if (!x.currentTarget.contains(x.relatedTarget as Node | null)) setSoltando(false); }}
+            onDrop={(x) => { if (!x.dataTransfer.files.length) return; x.preventDefault(); setSoltando(false); void adicionar([...x.dataTransfer.files]); }}
+            className={cn('space-y-3 rounded-[20px] border border-border/60 bg-card p-4', falta('a capa') && 'border-destructive', soltando && 'border-foreground ring-2 ring-ring')}>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <b className="text-[15px] text-foreground">Fotos <span className="font-normal text-muted-foreground">· {e.fotos.length}</span></b>
+              <b className="text-[15px] text-foreground">Fotos e vídeos <span className="font-normal text-muted-foreground">· {e.fotos.length} foto{e.fotos.length === 1 ? '' : 's'}{e.videos.length ? ` · ${e.videos.length} vídeo${e.videos.length > 1 ? 's' : ''}` : ''}</span></b>
               <span className="text-[12px] text-muted-foreground">Arraste ou use as setas para mudar a ordem · <Star className="inline h-3.5 w-3.5 fill-[#fbce00] text-[#fbce00]" /> é a capa</span>
             </div>
             <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 xl:grid-cols-5">
@@ -449,14 +454,29 @@ export function EditorDeNoticia({ pastaId: pastaDoEndereco, voltar, criada }: { 
                   <button type="button" onClick={() => retirar(f.chave)} aria-label={`Retirar a foto ${i + 1}`} className="absolute bottom-1 right-1 grid h-6 w-6 place-items-center rounded-full bg-white/85 text-[#1f2322] hover:bg-white"><X className="h-3.5 w-3.5" /></button>
                 </li>
               ))}
-              <li>
-                <button type="button" onClick={() => entradaFotos.current?.click()} disabled={enviando}
-                  className="grid aspect-square w-full place-items-center rounded-[12px] border-2 border-dashed border-border text-center text-[12px] text-muted-foreground hover:border-foreground/40 hover:text-foreground disabled:opacity-60">
-                  <span><Upload className="mx-auto mb-1 h-5 w-5" />{enviando ? 'Enviando…' : 'Adicionar fotos'}</span>
-                </button>
-              </li>
             </ul>
-            <input ref={entradaFotos} type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" multiple hidden
+            {e.videos.length > 0 && (
+              <div className="space-y-2">
+                {e.videos.map((v) => (
+                  <div key={v.chave} className={cn('flex items-center gap-3 rounded-[12px] border px-3 py-2 text-[13px]', selecionada === v.chave ? 'border-foreground' : 'border-border')}>
+                    <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-[8px] bg-muted">
+                      <img src={v.mini} alt="" className="h-full w-full object-cover" onError={(x) => { (x.target as HTMLImageElement).style.visibility = 'hidden'; }} />
+                      <Video className="absolute inset-0 m-auto h-4 w-4 text-white drop-shadow" />
+                    </span>
+                    <button type="button" onClick={() => setSelecionada(selecionada === v.chave ? null : v.chave)} className="min-w-0 flex-1 truncate text-left text-foreground">
+                      {v.nome}{v.duracao ? <span className="text-muted-foreground"> · {Math.floor(v.duracao / 60)}:{String(v.duracao % 60).padStart(2, '0')}</span> : null}
+                    </button>
+                    <button type="button" onClick={() => retirar(v.chave)} aria-label={`Retirar o vídeo ${v.nome}`} className="grid h-7 w-7 place-items-center rounded-full hover:bg-muted"><X className="h-4 w-4" /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button type="button" onClick={() => entrada.current?.click()} disabled={enviando}
+              className={cn('flex w-full items-center justify-center gap-3 rounded-[12px] border-2 border-dashed px-3 py-5 text-center text-[13px] text-muted-foreground hover:border-foreground/40 hover:text-foreground disabled:opacity-60', soltando ? 'border-foreground text-foreground' : 'border-border')}>
+              <Upload className="h-5 w-5 shrink-0" />
+              <span>{enviando ? 'Enviando…' : <><b className="font-semibold text-foreground">Adicionar fotos e vídeos</b><br />clique para escolher ou arraste os arquivos para cá</>}</span>
+            </button>
+            <input ref={entrada} type="file" accept="image/*,video/*,.heic,.heif" multiple hidden aria-label="Adicionar fotos e vídeos"
               onChange={(x) => { const fs = [...(x.target.files ?? [])]; x.target.value = ''; void adicionar(fs); }} />
             {sel && (
               <label className="block rounded-[12px] bg-muted/50 p-3 text-[13px] text-foreground">
@@ -466,24 +486,6 @@ export function EditorDeNoticia({ pastaId: pastaDoEndereco, voltar, criada }: { 
               </label>
             )}
             {!e.fotos.length && <p className="text-[12.5px] text-muted-foreground">Para publicar, a notícia precisa de pelo menos uma foto (a capa).</p>}
-          </section>
-
-          <section className="space-y-2 rounded-[20px] border border-border/60 bg-card p-4">
-            <b className="text-[15px] text-foreground">Vídeos <span className="font-normal text-muted-foreground">· {e.videos.length}</span></b>
-            {e.videos.map((v) => (
-              <div key={v.chave} className={cn('flex items-center gap-3 rounded-[12px] border px-3 py-2 text-[13px]', selecionada === v.chave ? 'border-foreground' : 'border-border')}>
-                <img src={v.mini} alt="" className="h-12 w-12 shrink-0 rounded-[8px] bg-muted object-cover" onError={(x) => { (x.target as HTMLImageElement).style.visibility = 'hidden'; }} />
-                <button type="button" onClick={() => setSelecionada(selecionada === v.chave ? null : v.chave)} className="min-w-0 flex-1 truncate text-left text-foreground">
-                  {v.nome}{v.duracao ? <span className="text-muted-foreground"> · {Math.floor(v.duracao / 60)}:{String(v.duracao % 60).padStart(2, '0')}</span> : null}
-                </button>
-                <button type="button" onClick={() => retirar(v.chave)} aria-label={`Retirar o vídeo ${v.nome}`} className="grid h-7 w-7 place-items-center rounded-full hover:bg-muted"><X className="h-4 w-4" /></button>
-              </div>
-            ))}
-            <button type="button" onClick={() => entradaVideos.current?.click()} disabled={enviando}
-              className="flex w-full items-center gap-3 rounded-[12px] border border-dashed border-border px-3 py-3 text-left text-[13px] text-muted-foreground hover:border-foreground/40 hover:text-foreground disabled:opacity-60">
-              <Video className="h-5 w-5 shrink-0" />Escolher vídeos do celular ou do computador (MP4, até 2 GB). Vão para a mesma pasta no Drive.
-            </button>
-            <input ref={entradaVideos} type="file" accept="video/*" multiple hidden onChange={(x) => { const fs = [...(x.target.files ?? [])]; x.target.value = ''; void adicionar(fs); }} />
           </section>
 
           {(envios.length > 0 || ocupado === 'concluindo' || ocupado === 'criando') && (
