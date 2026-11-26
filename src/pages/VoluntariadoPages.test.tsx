@@ -199,7 +199,7 @@ describe('formulário', () => {
   };
   const acompanhante = () => document.querySelector('[aria-labelledby="pergunta-acompanhante"]') as HTMLElement;
 
-  it('etapa 1: o convite, o aviso do treinamento e quem não pode para ali, sem gravar nada', () => {
+  it('etapa 1: o convite, o aviso do treinamento e quem não pode segue a inscrição (26/11/2026)', async () => {
     abrir();
     expect(screen.getByTestId('dia-do-evento')).toHaveTextContent('08/12 · Natal Feliz');
     const sobre = screen.getByTestId('sobre-o-evento');
@@ -209,16 +209,26 @@ describe('formulário', () => {
     // O evento é para as crianças, não mais para as famílias (26/10/2026).
     expect(sobre).toHaveTextContent('presentes para as crianças que atendemos');
     expect(sobre).not.toHaveTextContent('famílias');
-    expect(screen.getByTestId('aviso-do-treinamento')).toHaveTextContent('obrigatório participar do Treinamento de Voluntários, no dia 28/11.');
+    const aviso = screen.getByTestId('aviso-do-treinamento');
+    expect(aviso).toHaveTextContent('O Treinamento de Voluntários é no dia 28/11.');
+    expect(aviso).toHaveTextContent('Se não puder ir, tudo bem: você se inscreve do mesmo jeito.');
+    expect(aviso).not.toHaveTextContent(/obrigatório/i);
     expect(screen.getByTestId('etapas')).toHaveTextContent('Etapa 1 de 3');
     expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled();
+    // Quem não pode ir ao treinamento segue para a etapa 2 e se inscreve.
     fireEvent.click(screen.getByRole('button', { name: 'Não tenho disponibilidade' }));
     fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
-    expect(screen.getByTestId('sem-treino')).toHaveTextContent('Obrigado pelo carinho!');
-    expect(screen.queryByLabelText('Nome completo')).toBeNull();
-    expect(banco.enviados).toHaveLength(0);
-    fireEvent.click(screen.getByRole('button', { name: 'Voltar e mudar a resposta' }));
-    expect(screen.getByTestId('aviso-do-treinamento')).toBeInTheDocument();
+    expect(screen.getByTestId('etapas')).toHaveTextContent('Etapa 2 de 3');
+    quemSou(/^Sou funcionário\(a\) da ANA/);
+    fireEvent.change(screen.getByLabelText('Em qual unidade você trabalha?'), { target: { value: 'goe' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Cozinha \/ Servimento/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar inscrição' }));
+    expect(await screen.findByTestId('protocolo')).toHaveTextContent('VL-7K2Q9');
+    expect(banco.enviados).toHaveLength(1);
+    const treino = screen.getByTestId('treinamento');
+    expect(treino).not.toHaveTextContent(/obrigatório/i);
+    expect(screen.getByTestId('sem-treino')).toHaveTextContent('as orientações do dia chegam pelo grupo do WhatsApp');
   });
 
   it('acompanhantes (23/11/2026): pessoa idosa ou criança, com nome e idade; vão na inscrição e no comprovante', async () => {
@@ -313,6 +323,8 @@ describe('formulário', () => {
     expect(screen.getByRole('link', { name: /Entrar no grupo do WhatsApp/ })).toHaveAttribute('href', 'https://chat.whatsapp.com/FnmKMVE3PXnEWKVYQY7ZEe');
     const treino = screen.getByTestId('treinamento');
     expect(treino).toHaveTextContent('Sábado, 28/11');
+    // Quem disse que pode ir não vê o recado de quem não pode (26/11/2026).
+    expect(screen.queryByTestId('sem-treino')).toBeNull();
     // Só a data desde 09/11/2026: sem horário e sem local do treinamento.
     expect(treino).not.toHaveTextContent('Horário');
     expect(treino).not.toHaveTextContent('Recanto Maanaim');

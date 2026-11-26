@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, Check, ChevronRight, Download, Heart, QrCode, Users } from 'lucide-react';
+import { CalendarDays, Check, ChevronRight, Download, QrCode, Users } from 'lucide-react';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import InstitutionalFooterBar from '@/components/news/InstitutionalFooterBar';
 import { unidadeDaPizza } from '@/lib/pizza/modelo';
@@ -17,8 +17,8 @@ import {
  * /voluntariado/natalfeliz26 — inscrição de voluntários para o Natal Feliz
  * de 08/12/2026. Desde 23/10/2026, em três etapas e aberta a funcionários,
  * público e INCC (mockup aprovado em 23/10/2026):
- *  1. o treinamento obrigatório de 28/11 no Recanto Maanaim; quem não pode vê um
- *     agradecimento e o formulário para ali, sem gravar nada;
+ *  1. o treinamento de 28/11 no Recanto Maanaim. Deixou de ser obrigatório em
+ *     26/11/2026: quem não pode segue a inscrição do mesmo jeito;
  *  2. nome, WhatsApp, horário e vínculo, com a pergunta que cada vínculo pede;
  *  3. as áreas do vínculo (1ª e 2ª opção). Área que bateu a meta abre um
  *     aviso e só entra como 2ª opção.
@@ -30,7 +30,7 @@ import {
 
 const COR = { verde: '#1E4D3A', verde2: '#2F6B52', verdeClaro: '#EAF3EE', vermelho: '#C8372D', vermelhoEsc: '#9E2A22', creme: '#F6EEDF', fundo: '#FFFCF6', tinta: '#24201B', mut: '#6E655B', linha: '#E9DDC9', ouro: '#E4B23A', ouroClaro: '#FBF3DE' };
 
-type Etapa = 'treino' | 'sem_treino' | 'quem' | 'areas' | 'feito';
+type Etapa = 'treino' | 'quem' | 'areas' | 'feito';
 
 const campo = 'h-12 w-full rounded-xl border-2 bg-white px-3 text-base text-[#24201B] outline-none focus:border-[#1E4D3A]';
 const botao = 'h-14 w-full rounded-2xl text-base font-bold text-white disabled:opacity-60';
@@ -247,8 +247,10 @@ export default function VoluntariadoPage() {
             </div>
             {/* No lugar do "a equipe entra em contato" (23/10/2026): os dados do treinamento já aqui. Só a data desde 09/11/2026: local e horário ainda não existem. */}
             <div className="flex flex-col gap-2.5 rounded-2xl p-4 text-[13.5px]" style={{ background: COR.verdeClaro, color: COR.verde }} data-testid="treinamento">
-              <b className="text-[14.5px]">Treinamento de Voluntários · obrigatório</b>
+              <b className="text-[14.5px]">Treinamento de Voluntários</b>
               <p className="flex items-start gap-2.5"><CalendarDays className="mt-0.5 h-4 w-4 shrink-0" /><span><small className="block text-[10.5px] uppercase tracking-wider opacity-75">Data</small><b>{TREINAMENTO.data}</b></span></p>
+              {/* Desde 26/11/2026 o treinamento não é obrigatório: quem disse que não pode recebe as orientações pelo grupo. */}
+              {treino === 'nao' && <p className="text-[13px] leading-relaxed" data-testid="sem-treino">Você contou que não pode ir ao treinamento. Tudo bem: as orientações do dia chegam pelo grupo do WhatsApp.</p>}
             </div>
             <Erro />
             <button type="button" onClick={baixar} disabled={baixando} className={`${botao} flex items-center justify-center gap-2`} style={{ background: COR.verde }}>
@@ -261,14 +263,6 @@ export default function VoluntariadoPage() {
             <h1 className="text-xl font-bold">As inscrições foram encerradas em {ULTIMO_DIA}.</h1>
             <p style={{ color: COR.mut }}>Obrigado a todos que se ofereceram. Nos vemos no Natal Feliz!</p>
             {comCentral && <div className="mt-3 text-left"><LinkDaCentral /></div>}
-          </div>
-        ) : etapa === 'sem_treino' ? (
-          <div className="flex flex-col items-center gap-3 px-5 py-10 text-center" data-testid="sem-treino">
-            <span className="grid h-16 w-16 place-items-center rounded-[20px] text-white" style={{ background: COR.vermelho }}><Heart className="h-8 w-8" fill="currentColor" /></span>
-            <h1 className="text-xl font-bold">Obrigado pelo carinho!</h1>
-            <p className="text-[14.5px]" style={{ color: COR.mut }}>Como o treinamento de {TREINAMENTO.dataCurta} é obrigatório para quem vai atuar no dia, desta vez não conseguimos contar com você como voluntário(a).</p>
-            <p className="text-[14.5px]" style={{ color: COR.mut }}>Mas a sua vontade de ajudar já faz diferença. Se a sua agenda mudar até {ULTIMO_DIA}, é só voltar aqui e se inscrever. 💚</p>
-            <button type="button" className={voltar} style={{ color: COR.mut }} onClick={() => ir('treino')}>Voltar e mudar a resposta</button>
           </div>
         ) : etapa === 'treino' ? (
           <div className="flex flex-col gap-6 px-5 py-6">
@@ -289,13 +283,13 @@ export default function VoluntariadoPage() {
             <section className="flex flex-col gap-3">
               <Titulo n={1}>Antes de começar</Titulo>
               <p className="rounded-2xl border-2 px-3.5 py-3 text-[13.5px] leading-relaxed" style={{ borderColor: COR.ouro, background: COR.ouroClaro, color: '#5A4500' }} data-testid="aviso-do-treinamento">
-                <b>Para se voluntariar, é obrigatório participar do Treinamento de Voluntários</b>, no dia <b>{TREINAMENTO.dataCurta}</b>. É nele que você conhece a equipe, a sua área e como vai ser o dia.
+                <b>O Treinamento de Voluntários é no dia {TREINAMENTO.dataCurta}.</b> É nele que você conhece a equipe, a sua área e como vai ser o dia. Se não puder ir, tudo bem: você se inscreve do mesmo jeito.
               </p>
               <Pergunta>Você tem disponibilidade para participar do treinamento em {TREINAMENTO.dataCurta}?</Pergunta>
               <Escolha marcada={treino === 'sim'} onClick={() => setTreino('sim')}>Sim, posso participar</Escolha>
               <Escolha marcada={treino === 'nao'} onClick={() => setTreino('nao')}>Não tenho disponibilidade</Escolha>
             </section>
-            <button type="button" disabled={!treino} className={botao} style={{ background: COR.vermelho }} onClick={() => ir(treino === 'sim' ? 'quem' : 'sem_treino')}>Continuar</button>
+            <button type="button" disabled={!treino} className={botao} style={{ background: COR.vermelho }} onClick={() => ir('quem')}>Continuar</button>
           </div>
         ) : etapa === 'quem' ? (
           <form className="flex flex-col gap-6 px-5 py-6" onSubmit={(e) => { e.preventDefault(); seguirParaAsAreas(); }} noValidate aria-label="Inscrição de voluntário: quem é você">
