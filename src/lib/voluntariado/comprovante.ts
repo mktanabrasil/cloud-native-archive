@@ -75,7 +75,7 @@ export async function desenharComprovante(d: DadosDoComprovante): Promise<Blob> 
   fim += folga;
   g.fillStyle = COR.verdeClaro; g.beginPath(); g.roundRect(MARGEM - 8, topo, LARGURA - 2 * MARGEM + 16, fim - topo, 28); g.fill();
   let yy = topo + folga + 34;
-  g.fillStyle = COR.verde; g.font = '700 30px Poppins'; g.fillText('TREINAMENTO DE VOLUNTÁRIOS · OBRIGATÓRIO', x, yy);
+  g.fillStyle = COR.verde; g.font = '700 30px Poppins'; g.fillText('TREINAMENTO DE VOLUNTÁRIOS', x, yy);
   for (const [r, v, definido] of itens) {
     yy += 50; g.fillStyle = COR.verde2; g.font = '400 24px Poppins'; g.fillText(r.toUpperCase(), x, yy);
     g.fillStyle = definido ? COR.verde : COR.aDefinir; g.font = '600 34px Poppins'; yy = escrever(g, v, x, yy + 44, larguraDoTexto, 46);

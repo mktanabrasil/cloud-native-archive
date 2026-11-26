@@ -3,7 +3,7 @@
  *
  * Link público, como o da Pizza da Alegria. Desde 23/10/2026 o formulário
  * abre para funcionários, o público e a INCC, em três etapas:
- *  1. o treinamento obrigatório de 28/11 no Recanto Maanaim (quem não pode, para ali);
+ *  1. o treinamento de 28/11 no Recanto Maanaim (opcional desde 26/11/2026: quem não pode segue);
  *  2. nome, WhatsApp, horário (um só) e vínculo: funcionário(a) informa a
  *     unidade; quem não é nem funcionário nem do JNI diz se alguém da ANA ou da INCC indicou
  *     e, se quiser, a igreja;
@@ -30,7 +30,7 @@ export const DIA_DO_EVENTO = '08/12';
 export const ULTIMO_DIA = '26/11';
 
 /**
- * O treinamento obrigatório (23/10/2026), no mesmo local do evento. O horário
+ * O treinamento (23/10/2026; deixou de ser obrigatório em 26/11/2026), no mesmo local do evento. O horário
  * ainda está sendo confirmado: vazio, a tela e o comprovante mostram "a
  * confirmar". Quando chegar, é só preencher aqui.
  * Grafia: Maanaim, com dois "a" (23/10/2026).

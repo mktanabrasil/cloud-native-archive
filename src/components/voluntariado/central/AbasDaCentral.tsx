@@ -69,7 +69,7 @@ export function InicioDaCentral({ d, agora, whatsapp }: { d: DadosDaCentral; ago
       ? { titulo: 'Treinamento', sub: `Presença registrada às ${horaDe(d.presencas.treinamento)}` }
       : agora.dia > DIA_DO_TREINAMENTO
         ? { titulo: 'Treinamento', sub: 'Presença não registrada. Fale com a equipe no grupo.' }
-        : { titulo: 'Treinamento obrigatório', sub: `${diaCurto(DIA_DO_TREINAMENTO)} · ${textoDoTreinamento}` },
+        : { titulo: 'Treinamento', sub: `${diaCurto(DIA_DO_TREINAMENTO)} · ${textoDoTreinamento}` },
     evento: d.presencas.evento
       ? { titulo: 'Natal Feliz', sub: `Presença registrada às ${horaDe(d.presencas.evento)}` }
       : { titulo: 'Natal Feliz', sub: `${diaCurto(DIA_DO_NATAL_FELIZ)} · ${turnoDe(v.horario) || TREINAMENTO.local}` },
