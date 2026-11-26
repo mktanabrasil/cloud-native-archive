@@ -95,8 +95,9 @@ function VoltaDoPagamento({ pedido, aoAprovar, aoVoltar }: { pedido: string; aoA
           aprovar.current(feitoOnline(r));
           return;
         }
-        // Pendente: olha de novo a cada 5 s, por uns 5 minutos.
-        if (r.status === 'pendente' && ++vezes < 60) espera = setTimeout(olhar, 5000);
+        // Pendente: olha de novo a cada 5 s nos primeiros 5 minutos e, depois,
+        // a cada 30 s até uns 30 minutos (26/11/2026: o Pix pode demorar mais).
+        if (r.status === 'pendente' && ++vezes < 110) espera = setTimeout(olhar, vezes < 60 ? 5000 : 30000);
       } catch (e) {
         if (vivo) setErro(mensagemDoErro(e));
       }
@@ -120,6 +121,7 @@ function VoltaDoPagamento({ pedido, aoAprovar, aoVoltar }: { pedido: string; aoA
           <span className="grid h-16 w-16 place-items-center rounded-[20px]" style={{ background: COR.amarelo, color: '#4A2A10' }}><Clock className="h-9 w-9" /></span>
           <h1 className="text-xl font-bold">Aguardando a confirmação do pagamento</h1>
           <p className="text-sm" style={{ color: COR.mut }}>Se você pagou com Pix, a confirmação pode levar alguns minutos. Deixe esta página aberta. O seu número aparece aqui assim que o Mercado Pago confirmar.</p>
+          <p className="text-sm" style={{ color: COR.mut }} data-testid="como-achar-depois">Se fechar esta página, abra de novo o formulário e digite o mesmo nome e WhatsApp: o número e o QR Code aparecem lá.</p>
           <button type="button" onClick={() => setRodada((n) => n + 1)} className="h-12 rounded-xl border-[1.5px] bg-white px-5 font-bold" style={{ borderColor: COR.linha }}>Conferir de novo</button>
           <button type="button" onClick={tentarDeNovo} disabled={tentando} className="text-sm font-semibold underline" style={{ color: COR.vermelhoEsc }}>Ainda não paguei: abrir o pagamento</button>
         </>
