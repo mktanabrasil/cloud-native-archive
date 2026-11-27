@@ -212,7 +212,22 @@ describe('abas', () => {
     expect(within(evento).getByRole('link', { name: /Abrir no Google Maps/ })).toHaveAttribute('href', expect.stringContaining(encodeURIComponent('Recanto Maanaim')));
     // O treinamento vem primeiro até o dia dele.
     expect(treino.compareDocumentPosition(evento) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByTestId('planta-em-breve')).toHaveTextContent('A planta do Recanto Maanaim');
+    // Sem planta (27/11/2026): os 15 ambientes com foto; os da área da pessoa (Cozinha) marcados e com atalho.
+    expect(screen.queryByTestId('planta-em-breve')).toBeNull();
+    const ambientes = screen.getAllByTestId('ambiente');
+    expect(ambientes).toHaveLength(15);
+    expect(ambientes[0]).toHaveTextContent('Ginásio');
+    expect(screen.getByTestId('onde-voce-vai-estar')).toHaveTextContent('Cozinha / Servimento');
+    expect(within(screen.getByTestId('onde-voce-vai-estar')).getAllByRole('button').map((b) => b.textContent)).toEqual(['11Cozinha', '9Refeitório']);
+    expect(ambientes[10]).toHaveTextContent('Sua área');
+    expect(ambientes[0]).not.toHaveTextContent('Sua área');
+    // Tocar na foto abre as fotos do ambiente; fechar volta.
+    fireEvent.click(within(ambientes[8]).getByRole('button', { name: 'Ver as fotos: Refeitório' }));
+    const fotos = screen.getByTestId('fotos-do-ambiente');
+    expect(within(fotos).getAllByRole('img')).toHaveLength(3);
+    expect(within(fotos).getAllByRole('img')[0]).toHaveAttribute('src', '/central-maanaim/09-1g.webp');
+    fireEvent.click(within(fotos).getByRole('button', { name: 'Fechar as fotos' }));
+    expect(screen.queryByTestId('fotos-do-ambiente')).toBeNull();
     vi.useRealTimers();
   });
 
