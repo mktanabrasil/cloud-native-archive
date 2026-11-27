@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { Bell, CalendarDays, Clock, ExternalLink, Heart, LogOut, MapPin, Users } from 'lucide-react';
+import { Bell, CalendarDays, Clock, ExternalLink, Heart, Images, LogOut, MapPin, Users, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
@@ -9,7 +10,8 @@ import {
   type AbaDaCentral, type AvisoEnviado, type DadosDaCentral, type ItemDoCronograma, type Momento, type VoluntarioNaCentral,
 } from '@/lib/voluntariado/central';
 import { EVENTO, GRUPO_DO_WHATSAPP, MAPA_DO_EVENTO, MAPA_DO_TREINAMENTO, TREINAMENTO, dadosDoHorario, rotuloDaAjuda, rotuloDoVinculo } from '@/lib/voluntariado/modelo';
-import { AvatarDaPessoa, CAPA_DO_NATAL, Cartao, CartaoDosAvisos, Pilula, Secao } from './PecasDaCentral';
+import { AvatarDaPessoa, Cartao, CartaoDosAvisos, Pilula, Secao } from './PecasDaCentral';
+import { AMBIENTES, ambientesDaArea, capaDoAmbiente, fotosDoAmbiente, type Ambiente } from '@/lib/voluntariado/ambientes';
 
 /**
  * As cinco abas da Central do Voluntário (13/11/2026): Início, Cronograma,
@@ -347,29 +349,91 @@ function CartaoDoLugar({ quando, dia, hora, local, endereco, mapa, teste }: { qu
   );
 }
 
-/** Dois lugares desde 27/11/2026: o treinamento na INCC e o Natal Feliz no Recanto Maanaim. */
-export function LocalDaCentral({ hoje }: { hoje?: string }) {
+/** As fotos de um ambiente em tela cheia, uma ao lado da outra (desliza para o lado). */
+function FotosDoAmbiente({ a, aoFechar }: { a: Ambiente; aoFechar: () => void }) {
+  const fotos = fotosDoAmbiente(a);
+  // No body: dentro da moldura da Central o fixed fica preso ao contêiner e atrás da doca.
+  return createPortal(
+    <div role="dialog" aria-modal="true" aria-label={`Fotos: ${a.nome}`} className="fixed inset-0 z-[80] flex flex-col" style={{ background: "rgba(12, 14, 13, 0.97)", color: "#fff" }} data-testid="fotos-do-ambiente">
+      <div className="flex items-center gap-3 px-4 pb-3 pt-[max(12px,env(safe-area-inset-top))]">
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#F37964] text-[13px] font-bold">{a.n}</span>
+        <b className="min-w-0 flex-1 truncate text-[16px]" style={{ fontFamily: 'Poppins, sans-serif' }}>{a.nome}</b>
+        <button type="button" onClick={aoFechar} className="grid h-10 w-10 place-items-center rounded-full bg-white/15" aria-label="Fechar as fotos"><X className="h-5 w-5" /></button>
+      </div>
+      <div className="flex min-h-0 flex-1 snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-4">
+        {fotos.map((f, i) => (
+          <img key={f} src={f} alt={`${a.nome}, foto ${i + 1} de ${fotos.length}`} loading="lazy" className="h-full w-[88%] shrink-0 snap-center rounded-[16px] object-contain" />
+        ))}
+      </div>
+      <p className="px-4 pb-[max(16px,env(safe-area-inset-bottom))] text-center text-[12.5px] text-white/70">{fotos.length > 1 ? `${fotos.length} fotos · deslize para o lado` : '1 foto'}</p>
+    </div>,
+    document.body,
+  );
+}
+
+function CartaoDoAmbiente({ a, meu, aoAbrir }: { a: Ambiente; meu: boolean; aoAbrir: () => void }) {
+  return (
+    <Cartao id={`ambiente-${a.n}`} className={cn('scroll-mt-4 overflow-hidden p-0', meu && 'ring-2 ring-[#F37964]')} data-testid="ambiente">
+      <button type="button" onClick={aoAbrir} className="relative block w-full" aria-label={`Ver as fotos: ${a.nome}`}>
+        <img src={capaDoAmbiente(a)} alt="" loading="lazy" className="block aspect-[16/9] w-full object-cover" />
+        <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-[12px] font-semibold text-white"><Images className="h-3.5 w-3.5" />{a.fotos}</span>
+      </button>
+      <div className="flex flex-col gap-2 p-4">
+        <div className="flex items-center gap-2.5">
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#F37964] text-[13px] font-bold text-white">{a.n}</span>
+          <b className="min-w-0 flex-1 text-[16px] font-semibold leading-tight" style={{ fontFamily: 'Poppins, sans-serif' }}>{a.nome}</b>
+          {meu && <span className="shrink-0 rounded-full bg-[#F37964]/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.06em] text-[#C2412C] dark:text-[#FFB4A6]">Sua área</span>}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {a.oQue.map((o) => <span key={o} className="rounded-full bg-[#81E2CF]/30 px-2.5 py-1 text-[12.5px] font-medium text-[#0F5A4C] dark:text-[#9FF0DF]">{o}</span>)}
+        </div>
+        {a.nota && <p className="text-[13px] leading-snug text-muted-foreground">{a.nota}</p>}
+      </div>
+    </Cartao>
+  );
+}
+
+/**
+ * Dois lugares desde 27/11/2026: o treinamento na INCC e o Natal Feliz no
+ * Recanto Maanaim. Sem planta (não houve foto de drone), os 15 ambientes do
+ * Recanto com fotos e o que acontece em cada um; os da área da pessoa vêm
+ * marcados e com atalho no topo.
+ */
+export function LocalDaCentral({ hoje, voluntario }: { hoje?: string; voluntario?: VoluntarioNaCentral }) {
+  const [aberto, setAberto] = useState<Ambiente | null>(null);
   const dia = hoje ?? new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
   const treino = <CartaoDoLugar key="t" quando="Treinamento" dia={DIA_DO_TREINAMENTO} hora={TREINAMENTO.horario || 'horário a confirmar'} local={TREINAMENTO.local} endereco={TREINAMENTO.endereco} mapa={MAPA_DO_TREINAMENTO} teste="local-do-treinamento" />;
   const evento = <CartaoDoLugar key="e" quando="Natal Feliz" dia={DIA_DO_NATAL_FELIZ} hora="o dia todo" local={EVENTO.local} endereco={EVENTO.endereco} mapa={MAPA_DO_EVENTO} teste="local-do-evento" />;
   // Até o dia do treinamento, ele vem primeiro; depois, só o do evento importa, e o treinamento sai.
   const lugares = dia <= DIA_DO_TREINAMENTO ? [treino, evento] : [evento];
+  const meus = voluntario && !eGestor(voluntario) ? ambientesDaArea(voluntario.opcao1) : [];
+  const ir = (n: number) => document.getElementById(`ambiente-${n}`)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   return (
     <div className="flex flex-col gap-3">
       {lugares}
-      {PLANTA_DO_LOCAL ? (
+      {PLANTA_DO_LOCAL && (
         <Cartao className="overflow-hidden p-2">
           <a href={PLANTA_DO_LOCAL} target="_blank" rel="noopener noreferrer" aria-label="Abrir a planta em tela cheia">
             <img src={PLANTA_DO_LOCAL} alt={`Planta do ${EVENTO.local}, com as áreas do evento`} className="block w-full rounded-[14px]" data-testid="planta" />
           </a>
-          <p className="px-2 pb-1 pt-2 text-[12.5px] text-muted-foreground">Toque na planta para ampliar.</p>
         </Cartao>
-      ) : (
-        <div className="relative overflow-hidden rounded-[20px] border-2 border-dashed border-border p-5 text-center text-[14px] text-muted-foreground" data-testid="planta-em-breve">
-          <img src={CAPA_DO_NATAL} alt="" aria-hidden className="mx-auto mb-3 w-24 rounded-[12px] opacity-80" />
-          A planta do {EVENTO.local}, com as áreas, os banheiros e os primeiros socorros, chega aqui em breve.
-        </div>
       )}
+      {meus.length > 0 && (
+        <Cartao className="flex flex-col gap-2.5 border-l-4 !border-l-[#F37964]" data-testid="onde-voce-vai-estar">
+          <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#E0533D]">Onde você vai estar · {rotuloDaAjuda(voluntario!.opcao1)}</span>
+          <div className="flex flex-wrap gap-2">
+            {meus.map((a) => (
+              <button key={a.n} type="button" onClick={() => ir(a.n)} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-[13.5px] font-semibold">
+                <span className="grid h-5 w-5 place-items-center rounded-full bg-[#F37964] text-[11px] font-bold text-white">{a.n}</span>{a.nome}
+              </button>
+            ))}
+          </div>
+        </Cartao>
+      )}
+      <Secao>Os ambientes do {EVENTO.local}</Secao>
+      <p className="-mt-1 px-1 text-[13px] leading-snug text-muted-foreground">O que acontece em cada lugar no dia 08/12. Toque na foto para ver mais.</p>
+      {AMBIENTES.map((a) => <CartaoDoAmbiente key={a.n} a={a} meu={meus.some((m) => m.n === a.n)} aoAbrir={() => setAberto(a)} />)}
+      {aberto && <FotosDoAmbiente a={aberto} aoFechar={() => setAberto(null)} />}
     </div>
   );
 }
