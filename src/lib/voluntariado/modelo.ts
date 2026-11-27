@@ -9,8 +9,8 @@
  *     e, se quiser, a igreja;
  *  3. onde quer ajudar (1ª opção obrigatória, 2ª opcional), com as áreas do
  *     vínculo. Área que bateu a meta só entra como 2ª opção.
- * Inscrições até 26/11/2026 (eram até 15/11; prorrogadas para 18/11 em 12/11
- * e para 26/11 em 23/11/2026).
+ * Inscrições até 28/11/2026 (eram até 15/11; prorrogadas para 18/11 em 12/11,
+ * para 26/11 em 23/11 e para 28/11 em 27/11/2026).
  * Os mesmos limites estão na função
  * `inscrever_voluntario` do banco, que também sorteia o protocolo (VL-XXXXX).
  */
@@ -25,9 +25,9 @@ import { ROTULO_DA_AREA, UNIDADES_POR_AREA } from '@/lib/pizza/modelo';
 export const CAMINHO_DO_FORMULARIO = '/voluntariado/natalfeliz26';
 export const caminhoDoAoVivo = (codigo: string) => `${CAMINHO_DO_FORMULARIO}/acompanhar/${codigo}`;
 
-export const PRAZO = new Date('2026-11-27T00:00:00-03:00');
+export const PRAZO = new Date('2026-11-29T00:00:00-03:00');
 export const DIA_DO_EVENTO = '08/12';
-export const ULTIMO_DIA = '26/11';
+export const ULTIMO_DIA = '28/11';
 
 /**
  * O treinamento (23/10/2026; deixou de ser obrigatório em 26/11/2026), no mesmo local do evento. O horário
