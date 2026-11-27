@@ -29,21 +29,29 @@ export const PRAZO = new Date('2026-11-29T00:00:00-03:00');
 export const DIA_DO_EVENTO = '08/12';
 export const ULTIMO_DIA = '28/11';
 
+/** O endereço no Google Maps, para abrir no celular. */
+const mapa = (l: { local: string; endereco: string }) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${l.local}, ${l.endereco}`)}`;
+
+/** O local do Natal Feliz (08/12). Grafia: Maanaim, com dois "a" (23/10/2026). */
+export const EVENTO = {
+  local: 'Recanto Maanaim',
+  endereco: 'Rua Arcebispo Dom Luciano Mendes de Almeida, 50 - Swiss Park, Campinas - SP, 13049-446',
+};
+export const MAPA_DO_EVENTO = mapa(EVENTO);
+
 /**
- * O treinamento (23/10/2026; deixou de ser obrigatório em 26/11/2026), no mesmo local do evento. O horário
- * ainda está sendo confirmado: vazio, a tela e o comprovante mostram "a
- * confirmar". Quando chegar, é só preencher aqui.
- * Grafia: Maanaim, com dois "a" (23/10/2026).
+ * O treinamento (23/10/2026). Deixou de ser obrigatório em 26/11/2026 e, em
+ * 27/11/2026, ganhou horário e local próprios: 9h às 12h, na INCC (antes
+ * dizia Recanto Maanaim, o local do evento, e "horário a confirmar").
  */
 export const TREINAMENTO = {
   data: 'Sábado, 28/11',
   dataCurta: '28/11',
-  local: 'Recanto Maanaim',
-  horario: '',
-  endereco: 'Rua Arcebispo Dom Luciano Mendes de Almeida, 50 - Swiss Park, Campinas - SP, 13049-446',
+  horario: '9h às 12h',
+  local: 'INCC',
+  endereco: 'R. José Paulino, 1829 - Centro, Campinas - SP',
 };
-/** O endereço no Google Maps, para abrir no celular. */
-export const MAPA_DO_TREINAMENTO = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${TREINAMENTO.local}, ${TREINAMENTO.endereco}`)}`;
+export const MAPA_DO_TREINAMENTO = mapa(TREINAMENTO);
 
 /** Os parceiros do Natal Feliz 2026 (JNI, Nazateen e, desde 09/11/2026, INCC; a Hope Day saiu em 23/10/2026). */
 export const PARCEIROS = ['JNI', 'Nazateen', 'INCC'];

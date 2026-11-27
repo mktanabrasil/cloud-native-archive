@@ -126,7 +126,7 @@ export default function VoluntariadoCentralPage() {
         ) : aba === 'inicio' ? <InicioDaCentral d={dados} agora={agora} whatsapp={numero} />
           : aba === 'cronograma' ? <CronogramaDaCentral d={dados} agora={agora} />
           : aba === 'avisos' ? <AvisosDaCentral avisos={dados.avisos} whatsapp={numero} destaque={avisoDoLink} vistosAte={vistosNaAba} />
-          : aba === 'local' ? <LocalDaCentral />
+          : aba === 'local' ? <LocalDaCentral hoje={agora.dia} />
           : <PerfilDaCentral d={dados} whatsapp={numero} aoSair={sair} />}
       </main>
       {dados && <DocaDaCentral aba={aba} avisoNovo={temNovo} />}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { CalendarDays, Check, ChevronRight, Download, QrCode, Users } from 'lucide-react';
+import { CalendarDays, Check, ChevronRight, Clock, Download, MapPin, QrCode, Users } from 'lucide-react';
 import { useTituloDaAba } from '@/hooks/useTituloDaAba';
 import InstitutionalFooterBar from '@/components/news/InstitutionalFooterBar';
 import { unidadeDaPizza } from '@/lib/pizza/modelo';
@@ -8,7 +8,7 @@ import { areasLotadas, centralNoFormulario, enviarParaAPlanilha, inscrever } fro
 import { salvarComprovante } from '@/lib/voluntariado/comprovante';
 import { CAMINHO_DA_CENTRAL, guardarNumero } from '@/lib/voluntariado/central';
 import {
-  AREAS_DE_AJUDA, AREAS_POR_VINCULO, descricaoDaArea, DIA_DO_EVENTO, GRUPO_DO_WHATSAPP, HORARIOS, SOBRE_O_EVENTO, TEXTO_DO_HORARIO, TITULO_DAS_AREAS, TREINAMENTO, UNIDADES_DO_VOLUNTARIADO, ULTIMO_DIA, VINCULOS,
+  AREAS_DE_AJUDA, AREAS_POR_VINCULO, descricaoDaArea, DIA_DO_EVENTO, GRUPO_DO_WHATSAPP, HORARIOS, MAPA_DO_TREINAMENTO, SOBRE_O_EVENTO, TEXTO_DO_HORARIO, TITULO_DAS_AREAS, TREINAMENTO, UNIDADES_DO_VOLUNTARIADO, ULTIMO_DIA, VINCULOS,
   MAX_ACOMPANHANTES, acompanhantesParaEnviar, encerrado, mascaraDoWhatsapp, mensagemDoErro, pedeAvisoDeLotada, problemaDaEtapa2, rotuloDaAjuda, rotuloDoHorario, textoDosAcompanhantes, tocarArea,
   type AcompanhanteNaTela, type AreaDeAjuda, type Horario, type Vinculo,
 } from '@/lib/voluntariado/modelo';
@@ -245,10 +245,12 @@ export default function VoluntariadoPage() {
                 <Users className="h-5 w-5" /> Entrar no grupo do WhatsApp
               </a>
             </div>
-            {/* No lugar do "a equipe entra em contato" (23/10/2026): os dados do treinamento já aqui. Só a data desde 09/11/2026: local e horário ainda não existem. */}
+            {/* No lugar do "a equipe entra em contato" (23/10/2026): os dados do treinamento já aqui. Data, horário e local (INCC) desde 27/11/2026. */}
             <div className="flex flex-col gap-2.5 rounded-2xl p-4 text-[13.5px]" style={{ background: COR.verdeClaro, color: COR.verde }} data-testid="treinamento">
               <b className="text-[14.5px]">Treinamento de Voluntários</b>
               <p className="flex items-start gap-2.5"><CalendarDays className="mt-0.5 h-4 w-4 shrink-0" /><span><small className="block text-[10.5px] uppercase tracking-wider opacity-75">Data</small><b>{TREINAMENTO.data}</b></span></p>
+              <p className="flex items-start gap-2.5"><Clock className="mt-0.5 h-4 w-4 shrink-0" /><span><small className="block text-[10.5px] uppercase tracking-wider opacity-75">Horário</small><b>{TREINAMENTO.horario}</b></span></p>
+              <p className="flex items-start gap-2.5"><MapPin className="mt-0.5 h-4 w-4 shrink-0" /><span><small className="block text-[10.5px] uppercase tracking-wider opacity-75">Local</small><b>{TREINAMENTO.local}</b><span className="block text-[12.5px]" data-testid="endereco-do-treinamento">{TREINAMENTO.endereco} · <a href={MAPA_DO_TREINAMENTO} target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-2">Abrir no mapa</a></span></span></p>
               {/* Desde 26/11/2026 o treinamento não é obrigatório: quem disse que não pode recebe as orientações pelo grupo. */}
               {treino === 'nao' && <p className="text-[13px] leading-relaxed" data-testid="sem-treino">Você contou que não pode ir ao treinamento. Tudo bem: as orientações do dia chegam pelo grupo do WhatsApp.</p>}
             </div>
@@ -283,7 +285,7 @@ export default function VoluntariadoPage() {
             <section className="flex flex-col gap-3">
               <Titulo n={1}>Antes de começar</Titulo>
               <p className="rounded-2xl border-2 px-3.5 py-3 text-[13.5px] leading-relaxed" style={{ borderColor: COR.ouro, background: COR.ouroClaro, color: '#5A4500' }} data-testid="aviso-do-treinamento">
-                <b>O Treinamento de Voluntários é no dia {TREINAMENTO.dataCurta}.</b> É nele que você conhece a equipe, a sua área e como vai ser o dia. Se não puder ir, tudo bem: você se inscreve do mesmo jeito.
+                <b>O Treinamento de Voluntários é no dia {TREINAMENTO.dataCurta}, das {TREINAMENTO.horario}, na {TREINAMENTO.local}.</b> É nele que você conhece a equipe, a sua área e como vai ser o dia. Se não puder ir, tudo bem: você se inscreve do mesmo jeito.
               </p>
               <Pergunta>Você tem disponibilidade para participar do treinamento em {TREINAMENTO.dataCurta}?</Pergunta>
               <Escolha marcada={treino === 'sim'} onClick={() => setTreino('sim')}>Sim, posso participar</Escolha>
