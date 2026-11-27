@@ -210,7 +210,7 @@ describe('formulário', () => {
     expect(sobre).toHaveTextContent('presentes para as crianças que atendemos');
     expect(sobre).not.toHaveTextContent('famílias');
     const aviso = screen.getByTestId('aviso-do-treinamento');
-    expect(aviso).toHaveTextContent('O Treinamento de Voluntários é no dia 28/11.');
+    expect(aviso).toHaveTextContent('O Treinamento de Voluntários é no dia 28/11, das 9h às 12h, na INCC.');
     expect(aviso).toHaveTextContent('Se não puder ir, tudo bem: você se inscreve do mesmo jeito.');
     expect(aviso).not.toHaveTextContent(/obrigatório/i);
     expect(screen.getByTestId('etapas')).toHaveTextContent('Etapa 1 de 3');
@@ -325,10 +325,12 @@ describe('formulário', () => {
     expect(treino).toHaveTextContent('Sábado, 28/11');
     // Quem disse que pode ir não vê o recado de quem não pode (26/11/2026).
     expect(screen.queryByTestId('sem-treino')).toBeNull();
-    // Só a data desde 09/11/2026: sem horário e sem local do treinamento.
-    expect(treino).not.toHaveTextContent('Horário');
+    // Data, horário e local desde 27/11/2026: 9h às 12h, na INCC (não no Recanto Maanaim, o local do evento).
+    expect(treino).toHaveTextContent('9h às 12h');
+    expect(treino).toHaveTextContent('INCC');
     expect(treino).not.toHaveTextContent('Recanto Maanaim');
-    expect(screen.queryByTestId('endereco-do-treinamento')).toBeNull();
+    expect(screen.getByTestId('endereco-do-treinamento')).toHaveTextContent('R. José Paulino, 1829 - Centro, Campinas - SP');
+    expect(within(treino).getByRole('link', { name: 'Abrir no mapa' })).toHaveAttribute('href', expect.stringContaining(encodeURIComponent('INCC, R. José Paulino, 1829')));
     expect(document.body.textContent).not.toMatch(/Manaim/);
     fireEvent.click(screen.getByRole('button', { name: /Baixar comprovante/ }));
     await waitFor(() => expect(banco.comprovantes).toHaveLength(1));

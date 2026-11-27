@@ -134,7 +134,7 @@ describe('abas', () => {
     expect(within(grupo).getByRole('link', { name: /Entrar no grupo do WhatsApp/ })).toHaveAttribute('href', 'https://chat.whatsapp.com/FnmKMVE3PXnEWKVYQY7ZEe');
     expect(screen.getByTestId('passo-inscricao')).toHaveAttribute('data-estado', 'feito');
     expect(screen.getByTestId('passo-treinamento')).toHaveAttribute('data-estado', 'agora');
-    expect(screen.getByTestId('passo-treinamento')).toHaveTextContent('Sáb, 28/11 · Recanto Maanaim · horário a confirmar');
+    expect(screen.getByTestId('passo-treinamento')).toHaveTextContent('Sáb, 28/11 · 9h às 12h · INCC');
     expect(screen.getByTestId('passo-evento')).toHaveTextContent('Ter, 08/12 · Manhã · 7h às 12h');
     const doca = screen.getByRole('navigation', { name: 'Central do Voluntário' });
     expect(within(doca).getByRole('link', { name: 'Início' })).toHaveAttribute('aria-current', 'page');
@@ -198,10 +198,31 @@ describe('abas', () => {
     expect(screen.getByTestId('onde')).toHaveTextContent(/central$/);
   });
 
-  it('Local: o Maps e a planta em breve', async () => {
+  it('Local: o treinamento na INCC e o Natal Feliz no Recanto Maanaim, cada um com o Maps; a planta em breve (27/11/2026)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-27T15:00:00Z'));
     montar('/voluntariado/natalfeliz26/central/local');
-    expect(await screen.findByRole('link', { name: /Abrir no Google Maps/ })).toHaveAttribute('href', expect.stringContaining('google.com/maps'));
-    expect(screen.getByTestId('planta-em-breve')).toBeInTheDocument();
+    const treino = await screen.findByTestId('local-do-treinamento');
+    expect(treino).toHaveTextContent('Treinamento · Sáb, 28/11 · 9h às 12h');
+    expect(treino).toHaveTextContent('INCC');
+    expect(treino).toHaveTextContent('R. José Paulino, 1829 - Centro, Campinas - SP');
+    expect(within(treino).getByRole('link', { name: /Abrir no Google Maps/ })).toHaveAttribute('href', expect.stringContaining(encodeURIComponent('INCC, R. José Paulino')));
+    const evento = screen.getByTestId('local-do-evento');
+    expect(evento).toHaveTextContent('Recanto Maanaim');
+    expect(within(evento).getByRole('link', { name: /Abrir no Google Maps/ })).toHaveAttribute('href', expect.stringContaining(encodeURIComponent('Recanto Maanaim')));
+    // O treinamento vem primeiro até o dia dele.
+    expect(treino.compareDocumentPosition(evento) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByTestId('planta-em-breve')).toHaveTextContent('A planta do Recanto Maanaim');
+    vi.useRealTimers();
+  });
+
+  it('Local: passado o treinamento, só o lugar do Natal Feliz', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-30T15:00:00Z'));
+    montar('/voluntariado/natalfeliz26/central/local');
+    expect(await screen.findByTestId('local-do-evento')).toHaveTextContent('Recanto Maanaim');
+    expect(screen.queryByTestId('local-do-treinamento')).toBeNull();
+    vi.useRealTimers();
   });
 
   it('Perfil: WhatsApp mascarado, as duas opções; sair esquece o número', async () => {

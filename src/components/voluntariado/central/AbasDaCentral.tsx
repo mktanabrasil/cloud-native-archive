@@ -8,7 +8,7 @@ import {
   diaQueAbre, diasDoCronograma, eGestor, eSoDoMeuGrupo, horaCurta, itensDoDia, posicaoDoAgora, whatsappMascarado,
   type AbaDaCentral, type AvisoEnviado, type DadosDaCentral, type ItemDoCronograma, type Momento, type VoluntarioNaCentral,
 } from '@/lib/voluntariado/central';
-import { GRUPO_DO_WHATSAPP, MAPA_DO_TREINAMENTO, TREINAMENTO, dadosDoHorario, rotuloDaAjuda, rotuloDoVinculo } from '@/lib/voluntariado/modelo';
+import { EVENTO, GRUPO_DO_WHATSAPP, MAPA_DO_EVENTO, MAPA_DO_TREINAMENTO, TREINAMENTO, dadosDoHorario, rotuloDaAjuda, rotuloDoVinculo } from '@/lib/voluntariado/modelo';
 import { AvatarDaPessoa, CAPA_DO_NATAL, Cartao, CartaoDosAvisos, Pilula, Secao } from './PecasDaCentral';
 
 /**
@@ -26,7 +26,7 @@ type Agora = { dia: string; hora: string };
 const horaDe = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }).replace(':', 'h').replace(/^0/, '');
 const dataDe = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' });
 const turnoDe = (h: string | null) => { const t = dadosDoHorario(h); return t ? `${t.rotulo} · ${t.detalhe}` : ''; };
-const textoDoTreinamento = `${TREINAMENTO.local}${TREINAMENTO.horario ? ` · ${TREINAMENTO.horario}` : ' · horário a confirmar'}`;
+const textoDoTreinamento = `${TREINAMENTO.horario || 'horário a confirmar'} · ${TREINAMENTO.local}`;
 /** "Funcionário(a) ANA · GOE", ou "Gestão" para quem entra sem inscrição. */
 const quemE = (v: VoluntarioNaCentral) => (eGestor(v) ? 'Gestão' : `${rotuloDoVinculo(v.vinculo as never)}${v.unidade_nome ? ` · ${v.unidade_nome}` : ''}`);
 
@@ -47,7 +47,7 @@ export function cabecalhoDaAba(aba: AbaDaCentral, d: DadosDaCentral): { titulo: 
       pilulas: (
         <>
           <Pilula icone={CalendarDays}>{diaCurto(DIA_DO_NATAL_FELIZ)}</Pilula>
-          <Pilula icone={MapPin}>{TREINAMENTO.local}</Pilula>
+          <Pilula icone={MapPin}>{EVENTO.local}</Pilula>
           {d.voluntario.horario && <Pilula icone={Clock}>{turnoDe(d.voluntario.horario)}</Pilula>}
         </>
       ),
@@ -72,7 +72,7 @@ export function InicioDaCentral({ d, agora, whatsapp }: { d: DadosDaCentral; ago
         : { titulo: 'Treinamento', sub: `${diaCurto(DIA_DO_TREINAMENTO)} · ${textoDoTreinamento}` },
     evento: d.presencas.evento
       ? { titulo: 'Natal Feliz', sub: `Presença registrada às ${horaDe(d.presencas.evento)}` }
-      : { titulo: 'Natal Feliz', sub: `${diaCurto(DIA_DO_NATAL_FELIZ)} · ${turnoDe(v.horario) || TREINAMENTO.local}` },
+      : { titulo: 'Natal Feliz', sub: `${diaCurto(DIA_DO_NATAL_FELIZ)} · ${turnoDe(v.horario) || EVENTO.local}` },
   };
   const avisos = d.avisos.length;
   return (
@@ -113,7 +113,7 @@ export function InicioDaCentral({ d, agora, whatsapp }: { d: DadosDaCentral; ago
         <>
           <Secao>As datas</Secao>
           <Cartao className="flex flex-col divide-y divide-border p-0" data-testid="datas">
-            {[['Treinamento dos voluntários', `${diaCurto(DIA_DO_TREINAMENTO)} · ${textoDoTreinamento}`], ['Natal Feliz', `${diaCurto(DIA_DO_NATAL_FELIZ)} · ${TREINAMENTO.local}`]].map(([t, s]) => (
+            {[['Treinamento dos voluntários', `${diaCurto(DIA_DO_TREINAMENTO)} · ${textoDoTreinamento}`], ['Natal Feliz', `${diaCurto(DIA_DO_NATAL_FELIZ)} · ${EVENTO.local}`]].map(([t, s]) => (
               <div key={t} className="px-4 py-3">
                 <b className="block text-[14.5px] font-semibold">{t}</b>
                 <span className="text-[13px] text-muted-foreground">{s}</span>
@@ -333,31 +333,41 @@ export function AvisosDaCentral({ avisos, whatsapp, destaque, vistosAte }: { avi
 
 // --- Local ---------------------------------------------------------------------------------
 
-export function LocalDaCentral() {
+/** Um lugar com o endereço, o botão do mapa e quando. */
+function CartaoDoLugar({ quando, dia, hora, local, endereco, mapa, teste }: { quando: string; dia: string; hora: string; local: string; endereco: string; mapa: string; teste: string }) {
+  return (
+    <Cartao className="flex flex-col gap-3" data-testid={teste}>
+      <div>
+        <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">{quando} · {diaCurto(dia)} · {hora}</span>
+        <b className="block text-[17px] font-semibold" style={{ fontFamily: 'Poppins, sans-serif' }}>{local}</b>
+        <span className="text-[13.5px] leading-snug text-muted-foreground">{endereco}</span>
+      </div>
+      <Button asChild className="rounded-[14px]"><a href={mapa} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /> Abrir no Google Maps</a></Button>
+    </Cartao>
+  );
+}
+
+/** Dois lugares desde 27/11/2026: o treinamento na INCC e o Natal Feliz no Recanto Maanaim. */
+export function LocalDaCentral({ hoje }: { hoje?: string }) {
+  const dia = hoje ?? new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+  const treino = <CartaoDoLugar key="t" quando="Treinamento" dia={DIA_DO_TREINAMENTO} hora={TREINAMENTO.horario || 'horário a confirmar'} local={TREINAMENTO.local} endereco={TREINAMENTO.endereco} mapa={MAPA_DO_TREINAMENTO} teste="local-do-treinamento" />;
+  const evento = <CartaoDoLugar key="e" quando="Natal Feliz" dia={DIA_DO_NATAL_FELIZ} hora="o dia todo" local={EVENTO.local} endereco={EVENTO.endereco} mapa={MAPA_DO_EVENTO} teste="local-do-evento" />;
+  // Até o dia do treinamento, ele vem primeiro; depois, só o do evento importa, e o treinamento sai.
+  const lugares = dia <= DIA_DO_TREINAMENTO ? [treino, evento] : [evento];
   return (
     <div className="flex flex-col gap-3">
-      <Cartao className="flex flex-col gap-3">
-        <div>
-          <b className="block text-[17px] font-semibold" style={{ fontFamily: 'Poppins, sans-serif' }}>{TREINAMENTO.local}</b>
-          <span className="text-[13.5px] leading-snug text-muted-foreground">{TREINAMENTO.endereco}</span>
-        </div>
-        <Button asChild className="rounded-[14px]"><a href={MAPA_DO_TREINAMENTO} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /> Abrir no Google Maps</a></Button>
-        <div className="grid grid-cols-2 gap-2 text-[13px]">
-          <div className="rounded-[14px] bg-muted/70 px-3 py-2"><span className="block text-muted-foreground">Treinamento</span><b>{diaCurto(DIA_DO_TREINAMENTO)}</b><span className="block text-[12px] text-muted-foreground">{TREINAMENTO.horario || 'horário a confirmar'}</span></div>
-          <div className="rounded-[14px] bg-muted/70 px-3 py-2"><span className="block text-muted-foreground">Natal Feliz</span><b>{diaCurto(DIA_DO_NATAL_FELIZ)}</b><span className="block text-[12px] text-muted-foreground">o dia todo</span></div>
-        </div>
-      </Cartao>
+      {lugares}
       {PLANTA_DO_LOCAL ? (
         <Cartao className="overflow-hidden p-2">
           <a href={PLANTA_DO_LOCAL} target="_blank" rel="noopener noreferrer" aria-label="Abrir a planta em tela cheia">
-            <img src={PLANTA_DO_LOCAL} alt={`Planta do ${TREINAMENTO.local}, com as áreas do evento`} className="block w-full rounded-[14px]" data-testid="planta" />
+            <img src={PLANTA_DO_LOCAL} alt={`Planta do ${EVENTO.local}, com as áreas do evento`} className="block w-full rounded-[14px]" data-testid="planta" />
           </a>
           <p className="px-2 pb-1 pt-2 text-[12.5px] text-muted-foreground">Toque na planta para ampliar.</p>
         </Cartao>
       ) : (
         <div className="relative overflow-hidden rounded-[20px] border-2 border-dashed border-border p-5 text-center text-[14px] text-muted-foreground" data-testid="planta-em-breve">
           <img src={CAPA_DO_NATAL} alt="" aria-hidden className="mx-auto mb-3 w-24 rounded-[12px] opacity-80" />
-          A planta do {TREINAMENTO.local}, com as áreas, os banheiros e os primeiros socorros, chega aqui em breve.
+          A planta do {EVENTO.local}, com as áreas, os banheiros e os primeiros socorros, chega aqui em breve.
         </div>
       )}
     </div>

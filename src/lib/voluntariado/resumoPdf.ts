@@ -1,5 +1,5 @@
 import { anaLogo } from '@/lib/anaLogo';
-import { DIA_DO_EVENTO, TREINAMENTO, ULTIMO_DIA, parceirosPorExtenso } from './modelo';
+import { DIA_DO_EVENTO, EVENTO, ULTIMO_DIA, parceirosPorExtenso } from './modelo';
 import type { Painel } from './aoVivo';
 
 /**
@@ -71,7 +71,7 @@ export async function desenharResumo(p: Painel, lidoEm: number): Promise<HTMLCan
   g.fillStyle = COR.creme;
   g.font = fonte(700, 12); g.fillText('RESUMO DAS INSCRIÇÕES', 382, 72);
   g.font = fonte(800, 30); g.fillText(`Dia do Voluntariado · Natal Feliz 2026`, 382, 108);
-  g.font = fonte(400, 14); g.fillText(caber(g, `${DIA_DO_EVENTO} no ${TREINAMENTO.local} · em parceria com ${parceirosPorExtenso()} · inscrições até ${ULTIMO_DIA}`, W - 382 - 30), 382, 134);
+  g.font = fonte(400, 14); g.fillText(caber(g, `${DIA_DO_EVENTO} no ${EVENTO.local} · em parceria com ${parceirosPorExtenso()} · inscrições até ${ULTIMO_DIA}`, W - 382 - 30), 382, 134);
   g.font = fonte(400, 11.5); g.textAlign = 'right'; g.fillText(`Atualizado em ${dataHora(lidoEm)}`, W - 30, 34); g.textAlign = 'left';
   g.fillStyle = COR.vermelho; g.fillRect(0, 170, W, 6);
 
