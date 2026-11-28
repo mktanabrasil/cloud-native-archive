@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
   COR_DO_TIPO, DIA_DO_NATAL_FELIZ, DIA_DO_TREINAMENTO, PLANTA_DO_LOCAL, ROTULO_DO_TIPO, agoraEProximo, caminho, caminhoDaAba, diaCurto,
-  diaQueAbre, diasDoCronograma, eGestor, eSoDoMeuGrupo, horaCurta, itensDoDia, posicaoDoAgora, whatsappMascarado,
+  diaQueAbre, diasDoCronograma, eDoGrupo, eGestor, eSoDoMeuGrupo, semInscricao, horaCurta, itensDoDia, posicaoDoAgora, whatsappMascarado,
   type AbaDaCentral, type AvisoEnviado, type DadosDaCentral, type ItemDoCronograma, type Momento, type VoluntarioNaCentral,
 } from '@/lib/voluntariado/central';
 import { EVENTO, GRUPO_DO_WHATSAPP, MAPA_DO_EVENTO, MAPA_DO_TREINAMENTO, TREINAMENTO, dadosDoHorario, rotuloDaAjuda, rotuloDoVinculo } from '@/lib/voluntariado/modelo';
@@ -30,13 +30,13 @@ const dataDe = (iso: string) => new Date(iso).toLocaleDateString('pt-BR', { time
 const turnoDe = (h: string | null) => { const t = dadosDoHorario(h); return t ? `${t.rotulo} · ${t.detalhe}` : ''; };
 const textoDoTreinamento = `${TREINAMENTO.horario || 'horário a confirmar'} · ${TREINAMENTO.local}`;
 /** "Funcionário(a) ANA · GOE", ou "Gestão" para quem entra sem inscrição. */
-const quemE = (v: VoluntarioNaCentral) => (eGestor(v) ? 'Gestão' : `${rotuloDoVinculo(v.vinculo as never)}${v.unidade_nome ? ` · ${v.unidade_nome}` : ''}`);
+const quemE = (v: VoluntarioNaCentral) => (eGestor(v) ? 'Gestão' : eDoGrupo(v) ? 'Grupo dos voluntários' : `${rotuloDoVinculo(v.vinculo as never)}${v.unidade_nome ? ` · ${v.unidade_nome}` : ''}`);
 
 function SeloDoPerfil({ v }: { v: VoluntarioNaCentral }) {
   return (
     <span className={cn('shrink-0 rounded-full px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.06em]',
-      eGestor(v) ? 'bg-[#FBCE00]/30 text-[#6B5200] dark:text-[#FBE38A]' : 'bg-[#81E2CF]/35 text-[#0F5A4C] dark:text-[#9FF0DF]')}>
-      {eGestor(v) ? 'Gestão' : 'Confirmada'}
+      eGestor(v) ? 'bg-[#FBCE00]/30 text-[#6B5200] dark:text-[#FBE38A]' : eDoGrupo(v) ? 'bg-[#25D366]/20 text-[#14532D] dark:text-[#B9F2CD]' : 'bg-[#81E2CF]/35 text-[#0F5A4C] dark:text-[#9FF0DF]')}>
+      {eGestor(v) ? 'Gestão' : eDoGrupo(v) ? 'Grupo' : 'Confirmada'}
     </span>
   );
 }
@@ -63,6 +63,9 @@ export function cabecalhoDaAba(aba: AbaDaCentral, d: DadosDaCentral): { titulo: 
 export function InicioDaCentral({ d, agora, whatsapp }: { d: DadosDaCentral; agora: Agora; whatsapp: string }) {
   const v = d.voluntario;
   const gestor = eGestor(v);
+  // Só do grupo geral (28/11/2026): como o gestor, sem caminho nem área; vê o que é para todos.
+  const grupo = eDoGrupo(v);
+  const sem = gestor || grupo;
   const passos = caminho(d, agora.dia);
   const { acontecendo, proximo } = agoraEProximo(d.cronograma, v, agora);
   const texto: Record<'inscricao' | Momento, { titulo: string; sub: string }> = {
@@ -88,7 +91,7 @@ export function InicioDaCentral({ d, agora, whatsapp }: { d: DadosDaCentral; ago
         <SeloDoPerfil v={v} />
       </Cartao>
 
-      <GrupoDosVoluntarios gestor={gestor} />
+      <GrupoDosVoluntarios gestor={sem} />
 
       {(acontecendo || proximo) && (
         <Cartao className="flex flex-col gap-2.5 border-l-4 !border-l-[#F37964]" data-testid="agora-e-proximo">
@@ -109,9 +112,15 @@ export function InicioDaCentral({ d, agora, whatsapp }: { d: DadosDaCentral; ago
         </Cartao>
       )}
 
-      <CartaoDosAvisos whatsapp={whatsapp} />
+      {!grupo && <CartaoDosAvisos whatsapp={whatsapp} />}
 
-      {gestor ? (
+      {grupo && (
+        <Cartao className="text-[13.5px] text-muted-foreground" data-testid="so-do-grupo">
+          Você entrou pelo grupo geral: aqui ficam o cronograma e os avisos para todos. Para ver a sua área e o seu horário, peça à equipe para fazer a sua inscrição.
+        </Cartao>
+      )}
+
+      {sem ? (
         <>
           <Secao>As datas</Secao>
           <Cartao className="flex flex-col divide-y divide-border p-0" data-testid="datas">
@@ -154,11 +163,11 @@ export function InicioDaCentral({ d, agora, whatsapp }: { d: DadosDaCentral; ago
           <b className="text-[14.5px] font-semibold">Avisos</b>
           <span className="-mt-1.5 text-[12.5px] text-muted-foreground">{avisos === 0 ? 'Nenhum ainda' : avisos === 1 ? '1 aviso' : `${avisos} avisos`}</span>
         </Link>
-        {gestor ? (
+        {sem ? (
           <Link to={caminhoDaAba('cronograma')} className="flex flex-col gap-2 rounded-[20px] border border-black/[0.06] bg-card p-4 transition-colors hover:bg-muted/40 dark:border-white/[0.08]">
             <span className="grid h-11 w-11 place-items-center rounded-full bg-[#FBCE00]/25 text-foreground"><CalendarDays className="h-5 w-5" /></span>
             <b className="text-[14.5px] font-semibold">Cronograma</b>
-            <span className="-mt-1.5 text-[12.5px] text-muted-foreground">Todas as áreas</span>
+            <span className="-mt-1.5 text-[12.5px] text-muted-foreground">{gestor ? 'Todas as áreas' : 'O que é para todos'}</span>
           </Link>
         ) : (
           <div className="flex flex-col gap-2 rounded-[20px] border border-black/[0.06] bg-card p-4 dark:border-white/[0.08]">
@@ -230,7 +239,7 @@ export function CronogramaDaCentral({ d, agora }: { d: DadosDaCentral; agora: Ag
   return (
     <div className="flex flex-col gap-3">
       {/* O gestor vê tudo: sem o filtro da área. */}
-      {!eGestor(v) && <Segmentos<'todos' | 'meus'> rotulo="Filtrar" valor={soMeus} aoMudar={setSoMeus} opcoes={[['todos', 'Todos'], ['meus', 'Minha área']]} />}
+      {!semInscricao(v) && <Segmentos<'todos' | 'meus'> rotulo="Filtrar" valor={soMeus} aoMudar={setSoMeus} opcoes={[['todos', 'Todos'], ['meus', 'Minha área']]} />}
       <div className="flex flex-wrap gap-2" role="group" aria-label="Escolha o dia">
         {dias.map((x) => (
           <button key={x} type="button" aria-pressed={diaAtual === x} onClick={() => setDia(x)}
@@ -300,10 +309,11 @@ const quando = (iso: string) => {
 };
 
 /** Os avisos que já chegaram, com o ligar no topo. "novos" = os que chegaram depois da última visita. */
-export function AvisosDaCentral({ avisos, whatsapp, destaque, vistosAte }: { avisos: AvisoEnviado[]; whatsapp: string; destaque?: string | null; vistosAte: string }) {
+export function AvisosDaCentral({ avisos, whatsapp, destaque, vistosAte, semCelular = false }: { avisos: AvisoEnviado[]; whatsapp: string; destaque?: string | null; vistosAte: string; semCelular?: boolean }) {
   return (
     <div className="flex flex-col gap-3">
-      <CartaoDosAvisos whatsapp={whatsapp} compacto />
+      {/* Quem está só no grupo recebe os avisos pelo WhatsApp (28/11/2026). */}
+      {!semCelular && <CartaoDosAvisos whatsapp={whatsapp} compacto />}
       {avisos.length === 0 ? (
         <Cartao className="flex flex-col items-center gap-2 py-8 text-center" data-testid="sem-avisos">
           <span className="grid h-12 w-12 place-items-center rounded-full bg-muted text-muted-foreground"><Bell className="h-5 w-5" /></span>
@@ -406,7 +416,7 @@ export function LocalDaCentral({ hoje, voluntario }: { hoje?: string; voluntario
   const evento = <CartaoDoLugar key="e" quando="Natal Feliz" dia={DIA_DO_NATAL_FELIZ} hora="o dia todo" local={EVENTO.local} endereco={EVENTO.endereco} mapa={MAPA_DO_EVENTO} teste="local-do-evento" />;
   // Até o dia do treinamento, ele vem primeiro; depois, só o do evento importa, e o treinamento sai.
   const lugares = dia <= DIA_DO_TREINAMENTO ? [treino, evento] : [evento];
-  const meus = voluntario && !eGestor(voluntario) ? ambientesDaArea(voluntario.opcao1) : [];
+  const meus = voluntario && !semInscricao(voluntario) ? ambientesDaArea(voluntario.opcao1) : [];
   const ir = (n: number) => document.getElementById(`ambiente-${n}`)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   return (
     <div className="flex flex-col gap-3">
@@ -443,8 +453,11 @@ export function LocalDaCentral({ hoje, voluntario }: { hoje?: string; voluntario
 export function PerfilDaCentral({ d, whatsapp, aoSair }: { d: DadosDaCentral; whatsapp: string; aoSair: () => void }) {
   const v = d.voluntario;
   const gestor = eGestor(v);
+  const grupo = eDoGrupo(v);
   const linhas: Array<[string, string]> = gestor
     ? [['WhatsApp', whatsappMascarado(whatsapp)], ['Acesso', 'Gestão: o cronograma inteiro e todos os avisos']]
+    : grupo
+    ? [['WhatsApp', whatsappMascarado(whatsapp)], ['Acesso', 'Grupo geral: o cronograma e os avisos para todos']]
     : [
       ['WhatsApp', whatsappMascarado(whatsapp)],
       ['Vínculo', quemE(v)],
@@ -460,11 +473,11 @@ export function PerfilDaCentral({ d, whatsapp, aoSair }: { d: DadosDaCentral; wh
         <AvatarDaPessoa nome={v.nome} grande />
         <div className="min-w-0 flex-1">
           <b className="block text-[17px] font-semibold leading-snug" style={{ fontFamily: 'Poppins, sans-serif' }}>{v.nome}</b>
-          <span className="text-[13px] text-muted-foreground">{gestor ? 'Acompanha o voluntariado' : rotuloDoVinculo(v.vinculo as never)}</span>
+          <span className="text-[13px] text-muted-foreground">{gestor ? 'Acompanha o voluntariado' : grupo ? 'Grupo dos voluntários' : rotuloDoVinculo(v.vinculo as never)}</span>
         </div>
         <SeloDoPerfil v={v} />
       </Cartao>
-      <Secao>{gestor ? 'Meu acesso' : 'Minha inscrição'}</Secao>
+      <Secao>{gestor || grupo ? 'Meu acesso' : 'Minha inscrição'}</Secao>
       <Cartao className="p-0">
         <dl className="divide-y divide-border" data-testid="dados-da-inscricao">
           {linhas.map(([r, val]) => (
@@ -475,9 +488,9 @@ export function PerfilDaCentral({ d, whatsapp, aoSair }: { d: DadosDaCentral; wh
           ))}
         </dl>
       </Cartao>
-      {!gestor && <p className="px-1 text-[13px] text-muted-foreground">Precisa mudar algo? Fale com a equipe no grupo dos voluntários.</p>}
+      {!gestor && <p className="px-1 text-[13px] text-muted-foreground">{grupo ? 'Para ver a sua área e o seu horário, peça à equipe para fazer a sua inscrição.' : 'Precisa mudar algo? Fale com a equipe no grupo dos voluntários.'}</p>}
       <Button asChild variant="outline" className="rounded-[16px]"><a href={GRUPO_DO_WHATSAPP} target="_blank" rel="noopener noreferrer"><Users className="h-4 w-4" /> Grupo dos voluntários</a></Button>
-      <CartaoDosAvisos whatsapp={whatsapp} compacto />
+      {!grupo && <CartaoDosAvisos whatsapp={whatsapp} compacto />}
       <Button variant="ghost" className="self-center text-muted-foreground" onClick={aoSair}><LogOut className="h-4 w-4" /> Sair deste celular</Button>
     </div>
   );
