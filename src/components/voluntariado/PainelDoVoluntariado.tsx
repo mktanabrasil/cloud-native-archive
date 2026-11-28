@@ -113,7 +113,7 @@ export function PainelDoVoluntariado() {
       <PlanilhaDoGoogle inscritos={(lista ?? []).length} />
       <AoVivoDaGestao />
       {/* A Central do Voluntário (13/11/2026): link, presença, cronograma e avisos. */}
-      <CentralNoPainel inscricoes={lista ?? []} />
+      <CentralNoPainel inscricoes={lista ?? []} aoMudarInscricoes={carregar} />
       {/* As metas valem para todas as inscrições, então leem a lista inteira (sem o filtro de unidade). */}
       <MetasPorArea metas={metas} primeiras={Object.fromEntries(AREAS_DE_AJUDA.map((a) => [a.chave, (lista ?? []).filter((i) => i.opcao1 === a.chave).length]))} onSalvas={setMetas} />
 

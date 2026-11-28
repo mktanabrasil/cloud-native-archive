@@ -44,7 +44,8 @@ export interface VoluntarioNaCentral {
   /** O gestor não tem inscrição: sem protocolo, área nem turno. */
   protocolo: string | null;
   nome: string;
-  vinculo: Vinculo | 'gestao';
+  /** 'gestao': gestor; 'grupo': está só no grupo geral do WhatsApp (28/11/2026). */
+  vinculo: Vinculo | 'gestao' | 'grupo';
   unidade_nome: string | null;
   igreja: string | null;
   horario: Horario | null;
@@ -76,7 +77,7 @@ export interface AvisoEnviado {
 }
 
 export interface DadosDaCentral {
-  perfil: 'voluntario' | 'gestor';
+  perfil: 'voluntario' | 'gestor' | 'grupo';
   voluntario: VoluntarioNaCentral;
   presencas: Partial<Record<Momento, string>>;
   cronograma: ItemDoCronograma[];
@@ -140,6 +141,13 @@ export function agoraEmBrasilia(agora: Date = new Date()): { dia: string; hora: 
 }
 
 export const eGestor = (v: Pick<VoluntarioNaCentral, 'vinculo'>) => v.vinculo === 'gestao';
+/**
+ * Está só no grupo geral do WhatsApp, sem inscrição (28/11/2026): vê o
+ * cronograma e os avisos para todos; sem área, turno, caminho nem avisos no celular.
+ */
+export const eDoGrupo = (v: Pick<VoluntarioNaCentral, 'vinculo'>) => v.vinculo === 'grupo';
+/** Sem inscrição: gestor ou só do grupo. */
+export const semInscricao = (v: Pick<VoluntarioNaCentral, 'vinculo'>) => eGestor(v) || eDoGrupo(v);
 
 /** O gestor vê tudo; o voluntário, o que é da área e do turno dele. */
 export const eParaMim = (item: Pick<ItemDoCronograma, 'areas' | 'horarios'>, v: Pick<VoluntarioNaCentral, 'opcao1' | 'horario' | 'vinculo'>) =>

@@ -18,6 +18,7 @@ import {
   listarPresencas, removerGestor, salvarItem, whatsappMascarado, type Gestor,
   type AvisoDoPainel, type ItemDoPainel, type NovoItem, type Presenca, type TipoDoItem,
 } from '@/lib/voluntariado/central';
+import { QuemEntraSemFormulario } from './SemFormulario';
 import { AREAS_DE_AJUDA, AREAS_FORA_DO_FORMULARIO, HORARIOS, mascaraDoWhatsapp, rotuloDaAjuda, rotuloDoHorario } from '@/lib/voluntariado/modelo';
 
 /**
@@ -275,7 +276,7 @@ function GestoresDaCentral() {
 
 // --- O bloco no painel -----------------------------------------------------------------------
 
-export function CentralNoPainel({ inscricoes }: { inscricoes: Inscricao[] }) {
+export function CentralNoPainel({ inscricoes, aoMudarInscricoes }: { inscricoes: Inscricao[]; aoMudarInscricoes?: () => void }) {
   const [itens, setItens] = useState<ItemDoPainel[] | null>(null);
   const [avisos, setAvisos] = useState<AvisoDoPainel[]>([]);
   const [presencas, setPresencas] = useState<Presenca[]>([]);
@@ -412,6 +413,7 @@ export function CentralNoPainel({ inscricoes }: { inscricoes: Inscricao[] }) {
 
       {editando && <FormDoItem item={editando} aoFechar={() => setEditando(null)} aoSalvar={carregar} />}
       <div className="mt-2 border-t border-border pt-3"><GestoresDaCentral /></div>
+      <div className="mt-2 border-t border-border pt-3"><QuemEntraSemFormulario inscricoes={inscricoes} aoMudarInscricoes={aoMudarInscricoes} /></div>
 
       {novoAviso && <FormDoAviso inscricoes={inscricoes} comAvisos={comAvisos} gestoresComAvisos={gestoresComAvisos} aoFechar={() => setNovoAviso(false)} aoEnviar={carregar} />}
     </section>
